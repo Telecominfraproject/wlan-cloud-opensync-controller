@@ -18,7 +18,7 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 
     private static final Logger LOG = LoggerFactory.getLogger(OpensyncExternalIntegrationSimple.class);
     
-    @Value("${connectus.ovsdb.configFileName:/Users/dtop/Documents/opensync_ext_static/src/main/resources/config_2_ssids.json}")
+    @Value("${connectus.ovsdb.configFileName:/Users/dtop/Documents/TIP_WLAN_repos/opensync_wifi_controller/opensync_ext_static/src/main/resources/config_2_ssids.json}")
     private String configFileName;
 
     public void apConnected(String apId) {

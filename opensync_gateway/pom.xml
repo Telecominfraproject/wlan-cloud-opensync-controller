@@ -6,8 +6,8 @@
     <version>0.0.1-SNAPSHOT</version>
   </parent>
   <groupId>ai.connectus</groupId>
-  <artifactId>opensync_experiment</artifactId>
-  <name>opensync_experiment</name>
+  <artifactId>opensync_gateway</artifactId>
+  <name>opensync_gateway</name>
   <description>Redirector and Controller for OpenSync</description>
   
 	<properties>
