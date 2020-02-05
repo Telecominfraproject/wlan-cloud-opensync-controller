@@ -1,0 +1,78 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>com.whizcontrol</groupId>
+    <artifactId>root-pom</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+  </parent>
+  <groupId>ai.connectus</groupId>
+  <artifactId>opensync_experiment</artifactId>
+  <name>opensync_experiment</name>
+  <description>Redirector and Controller for OpenSync</description>
+  
+	<properties>
+	    <start-class>ai.connectus.opensync.experiment.OpenSyncProcess</start-class>
+	</properties>
+  
+	<dependencies>
+		<dependency>
+			<artifactId>base-container</artifactId>
+			<groupId>com.whizcontrol</groupId>
+			<version>${whizcontrol.release.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>ai.connectus</groupId>
+			<artifactId>opensync_ext_interface</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>ai.connectus</groupId>
+			<artifactId>opensync_ext_static</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+
+		<dependency>
+	        <groupId>com.vmware.ovsdb</groupId>
+	        <artifactId>ovsdb-client</artifactId>
+	        <version>1.0.1</version>
+	        <exclusions>
+	        	<exclusion>
+	        		<artifactId>slf4j-log4j12</artifactId>
+	        		<groupId>org.slf4j</groupId>
+	        	</exclusion>
+	        </exclusions>
+	    </dependency>
+
+		<!-- MQTT dependencies BEGIN -->
+	      <dependency>
+	         <groupId>ai.connectus</groupId>
+	         <artifactId>opensync_protobuf</artifactId>
+	         <version>0.0.1-SNAPSHOT</version>
+	      </dependency>
+	   
+		<dependency>
+			<groupId>com.google.protobuf</groupId>
+			<artifactId>protobuf-java-util</artifactId>
+			<version>3.11.1</version>
+		</dependency>
+	   
+	      <dependency>
+	         <groupId>org.fusesource.mqtt-client</groupId>
+	         <artifactId>mqtt-client</artifactId>
+	         <version>1.12</version>
+	      </dependency>
+		<!-- MQTT dependencies END -->
+		
+	</dependencies>
+    
+  	<build>
+		<plugins>
+			<!-- package executable jar file with all the dependencies in it -->
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
+	
+</project>

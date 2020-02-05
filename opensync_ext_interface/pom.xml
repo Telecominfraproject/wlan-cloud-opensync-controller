@@ -1,0 +1,20 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>ai.connectus</groupId>
+  <artifactId>opensync_ext_interface</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <name>opensync_ext_interface</name>
+  <description>Interface that defines how opensync gateway gets the AP config</description>
+  <dependencies>
+	  <dependency>
+	  	<groupId>com.whizcontrol</groupId>
+	  	<artifactId>base-models</artifactId>
+	  	<version>0.0.1-SNAPSHOT</version>
+	  </dependency>
+      <dependency>
+         <groupId>ai.connectus</groupId>
+         <artifactId>opensync_protobuf</artifactId>
+         <version>0.0.1-SNAPSHOT</version>
+      </dependency>	  
+  </dependencies>
+</project>

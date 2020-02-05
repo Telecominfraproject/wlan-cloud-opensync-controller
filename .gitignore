@@ -1,0 +1,25 @@
+#ignore eclipse workspace metadata folder
+.metadata/**
+eclipse_preferences.epf
+StartingPoint/**
+RemoteSystemsTempFiles/**
+wc-templates/**
+**/.settings/**
+**/.recommenders/**
+.project
+.classpath
+.DS_Store
+#maven target folder
+**/target/**
+dependency-reduced-pom.xml
+build.log
+.sonarlint/**
+
+## IntelliJ Stuff
+.idea
+*.iml
+
+## Binaries
+*.tar.gz
+
+*.pydevproject

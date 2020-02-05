@@ -1,0 +1,15 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>ai.connectus</groupId>
+  <artifactId>opensync_ext_static</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <name>opensync_ext_static</name>
+  <description>Configuration interface that provides static config from the file</description>
+  <dependencies>
+  	<dependency>
+  		<groupId>ai.connectus</groupId>
+  		<artifactId>opensync_ext_interface</artifactId>
+  		<version>0.0.1-SNAPSHOT</version>
+  	</dependency>
+  </dependencies>
+</project>
