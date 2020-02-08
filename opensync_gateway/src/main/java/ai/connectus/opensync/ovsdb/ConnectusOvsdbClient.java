@@ -161,4 +161,20 @@ public class ConnectusOvsdbClient {
         return new HashSet<>(connectedClients.keySet());
     }
 
+    /**
+     * @param apId
+     * @param newRedirectorAddress
+     * @return updated value of the redirector
+     */
+    public String changeRedirectorAddress(String apId, String newRedirectorAddress) {
+        OvsdbClient ovsdbClient = connectedClients.get(apId);
+        if(ovsdbClient == null) {
+            throw new IllegalStateException("AP with id " + apId + " is not connected") ;
+        }
+        
+        String ret = ovsdbDao.changeRedirectorAddress(ovsdbClient, apId, newRedirectorAddress);
+
+        return ret;
+    }
+
 }

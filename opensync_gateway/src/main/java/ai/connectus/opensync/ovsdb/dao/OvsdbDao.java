@@ -1399,4 +1399,32 @@ public class OvsdbDao {
             throw new RuntimeException(e);
         }        
     }
+
+    public String changeRedirectorAddress(OvsdbClient ovsdbClient, String apId, String newRedirectorAddress) {
+        try {
+            List<Operation> operations = new ArrayList<>();            
+            Map<String, Value> updateColumns = new HashMap<>();
+            
+            updateColumns.put("redirector_addr", new Atom<>(newRedirectorAddress));
+            
+            Row row = new Row(updateColumns );
+            operations.add(new Update(awlanNodeDbTable, row ));
+            
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+            
+            if(LOG.isDebugEnabled()) {
+                LOG.debug("Updated {} redirector_addr = {}", awlanNodeDbTable, newRedirectorAddress);
+                
+                for(OperationResult res : result) {
+                    LOG.debug("Op Result {}", res);
+                }
+            }
+            
+        } catch(OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        
+        return newRedirectorAddress;
+    }
 }

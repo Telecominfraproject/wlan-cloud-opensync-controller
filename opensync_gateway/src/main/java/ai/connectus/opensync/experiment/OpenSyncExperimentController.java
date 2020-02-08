@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import ai.connectus.opensync.ovsdb.ConnectusOvsdbClient;
@@ -21,7 +22,7 @@ public class OpenSyncExperimentController {
     
     @Autowired
     ConnectusOvsdbClient connectusOvsdbClient;
-        
+            
     @RequestMapping(value = "/connectedClients", method = RequestMethod.GET)
     public List<String> getConnectedClients() 
     {
@@ -30,4 +31,14 @@ public class OpenSyncExperimentController {
         return ret;
     }
 
+    @RequestMapping(value = "/changeRedirectorAddress", method = RequestMethod.POST)
+    public String changeRedirectorAddress(@RequestParam String apId, @RequestParam String newRedirectorAddress) 
+    {        
+        LOG.info("Changing redirector address for AP {} to {}", apId, newRedirectorAddress);
+        String ret = connectusOvsdbClient.changeRedirectorAddress(apId, newRedirectorAddress);
+        LOG.info("Changed redirector address for AP {} to {}", apId, ret);
+        return ret;
+    }
+
+    
 }
