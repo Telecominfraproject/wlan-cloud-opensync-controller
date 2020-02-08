@@ -7,6 +7,7 @@ import javax.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import com.vmware.ovsdb.callback.ConnectionCallback;
@@ -17,6 +18,7 @@ import ai.connectus.opensync.ovsdb.dao.OvsdbDao;
 import ai.connectus.opensync.util.SslUtil;
 import io.netty.handler.ssl.SslContext;
 
+@Profile("ovsdb_redirector")
 @Component
 public class ConnectusOvsdbRedirector {
 

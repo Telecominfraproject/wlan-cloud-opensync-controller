@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationListener;
+import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.stereotype.Component;
 
@@ -33,6 +34,7 @@ import traffic.NetworkMetadata.FlowReport;
 import wc.stats.IpDnsTelemetry;
 import wc.stats.IpDnsTelemetry.WCStatsReport; 
 
+@Profile("mqtt_receiver")
 @Component
 public class OpensyncMqttClient implements ApplicationListener<ContextClosedEvent> {
 
@@ -58,10 +60,12 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
             @Value("${connectus.mqttBroker.address:testportal.123wlan.com}")
             String mqttBrokerAddress,            
             @Value("${connectus.mqttBroker.listenPort:1883}")
-            int mqttBrokerListenPort
+            int mqttBrokerListenPort,
+            @Value("${connectus.mqttBroker.user:admin}")
+            String username,
+            @Value("${connectus.mqttBroker.password:admin}")
+            String password            
             ){
-        String username = "admin";        
-        String password = "admin";
         
         Runnable mqttClientRunnable = () -> {
             while(keepReconnecting) {
