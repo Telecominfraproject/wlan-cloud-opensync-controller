@@ -71,6 +71,8 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
             while(keepReconnecting) {
                 BlockingConnection connection = null;
                 try {
+                    Thread.sleep(5000);
+                    
                     // Create a new MQTT connection to the broker.  
                     /*
                      * Using SSL connections

@@ -2,9 +2,12 @@ package ai.connectus.opensync.external.integration;
 
 import java.io.IOException;
 
+import javax.annotation.PostConstruct;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import ai.connectus.opensync.external.integration.OpensyncExternalIntegrationInterface;
@@ -13,6 +16,7 @@ import sts.PlumeStats.Report;
 import traffic.NetworkMetadata.FlowReport;
 import wc.stats.IpDnsTelemetry.WCStatsReport;
 
+@Profile("opensync_static_config")
 @Component
 public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegrationInterface {
 
@@ -20,6 +24,11 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
     
     @Value("${connectus.ovsdb.configFileName:/Users/dtop/Documents/TIP_WLAN_repos/opensync_wifi_controller/opensync_ext_static/src/main/resources/config_2_ssids.json}")
     private String configFileName;
+
+    @PostConstruct
+    private void postCreate(){
+        LOG.info("Using Static integration");
+    }
 
     public void apConnected(String apId) {
         LOG.info("AP {} got connected to the gateway", apId);

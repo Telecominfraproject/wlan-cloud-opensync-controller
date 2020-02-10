@@ -30,6 +30,11 @@
 			<artifactId>opensync_ext_static</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
+		<dependency>
+			<groupId>ai.connectus</groupId>
+			<artifactId>opensync_ext_kdc</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
 
 		<dependency>
 	        <groupId>com.vmware.ovsdb</groupId>

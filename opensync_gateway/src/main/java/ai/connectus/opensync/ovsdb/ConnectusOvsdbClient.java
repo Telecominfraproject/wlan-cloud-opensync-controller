@@ -1,10 +1,7 @@
 package ai.connectus.opensync.ovsdb;
 
 import java.security.cert.X509Certificate;
-import java.util.HashSet;
-import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import javax.annotation.PostConstruct;
 
@@ -19,6 +16,8 @@ import com.vmware.ovsdb.service.OvsdbClient;
 import com.vmware.ovsdb.service.OvsdbPassiveConnectionListener;
 
 import ai.connectus.opensync.external.integration.OpensyncExternalIntegrationInterface;
+import ai.connectus.opensync.external.integration.OvsdbSession;
+import ai.connectus.opensync.external.integration.OvsdbSessionMapInterface;
 import ai.connectus.opensync.external.integration.models.OpensyncAPConfig;
 import ai.connectus.opensync.ovsdb.dao.OvsdbDao;
 import ai.connectus.opensync.ovsdb.dao.models.ConnectNodeInfo;
@@ -50,7 +49,8 @@ public class ConnectusOvsdbClient {
     @Autowired
     private OpensyncExternalIntegrationInterface extIntegrationInterface;
     
-    private final ConcurrentHashMap<String, OvsdbClient> connectedClients = new ConcurrentHashMap<>();
+    @Autowired
+    private OvsdbSessionMapInterface ovsdbSessionMapInterface;
     
     @PostConstruct
     private void postCreate() {
@@ -70,17 +70,20 @@ public class ConnectusOvsdbClient {
                     String clientCn = SslUtil.extractCN(subjectDn);
                     LOG.info("ovsdbClient connecting from {} on port {} clientCn {}", remoteHost, localPort, clientCn);                
                     
-                    ConnectNodeInfo connectNodeInfo = processConnectRequest(ovsdbClient, clientCn);
+                    ConnectNodeInfo connectNodeInfo = ovsdbDao.getConnectNodeInfo(ovsdbClient);
                     
                     //successfully connected - register it in our connectedClients table
                     //In Plume's environment clientCn is not unique that's why we are augmenting it with the serialNumber and using it as a key (equivalent of KDC unique qrCode)
                     String key = clientCn + "_" + connectNodeInfo.serialNumber;
-                    ConnectusOvsdbClient.this.connectedClients.put(key, ovsdbClient);
+                    ConnectusOvsdbClient.this.ovsdbSessionMapInterface.newSession(key, ovsdbClient);
                     extIntegrationInterface.apConnected(key);
+                    
+                    //push configuration to AP
+                    connectNodeInfo = processConnectRequest(ovsdbClient, clientCn, connectNodeInfo);
                     
                     LOG.info("ovsdbClient connected from {} on port {} key {} ", remoteHost, localPort, key);
 
-                    LOG.info("ovsdbClient connectedClients = {}", ConnectusOvsdbClient.this.connectedClients.size());
+                    LOG.info("ovsdbClient connectedClients = {}", ConnectusOvsdbClient.this.ovsdbSessionMapInterface.getNumSessions());
 
                 } catch (Exception e) {
                     LOG.error("ovsdbClient error", e);
@@ -105,19 +108,17 @@ public class ConnectusOvsdbClient {
                 //disconnected - deregister ovsdbClient from our connectedClients table
                 //unfortunately we only know clientCn at this point, but in Plume's environment they are not unique
                 //so we are doing a reverse lookup here, and then if we find the key we will remove the entry from the connectedClients.
-                String key = ConnectusOvsdbClient.this.connectedClients.searchEntries(1,
-                        (Entry<String, OvsdbClient> t) -> { return t.getValue().equals(ovsdbClient) ? t.getKey() : null ;}
-                );
+                String key = ConnectusOvsdbClient.this.ovsdbSessionMapInterface.lookupClientId(ovsdbClient);
                 
                 if(key!=null) {
-                    ConnectusOvsdbClient.this.connectedClients.remove(key);
+                    ConnectusOvsdbClient.this.ovsdbSessionMapInterface.removeSession(key);
                     extIntegrationInterface.apDisconnected(key);
                 }
                 
                 ovsdbClient.shutdown();
                 
                 LOG.info("ovsdbClient disconnected from {} on port {} clientCn {} key {} ", remoteHost, localPort, clientCn, key);
-                LOG.info("ovsdbClient connectedClients = {}", ConnectusOvsdbClient.this.connectedClients.size());
+                LOG.info("ovsdbClient connectedClients = {}", ConnectusOvsdbClient.this.ovsdbSessionMapInterface.getNumSessions());
             }
         };
 
@@ -126,10 +127,9 @@ public class ConnectusOvsdbClient {
         LOG.debug("manager waiting for connection on port {}...", ovsdbListenPort);
     }
     
-    private ConnectNodeInfo processConnectRequest(OvsdbClient ovsdbClient, String clientCn) {
+    private ConnectNodeInfo processConnectRequest(OvsdbClient ovsdbClient, String clientCn, ConnectNodeInfo connectNodeInfo) {
         
         LOG.debug("Starting Client connect");
-        ConnectNodeInfo connectNodeInfo = ovsdbDao.getConnectNodeInfo(ovsdbClient);
         connectNodeInfo = ovsdbDao.updateConnectNodeInfoOnConnect(ovsdbClient, clientCn, connectNodeInfo);
 
         String apId = clientCn + "_" + connectNodeInfo.serialNumber;
@@ -158,7 +158,7 @@ public class ConnectusOvsdbClient {
     }
     
     public Set<String> getConnectedClientIds(){
-        return new HashSet<>(connectedClients.keySet());
+        return ovsdbSessionMapInterface.getConnectedClientIds();
     }
 
     /**
@@ -167,12 +167,12 @@ public class ConnectusOvsdbClient {
      * @return updated value of the redirector
      */
     public String changeRedirectorAddress(String apId, String newRedirectorAddress) {
-        OvsdbClient ovsdbClient = connectedClients.get(apId);
-        if(ovsdbClient == null) {
+        OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
+        if(ovsdbSession == null) {
             throw new IllegalStateException("AP with id " + apId + " is not connected") ;
         }
         
-        String ret = ovsdbDao.changeRedirectorAddress(ovsdbClient, apId, newRedirectorAddress);
+        String ret = ovsdbDao.changeRedirectorAddress(ovsdbSession.getOvsdbClient(), apId, newRedirectorAddress);
 
         return ret;
     }
