@@ -347,6 +347,7 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
         if(customerId>0) {
             kdcGwController.updateActiveCustomer(customerId);
         }
+        //TODO: continue from here --->>>
     }
 
     public void processMqttMessage(String topic, FlowReport flowReport) {
@@ -355,6 +356,7 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
         if(customerId>0) {
             kdcGwController.updateActiveCustomer(customerId);
         }
+        //TODO: implement me
     }
 
     public void processMqttMessage(String topic, WCStatsReport wcStatsReport) {
@@ -363,6 +365,7 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
         if(customerId>0) {
             kdcGwController.updateActiveCustomer(customerId);
         }
+        //TODO: implement me
     }
 
 }
