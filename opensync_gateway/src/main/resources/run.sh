@@ -1,4 +1,4 @@
-PROFILES=" -Dspring.profiles.include=mqtt_receiver,ovsdb_redirector,ovsdb_manager,opensync_static_config"
+PROFILES=" -Dspring.profiles.include=mqtt_receiver,ovsdb_redirector,ovsdb_manager"
 
 SSL_PROPS=" "
 SSL_PROPS+=" -Dssl.props=file:///home/ec2-user/opensync/ssl.properties"

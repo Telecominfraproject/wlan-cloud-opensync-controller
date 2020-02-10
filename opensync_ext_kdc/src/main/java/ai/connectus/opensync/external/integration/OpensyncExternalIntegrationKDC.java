@@ -106,7 +106,7 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
     private int autoProvisionedCustomerId;
     @Value("${connectus.ovsdb.autoProvisionedLocationId:2}")
     private int autoProvisionedLocationId;
-    @Value("${connectus.ovsdb.autoProvisionedNetworkConfigId:1}")
+    @Value("${connectus.ovsdb.autoProvisionedNetworkConfigId:3}")
     private long autoProvisionedNetworkConfigId;
 
     private Cache kdcEquipmentRecordCache;
@@ -329,7 +329,7 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
      * @param topic
      * @return apId extracted from the topic name, or null if it cannot be extracted
      */
-    public String extractApIdFromTopic(String topic) {
+    public static String extractApIdFromTopic(String topic) {
         //Topic is formatted as "/ap/"+clientCn+"_"+ret.serialNumber+"/opensync"
         if(topic==null) {
             return null;
@@ -340,10 +340,11 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
             return null;
         }
         
-        //apId is the second element in the topic
-        return parts[1];
+        //apId is the third element in the topic
+        return parts[2];
     }
 
+    
     /**
      * @param topic
      * @return customerId looked up from the topic name, or -1 if it cannot be extracted
