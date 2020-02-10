@@ -224,7 +224,6 @@ public class OpensyncKDCGatewayController {
         
         //TODO: implement sending command via ovsdb session.
         
-        response.setQueued(true);
         return response;
     }
 
@@ -266,7 +265,8 @@ public class OpensyncKDCGatewayController {
                 throw new ConfigurationException(
                         "Unabled to register gateway with routing service: routing service interface not initialized");
             }
-            CustomerEquipmentGwRecord gwRecord = new CustomerEquipmentGwRecord(CloudServiceType.CEGW, getDeploymentId());
+            CustomerEquipmentGwRecord gwRecord = new CustomerEquipmentGwRecord();
+            gwRecord.setDeploymentId(getDeploymentId());
 
             // Internal facing service
             gwRecord.setGatewayId(getGatewayName());

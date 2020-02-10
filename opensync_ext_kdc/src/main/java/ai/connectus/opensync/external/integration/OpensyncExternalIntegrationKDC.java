@@ -127,7 +127,7 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
                 ce = kdcEquipmentRecordCache.get(apId, new Callable<CustomerEquipment>() {
                     @Override
                     public CustomerEquipment call() throws Exception {
-                        return eqNetworkManagementInterface.getCustomerEquipmentByQrCodeOrNull(apId);
+                        return eqNetworkManagementInterface.getCustomerEquipmentByQrCode(apId);
                     }
                 });
             }catch (Exception e) {
@@ -579,7 +579,7 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
                     }
                     
                     if(cl.getStats().hasRxRate()) {
-                        cMetrics.setAverageRxRate(cl.getStats().getRxRate());
+                        //cMetrics.setAverageRxRate(cl.getStats().getRxRate());
                     }
                     
                     if(cl.getStats().hasRxErrors()) {
@@ -587,7 +587,8 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
                     }
                     
                     if(cl.getStats().hasRxFrames()) {
-                        cMetrics.setNumRxFramesReceived(cl.getStats().getRxFrames());
+                        //cMetrics.setNumRxFramesReceived(cl.getStats().getRxFrames());
+                        cMetrics.setNumRxPackets(cl.getStats().getRxFrames());
                     }
 
                     if(cl.getStats().hasRxRetries()) {
@@ -600,7 +601,11 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
                     }
                     
                     if(cl.getStats().hasTxRate()) {
-                        cMetrics.setAverageTxRate(cl.getStats().getTxRate());
+                        //cMetrics.setAverageTxRate(cl.getStats().getTxRate());
+                    }
+                    
+                    if(cl.getStats().hasTxRate() && cl.getStats().hasRxRate()) {
+                        cMetrics.setRates(new byte[]{(byte) (cl.getStats().getTxRate()), (byte) (cl.getStats().getRxRate())});
                     }
                     
                     if(cl.getStats().hasTxErrors()) {
@@ -608,7 +613,8 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
                     }
                     
                     if(cl.getStats().hasTxFrames()) {
-                        cMetrics.setNumTxFramesTransmitted(cl.getStats().getTxFrames());
+                        //cMetrics.setNumTxFramesTransmitted(cl.getStats().getTxFrames());
+                        cMetrics.setNumTxPackets(cl.getStats().getRxFrames());
                     }
 
                     if(cl.getStats().hasTxRetries()) {
