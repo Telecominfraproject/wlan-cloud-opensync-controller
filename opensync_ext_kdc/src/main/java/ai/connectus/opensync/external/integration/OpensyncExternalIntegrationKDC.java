@@ -18,8 +18,13 @@ import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import com.whizcontrol.core.model.equipment.DetectedAuthMode;
 import com.whizcontrol.core.model.equipment.EquipmentType;
+import com.whizcontrol.core.model.equipment.MacAddress;
+import com.whizcontrol.core.model.equipment.NeighboreScanPacketType;
+import com.whizcontrol.core.model.equipment.NetworkType;
 import com.whizcontrol.core.model.equipment.RadioType;
+import com.whizcontrol.core.model.equipment.Toggle;
 import com.whizcontrol.equipmentandnetworkconfig.models.ApElementConfiguration;
 import com.whizcontrol.equipmentandnetworkconfig.models.ApElementConfiguration.ApModel;
 import com.whizcontrol.equipmentandnetworkconfig.models.CountryCode;
@@ -36,14 +41,30 @@ import com.whizcontrol.equipmentandnetworkmanagement.EquipmentAndNetworkManageme
 import com.whizcontrol.equipmentconfigurationmanager.EquipmentConfigurationManagerInterface;
 import com.whizcontrol.equipmentconfigurationmanager.models.ResolvedEquipmentConfiguration;
 import com.whizcontrol.equipmentinventory.models.CustomerEquipment;
+import com.whizcontrol.equipmentmetricscollector.EquipmentMetricsCollectorInterface;
 import com.whizcontrol.equipmentrouting.EquipmentRoutingInterface;
 import com.whizcontrol.equipmentroutinginfo.models.EquipmentRoutingRecord;
 import com.whizcontrol.orderandsubscriptionmanagement.OrderAndSubscriptionManagementInterface;
+import com.whizcontrol.servicemetrics.models.APDemoMetric;
+import com.whizcontrol.servicemetrics.models.ApClientMetrics;
+import com.whizcontrol.servicemetrics.models.ApPerformance;
+import com.whizcontrol.servicemetrics.models.ClientMetrics;
+import com.whizcontrol.servicemetrics.models.EthernetLinkState;
+import com.whizcontrol.servicemetrics.models.NeighbourReport;
+import com.whizcontrol.servicemetrics.models.NeighbourScanReports;
+import com.whizcontrol.servicemetrics.models.SingleMetricRecord;
 
 import ai.connectus.opensync.external.integration.controller.OpensyncKDCGatewayController;
 import ai.connectus.opensync.external.integration.models.OpensyncAPConfig;
 import ai.connectus.opensync.external.integration.models.OpensyncAPRadioConfig;
 import ai.connectus.opensync.external.integration.models.OpensyncAPSsidConfig;
+import sts.PlumeStats.Client;
+import sts.PlumeStats.ClientReport;
+import sts.PlumeStats.Device;
+import sts.PlumeStats.Device.RadioTemp;
+import sts.PlumeStats.Neighbor;
+import sts.PlumeStats.Neighbor.NeighborBss;
+import sts.PlumeStats.RadioBandType;
 import sts.PlumeStats.Report;
 import traffic.NetworkMetadata.FlowReport;
 import wc.stats.IpDnsTelemetry.WCStatsReport;
@@ -63,6 +84,9 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
     @Autowired
     private OrderAndSubscriptionManagementInterface orderAndSubscriptionManagementInterface;
 
+    @Autowired
+    private EquipmentMetricsCollectorInterface equipmentMetricsCollectorInterface;
+    
     /**
      * Equipment routing provide the qrCode to CE gateway mapping
      */
@@ -340,14 +364,311 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
         return -1;
 
     }
-    
+
+    public long extractEquipmentIdFromTopic(String topic) {
+        
+        String apId = extractApIdFromTopic(topic);
+        if(apId == null) {
+            return -1;
+        }
+        
+        OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
+
+        if(ovsdbSession!=null) {
+            return ovsdbSession.getEquipmentId();
+        }
+        
+        return -1;
+
+    }
+
     public void processMqttMessage(String topic, Report report) {
         LOG.info("Received report on topic {} for ap {}", topic, report.getNodeID());
         int customerId = extractCustomerIdFromTopic(topic);
         if(customerId>0) {
             kdcGwController.updateActiveCustomer(customerId);
         }
+        
+        long equipmentId = extractEquipmentIdFromTopic(topic);
+        if(equipmentId <= 0 || customerId <=0) {
+            LOG.warn("Cannot determine equipment ids from topic {} - customerId {} equipmentId {}", topic, customerId, equipmentId);
+            return;
+        }
+        
+        List<SingleMetricRecord> metricRecordList = new ArrayList<>();
+        
+        populateAPDemoMetrics(metricRecordList, report, customerId, equipmentId);
+        populateApClientMetrics(metricRecordList, report, customerId, equipmentId);
+        populateNeighbourScanReports(metricRecordList, report, customerId, equipmentId);
+
+        populateApSsidMetrics(metricRecordList, report, customerId, equipmentId);
+        populateChannelInfoReports(metricRecordList, report, customerId, equipmentId);
+        
+        if(!metricRecordList.isEmpty()) {
+            equipmentMetricsCollectorInterface.createRecordList(metricRecordList);
+        }
+
+    }
+
+    private void populateNeighbourScanReports(List<SingleMetricRecord> metricRecordList, Report report, int customerId, long equipmentId) {
+
+        for(Neighbor neighbor: report.getNeighborsList()){
+            
+            SingleMetricRecord smr = new SingleMetricRecord(customerId, equipmentId);
+            metricRecordList.add(smr);
+            NeighbourScanReports neighbourScanReports = new NeighbourScanReports();
+            smr.setData(neighbourScanReports);
+            
+            smr.setCreatedTimestamp(neighbor.getTimestampMs());
+            
+            List<NeighbourReport> neighbourReports = new ArrayList<>();
+            neighbourScanReports.setNeighbourReports(neighbourReports);
+            
+            for(NeighborBss nBss: neighbor.getBssListList()) {
+                NeighbourReport nr = new NeighbourReport();
+                neighbourReports.add(nr);
+                
+    //            "band": "BAND5GL",
+    //            "scanType": "ONCHAN_SCAN",
+    //            "timestampMs": "1581118421629",
+    //            "bssList": [
+    //              {
+    //                "bssid": "80:D0:4A:E6:66:C9",
+    //                "ssid": "",
+    //                "rssi": 4,
+    //                "tsf": "0",
+    //                "chanWidth": "CHAN_WIDTH_80MHZ",
+    //                "channel": 44,
+    //                "status": "ADDED"
+    //              },
+
+                if(neighbor.getBand()==RadioBandType.BAND2G) {
+                    nr.setAcMode(Toggle.off);
+                    nr.setbMode(Toggle.off);
+                    nr.setnMode(Toggle.on);
+                    nr.setRadioType(RadioType.is2dot4GHz);
+                } else {
+                    nr.setAcMode(Toggle.on);
+                    nr.setbMode(Toggle.off);
+                    nr.setnMode(Toggle.off);
+                    nr.setRadioType(RadioType.is5GHz);                    
+                }
+
+                nr.setChannel(nBss.getChannel());
+                nr.setMacAddress(MacAddress.valueOf(nBss.getBssid()).getAddress());
+                nr.setNetworkType(NetworkType.AP);
+                nr.setPacketType(NeighboreScanPacketType.BEACON);
+                nr.setPrivacy((nBss.getSsid()==null || nBss.getSsid().isEmpty())?Toggle.on:Toggle.off);
+                //nr.setRate(rate);
+                nr.setRssi(nBss.getRssi());
+                //nr.setScanTimeInSeconds(scanTimeInSeconds);
+                nr.setSecureMode(DetectedAuthMode.WPA);
+                //nr.setSignal(signal);
+                nr.setSsid(nBss.getSsid());
+            }
+        }  
+    }
+
+    private void populateChannelInfoReports(List<SingleMetricRecord> metricRecordList, Report report, int customerId, long equipmentId) {
+
+        //TODO: implement me!
         //TODO: continue from here --->>>
+
+
+//      {
+//      SingleMetricRecord smr = new SingleMetricRecord(customerId, equipmentId);
+//      metricRecordList.add(smr);
+//      ChannelInfoReports channelInfoReports = new ChannelInfoReports();
+//      smr.setData(channelInfoReports);
+//      
+//      List<ChannelInfo> channelInformationReports2g = new ArrayList<>();
+//      channelInfoReports.setChannelInformationReports2g(channelInformationReports2g);
+//
+//      List<ChannelInfo> channelInformationReports5g = new ArrayList<>();
+//      channelInfoReports.setChannelInformationReports5g(channelInformationReports5g);
+//      
+//      ChannelInfo chInfo = new ChannelInfo();
+//      chInfo.setBandwidth(bandwidth);
+//      chInfo.setChanNumber(chanNumber);
+//      chInfo.setNoiseFloor(noiseFloor);
+//      chInfo.setTotalUtilization(totalUtilization);
+//      chInfo.setWifiUtilization(wifiUtilization);
+//      
+//      channelInformationReports2g.add(chInfo);
+//      
+//      chInfo = new ChannelInfo();
+//      chInfo.setBandwidth(bandwidth);
+//      chInfo.setChanNumber(chanNumber);
+//      chInfo.setNoiseFloor(noiseFloor);
+//      chInfo.setTotalUtilization(totalUtilization);
+//      chInfo.setWifiUtilization(wifiUtilization);
+//      
+//      channelInformationReports5g.add(chInfo);
+//
+//  }
+    }
+
+    private void populateApSsidMetrics(List<SingleMetricRecord> metricRecordList, Report report, int customerId, long equipmentId) {
+        //TODO: implement me!
+//      {
+//      SingleMetricRecord smr = new SingleMetricRecord(customerId, equipmentId);
+//      metricRecordList.add(smr);
+//
+//      ApSsidMetrics apSsidMetrics = new ApSsidMetrics();
+//      smr.setData(apSsidMetrics);
+//      
+//      List<SsidStatistics> ssidStats2g = new ArrayList<>();
+//      apSsidMetrics.setSsidStats2g(ssidStats2g );
+//
+//      List<SsidStatistics> ssidStats5g = new ArrayList<>();
+//      apSsidMetrics.setSsidStats5g(ssidStats5g );
+//
+//      SsidStatistics ssidStat = new SsidStatistics();        
+//      ssidStats2g.add(ssidStat);
+//      ssidStat.setBssid(bssid);
+//      ssidStat.setSsid(ssid);
+//      ssidStat.setNumClient(numClient);
+//      ssidStat.setRxBytes(rxBytes);
+//      ssidStat.setRxLastRssi(rxLastRssi);
+//      ssidStat.setNumTxBytesSucc(numTxBytesSucc);
+//      
+//      ssidStat = new SsidStatistics();        
+//      ssidStats5g.add(ssidStat);
+//      ssidStat.setBssid(bssid);
+//      ssidStat.setSsid(ssid);
+//      ssidStat.setNumClient(numClient);
+//      ssidStat.setRxBytes(rxBytes);
+//      ssidStat.setRxLastRssi(rxLastRssi);
+//      ssidStat.setNumTxBytesSucc(numTxBytesSucc);
+//  }        
+    }
+
+    private void populateApClientMetrics(List<SingleMetricRecord> metricRecordList, Report report, int customerId, long equipmentId) {
+        
+        for(ClientReport clReport: report.getClientsList()){
+            SingleMetricRecord smr = new SingleMetricRecord(customerId, equipmentId);
+            metricRecordList.add(smr);
+    
+            ApClientMetrics apClientMetrics = new ApClientMetrics();
+            smr.setData(apClientMetrics);
+            smr.setCreatedTimestamp(clReport.getTimestampMs());
+            
+            Integer periodLengthSec = 60; //matches what's configured by OvsdbDao.configureStats(OvsdbClient)
+            apClientMetrics.setPeriodLengthSec(periodLengthSec);
+            
+            List<ClientMetrics> clientMetrics = new ArrayList<>();
+            
+            for(Client cl: clReport.getClientListList()) {
+                //clReport.getChannel();
+                ClientMetrics cMetrics = new ClientMetrics();
+                clientMetrics.add(cMetrics);
+                cMetrics.setRadioType((clReport.getBand() == RadioBandType.BAND2G)?RadioType.is2dot4GHz:RadioType.is5GHz);                
+                cMetrics.setDeviceMacAddress(new MacAddress(cl.getMacAddress()));
+                
+                if(cl.hasStats()) {
+                    if(cl.getStats().hasRssi()) {
+                        cMetrics.setRssi(cl.getStats().getRssi());
+                    }
+                    
+                    //we'll report each device as having a single (very long) session
+                    cMetrics.setSessionId(cMetrics.getDeviceMacAddress().getAddressAsLong());
+                    
+                    //populate Rx stats
+                    if(cl.getStats().hasRxBytes()) {
+                        cMetrics.setRxBytes(cl.getStats().getRxBytes());
+                    }
+                    
+                    if(cl.getStats().hasRxRate()) {
+                        cMetrics.setAverageRxRate(cl.getStats().getRxRate());
+                    }
+                    
+                    if(cl.getStats().hasRxErrors()) {
+                        cMetrics.setNumRxNoFcsErr((int)cl.getStats().getRxErrors());
+                    }
+                    
+                    if(cl.getStats().hasRxFrames()) {
+                        cMetrics.setNumRxFramesReceived(cl.getStats().getRxFrames());
+                    }
+
+                    if(cl.getStats().hasRxRetries()) {
+                        cMetrics.setNumRxRetry((int)cl.getStats().getRxRetries());
+                    }
+                    
+                    //populate Tx stats
+                    if(cl.getStats().hasTxBytes()) {
+                        cMetrics.setNumTxBytes(cl.getStats().getTxBytes());
+                    }
+                    
+                    if(cl.getStats().hasTxRate()) {
+                        cMetrics.setAverageTxRate(cl.getStats().getTxRate());
+                    }
+                    
+                    if(cl.getStats().hasTxErrors()) {
+                        cMetrics.setNumTxDropped((int)cl.getStats().getTxErrors());
+                    }
+                    
+                    if(cl.getStats().hasTxFrames()) {
+                        cMetrics.setNumTxFramesTransmitted(cl.getStats().getTxFrames());
+                    }
+
+                    if(cl.getStats().hasTxRetries()) {
+                        cMetrics.setNumTxDataRetries((int)cl.getStats().getTxRetries());
+                    }
+
+                }
+            }
+
+            if(clReport.getBand() == RadioBandType.BAND2G) {
+                apClientMetrics.setClientMetrics2g(clientMetrics.toArray(new ClientMetrics[0]));
+            } else {
+                apClientMetrics.setClientMetrics5g(clientMetrics.toArray(new ClientMetrics[0]));
+            }
+            
+        }        
+    }
+
+    private void populateAPDemoMetrics(List<SingleMetricRecord> metricRecordList, Report report, int customerId, long equipmentId) {
+        for(Device deviceReport : report.getDeviceList()) {
+            
+            SingleMetricRecord smr = new SingleMetricRecord(customerId, equipmentId);
+            metricRecordList.add(smr);
+
+            APDemoMetric data = new APDemoMetric();
+            smr.setData(data);
+            ApPerformance apPerformance = new ApPerformance();
+            data.setApPerformance(apPerformance);
+
+            smr.setCreatedTimestamp(deviceReport.getTimestampMs());
+//            data.setChannelUtilization2G(channelUtilization2G);
+//            data.setChannelUtilization5G(channelUtilization5G);
+            
+            if(deviceReport.getRadioTempCount()>0) {
+                int cpuTemperature = 0;
+                int numSamples = 0;
+                for(RadioTemp r: deviceReport.getRadioTempList()) {
+                    if(r.hasValue()) {
+                        cpuTemperature += r.getValue();
+                        numSamples++;
+                    }
+                }
+                
+                if(numSamples>0) {
+                    apPerformance.setCpuTemperature( cpuTemperature / numSamples );
+                }
+            }
+            
+            if(deviceReport.hasCpuUtil() && deviceReport.getCpuUtil().hasCpuUtil()) {
+                apPerformance.setCpuUtilized(new byte[]{(byte) (deviceReport.getCpuUtil().getCpuUtil()), (byte) (0)});
+            }
+            
+            apPerformance.setEthLinkState(EthernetLinkState.UP1000_FULL_DUPLEX);
+            
+            if(deviceReport.hasMemUtil() && deviceReport.getMemUtil().hasMemTotal() && deviceReport.getMemUtil().hasMemUsed()) {
+                apPerformance.setFreeMemory(deviceReport.getMemUtil().getMemTotal() - deviceReport.getMemUtil().getMemUsed());
+            }
+            apPerformance.setUpTime(new Long(deviceReport.getUptime()));
+                        
+        }        
     }
 
     public void processMqttMessage(String topic, FlowReport flowReport) {
