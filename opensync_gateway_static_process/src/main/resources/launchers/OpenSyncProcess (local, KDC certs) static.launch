@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<launchConfiguration type="org.eclipse.jdt.launching.localJavaApplication">
+<listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
+<listEntry value="/opensync_gateway/src/main/java/ai/connectus/opensync/experiment/OpenSyncProcess.java"/>
+</listAttribute>
+<listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_TYPES">
+<listEntry value="1"/>
+</listAttribute>
+<booleanAttribute key="org.eclipse.jdt.launching.ATTR_EXCLUDE_TEST_CODE" value="true"/>
+<booleanAttribute key="org.eclipse.jdt.launching.ATTR_USE_CLASSPATH_ONLY_JAR" value="false"/>
+<booleanAttribute key="org.eclipse.jdt.launching.ATTR_USE_START_ON_FIRST_THREAD" value="true"/>
+<stringAttribute key="org.eclipse.jdt.launching.CLASSPATH_PROVIDER" value="org.eclipse.m2e.launchconfig.classpathProvider"/>
+<stringAttribute key="org.eclipse.jdt.launching.JRE_CONTAINER" value="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/openjdk-13.0.2"/>
+<stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="ai.connectus.opensync.experiment.OpenSyncProcess"/>
+<stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="opensync_gateway_static_process"/>
+<stringAttribute key="org.eclipse.jdt.launching.SOURCE_PATH_PROVIDER" value="org.eclipse.m2e.launchconfig.sourcepathProvider"/>
+<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Dssl.props=file://${connectus_certs}/ssl.properties&#10;-Dwhizcontrol.httpClientConfig=file://${connectus_certs}/httpClientConfig.json&#10;&#10;-D123javax.net.ssl.keyStore=${connectus_certs}/client2Keystore.jks&#10;-D123javax.net.ssl.trustStore=${connectus_certs}/truststore.jks&#10;-Djavax.net.ssl.keyStore=${plume_certs}/plume_client_keystore.jks&#10;-Djavax.net.ssl.trustStore=${plume_certs}/plume_truststore.jks&#10;-Djavax.net.ssl.keyStorePassword=mypassword&#10;-Djavax.net.ssl.trustStorePassword=mypassword&#10;&#10;-Dconnectus.ovsdb.managerAddr=192.168.0.137&#10;-Dconnectus.ovsdb.listenPort=6640&#10;-Dconnectus.ovsdb.redirector.listenPort=6643&#10;-Dconnectus.ovsdb.timeoutSec=30&#10;-D123connectus.ovsdb.trustStore=${connectus_certs}/truststore.jks&#10;-D123connectus.ovsdb.keyStore=${connectus_certs}/server.p12&#10;-Dconnectus.ovsdb.trustStore=${plume_certs}/plume_truststore.jks&#10;-Dconnectus.ovsdb.keyStore=${plume_certs}/opensync_server.pkcs12&#10;&#10;-Dconnectus.ovsdb.configFileName=${project_loc:opensync_ext_static}/src/main/resources/config_2_ssids.json&#10;&#10;-D123connectus.mqttBroker.address=testportal.123wlan.com&#10;-Dconnectus.mqttBroker.address=mqtt.zone1.art2wave.com&#10;-Dconnectus.mqttBroker.listenPort=1883&#10;&#10;-Dspring.profiles.include=ovsdb_redirector,ovsdb_manager&#10;-D123spring.profiles.include=mqtt_receiver,ovsdb_redirector,ovsdb_manager&#10;-D123spring.profiles.include=mqtt_receiver"/>
+</launchConfiguration>
