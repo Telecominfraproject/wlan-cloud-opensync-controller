@@ -18,9 +18,9 @@ import com.vmware.ovsdb.service.OvsdbPassiveConnectionListener;
 import ai.connectus.opensync.external.integration.OpensyncExternalIntegrationInterface;
 import ai.connectus.opensync.external.integration.OvsdbSession;
 import ai.connectus.opensync.external.integration.OvsdbSessionMapInterface;
+import ai.connectus.opensync.external.integration.models.ConnectNodeInfo;
 import ai.connectus.opensync.external.integration.models.OpensyncAPConfig;
 import ai.connectus.opensync.ovsdb.dao.OvsdbDao;
-import ai.connectus.opensync.ovsdb.dao.models.ConnectNodeInfo;
 import ai.connectus.opensync.util.SslUtil;
 import io.netty.handler.ssl.SslContext;
 
@@ -76,7 +76,7 @@ public class ConnectusOvsdbClient {
                     //In Plume's environment clientCn is not unique that's why we are augmenting it with the serialNumber and using it as a key (equivalent of KDC unique qrCode)
                     String key = clientCn + "_" + connectNodeInfo.serialNumber;
                     ConnectusOvsdbClient.this.ovsdbSessionMapInterface.newSession(key, ovsdbClient);
-                    extIntegrationInterface.apConnected(key);
+                    extIntegrationInterface.apConnected(key, connectNodeInfo);
                     
                     //push configuration to AP
                     connectNodeInfo = processConnectRequest(ovsdbClient, clientCn, connectNodeInfo);
@@ -111,8 +111,8 @@ public class ConnectusOvsdbClient {
                 String key = ConnectusOvsdbClient.this.ovsdbSessionMapInterface.lookupClientId(ovsdbClient);
                 
                 if(key!=null) {
-                    ConnectusOvsdbClient.this.ovsdbSessionMapInterface.removeSession(key);
                     extIntegrationInterface.apDisconnected(key);
+                    ConnectusOvsdbClient.this.ovsdbSessionMapInterface.removeSession(key);
                 }
                 
                 ovsdbClient.shutdown();
@@ -142,7 +142,7 @@ public class ConnectusOvsdbClient {
             ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
         }            
         
-        ovsdbDao.removeOnboardingSsids(ovsdbClient);
+        ovsdbDao.removeAllSsids(ovsdbClient);
         
         if(opensyncAPConfig!=null) {
             ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig.getRadioConfig());

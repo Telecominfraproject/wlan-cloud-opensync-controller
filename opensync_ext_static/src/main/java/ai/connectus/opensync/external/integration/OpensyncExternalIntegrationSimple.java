@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import ai.connectus.opensync.external.integration.OpensyncExternalIntegrationInterface;
+import ai.connectus.opensync.external.integration.models.ConnectNodeInfo;
 import ai.connectus.opensync.external.integration.models.OpensyncAPConfig;
 import sts.PlumeStats.Report;
 import traffic.NetworkMetadata.FlowReport;
@@ -30,7 +31,7 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
         LOG.info("Using Static integration");
     }
 
-    public void apConnected(String apId) {
+    public void apConnected(String apId, ConnectNodeInfo connectNodeInfo) {
         LOG.info("AP {} got connected to the gateway", apId);
     }
 

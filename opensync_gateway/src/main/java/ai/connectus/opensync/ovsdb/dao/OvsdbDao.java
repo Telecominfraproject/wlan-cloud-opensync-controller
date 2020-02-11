@@ -33,10 +33,10 @@ import com.vmware.ovsdb.protocol.operation.result.SelectResult;
 import com.vmware.ovsdb.service.OvsdbClient;
 import com.whizcontrol.core.model.equipment.RadioType;
 
+import ai.connectus.opensync.external.integration.models.ConnectNodeInfo;
 import ai.connectus.opensync.external.integration.models.OpensyncAPRadioConfig;
 import ai.connectus.opensync.external.integration.models.OpensyncAPSsidConfig;
 import ai.connectus.opensync.ovsdb.dao.models.BridgeInfo;
-import ai.connectus.opensync.ovsdb.dao.models.ConnectNodeInfo;
 import ai.connectus.opensync.ovsdb.dao.models.InterfaceInfo;
 import ai.connectus.opensync.ovsdb.dao.models.PortInfo;
 import ai.connectus.opensync.ovsdb.dao.models.WifiInetConfigInfo;
@@ -73,6 +73,7 @@ public class OvsdbDao {
     public static final String wifiRadioConfigDbTable = "Wifi_Radio_Config";
     public static final String wifiVifConfigDbTable = "Wifi_VIF_Config";
     public static final String wifiInetConfigDbTable = "Wifi_Inet_Config";
+    public static final String wifiInetStateDbTable = "Wifi_Inet_State";
     
     
 
@@ -92,6 +93,10 @@ public class OvsdbDao {
             columns.add("manager_addr");
             columns.add("sku_number");
             columns.add("serial_number");
+            columns.add("model");
+            columns.add("firmware_version");
+            columns.add("platform_version");
+            
             
             operations.add(new Select(awlanNodeDbTable, conditions , columns ));
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
@@ -114,14 +119,66 @@ public class OvsdbDao {
             ret.redirectorAddr = (row!=null)?row.getStringColumn("redirector_addr"):null;
             ret.managerAddr = (row!=null)?row.getStringColumn("manager_addr"):null;
             
+            ret.platformVersion = (row!=null)?row.getStringColumn("platform_version"):null;
+            ret.firmwareVersion = (row!=null)?row.getStringColumn("firmware_version"):null;
+            
             ret.skuNumber = getSingleValueFromSet(row, "sku_number");
-            ret.serialNumber = getSingleValueFromSet(row, "serial_number");
+            ret.serialNumber = getSingleValueFromSet(row, "serial_number");            
+            ret.model = getSingleValueFromSet(row, "model");
+            
+            //now populate macAddress, ipV4Address from Wifi_Inet_State
+            //first look them up for if_name = br-wan 
+            fillInIpAddressAndMac(ovsdbClient, ret, "br-wan");
+            if(ret.ipV4Address == null || ret.macAddress==null) {
+                //when not found - look them up for if_name = br-lan
+                fillInIpAddressAndMac(ovsdbClient, ret, "br-lan");
+            }
+            
             
         } catch(OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             throw new RuntimeException(e);
         }
         
         return ret;
+    }
+    
+    public void fillInIpAddressAndMac(OvsdbClient ovsdbClient, ConnectNodeInfo connectNodeInfo, String ifName) {
+        try {
+            List<Operation> operations = new ArrayList<>();
+            List<Condition> conditions = new ArrayList<>();        
+            List<String> columns = new ArrayList<>(); 
+            //populate macAddress, ipV4Address from Wifi_Inet_State   
+
+            columns.add("inet_addr");
+            columns.add("hwaddr");
+            
+            conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(ifName) ));
+            
+            operations.add(new Select(wifiInetStateDbTable, conditions , columns ));
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            
+            if(LOG.isDebugEnabled()) {
+                LOG.debug("Select from {}:", wifiInetStateDbTable);
+                
+                for(OperationResult res : result) {
+                    LOG.debug("Op Result {}", res);
+                }
+            }
+            
+            Row row = null;
+            if (result != null && result.length > 0 && !((SelectResult) result[0]).getRows().isEmpty()) {
+                row = ((SelectResult)result[0]).getRows().iterator().next();
+                connectNodeInfo.ipV4Address = getSingleValueFromSet(row, "inet_addr");
+                connectNodeInfo.macAddress = row.getStringColumn("hwaddr");
+            }
+            
+            
+        } catch(OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
     }
     
     public ConnectNodeInfo updateConnectNodeInfoOnConnect(OvsdbClient ovsdbClient, String clientCn, ConnectNodeInfo incomingConnectNodeInfo) {
@@ -367,11 +424,21 @@ public class OvsdbDao {
                 InterfaceInfo interfaceInfo = new InterfaceInfo();
                 interfaceInfo.name = row.getStringColumn("name");
                 interfaceInfo.uuid = row.getUuidColumn("_uuid");
-                interfaceInfo.ofport = row.getIntegerColumn("ofport").intValue();
-                interfaceInfo.mtu = row.getIntegerColumn("mtu").intValue();
-                interfaceInfo.ifIndex = row.getIntegerColumn("ifindex").intValue();
-                interfaceInfo.linkState = row.getStringColumn("link_state");
-                interfaceInfo.adminState = row.getStringColumn("admin_state");
+                
+                Long tmp = getSingleValueFromSet(row, "ofport");
+                interfaceInfo.ofport = tmp!=null?tmp.intValue():0;
+                
+                tmp = getSingleValueFromSet(row, "mtu");
+                interfaceInfo.mtu = tmp!=null?tmp.intValue():0;
+                
+                tmp = getSingleValueFromSet(row, "ifindex");
+                interfaceInfo.ifIndex = tmp!=null?tmp.intValue():0;
+                
+                String tmpStr = getSingleValueFromSet(row, "link_state");
+                interfaceInfo.linkState = tmpStr!=null?tmpStr:"";
+
+                tmpStr = getSingleValueFromSet(row, "admin_state");
+                interfaceInfo.adminState = tmpStr!=null?tmpStr:"";
                 
                 ret.put(interfaceInfo.name, interfaceInfo);
             }
@@ -904,6 +971,54 @@ public class OvsdbDao {
         
     }
 
+    public void removeAllSsids(OvsdbClient ovsdbClient) {
+        try {
+            List<Operation> operations = new ArrayList<>();
+ 
+            operations.add(new Delete(wifiVifConfigDbTable));
+            
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+            
+            if(LOG.isDebugEnabled()) {
+                LOG.debug("Removed all existing SSIDs from {}:", wifiVifConfigDbTable);
+                
+                for(OperationResult res : result) {
+                    LOG.debug("Op Result {}", res);
+                }
+            }
+            
+            
+            //Now clean up references in the vif_configs columns
+            operations = new ArrayList<>();
+            Map<String, Value> updateColumns = new HashMap<>();
+            Set<Uuid> vifConfigsSet = new HashSet<>();
+            com.vmware.ovsdb.protocol.operation.notation.Set vifConfigs = com.vmware.ovsdb.protocol.operation.notation.Set.of(vifConfigsSet);
+            updateColumns.put("vif_configs", vifConfigs );
+            
+            Row row = new Row(updateColumns);
+            operations.add(new Update(wifiRadioConfigDbTable, row ));
+            
+            fResult = ovsdbClient.transact(ovsdbName, operations);
+            result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+            
+            if(LOG.isDebugEnabled()) {
+                LOG.debug("Updated WifiRadioConfig ");
+                
+                for(OperationResult res : result) {
+                    LOG.debug("Op Result {}", res);
+                }
+            }
+
+            LOG.info("Removed all ssids");            
+            
+        } catch(OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            LOG.error("Error in removeAllSsids", e);
+            throw new RuntimeException(e);
+        }
+        
+    }
+    
     public void configureWifiRadios(OvsdbClient ovsdbClient, OpensyncAPRadioConfig opensyncAPRadioConfig) {
         Map<String,WifiRadioConfigInfo> provisionedWifiRadios = getProvisionedWifiRadioConfigs(ovsdbClient);
         LOG.debug("Existing WifiRadioConfigs: {}", provisionedWifiRadios.keySet());

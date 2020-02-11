@@ -1,6 +1,8 @@
 package ai.connectus.opensync.external.integration;
 
+import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -38,12 +40,20 @@ import com.whizcontrol.equipmentandnetworkconfig.models.SsidConfiguration.Applie
 import com.whizcontrol.equipmentandnetworkconfig.models.SsidConfiguration.SecureMode;
 import com.whizcontrol.equipmentandnetworkconfig.models.StateSetting;
 import com.whizcontrol.equipmentandnetworkmanagement.EquipmentAndNetworkManagementInterface;
+import com.whizcontrol.equipmentandnetworkstatus.models.EquipmentProtocolState;
+import com.whizcontrol.equipmentandnetworkstatus.models.StatusCode;
+import com.whizcontrol.equipmentandnetworkstatus.models.equipment.CustomerEquipmentStatusRecord;
+import com.whizcontrol.equipmentandnetworkstatus.models.equipment.EquipmentAdminStatusData;
+import com.whizcontrol.equipmentandnetworkstatus.models.equipment.EquipmentLANStatusData;
+import com.whizcontrol.equipmentandnetworkstatus.models.equipment.EquipmentProtocolStatusData;
+import com.whizcontrol.equipmentandnetworkstatus.models.equipment.VLANStatusData;
 import com.whizcontrol.equipmentconfigurationmanager.EquipmentConfigurationManagerInterface;
 import com.whizcontrol.equipmentconfigurationmanager.models.ResolvedEquipmentConfiguration;
 import com.whizcontrol.equipmentinventory.models.CustomerEquipment;
 import com.whizcontrol.equipmentmetricscollector.EquipmentMetricsCollectorInterface;
 import com.whizcontrol.equipmentrouting.EquipmentRoutingInterface;
 import com.whizcontrol.equipmentroutinginfo.models.EquipmentRoutingRecord;
+import com.whizcontrol.equipmentstatusandalarmcollector.EquipmentStatusAndAlarmCollectorInterface;
 import com.whizcontrol.orderandsubscriptionmanagement.OrderAndSubscriptionManagementInterface;
 import com.whizcontrol.servicemetrics.models.APDemoMetric;
 import com.whizcontrol.servicemetrics.models.ApClientMetrics;
@@ -55,9 +65,11 @@ import com.whizcontrol.servicemetrics.models.NeighbourScanReports;
 import com.whizcontrol.servicemetrics.models.SingleMetricRecord;
 
 import ai.connectus.opensync.external.integration.controller.OpensyncKDCGatewayController;
+import ai.connectus.opensync.external.integration.models.ConnectNodeInfo;
 import ai.connectus.opensync.external.integration.models.OpensyncAPConfig;
 import ai.connectus.opensync.external.integration.models.OpensyncAPRadioConfig;
 import ai.connectus.opensync.external.integration.models.OpensyncAPSsidConfig;
+
 import sts.PlumeStats.Client;
 import sts.PlumeStats.ClientReport;
 import sts.PlumeStats.Device;
@@ -86,6 +98,9 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
 
     @Autowired
     private EquipmentMetricsCollectorInterface equipmentMetricsCollectorInterface;
+    
+    @Autowired 
+    private EquipmentStatusAndAlarmCollectorInterface equipmentStatusInterface;
     
     /**
      * Equipment routing provide the qrCode to CE gateway mapping
@@ -117,7 +132,7 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
         kdcEquipmentRecordCache = cacheManagerShortLived.getCache("KDC_equipment_record_cache");        
     }
     
-    public void apConnected(String apId) {
+    public void apConnected(String apId, ConnectNodeInfo connectNodeInfo) {
         LOG.info("AP {} got connected to the gateway", apId);
         try {
             
@@ -182,11 +197,28 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
                 equipmentElementConfiguration = eqNetworkManagementInterface
                         .createEquipmentElementConfiguration(equipmentElementConfiguration);
                 
+                // Establish admin status for the new equipment.
+                try {
+                    CustomerEquipmentStatusRecord statusRecord = new CustomerEquipmentStatusRecord();
+                    statusRecord.setCustomerId(ce.getCustomerId());
+                    statusRecord.setEquipmentId(ce.getId());
+                    EquipmentAdminStatusData statusData = new EquipmentAdminStatusData();
+                    statusData.setStatusCode(StatusCode.normal);
+                    statusData.setCustomerLevelStatusCode(StatusCode.normal);
+                    statusRecord.setStatusData(statusData);
+    
+                    // Update the equipment status
+                    equipmentStatusInterface.updateEquipmentAdminStatus(statusRecord);
+                } catch (Exception e) {
+                    //do nothing
+                }
+
                 //cache newly created AP
                 kdcEquipmentRecordCache.put(apId, ce);
             }
             
 
+            //register equipment routing record
             EquipmentRoutingRecord equipmentRoutingRecord = new EquipmentRoutingRecord();
             equipmentRoutingRecord.setGatewayRecordId(kdcGwController.getRegisteredGwId());
             equipmentRoutingRecord.setCustomerId(ce.getCustomerId());
@@ -197,6 +229,85 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
             ovsdbSession.setEquipmentId(ce.getId());
             ovsdbSession.setCustomerId(ce.getCustomerId());
             
+            //update equipment status
+            // Establish admin status for the connected equipment.
+            CustomerEquipmentStatusRecord statusRecord = equipmentStatusInterface.getEquipmentAdminStatusByEquipmentId(ce.getCustomerId(), ce.getId(), false);
+            if(statusRecord==null) {
+                statusRecord = new CustomerEquipmentStatusRecord();
+                statusRecord.setCustomerId(ce.getCustomerId());
+                statusRecord.setEquipmentId(ce.getId());
+
+                EquipmentAdminStatusData statusData = new EquipmentAdminStatusData();
+                statusRecord.setStatusData(statusData);
+            }
+            
+            ((EquipmentAdminStatusData)statusRecord.getStatusData()).setStatusCode(StatusCode.normal);
+            ((EquipmentAdminStatusData)statusRecord.getStatusData()).setCustomerLevelStatusCode(StatusCode.normal);
+
+            // Update the equipment status
+            equipmentStatusInterface.updateEquipmentAdminStatus(statusRecord);
+            
+            //update LAN status - nothing to do here for now
+            statusRecord = equipmentStatusInterface.getEquipmentLANStatusByEquipmentId(ce.getCustomerId(), ce.getId(), false);
+            if(statusRecord==null) {
+                statusRecord = new CustomerEquipmentStatusRecord();
+                statusRecord.setCustomerId(ce.getCustomerId());
+                statusRecord.setEquipmentId(ce.getId());
+
+                EquipmentLANStatusData statusData = new EquipmentLANStatusData();
+                statusRecord.setStatusData(statusData);
+            }
+            
+            Map<Integer, VLANStatusData> vlanStatusDataMap = new HashMap<>();
+            ((EquipmentLANStatusData)statusRecord.getStatusData()).setVlanStatusDataMap(vlanStatusDataMap );
+
+            equipmentStatusInterface.updateEquipmentLANStatus(statusRecord);
+
+            //update protocol status
+            statusRecord = equipmentStatusInterface.getEquipmentProtocolStatusByEquipmentId(ce.getCustomerId(), ce.getId(), false);
+            if(statusRecord==null) {
+                statusRecord = new CustomerEquipmentStatusRecord();
+                statusRecord.setCustomerId(ce.getCustomerId());
+                statusRecord.setEquipmentId(ce.getId());
+
+                EquipmentProtocolStatusData statusData = new EquipmentProtocolStatusData();
+                statusRecord.setStatusData(statusData);
+            }
+            
+            EquipmentProtocolStatusData protocolStatusData = ((EquipmentProtocolStatusData)statusRecord.getStatusData());
+            protocolStatusData.setPoweredOn(true);
+            protocolStatusData.setCloudProtocolVersion("1100");
+            protocolStatusData.setProtocolState(EquipmentProtocolState.ready);
+            protocolStatusData.setBandPlan("FCC");
+            protocolStatusData.setBaseMacAddress(MacAddress.valueOf(connectNodeInfo.macAddress));
+            protocolStatusData.setCloudCfgDataVersion(42L);
+            protocolStatusData.setReportedCfgDataVersion(42L);
+            protocolStatusData.setCountryCode("CA");
+            protocolStatusData.setReportedCC(CountryCode.ca);
+            protocolStatusData.setReportedHwVersion(connectNodeInfo.platformVersion);
+            protocolStatusData.setReportedSwVersion(connectNodeInfo.firmwareVersion);
+            protocolStatusData.setReportedSwAltVersion(connectNodeInfo.firmwareVersion);
+            protocolStatusData.setReportedIpV4Addr(InetAddress.getByName(connectNodeInfo.ipV4Address));
+            if(connectNodeInfo.macAddress!=null && MacAddress.valueOf(connectNodeInfo.macAddress)!=null) {
+                protocolStatusData.setReportedMacAddr(MacAddress.valueOf(connectNodeInfo.macAddress).getAddress());
+            }
+            protocolStatusData.setReportedSku(connectNodeInfo.skuNumber);
+            protocolStatusData.setSerialNumber(connectNodeInfo.serialNumber);
+            protocolStatusData.setSystemName(connectNodeInfo.model);
+
+            equipmentStatusInterface.updateEquipmentProtocolStatus(statusRecord);
+
+            //TODO: continue from here --->>>
+
+//TODO:            equipmentStatusInterface.updateEquipmentFirmwareStatus(statusRecord);
+//TODO:            equipmentStatusInterface.updateEquipmentNeighbouringStatusRecord(record);
+//TODO:            equipmentStatusInterface.updateEquipmentPeerStatus(statusRecord);
+            
+//TODO:            equipmentStatusInterface.updateNetworkAdminStatus(networkAdminStatusRecord);
+//TODO:            equipmentStatusInterface.updateNetworkAggregateStatus(networkAggregateStatusRecord);
+
+            
+
         }catch(Exception e) {
             LOG.error("Exception when registering ap routing {}", apId, e);
         }

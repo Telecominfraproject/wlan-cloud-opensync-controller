@@ -45,6 +45,11 @@
   		<artifactId>equipment-metrics-collector-service-remote</artifactId>
   		<version>0.0.1-SNAPSHOT</version>
   	</dependency>
+  	<dependency>
+  		<groupId>com.whizcontrol</groupId>
+  		<artifactId>equipment-status-and-alarm-collector-service-remote</artifactId>
+  		<version>0.0.1-SNAPSHOT</version>
+  	</dependency>  	
   	
   	<!-- KDC models -->
 		<dependency>
