@@ -132,22 +132,28 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
         kdcEquipmentRecordCache = cacheManagerShortLived.getCache("KDC_equipment_record_cache");        
     }
     
+    public CustomerEquipment getCustomerEquipment(String apId) {
+        CustomerEquipment ce = null;
+        
+        try {
+            ce = kdcEquipmentRecordCache.get(apId, new Callable<CustomerEquipment>() {
+                @Override
+                public CustomerEquipment call() throws Exception {
+                    return eqNetworkManagementInterface.getCustomerEquipmentByQrCode(apId);
+                }
+            });
+        }catch (Exception e) {
+            //do nothing
+        }
+
+        return ce;
+    }
+    
     public void apConnected(String apId, ConnectNodeInfo connectNodeInfo) {
         LOG.info("AP {} got connected to the gateway", apId);
         try {
             
-            CustomerEquipment ce = null;
-            
-            try {
-                ce = kdcEquipmentRecordCache.get(apId, new Callable<CustomerEquipment>() {
-                    @Override
-                    public CustomerEquipment call() throws Exception {
-                        return eqNetworkManagementInterface.getCustomerEquipmentByQrCode(apId);
-                    }
-                });
-            }catch (Exception e) {
-                //do nothing
-            }
+            CustomerEquipment ce = getCustomerEquipment(apId);
 
             if(ce == null) {
                 
@@ -472,6 +478,11 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
         if(ovsdbSession!=null) {
             return ovsdbSession.getCustomerId();
         }
+
+        CustomerEquipment ce = getCustomerEquipment(apId);
+        if(ce!=null) {
+            return ce.getCustomerId();
+        }
         
         return -1;
 
@@ -488,6 +499,11 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
 
         if(ovsdbSession!=null) {
             return ovsdbSession.getEquipmentId();
+        }
+        
+        CustomerEquipment ce = getCustomerEquipment(apId);
+        if(ce!=null) {
+            return ce.getId();
         }
         
         return -1;

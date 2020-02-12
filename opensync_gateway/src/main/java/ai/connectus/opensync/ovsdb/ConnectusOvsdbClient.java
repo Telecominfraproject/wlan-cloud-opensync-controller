@@ -141,7 +141,9 @@ public class ConnectusOvsdbClient {
         if(ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
             ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
         }            
-        
+
+        ovsdbDao.provisionBridgePortInterface(ovsdbClient);
+
         ovsdbDao.removeAllSsids(ovsdbClient);
         
         if(opensyncAPConfig!=null) {
@@ -149,8 +151,6 @@ public class ConnectusOvsdbClient {
             ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig.getSsidConfigs());
         }
         
-        ovsdbDao.provisionBridgePortInterface(ovsdbClient);
-
         ovsdbDao.configureWifiInet(ovsdbClient);
         
         LOG.debug("Client connect Done");

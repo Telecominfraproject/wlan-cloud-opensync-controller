@@ -401,6 +401,8 @@ public class OvsdbDao {
         List<Condition> conditions = new ArrayList<>();        
         List<String> columns = new ArrayList<>(); 
         columns.add("name");
+        columns.add("type");
+        columns.add("options");
         columns.add("_uuid");
         columns.add("ofport");
         columns.add("mtu");
@@ -423,6 +425,7 @@ public class OvsdbDao {
             
                 InterfaceInfo interfaceInfo = new InterfaceInfo();
                 interfaceInfo.name = row.getStringColumn("name");
+                interfaceInfo.type = row.getStringColumn("type");
                 interfaceInfo.uuid = row.getUuidColumn("_uuid");
                 
                 Long tmp = getSingleValueFromSet(row, "ofport");
@@ -439,6 +442,8 @@ public class OvsdbDao {
 
                 tmpStr = getSingleValueFromSet(row, "admin_state");
                 interfaceInfo.adminState = tmpStr!=null?tmpStr:"";
+                
+                interfaceInfo.options = row.getMapColumn("options");
                 
                 ret.put(interfaceInfo.name, interfaceInfo);
             }
@@ -771,8 +776,7 @@ public class OvsdbDao {
         return ret;
     }     
     
-    public void provisionSingleBridgePortInterface(OvsdbClient ovsdbClient, String interfaceName, String bridgeName, int ifIndex,
-            int ofport, Map<String, InterfaceInfo> provisionedInterfaces, Map<String, PortInfo> provisionedPorts,
+    public void provisionSingleBridgePortInterface(OvsdbClient ovsdbClient, String interfaceName, String bridgeName, String interfaceType, Map<String, String> interfaceOptions, Map<String, InterfaceInfo> provisionedInterfaces, Map<String, PortInfo> provisionedPorts,
             Map<String, BridgeInfo> provisionedBridges)
             throws OvsdbClientException, TimeoutException, ExecutionException, InterruptedException {
         
@@ -783,12 +787,23 @@ public class OvsdbDao {
             List<Condition> conditions = new ArrayList<>();        
 
 
-            updateColumns.put("name", new Atom<String>(interfaceName) );
-            updateColumns.put("admin_state", new Atom<String>("up") );
-            updateColumns.put("link_state", new Atom<String>("up") );
-            updateColumns.put("ifindex", new Atom<Integer>(ifIndex) );
-            updateColumns.put("mtu", new Atom<Integer>(1500) );
-            updateColumns.put("ofport", new Atom<Integer>(ofport) );
+            updateColumns.put("name", new Atom<>(interfaceName) );
+            if(interfaceType!=null) {
+                updateColumns.put("type", new Atom<>(interfaceType) );
+            }
+            //updateColumns.put("admin_state", new Atom<String>("up") );
+            //updateColumns.put("link_state", new Atom<String>("up") );
+            //updateColumns.put("ifindex", new Atom<Integer>(ifIndex) );
+            //updateColumns.put("mtu", new Atom<Integer>(1500) );
+            //updateColumns.put("ofport", new Atom<Integer>(ofport) );
+            
+            if(interfaceOptions!=null) {
+                @SuppressWarnings("unchecked")
+                com.vmware.ovsdb.protocol.operation.notation.Map<String,String> ifOptions = com.vmware.ovsdb.protocol.operation.notation.Map.of(interfaceOptions);
+                updateColumns.put("options", ifOptions);
+            }
+
+            
             Uuid interfaceUuid = null;
             
             Row row = new Row(updateColumns );
@@ -924,6 +939,9 @@ public class OvsdbDao {
     public static final String brHome = "br-home";
     public static final String brWan = "br-wan";
     
+    public static final String patchW2h = "patch-w2h";
+    public static final String patchH2w = "patch-h2w";
+    
     public void provisionBridgePortInterface(OvsdbClient ovsdbClient) {
         try {
             Map<String,InterfaceInfo> provisionedInterfaces = getProvisionedInterfaces(ovsdbClient);
@@ -934,9 +952,18 @@ public class OvsdbDao {
 
             Map<String,BridgeInfo> provisionedBridges = getProvisionedBridges(ovsdbClient);
             LOG.debug("Existing Bridges: {}", provisionedBridges.keySet());
-            
-            provisionSingleBridgePortInterface(ovsdbClient, homeApL50, brHome, 30, 1, provisionedInterfaces, provisionedPorts, provisionedBridges);
-            provisionSingleBridgePortInterface(ovsdbClient, homeAp24, brHome, 31, 2, provisionedInterfaces, provisionedPorts, provisionedBridges);
+
+            Map<String, String> patchH2wOptions = new HashMap<>();
+            patchH2wOptions.put("peer", "patch-w2h");
+
+            Map<String, String> patchW2hOptions = new HashMap<>();
+            patchH2wOptions.put("peer", "patch-h2w");
+
+            provisionSingleBridgePortInterface(ovsdbClient, patchH2w, brHome, "patch", patchH2wOptions, provisionedInterfaces, provisionedPorts, provisionedBridges);
+            provisionSingleBridgePortInterface(ovsdbClient, patchW2h, brWan, "patch", patchW2hOptions, provisionedInterfaces, provisionedPorts, provisionedBridges);
+
+            provisionSingleBridgePortInterface(ovsdbClient, homeApL50, brHome, null, null, provisionedInterfaces, provisionedPorts, provisionedBridges);
+            provisionSingleBridgePortInterface(ovsdbClient, homeAp24, brHome, null, null, provisionedInterfaces, provisionedPorts, provisionedBridges);
 
         } catch(OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             LOG.error("Error in provisionBridgePortInterface", e);
@@ -1243,7 +1270,37 @@ public class OvsdbDao {
         }
         
     }
-    
+
+    public void configureWifiInetSetNetwork(OvsdbClient ovsdbClient, String ifName) {
+        List<Operation> operations = new ArrayList<>();
+        Map<String, Value> updateColumns = new HashMap<>();
+        List<Condition> conditions = new ArrayList<>();
+
+        try {
+            ///usr/plume/tools/ovsh u Wifi_Inet_Config -w if_name=="br-home" network:=true
+            
+            conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(ifName)));            
+            updateColumns.put("network", new Atom<>(true) );
+            
+            Row row = new Row(updateColumns);
+            operations.add(new Update(wifiInetConfigDbTable, conditions , row ));
+                   
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+            
+            LOG.debug("Enabled network on WifiInetConfig {}", ifName);
+            
+            for(OperationResult res : result) {
+                LOG.debug("Op Result {}", res);
+            }
+
+        } catch(OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            LOG.error("Error in configureWifiInetSetNetwork", e);
+            throw new RuntimeException(e);
+        }
+        
+    }
+
     public void configureWifiInet(OvsdbClient ovsdbClient) {
         Map<String, WifiInetConfigInfo> provisionedWifiInetConfigs = getProvisionedWifiInetConfigs(ovsdbClient);
         LOG.debug("Existing WifiInetConfigs: {}", provisionedWifiInetConfigs.keySet());
@@ -1258,6 +1315,10 @@ public class OvsdbDao {
             configureWifiInet(ovsdbClient, provisionedWifiInetConfigs, ifName);
         }
 
+        if(!provisionedWifiInetConfigs.containsKey(brHome) || !provisionedWifiInetConfigs.get(brHome).network) {
+            //set network flag on brHome in wifiInetConfig table
+            configureWifiInetSetNetwork(ovsdbClient, brHome);
+        }
     }
 
     public void configureStats(OvsdbClient ovsdbClient) {
