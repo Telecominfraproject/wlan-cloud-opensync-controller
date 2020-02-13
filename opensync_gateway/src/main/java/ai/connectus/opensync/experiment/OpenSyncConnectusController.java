@@ -12,16 +12,16 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import ai.connectus.opensync.ovsdb.ConnectusOvsdbClient;
+import ai.connectus.opensync.external.integration.ConnectusOvsdbClientInterface;
 
 @Profile("ovsdb_manager")
 @RestController
-public class OpenSyncExperimentController {
+public class OpenSyncConnectusController {
 
-    private static final Logger LOG = LoggerFactory.getLogger(OpenSyncExperimentController.class);
+    private static final Logger LOG = LoggerFactory.getLogger(OpenSyncConnectusController.class);
     
     @Autowired
-    ConnectusOvsdbClient connectusOvsdbClient;
+    ConnectusOvsdbClientInterface connectusOvsdbClient;
             
     @RequestMapping(value = "/connectedClients", method = RequestMethod.GET)
     public List<String> getConnectedClients() 

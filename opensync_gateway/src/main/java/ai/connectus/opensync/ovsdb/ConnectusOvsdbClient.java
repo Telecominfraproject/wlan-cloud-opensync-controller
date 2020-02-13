@@ -15,6 +15,7 @@ import com.vmware.ovsdb.callback.ConnectionCallback;
 import com.vmware.ovsdb.service.OvsdbClient;
 import com.vmware.ovsdb.service.OvsdbPassiveConnectionListener;
 
+import ai.connectus.opensync.external.integration.ConnectusOvsdbClientInterface;
 import ai.connectus.opensync.external.integration.OpensyncExternalIntegrationInterface;
 import ai.connectus.opensync.external.integration.OvsdbSession;
 import ai.connectus.opensync.external.integration.OvsdbSessionMapInterface;
@@ -26,7 +27,7 @@ import io.netty.handler.ssl.SslContext;
 
 @Profile("ovsdb_manager")
 @Component
-public class ConnectusOvsdbClient {
+public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
     private static final Logger LOG = LoggerFactory.getLogger(ConnectusOvsdbClient.class);
 
@@ -177,4 +178,24 @@ public class ConnectusOvsdbClient {
         return ret;
     }
 
+    @Override
+    public void processConfigChanged(String apId) {
+        LOG.debug("Starting processConfigChanged for {}", apId);
+
+        OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
+        if(ovsdbSession == null) {
+            throw new IllegalStateException("AP with id " + apId + " is not connected") ;
+        }
+
+        OvsdbClient ovsdbClient = ovsdbSession.getOvsdbClient(); 
+        OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
+
+        if(opensyncAPConfig!=null) {
+            ovsdbDao.removeAllSsids(ovsdbClient);
+            ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig.getRadioConfig());
+            ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig.getSsidConfigs());
+        }
+        
+        LOG.debug("Finished processConfigChanged for {}", apId);        
+    }
 }

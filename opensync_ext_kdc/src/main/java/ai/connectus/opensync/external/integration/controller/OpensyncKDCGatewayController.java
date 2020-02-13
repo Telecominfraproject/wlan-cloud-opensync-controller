@@ -23,7 +23,6 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.whizcontrol.core.model.json.BaseJsonModel;
-import com.whizcontrol.core.model.service.CloudServiceType;
 import com.whizcontrol.core.model.service.ServiceInstanceInformation;
 import com.whizcontrol.core.server.container.ConnectorProperties;
 import com.whizcontrol.customerequipmentgateway.models.CEGWBaseCommand;
@@ -41,6 +40,7 @@ import com.whizcontrol.equipmentroutinginfo.models.EquipmentRoutingRecord;
 import com.whizcontrol.equipmentroutinginfo.models.RoutingRegisterResponse;
 import com.whizcontrol.server.exceptions.ConfigurationException;
 
+import ai.connectus.opensync.external.integration.ConnectusOvsdbClientInterface;
 import ai.connectus.opensync.external.integration.OvsdbSession;
 import ai.connectus.opensync.external.integration.OvsdbSessionMapInterface;
 
@@ -63,6 +63,9 @@ public class OpensyncKDCGatewayController {
 
     @Autowired
     private ServiceInstanceInformation serviceInstanceInfo;
+
+    @Autowired
+    private ConnectusOvsdbClientInterface connectusOvsdbClient;
 
     /**
      * Flag indicates if this gateway has registered with routing service
@@ -224,7 +227,9 @@ public class OpensyncKDCGatewayController {
         CustomerEquipmentCommandResponse response = new CustomerEquipmentCommandResponse(CEGWCommandResultCode.Success.ordinal(),
                 "Received Command " + command.getCommandType() + " for " + qrCode);
         
-        //TODO: implement sending command via ovsdb session.
+        if(command instanceof CEGWConfigChangeNotification) {
+            connectusOvsdbClient.processConfigChanged(qrCode);
+        }
         
         return response;
     }
