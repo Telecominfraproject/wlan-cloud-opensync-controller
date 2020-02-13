@@ -31,6 +31,7 @@ import com.whizcontrol.customerequipmentgateway.models.CEGWCloseSessionRequest;
 import com.whizcontrol.customerequipmentgateway.models.CEGWCommandResultCode;
 import com.whizcontrol.customerequipmentgateway.models.CEGWConfigChangeNotification;
 import com.whizcontrol.customerequipmentgateway.models.CEGWRouteCheck;
+import com.whizcontrol.customerequipmentgateway.models.CEGWStartDebugEngine;
 import com.whizcontrol.customerequipmentgateway.models.CustomerEquipmentCommand;
 import com.whizcontrol.customerequipmentgateway.models.CustomerEquipmentCommandResponse;
 import com.whizcontrol.customerequipmentgateway.models.GatewayDefaults;
@@ -130,6 +131,7 @@ public class OpensyncKDCGatewayController {
         case BlinkRequest:
             return processBlinkRequest(session, (CEGWBlinkRequest) command);
         case StartDebugEngine:
+            return processChangeRedirector(session, (CEGWStartDebugEngine) command);
         case StopDebugEngine:
         case FirmwareDownloadRequest:
         case FirmwareFlashRequest:
@@ -229,11 +231,20 @@ public class OpensyncKDCGatewayController {
         
         if(command instanceof CEGWConfigChangeNotification) {
             connectusOvsdbClient.processConfigChanged(qrCode);
+        } else if(command instanceof CEGWStartDebugEngine) {
+            //dtop: we will be using CEGWStartDebugEngine command to deliver request to change redirector
+            //TODO: after the demo introduce a specialized command for this!
+            String newRedirectorAddress = ((CEGWStartDebugEngine) command).getGatewayHostname();
+            connectusOvsdbClient.changeRedirectorAddress(qrCode, newRedirectorAddress );
         }
         
         return response;
     }
     
+    private CustomerEquipmentCommandResponse processChangeRedirector(OvsdbSession session, CEGWStartDebugEngine command) {
+        return sendMessage(session, command.getEquipmentQRCode(), command);
+    }
+
     private CustomerEquipmentCommandResponse processBlinkRequest(OvsdbSession session,
             CEGWBlinkRequest command) {
         
