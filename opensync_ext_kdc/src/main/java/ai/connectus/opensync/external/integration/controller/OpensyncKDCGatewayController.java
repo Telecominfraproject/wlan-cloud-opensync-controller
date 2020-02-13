@@ -27,6 +27,7 @@ import com.whizcontrol.core.model.service.CloudServiceType;
 import com.whizcontrol.core.model.service.ServiceInstanceInformation;
 import com.whizcontrol.core.server.container.ConnectorProperties;
 import com.whizcontrol.customerequipmentgateway.models.CEGWBaseCommand;
+import com.whizcontrol.customerequipmentgateway.models.CEGWBlinkRequest;
 import com.whizcontrol.customerequipmentgateway.models.CEGWCloseSessionRequest;
 import com.whizcontrol.customerequipmentgateway.models.CEGWCommandResultCode;
 import com.whizcontrol.customerequipmentgateway.models.CEGWConfigChangeNotification;
@@ -123,12 +124,13 @@ public class OpensyncKDCGatewayController {
             return closeSession(session, (CEGWCloseSessionRequest) command);
         case CheckRouting:
             return checkEquipmentRouting(session, (CEGWRouteCheck) command);
+        case BlinkRequest:
+            return processBlinkRequest(session, (CEGWBlinkRequest) command);
         case StartDebugEngine:
         case StopDebugEngine:
         case FirmwareDownloadRequest:
         case FirmwareFlashRequest:
         case RebootRequest:
-        case BlinkRequest:
         case NeighbourhoodReport:
         case ClientDeauthRequest:
         case CellSizeRequest:
@@ -218,14 +220,21 @@ public class OpensyncKDCGatewayController {
     private CustomerEquipmentCommandResponse sendMessage(OvsdbSession session, String qrCode,
             CustomerEquipmentCommand command) {
 
-        LOG.debug("Queued command {} for {}", command.getCommandType(), qrCode);
+        LOG.debug("Received command {} for {}", command.getCommandType(), qrCode);
         CustomerEquipmentCommandResponse response = new CustomerEquipmentCommandResponse(CEGWCommandResultCode.Success.ordinal(),
-                "Queued Command " + command.getCommandType() + " to " + qrCode);
+                "Received Command " + command.getCommandType() + " for " + qrCode);
         
         //TODO: implement sending command via ovsdb session.
         
         return response;
     }
+    
+    private CustomerEquipmentCommandResponse processBlinkRequest(OvsdbSession session,
+            CEGWBlinkRequest command) {
+        
+        return sendMessage(session, command.getEquipmentQRCode(), command);
+    }
+
 
     @RequestMapping(value = "/commandWithUser", method = RequestMethod.POST)
     public CustomerEquipmentCommandResponse sendCommandWithAuthUser(@RequestBody CustomerEquipmentCommand command,
