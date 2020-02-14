@@ -62,6 +62,7 @@ import com.whizcontrol.servicemetrics.models.ClientMetrics;
 import com.whizcontrol.servicemetrics.models.EthernetLinkState;
 import com.whizcontrol.servicemetrics.models.NeighbourReport;
 import com.whizcontrol.servicemetrics.models.NeighbourScanReports;
+import com.whizcontrol.servicemetrics.models.RadioUtilization;
 import com.whizcontrol.servicemetrics.models.SingleMetricRecord;
 
 import ai.connectus.opensync.external.integration.controller.OpensyncKDCGatewayController;
@@ -78,6 +79,8 @@ import sts.PlumeStats.Neighbor;
 import sts.PlumeStats.Neighbor.NeighborBss;
 import sts.PlumeStats.RadioBandType;
 import sts.PlumeStats.Report;
+import sts.PlumeStats.Survey;
+import sts.PlumeStats.Survey.SurveySample;
 import traffic.NetworkMetadata.FlowReport;
 import wc.stats.IpDnsTelemetry.WCStatsReport;
 
@@ -848,6 +851,41 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
             data.setTxBytes5G(txBytes5g);
             data.setPeriodLengthSec(60);
 
+            //Now try to populate metrics for calculation of radio capacity 
+            //see com.whizcontrol.metrics.streaming.spark.equipmentreport.CapacityDStreamsConfig.toAggregatedStats(int, long, APDemoMetric data)
+            //result.stats2g = toAggregatedRadioStats(data.getNoiseFloor2G(),data.getRadioUtilization2G());
+            //result.stats5g = toAggregatedRadioStats(data.getNoiseFloor5G(),data.getRadioUtilization5G());
+//            RadioUtilization
+//            private Integer assocClientTx;
+//            private Integer unassocClientTx;
+//            private Integer assocClientRx;
+//            private Integer unassocClientRx;
+//            private Integer nonWifi;
+//            private Integer timestampSeconds;
+            
+            data.setRadioUtilization2G(new ArrayList<>());
+            data.setRadioUtilization5G(new ArrayList<>());
+            
+            //populate it from report.survey
+            for(Survey survey: report.getSurveyList()){
+                for(SurveySample surveySample: survey.getSurveyListList()) {
+                    if(surveySample.getDurationMs()==0) {
+                        continue;
+                    }
+                    RadioUtilization radioUtil = new RadioUtilization();
+                    radioUtil.setTimestampSeconds((int)((survey.getTimestampMs() + surveySample.getOffsetMs())/1000));
+                    radioUtil.setAssocClientTx(100 * surveySample.getBusyTx()/surveySample.getDurationMs());
+                    radioUtil.setAssocClientRx(100 * surveySample.getBusyRx()/surveySample.getDurationMs());
+                    radioUtil.setNonWifi(100 * (surveySample.getBusy() - surveySample.getBusyTx() - surveySample.getBusyRx())/surveySample.getDurationMs());
+                    
+                    if(survey.getBand() == RadioBandType.BAND2G) {
+                        data.getRadioUtilization2G().add(radioUtil);
+                    } else {
+                        data.getRadioUtilization5G().add(radioUtil);
+                    }
+                }
+            }
+            
         }
     }
 
