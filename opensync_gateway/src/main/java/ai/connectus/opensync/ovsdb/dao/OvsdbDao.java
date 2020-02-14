@@ -870,7 +870,10 @@ public class OvsdbDao {
 
                 conditions.add(new Condition("name", Function.EQUALS, new Atom<>(interfaceName) ));
                                     
-                Set<Uuid> portInterfacesSet = new HashSet<>(existingPort.interfaceUuids);
+                Set<Uuid> portInterfacesSet = new HashSet<>();
+                if(existingPort.interfaceUuids!=null) {
+                    portInterfacesSet.addAll(existingPort.interfaceUuids);
+                }
                 portInterfacesSet.add(interfaceUuid);
                 com.vmware.ovsdb.protocol.operation.notation.Set portInterfaces = com.vmware.ovsdb.protocol.operation.notation.Set.of(portInterfacesSet);
                 updateColumns.put("interfaces", portInterfaces );
@@ -901,14 +904,19 @@ public class OvsdbDao {
             
             //link the port to the bridge
             if(provisionedBridges.containsKey(bridgeName)) {
-                BridgeInfo existingBridge = provisionedBridges.get(brHome);
+                BridgeInfo existingBridge = provisionedBridges.get(bridgeName);
 
                 conditions = new ArrayList<>();
                 updateColumns = new HashMap<>(); 
 
                 conditions.add(new Condition("name", Function.EQUALS, new Atom<>(bridgeName) ));
                                     
-                Set<Uuid> bridgePortsSet = new HashSet<>(existingBridge.portUuids);
+                
+                Set<Uuid> bridgePortsSet = new HashSet<>();
+                if(existingBridge.portUuids!=null) {
+                    bridgePortsSet.addAll(existingBridge.portUuids);
+                }
+                
                 bridgePortsSet.add(portUuid);
                 com.vmware.ovsdb.protocol.operation.notation.Set bridgePorts = com.vmware.ovsdb.protocol.operation.notation.Set.of(bridgePortsSet);
                 updateColumns.put("ports", bridgePorts );
