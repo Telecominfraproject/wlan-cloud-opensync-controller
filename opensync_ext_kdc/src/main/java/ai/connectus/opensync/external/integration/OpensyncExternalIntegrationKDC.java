@@ -310,6 +310,8 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
 //TODO:            equipmentStatusInterface.updateEquipmentPeerStatus(statusRecord);
             
 //TODO:            equipmentStatusInterface.updateNetworkAdminStatus(networkAdminStatusRecord);
+            //dtop: this one populates traffic capacity and usage dial on the main dashboard
+            //from APDemoMetric properties getPeriodLengthSec, getRxBytes2G, getTxBytes2G, getRxBytes5G, getTxBytes5G
 //TODO:            equipmentStatusInterface.updateNetworkAggregateStatus(networkAggregateStatusRecord);
 
             
@@ -762,12 +764,14 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
     }
 
     private void populateAPDemoMetrics(List<SingleMetricRecord> metricRecordList, Report report, int customerId, long equipmentId) {
+        APDemoMetric data = null;
+        
         for(Device deviceReport : report.getDeviceList()) {
             
             SingleMetricRecord smr = new SingleMetricRecord(customerId, equipmentId);
             metricRecordList.add(smr);
 
-            APDemoMetric data = new APDemoMetric();
+            data = new APDemoMetric();
             smr.setData(data);
             ApPerformance apPerformance = new ApPerformance();
             data.setApPerformance(apPerformance);
@@ -802,7 +806,49 @@ public class OpensyncExternalIntegrationKDC implements OpensyncExternalIntegrati
             }
             apPerformance.setUpTime(new Long(deviceReport.getUptime()));
                         
-        }        
+        }
+        
+        if(data != null) {
+            //Main Network dashboard shows Traffic and Capacity values that are calculated from 
+            //  APDemoMetric properties getPeriodLengthSec, getRxBytes2G, getTxBytes2G, getRxBytes5G, getTxBytes5G
+              
+            //go over all the clients to aggregate per-client tx/rx stats - we want to do this 
+            //only once per batch of APDemoMetrics - so we do not repeat values over and over again
+            long rxBytes2g = 0;
+            long txBytes2g = 0;
+            long rxBytes5g = 0;
+            long txBytes5g = 0;
+          
+            for(ClientReport clReport: report.getClientsList()){
+                for(Client cl: clReport.getClientListList()) {
+                      
+                    if(clReport.getBand() == RadioBandType.BAND2G) {
+                        if(cl.getStats().hasTxBytes()) {
+                            txBytes2g += cl.getStats().getTxBytes();
+                        }
+      
+                        if(cl.getStats().hasRxBytes()) {
+                            rxBytes2g += cl.getStats().getRxBytes();
+                        }
+                    } else {
+                        if(cl.getStats().hasTxBytes()) {
+                            txBytes5g += cl.getStats().getTxBytes();
+                        }
+      
+                        if(cl.getStats().hasRxBytes()) {
+                            rxBytes5g += cl.getStats().getRxBytes();
+                        }
+                    }
+                }
+            }
+          
+            data.setRxBytes2G(rxBytes2g);
+            data.setTxBytes2G(txBytes2g);
+            data.setRxBytes5G(rxBytes5g);
+            data.setTxBytes5G(txBytes5g);
+            data.setPeriodLengthSec(60);
+
+        }
     }
 
     public void processMqttMessage(String topic, FlowReport flowReport) {
