@@ -36,7 +36,7 @@
 		<!-- MQTT dependencies BEGIN -->
 		<dependency>
 	        	<groupId>com.telecominfraproject.wlan</groupId>
-	        	<artifactId>opensync_protobuf</artifactId>
+	        	<artifactId>opensync-protobuf</artifactId>
 	        	<version>${tip-wlan-cloud.release.version}</version>
 		</dependency>
 	   
@@ -56,3 +56,4 @@
 	</dependencies>
 
 </project>
+
