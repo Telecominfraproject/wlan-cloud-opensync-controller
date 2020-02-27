@@ -1,14 +1,13 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>com.whizcontrol</groupId>
-    <artifactId>root-pom</artifactId>
+    <groupId>com.telecominfraproject.wlan</groupId>
+    <artifactId>tip-wlan-cloud-root-pom</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-  </parent>  
-  <groupId>ai.connectus</groupId>
-  <artifactId>opensync_gateway_static_process</artifactId>
-  <name>opensync_gateway_static_process</name>
-  <description>Process definition for opensync_gateway that uses static configuration</description>
+  </parent>
+  <artifactId>opensync-gateway-static-process</artifactId>
+  <name>opensync-gateway-static-process</name>
+  <description>Process definition for opensync gateway that uses static configuration</description>
   
   	<properties>
 	    <start-class>ai.connectus.opensync.experiment.OpenSyncProcess</start-class>
@@ -16,14 +15,14 @@
   
 	<dependencies>
 		<dependency>
-			<groupId>ai.connectus</groupId>
-			<artifactId>opensync_gateway</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<artifactId>opensync-gateway</artifactId>
+			<version>${tip-wlan-cloud.release.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>ai.connectus</groupId>
-			<artifactId>opensync_ext_static</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<artifactId>opensync-ext-static</artifactId>
+			<version>${tip-wlan-cloud.release.version}</version>
 		</dependency>
 		
 	</dependencies>

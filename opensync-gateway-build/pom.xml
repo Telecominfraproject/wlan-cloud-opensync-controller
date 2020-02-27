@@ -1,14 +1,13 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-	<groupId>com.whizcontrol</groupId>
-	<artifactId>root-pom</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+    <groupId>com.telecominfraproject.wlan</groupId>
+    <artifactId>tip-wlan-cloud-root-pom</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
   </parent>
-  <groupId>ai.connectus</groupId>
-  <artifactId>opensync_gateway_build</artifactId>
+  <artifactId>opensync-gateway-build</artifactId>
   <packaging>pom</packaging>
-  <name>opensync_gateway_build</name>
+  <name>opensync-gateway-build</name>
   <description>Aggregation of modules, to build everything related to Opensync Gateway</description>
   	<profiles>
   
@@ -19,12 +18,10 @@
 			</activation>
 
 			<modules>
-				<module>../opensync_ext_interface</module>
-				<module>../opensync_ext_kdc</module>
-				<module>../opensync_ext_static</module>
-				<module>../opensync_gateway</module>
-				<module>../opensync_gateway_kdc_process</module>
-				<module>../opensync_gateway_static_process</module>
+				<module>../opensync-ext-interface</module>
+				<module>../opensync-ext-static</module>
+				<module>../opensync-gateway</module>
+				<module>../opensync-gateway-static-process</module>
 			</modules>
 		</profile>
 	</profiles>  
