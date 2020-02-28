@@ -4,6 +4,7 @@
     <groupId>com.telecominfraproject.wlan</groupId>
     <artifactId>tip-wlan-cloud-root-pom</artifactId>
     <version>0.0.1-SNAPSHOT</version>
+    <relativePath>../../tip-wlan-cloud-root</relativePath>
   </parent>
   <artifactId>opensync-gateway-static-process</artifactId>
   <name>opensync-gateway-static-process</name>
