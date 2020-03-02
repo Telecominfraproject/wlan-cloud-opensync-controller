@@ -11,7 +11,7 @@
   <description>Process definition for opensync gateway that uses static configuration</description>
   
   	<properties>
-	    <start-class>ai.connectus.opensync.experiment.OpenSyncProcess</start-class>
+	    <start-class>com.telecominfraproject.wlan.opensync.experiment.OpenSyncProcess</start-class>
 	</properties>
   
 	<dependencies>
