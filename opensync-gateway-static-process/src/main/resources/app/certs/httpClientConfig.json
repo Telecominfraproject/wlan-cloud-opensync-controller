@@ -1,0 +1,18 @@
+{
+"maxConnectionsTotal":100,
+"maxConnectionsPerRoute":10,
+"truststoreType":"JKS",
+"truststoreProvider":"SUN",
+"truststoreFile":"file:/app/certs/truststore.jks",
+"truststorePass":"mypassword",
+"keystoreType":"JKS",
+"keystoreProvider":"SUN",
+"keystoreFile":"file:/app/certs/client_keystore.jks",
+"keystorePass":"mypassword",
+"keyAlias":"clientkeyalias",
+"credentialsList":[
+    {"host":"localhost","port":-1,"user":"user","password":"password"}
+    ]
+
+}
+
