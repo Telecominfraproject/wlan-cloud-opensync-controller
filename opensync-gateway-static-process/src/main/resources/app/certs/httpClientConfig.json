@@ -3,11 +3,11 @@
 "maxConnectionsPerRoute":10,
 "truststoreType":"JKS",
 "truststoreProvider":"SUN",
-"truststoreFile":"file:/app/certs/truststore.jks",
+"truststoreFile":"file:/opt/tip-wlan/certs/truststore.jks",
 "truststorePass":"mypassword",
 "keystoreType":"JKS",
 "keystoreProvider":"SUN",
-"keystoreFile":"file:/app/certs/client_keystore.jks",
+"keystoreFile":"file:/opt/tip-wlan/certs/client_keystore.jks",
 "keystorePass":"mypassword",
 "keyAlias":"clientkeyalias",
 "credentialsList":[
