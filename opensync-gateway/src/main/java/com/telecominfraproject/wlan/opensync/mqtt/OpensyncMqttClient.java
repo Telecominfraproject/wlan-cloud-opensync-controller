@@ -98,7 +98,7 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                     MQTT mqtt = new MQTT();
                     //mqtt.setHost("tcp://192.168.0.137:61616");
                     mqtt.setHost("tls://"+mqttBrokerAddress+":"+mqttBrokerListenPort);
-                    LOG.info("Connecting to Artemis using MQTT at {}", mqtt.getHost());
+                    LOG.info("Connecting to MQTT broker at {}", mqtt.getHost());
                     mqtt.setClientId("opensync_mqtt");
                     mqtt.setUserName(username);
                     mqtt.setPassword(password);
@@ -109,7 +109,7 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                     //TODO: revisit this blocking connection, change it to futureConnection
                     connection = mqtt.blockingConnection();
                     connection.connect();
-                    LOG.info("Connected to Artemis cluster at {}", mqtt.getHost());
+                    LOG.info("Connected to MQTT broker at {}", mqtt.getHost());
             
                     // Subscribe to topics:
                     //
