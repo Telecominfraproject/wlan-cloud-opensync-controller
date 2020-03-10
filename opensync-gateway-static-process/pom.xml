@@ -1,19 +1,21 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <parent>
-    <groupId>com.telecominfraproject.wlan</groupId>
-    <artifactId>tip-wlan-cloud-root-pom</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <relativePath>../../tip-wlan-cloud-root</relativePath>
-  </parent>
-  <artifactId>opensync-gateway-static-process</artifactId>
-  <name>opensync-gateway-static-process</name>
-  <description>Process definition for opensync gateway that uses static configuration</description>
-  
-  	<properties>
-	    <start-class>com.telecominfraproject.wlan.opensync.experiment.OpenSyncProcess</start-class>
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>com.telecominfraproject.wlan</groupId>
+		<artifactId>tip-wlan-cloud-root-pom</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+		<relativePath>../../tip-wlan-cloud-root</relativePath>
+	</parent>
+	<artifactId>opensync-gateway-static-process</artifactId>
+	<name>opensync-gateway-static-process</name>
+	<description>Process definition for opensync gateway that uses static configuration</description>
+
+	<properties>
+		<start-class>com.telecominfraproject.wlan.opensync.experiment.OpenSyncProcess</start-class>
+		<docker.fabric.version>0.28.0</docker.fabric.version>
+		<docker.push.registry>ec2-54-80-163-0.compute-1.amazonaws.com:5000</docker.push.registry>
 	</properties>
-  
+
 	<dependencies>
 		<dependency>
 			<groupId>com.telecominfraproject.wlan</groupId>
@@ -25,16 +27,77 @@
 			<artifactId>opensync-ext-static</artifactId>
 			<version>${tip-wlan-cloud.release.version}</version>
 		</dependency>
-		
+
 	</dependencies>
-    
-  	<build>
+
+	<build>
 		<plugins>
 			<!-- package executable jar file with all the dependencies in it -->
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+			<plugin>
+				<groupId>io.fabric8</groupId>
+				<artifactId>docker-maven-plugin</artifactId>
+				<version>${docker.fabric.version}</version>
+				<configuration>
+					<verbose>true</verbose>
+					<apiVersion>1.23</apiVersion>
+					<images>
+						<image>
+							<name>opensync_gateway:${project.version}
+							</name>
+							<build>
+								<filter>@</filter>
+								<cleanup>try</cleanup>
+								<dockerFileDir>${project.basedir}/src/main/docker</dockerFileDir>
+								<dockerFile>Dockerfile</dockerFile>
+								<assembly>
+									<inline>
+										<dependencySets>
+											<dependencySet>
+												<includes>
+													<include>com.telecominfraproject.wlan:opensync-gateway-static-process</include>
+												</includes>
+												<outputFileNameMapping>app.jar</outputFileNameMapping>
+											</dependencySet>
+										</dependencySets>
+									</inline>
+								</assembly>
+							</build>
+						</image>
+					</images>
+				</configuration>
+				<executions>
+					<execution>
+						<id>clean-images</id>
+						<phase>pre-clean</phase>
+						<goals>
+							<goal>remove</goal>
+						</goals>
+						<configuration>
+							<removeAll>true</removeAll>
+						</configuration>
+					</execution>
+					<execution>
+						<id>generate-images</id>
+						<phase>package</phase>
+						<goals>
+							<goal>build</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>push-images</id>
+						<phase>deploy</phase>
+						<goals>
+							<goal>push</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
+
+
 </project>
