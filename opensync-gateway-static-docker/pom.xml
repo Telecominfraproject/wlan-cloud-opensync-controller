@@ -7,6 +7,7 @@
 		<relativePath>../../tip-wlan-cloud-root</relativePath>
 	</parent>
 	<artifactId>opensync-gateway-static-docker</artifactId>
+	<packaging>pom</packaging>
 	<name>opensync-gateway-static-docker</name>
 	<description>Docker definition for opensync gateway that uses static configuration</description>
 
@@ -35,8 +36,7 @@
 					<apiVersion>1.23</apiVersion>
 					<images>
 						<image>
-							<name>opensync_gateway:${project.version}
-							</name>
+							<name>opensync-gateway:${project.version}</name>
 							<build>
 								<filter>@</filter>
 								<cleanup>try</cleanup>
@@ -47,8 +47,9 @@
 										<dependencySets>
 											<dependencySet>
 												<includes>
-													<include>com.telecominfraproject.wlan:opensync-gateway-static-process</include>
+													<include>com.telecominfraproject.wlan:opensync-gateway-static-process:jar</include>
 												</includes>
+												<useProjectArtifact>false</useProjectArtifact>
 												<outputFileNameMapping>app.jar</outputFileNameMapping>
 											</dependencySet>
 										</dependencySets>
@@ -56,6 +57,28 @@
 								</assembly>
 							</build>
 						</image>
+                                                <image>
+                                                        <name>opensync-gateway-and-mqtt:${project.version}</name>
+                                                        <build>
+                                                                <filter>@</filter>
+                                                                <cleanup>try</cleanup>
+                                                                <dockerFileDir>${project.basedir}/src/main/docker-opensync-gateway-and-mqtt</dockerFileDir>
+                                                                <dockerFile>Dockerfile</dockerFile>
+                                                                <assembly>
+                                                                        <inline>
+                                                                                <dependencySets>
+                                                                                        <dependencySet>
+                                                                                                <includes>
+                                                                                                        <include>com.telecominfraproject.wlan:opensync-gateway-static-process:jar</include>
+                                                                                                </includes>
+												<useProjectArtifact>false</useProjectArtifact>
+                                                                                                <outputFileNameMapping>app.jar</outputFileNameMapping>
+                                                                                        </dependencySet>
+                                                                                </dependencySets>
+                                                                        </inline>
+                                                                </assembly>
+                                                        </build>
+                                                </image>
 					</images>
 				</configuration>
 				<executions>
