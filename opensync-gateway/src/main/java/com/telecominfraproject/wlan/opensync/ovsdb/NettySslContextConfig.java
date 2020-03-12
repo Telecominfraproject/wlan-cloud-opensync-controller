@@ -38,7 +38,10 @@ public class NettySslContextConfig {
             String keyFileName,
 
             @Value("${connectus.ovsdb.keyStorePassword:mypassword}")
-            String keyStorePassword            
+            String keyStorePassword,
+            
+            @Value("${connectus.ovsdb.trustStorePassword:mypassword}")
+            String trustStorePassword            
             ){
         File trustStoreFile = new File(trustStoreFileName);
         File keyFile = new File(keyFileName);
@@ -46,21 +49,23 @@ public class NettySslContextConfig {
         SslContext sslContext = null;
         
         try {
-            char[] pwd = keyStorePassword.toCharArray();
+            char[] keyStorePwd = keyStorePassword.toCharArray();
 
             KeyStore ks = KeyStore.getInstance("PKCS12");
             //KeyStore ks = KeyStore.getInstance("JKS");
             try(InputStream is = new FileInputStream(keyFile)){
-                ks.load(is, pwd);
+                ks.load(is, keyStorePwd);
             }
             
             for(String alias: Collections.list(ks.aliases())) {
                 LOG.debug("Key Alias: {}", alias);
             }
             
+            char[] trustStorePwd = trustStorePassword.toCharArray();
+            
             KeyStore trustKs = KeyStore.getInstance("JKS");
             try(InputStream is = new FileInputStream(trustStoreFile)){
-                trustKs.load(is, pwd);
+                trustKs.load(is, trustStorePwd);
             }
 
             for(String alias: Collections.list(trustKs.aliases())) {
@@ -68,7 +73,7 @@ public class NettySslContextConfig {
             }
             
             KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-            keyManagerFactory.init(ks, pwd);
+            keyManagerFactory.init(ks, keyStorePwd);
             
             TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance("PKIX");
             trustManagerFactory.init(trustKs);

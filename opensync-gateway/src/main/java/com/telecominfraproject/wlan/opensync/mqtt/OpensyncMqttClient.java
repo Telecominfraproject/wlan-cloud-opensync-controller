@@ -158,25 +158,25 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                         
                         try {
                             encodedMsg = Report.parseFrom(payload);
-                            MQTT_LOG.debug("topic = {} Report = {}", mqttMsg.getTopic(), jsonPrinter.print(encodedMsg));
+                            MQTT_LOG.info("topic = {} Report = {}", mqttMsg.getTopic(), jsonPrinter.print(encodedMsg));
                             extIntegrationInterface.processMqttMessage(mqttMsg.getTopic(), (Report) encodedMsg);
 
                         }catch(Exception e) {
                             try {
                                 //not a plume_stats report, attempt to deserialize as network_metadata
                                 encodedMsg = FlowReport.parseFrom(payload);
-                                MQTT_LOG.debug("topic = {} FlowReport = {}", mqttMsg.getTopic(), jsonPrinter.print(encodedMsg));
+                                MQTT_LOG.info("topic = {} FlowReport = {}", mqttMsg.getTopic(), jsonPrinter.print(encodedMsg));
                                 extIntegrationInterface.processMqttMessage(mqttMsg.getTopic(), (FlowReport) encodedMsg);
                             }catch(Exception e1) {
                                 
                                 try {
                                     //not a plume_stats report and not network_metadata report, attempt to deserialize as WCStatsReport
                                     encodedMsg = WCStatsReport.parseFrom(payload);
-                                    MQTT_LOG.debug("topic = {} IpDnsTelemetry = {}", mqttMsg.getTopic(), jsonPrinter.print(encodedMsg));
+                                    MQTT_LOG.info("topic = {} IpDnsTelemetry = {}", mqttMsg.getTopic(), jsonPrinter.print(encodedMsg));
                                     extIntegrationInterface.processMqttMessage(mqttMsg.getTopic(), (WCStatsReport) encodedMsg);
                                 }catch(Exception e2) {
                                     String msgStr = new String(mqttMsg.getPayload(), utf8);
-                                    MQTT_LOG.debug("topic = {} message = {}", mqttMsg.getTopic(), msgStr);
+                                    MQTT_LOG.info("topic = {} message = {}", mqttMsg.getTopic(), msgStr);
                                 }
                             }
                         }
@@ -198,7 +198,7 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                 
         };
 
-        Thread mqttClientThread = new Thread(mqttClientRunnable, "mqttClientThread");
+        mqttClientThread = new Thread(mqttClientRunnable, "mqttClientThread");
         mqttClientThread.setDaemon(true);
         mqttClientThread.start();        
 
@@ -209,6 +209,9 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
     public void onApplicationEvent(ContextClosedEvent event) {
         LOG.debug("Processing ContextClosedEvent event");
         keepReconnecting = false;
-        mqttClientThread.interrupt();
+        
+        if(mqttClientThread!=null) {
+            mqttClientThread.interrupt();
+        }
     }
 }
