@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -26,7 +27,14 @@ import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiInetConfigInfo
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiRadioConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiStatsConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiVifConfigInfo;
+import com.vmware.ovsdb.callback.MonitorCallback;
 import com.vmware.ovsdb.exception.OvsdbClientException;
+import com.vmware.ovsdb.protocol.methods.MonitorRequest;
+import com.vmware.ovsdb.protocol.methods.MonitorRequests;
+import com.vmware.ovsdb.protocol.methods.MonitorSelect;
+import com.vmware.ovsdb.protocol.methods.RowUpdate;
+import com.vmware.ovsdb.protocol.methods.TableUpdate;
+import com.vmware.ovsdb.protocol.methods.TableUpdates;
 import com.vmware.ovsdb.protocol.operation.Delete;
 import com.vmware.ovsdb.protocol.operation.Insert;
 import com.vmware.ovsdb.protocol.operation.Operation;
@@ -69,16 +77,141 @@ public class OvsdbDao {
     public static final String interfaceDbTable = "Interface";
     public static final String portDbTable = "Port";
     public static final String bridgeDbTable = "Bridge";
+    
     public static final String wifiRadioConfigDbTable = "Wifi_Radio_Config";
+    public static final String wifiRadioStateDbTable = "Wifi_Radio_State";
+
     public static final String wifiVifConfigDbTable = "Wifi_VIF_Config";
+    public static final String wifiVifStateDbTable = "Wifi_VIF_State";
+
     public static final String wifiInetConfigDbTable = "Wifi_Inet_Config";
     public static final String wifiInetStateDbTable = "Wifi_Inet_State";
-    
-    
+
+	private static final String wifiRadioStateDbTableMonitorId = "Wifi_Radio_State_Monitor_Id";
+	private static final String wifiInetStateDbTableMonitorId = "Wifi_Inet_State_Monitor_Id";
+	private static final String wifiVifStateDbTableMonitorId = "Wifi_VIF_State_Monitor_Id";
+
+	public void monitorVIFState(OvsdbClient ovsdbClient, MonitorCallback monitorCallback) {
+    	List<String> columns = new ArrayList<>(); 
+		columns.add("_uuid");
+		columns.add("_version");
+		columns.add("ap_bridge");
+		columns.add("associated_clients");
+		columns.add("bridge");
+		columns.add("btm");
+		columns.add("channel");
+		columns.add("dynamic_beacon");
+		columns.add("enabled");
+		columns.add("group_rekey");
+		columns.add("if_name");
+		columns.add("mac");
+		columns.add("min_hw_mode");
+		columns.add("mode");
+		columns.add("rrm");
+		columns.add("security");
+		columns.add("ssid");
+		columns.add("ssid_broadcast");
+		columns.add("uapsd_enable");
+		columns.add("vif_config");
+		columns.add("vif_radio_idx");
+
+		MonitorRequest monitorRequest = new MonitorRequest(columns, new MonitorSelect(true,true,true,true));
+
+		Map<String,MonitorRequest> monitorRequests = new HashMap<String, MonitorRequest>();
+		monitorRequests.put(wifiVifStateDbTable, monitorRequest);
+		MonitorRequests requests = new MonitorRequests(monitorRequests) ;
+
+		try {
+			ovsdbClient.monitor(ovsdbName, wifiVifStateDbTableMonitorId, requests, monitorCallback);
+		} catch (OvsdbClientException e) {
+			LOG.error("Unable to add Monitor to table " + wifiVifStateDbTable, e);
+		}
+
+    }
+	
+    public void monitorInetState (OvsdbClient ovsdbClient, MonitorCallback monitorCallback) {
+    	List<String> columns = new ArrayList<>(); 
+		columns.add("_uuid");
+		columns.add("_version");
+		columns.add("broadcast");
+		columns.add("dhcpc");
+		columns.add("enabled");
+		columns.add("hwaddr");
+		columns.add("if_name");
+		columns.add("if_type");
+		columns.add("if_uuid");
+		columns.add("inet_addr");
+		columns.add("ip_assign_scheme");
+		columns.add("mtu");
+		columns.add("netmask");
+		columns.add("network");
+
+
+		MonitorRequest monitorRequest = new MonitorRequest(columns, new MonitorSelect(true,true,true,true));
+
+		Map<String,MonitorRequest> monitorRequests = new HashMap<String, MonitorRequest>();
+		monitorRequests.put(wifiInetStateDbTable, monitorRequest);
+		MonitorRequests requests = new MonitorRequests(monitorRequests) ;
+
+		try {
+			ovsdbClient.monitor(ovsdbName, wifiInetStateDbTableMonitorId, requests, monitorCallback);
+		} catch (OvsdbClientException e) {
+			LOG.error("Unable to add Monitor to table " + wifiInetStateDbTable, e);
+		}
+
+    }
 
     //
     //Note: When talking to OVSDB always use future.get(X, TimeUnit.SECONDS); - to prevent DOS attacks with misbehaving clients
     //
+	public void cancelMonitors (OvsdbClient ovsdbClient) {
+		try {
+			ovsdbClient.cancelMonitor(wifiRadioStateDbTableMonitorId);
+			ovsdbClient.cancelMonitor(wifiVifStateDbTableMonitorId);
+			ovsdbClient.cancelMonitor(wifiInetStateDbTableMonitorId);
+		} catch (Exception e) {
+			LOG.error("Caught Exception {}", e);
+		} 
+	}
+	public void monitorRadioConfigState (OvsdbClient ovsdbClient, MonitorCallback monitorCallback) {
+
+		List<String> columns = new ArrayList<>(); 
+		columns.add("_uuid");
+		columns.add("_version");
+		columns.add("allowed_channels");
+		columns.add("bcn_int");
+		columns.add("channel");
+		columns.add("channel_mode");
+		columns.add("channels");
+		columns.add("country");
+		columns.add("enabled");
+		columns.add("freq_band");
+		columns.add("ht_mode");
+		columns.add("hw_config");
+		columns.add("hw_mode");
+		columns.add("hw_params");
+		columns.add("if_name");
+		columns.add("mac");
+		columns.add("radio_config");
+		columns.add("tx_chainmask");
+		columns.add("tx_power");
+		columns.add("vif_states");
+
+		MonitorRequest monitorRequest = new MonitorRequest(columns, new MonitorSelect(true,true,true,true));
+
+		Map<String,MonitorRequest> monitorRequests = new HashMap<String, MonitorRequest>();
+		monitorRequests.put(wifiRadioStateDbTable, monitorRequest);
+		MonitorRequests requests = new MonitorRequests(monitorRequests) ;
+
+
+
+		try {
+			ovsdbClient.monitor(ovsdbName, wifiRadioStateDbTableMonitorId, requests, monitorCallback);
+		} catch (OvsdbClientException e) {
+			LOG.error("Unable to add Monitor to table " + wifiRadioStateDbTable, e);
+		}
+
+	}
 
     public ConnectNodeInfo getConnectNodeInfo(OvsdbClient ovsdbClient) {
         ConnectNodeInfo ret = new ConnectNodeInfo();
@@ -1610,4 +1743,6 @@ public class OvsdbDao {
         
         return newRedirectorAddress;
     }
+
+
 }

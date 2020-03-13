@@ -20,6 +20,8 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.OvsdbDao;
 import com.telecominfraproject.wlan.opensync.util.SslUtil;
 import com.vmware.ovsdb.callback.ConnectionCallback;
+import com.vmware.ovsdb.callback.MonitorCallback;
+import com.vmware.ovsdb.protocol.methods.TableUpdates;
 import com.vmware.ovsdb.service.OvsdbClient;
 import com.vmware.ovsdb.service.OvsdbPassiveConnectionListener;
 
@@ -58,6 +60,25 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
         listenForConnections();
     }
     
+    public class ConnectusMonitorCallback implements MonitorCallback {
+    	
+    	String clientCNKey;
+    	
+    	public ConnectusMonitorCallback(String key) {
+    		
+    		clientCNKey = key;
+    		
+    	}
+
+		@Override
+		public void update(TableUpdates tableUpdates) {
+			LOG.info("Monitor for client key {} received table updates {}", clientCNKey, tableUpdates);
+			
+		}
+    	
+    }
+	
+    
     public void listenForConnections() {
 
         ConnectionCallback connectionCallback = new ConnectionCallback() {
@@ -79,13 +100,20 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                     ConnectusOvsdbClient.this.ovsdbSessionMapInterface.newSession(key, ovsdbClient);
                     extIntegrationInterface.apConnected(key, connectNodeInfo);
                     
+ 
                     //push configuration to AP
                     connectNodeInfo = processConnectRequest(ovsdbClient, clientCn, connectNodeInfo);
-                    
                     LOG.info("ovsdbClient connected from {} on port {} key {} ", remoteHost, localPort, key);
-
                     LOG.info("ovsdbClient connectedClients = {}", ConnectusOvsdbClient.this.ovsdbSessionMapInterface.getNumSessions());
+                    // monitor radio config state
+                    ovsdbDao.monitorRadioConfigState(ovsdbClient, new ConnectusMonitorCallback(key));
+                    // monitor inet state
+                    ovsdbDao.monitorInetState(ovsdbClient, new ConnectusMonitorCallback(key));
+                    // monitor vif state
+                    ovsdbDao.monitorVIFState(ovsdbClient, new ConnectusMonitorCallback(key));
 
+              
+               
                 } catch (Exception e) {
                     LOG.error("ovsdbClient error", e);
                     //something is wrong with the SSL 
@@ -115,7 +143,8 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                     extIntegrationInterface.apDisconnected(key);
                     ConnectusOvsdbClient.this.ovsdbSessionMapInterface.removeSession(key);
                 }
-                
+                // turn off monitor
+                ovsdbDao.cancelMonitors(ovsdbClient);
                 ovsdbClient.shutdown();
                 
                 LOG.info("ovsdbClient disconnected from {} on port {} clientCn {} key {} ", remoteHost, localPort, clientCn, key);
