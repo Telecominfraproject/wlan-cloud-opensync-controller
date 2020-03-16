@@ -24,6 +24,7 @@
   </appender>
   -->
   
+  <!-- 
   <appender name="logfile" class="ch.qos.logback.core.rolling.RollingFileAppender">
     <file>/var/log/a2w/opensyncgw.log</file>
     <append>true</append>
@@ -39,7 +40,8 @@
       <maxFileSize>20MB</maxFileSize>
     </triggeringPolicy>
   </appender>
-      
+   -->
+       
   <!--
   details: http://logback.qos.ch/manual/configuration.html#auto_configuration
    
@@ -58,7 +60,6 @@
   
   <logger name="com.telecominfraproject.wlan" level="DEBUG"/>
   <logger name="ai.connectus" level="DEBUG"/>
-  <logger name="com.netflix.servo.tag.aws.AwsInjectableTag" level="OFF"/>
   <logger name="com.vmware.ovsdb.service.OvsdbConnectionInfo" level="OFF"/>
   <logger name="com.vmware.ovsdb.netty.OvsdbConnectionHandler" level="ERROR"/>
   
