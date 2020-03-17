@@ -100,20 +100,21 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                     ConnectusOvsdbClient.this.ovsdbSessionMapInterface.newSession(key, ovsdbClient);
                     extIntegrationInterface.apConnected(key, connectNodeInfo);
                     
- 
                     //push configuration to AP
                     connectNodeInfo = processConnectRequest(ovsdbClient, clientCn, connectNodeInfo);
                     LOG.info("ovsdbClient connected from {} on port {} key {} ", remoteHost, localPort, key);
                     LOG.info("ovsdbClient connectedClients = {}", ConnectusOvsdbClient.this.ovsdbSessionMapInterface.getNumSessions());
+                   
                     // monitor radio config state
                     ovsdbDao.monitorRadioConfigState(ovsdbClient, new ConnectusMonitorCallback(key));
                     // monitor inet state
                     ovsdbDao.monitorInetState(ovsdbClient, new ConnectusMonitorCallback(key));
                     // monitor vif state
                     ovsdbDao.monitorVIFState(ovsdbClient, new ConnectusMonitorCallback(key));
-
-              
-               
+                    // monitor Route state
+                    ovsdbDao.monitorRouteState(ovsdbClient, new ConnectusMonitorCallback(key));
+                   // monitor Master State
+                    ovsdbDao.monitorMasterState(ovsdbClient, new ConnectusMonitorCallback(key));
                 } catch (Exception e) {
                     LOG.error("ovsdbClient error", e);
                     //something is wrong with the SSL 
