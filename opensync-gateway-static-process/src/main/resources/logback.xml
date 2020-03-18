@@ -57,6 +57,7 @@
   <logger name="org.apache.catalina.startup.DigesterFactory" level="ERROR"/>
   <logger name="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping" level="INFO"/>
   <logger name="org.springframework.boot.context.embedded.tomcat.TomcatEmbeddedServletContainer" level="INFO"/>
+  <logger name ="com.telecominfraproject.wlan.core.server.webconfig.WebMvcRegistrationsConfiguration$1$1" level="INFO"/>
   
   <logger name="com.telecominfraproject.wlan" level="DEBUG"/>
   <logger name="ai.connectus" level="DEBUG"/>
