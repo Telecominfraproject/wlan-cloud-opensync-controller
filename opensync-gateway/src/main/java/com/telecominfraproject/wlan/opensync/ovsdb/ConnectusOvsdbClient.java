@@ -1,9 +1,7 @@
 package com.telecominfraproject.wlan.opensync.ovsdb;
 
 import java.security.cert.X509Certificate;
-import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
 import javax.annotation.PostConstruct;
 
@@ -23,9 +21,7 @@ import com.telecominfraproject.wlan.opensync.ovsdb.dao.OvsdbDao;
 import com.telecominfraproject.wlan.opensync.util.SslUtil;
 import com.vmware.ovsdb.callback.ConnectionCallback;
 import com.vmware.ovsdb.callback.MonitorCallback;
-import com.vmware.ovsdb.protocol.methods.RowUpdate;
 import com.vmware.ovsdb.protocol.methods.TableUpdates;
-import com.vmware.ovsdb.protocol.operation.notation.Row;
 import com.vmware.ovsdb.service.OvsdbClient;
 import com.vmware.ovsdb.service.OvsdbPassiveConnectionListener;
 
@@ -65,6 +61,10 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
 	public void listenForConnections() {
 
+		// This class is only used here, therefore changed it back to an inner class, removed the package level class.
+		// All calling classes related to OVSDB are calling the MonitorCallback interface, so the implementation can remain
+		// hidden. This also gives handy access to the Autowired instances in the container class.
+		
 		class ConnectusMonitorCallback implements MonitorCallback {
 
 			private String connectedClientId;
