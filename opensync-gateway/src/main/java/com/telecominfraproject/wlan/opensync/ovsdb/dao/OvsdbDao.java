@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import com.google.common.collect.ImmutableMap;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioConfig;
@@ -102,19 +103,16 @@ public class OvsdbDao {
 		columns.add("gateway");
 		columns.add("gateway_hwaddr");
 		columns.add("if_name");
-		
-		MonitorRequest monitorRequest = new MonitorRequest(columns, new MonitorSelect(true,true,true,true));
 
-		Map<String,MonitorRequest> monitorRequests = new HashMap<String, MonitorRequest>();
-		monitorRequests.put(wifiRouteStateDbTable, monitorRequest);
-		MonitorRequests requests = new MonitorRequests(monitorRequests) ;
-
+		MonitorRequest monitorRequest = new MonitorRequest();
+		MonitorRequests monitorRequests = new MonitorRequests(
+				ImmutableMap.of(wifiRouteStateDbTable, monitorRequest));
 		try {
-			ovsdbClient.monitor(ovsdbName, wifiRouteStateDbTableMonitorId, requests, monitorCallback);
+			ovsdbClient.monitor(ovsdbName, wifiRouteStateDbTableMonitorId, monitorRequests, monitorCallback);
 		} catch (OvsdbClientException e) {
 			LOG.error("Unable to add Monitor to table " + wifiRouteStateDbTable, e);
 		}
-		
+
 	}
 
 	public void monitorMasterState(OvsdbClient ovsdbClient, MonitorCallback monitorCallback) {
@@ -128,15 +126,13 @@ public class OvsdbDao {
 		columns.add("netmask");
 		columns.add("network_state");
 		columns.add("port_state");
-		
-		MonitorRequest monitorRequest = new MonitorRequest(columns, new MonitorSelect(true,true,true,true));
 
-		Map<String,MonitorRequest> monitorRequests = new HashMap<String, MonitorRequest>();
-		monitorRequests.put(wifiMasterStateDbTable, monitorRequest);
-		MonitorRequests requests = new MonitorRequests(monitorRequests) ;
+		MonitorRequest monitorRequest = new MonitorRequest();
+		MonitorRequests monitorRequests = new MonitorRequests(
+				ImmutableMap.of(wifiMasterStateDbTable, monitorRequest));
 
 		try {
-			ovsdbClient.monitor(ovsdbName, wifiMasterStateDbTableMonitorId, requests, monitorCallback);
+			ovsdbClient.monitor(ovsdbName, wifiMasterStateDbTableMonitorId, monitorRequests, monitorCallback);
 		} catch (OvsdbClientException e) {
 			LOG.error("Unable to add Monitor to table " + wifiMasterStateDbTable, e);
 		}
@@ -165,14 +161,12 @@ public class OvsdbDao {
 		columns.add("vif_config");
 		columns.add("vif_radio_idx");
 
-		MonitorRequest monitorRequest = new MonitorRequest(columns, new MonitorSelect(true,true,true,true));
-
-		Map<String,MonitorRequest> monitorRequests = new HashMap<String, MonitorRequest>();
-		monitorRequests.put(wifiVifStateDbTable, monitorRequest);
-		MonitorRequests requests = new MonitorRequests(monitorRequests) ;
+		MonitorRequest monitorRequest = new MonitorRequest();
+		MonitorRequests monitorRequests = new MonitorRequests(
+				ImmutableMap.of(wifiVifStateDbTable, monitorRequest));
 
 		try {
-			ovsdbClient.monitor(ovsdbName, wifiVifStateDbTableMonitorId, requests, monitorCallback);
+			ovsdbClient.monitor(ovsdbName, wifiVifStateDbTableMonitorId, monitorRequests, monitorCallback);
 		} catch (OvsdbClientException e) {
 			LOG.error("Unable to add Monitor to table " + wifiVifStateDbTable, e);
 		}
@@ -197,14 +191,12 @@ public class OvsdbDao {
 		columns.add("network");
 
 
-		MonitorRequest monitorRequest = new MonitorRequest(columns, new MonitorSelect(true,true,true,true));
-
-		Map<String,MonitorRequest> monitorRequests = new HashMap<String, MonitorRequest>();
-		monitorRequests.put(wifiInetStateDbTable, monitorRequest);
-		MonitorRequests requests = new MonitorRequests(monitorRequests) ;
+		MonitorRequest monitorRequest = new MonitorRequest();
+		MonitorRequests monitorRequests = new MonitorRequests(
+				ImmutableMap.of(wifiInetStateDbTable, monitorRequest));
 
 		try {
-			ovsdbClient.monitor(ovsdbName, wifiInetStateDbTableMonitorId, requests, monitorCallback);
+			ovsdbClient.monitor(ovsdbName, wifiInetStateDbTableMonitorId, monitorRequests, monitorCallback);
 		} catch (OvsdbClientException e) {
 			LOG.error("Unable to add Monitor to table " + wifiInetStateDbTable, e);
 		}
@@ -220,6 +212,8 @@ public class OvsdbDao {
 			ovsdbClient.cancelMonitor(wifiVifStateDbTableMonitorId);
 			ovsdbClient.cancelMonitor(wifiInetStateDbTableMonitorId);
 			ovsdbClient.cancelMonitor(wifiRouteStateDbTableMonitorId);
+			ovsdbClient.cancelMonitor(wifiMasterStateDbTableMonitorId);
+
 		} catch (Exception e) {
 			LOG.error("Caught Exception {}", e);
 		} 
