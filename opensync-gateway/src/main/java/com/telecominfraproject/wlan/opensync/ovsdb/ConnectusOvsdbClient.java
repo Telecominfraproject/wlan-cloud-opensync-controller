@@ -1,7 +1,9 @@
 package com.telecominfraproject.wlan.opensync.ovsdb;
 
 import java.security.cert.X509Certificate;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import javax.annotation.PostConstruct;
 
@@ -20,6 +22,10 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.OvsdbDao;
 import com.telecominfraproject.wlan.opensync.util.SslUtil;
 import com.vmware.ovsdb.callback.ConnectionCallback;
+import com.vmware.ovsdb.callback.MonitorCallback;
+import com.vmware.ovsdb.protocol.methods.RowUpdate;
+import com.vmware.ovsdb.protocol.methods.TableUpdates;
+import com.vmware.ovsdb.protocol.operation.notation.Row;
 import com.vmware.ovsdb.service.OvsdbClient;
 import com.vmware.ovsdb.service.OvsdbPassiveConnectionListener;
 
@@ -59,6 +65,39 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
 	public void listenForConnections() {
 
+		class ConnectusMonitorCallback implements MonitorCallback {
+
+			private String connectedClientId;
+
+			public ConnectusMonitorCallback(String clientId) {
+				this.connectedClientId = clientId;
+			}
+
+			@Override
+			public void update(TableUpdates tableUpdates) {
+
+				// get session information for this client
+				OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(connectedClientId);
+				if (ovsdbSession == null) {
+					throw new IllegalStateException("AP with id " + connectedClientId + " is not connected");
+				}
+
+				OvsdbClient ovsdbClient = ovsdbSession.getOvsdbClient();
+				OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(connectedClientId);
+
+				// TODO:
+				// wifiVifStateDbTable get MAC ADDRESS via ovsdbClient from
+				// Wifi_Associated_Clients given the associated UUID for the client
+				
+				// TODO:
+				// Changes from other Status (Wifi, Inet, etc.) tables? 
+				// Updates to session etc. 
+				// Needs to be reflected in the Cloud
+
+			}
+
+		}
+
 		ConnectionCallback connectionCallback = new ConnectionCallback() {
 			public void connected(OvsdbClient ovsdbClient) {
 				String remoteHost = ovsdbClient.getConnectionInfo().getRemoteAddress().getHostAddress();
@@ -87,15 +126,15 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 							ConnectusOvsdbClient.this.ovsdbSessionMapInterface.getNumSessions());
 
 					// monitor radio config state
-					ovsdbDao.monitorRadioConfigState(ovsdbClient, new ConnectusMonitorCallback(ovsdbClient, key));
+					ovsdbDao.monitorRadioConfigState(ovsdbClient, new ConnectusMonitorCallback(key));
 					// monitor inet state
-					ovsdbDao.monitorInetState(ovsdbClient, new ConnectusMonitorCallback(ovsdbClient, key));
+					ovsdbDao.monitorInetState(ovsdbClient, new ConnectusMonitorCallback(key));
 					// monitor vif state
-					ovsdbDao.monitorVIFState(ovsdbClient, new ConnectusMonitorCallback(ovsdbClient, key));
+					ovsdbDao.monitorVIFState(ovsdbClient, new ConnectusMonitorCallback(key));
 					// monitor Route state
-					ovsdbDao.monitorRouteState(ovsdbClient, new ConnectusMonitorCallback(ovsdbClient, key));
+					ovsdbDao.monitorRouteState(ovsdbClient, new ConnectusMonitorCallback(key));
 					// monitor Master State
-					ovsdbDao.monitorMasterState(ovsdbClient, new ConnectusMonitorCallback(ovsdbClient, key));
+					ovsdbDao.monitorMasterState(ovsdbClient, new ConnectusMonitorCallback(key));
 				} catch (Exception e) {
 					LOG.error("ovsdbClient error", e);
 					// something is wrong with the SSL
