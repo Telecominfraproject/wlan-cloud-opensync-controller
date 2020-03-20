@@ -1,7 +1,9 @@
 package com.telecominfraproject.wlan.opensync.ovsdb;
 
 import java.security.cert.X509Certificate;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import javax.annotation.PostConstruct;
 
@@ -21,7 +23,10 @@ import com.telecominfraproject.wlan.opensync.ovsdb.dao.OvsdbDao;
 import com.telecominfraproject.wlan.opensync.util.SslUtil;
 import com.vmware.ovsdb.callback.ConnectionCallback;
 import com.vmware.ovsdb.callback.MonitorCallback;
+import com.vmware.ovsdb.protocol.methods.RowUpdate;
 import com.vmware.ovsdb.protocol.methods.TableUpdates;
+import com.vmware.ovsdb.protocol.operation.notation.Row;
+import com.vmware.ovsdb.protocol.operation.notation.Value;
 import com.vmware.ovsdb.service.OvsdbClient;
 import com.vmware.ovsdb.service.OvsdbPassiveConnectionListener;
 
@@ -61,10 +66,13 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
 	public void listenForConnections() {
 
-		// This class is only used here, therefore changed it back to an inner class, removed the package level class.
-		// All calling classes related to OVSDB are calling the MonitorCallback interface, so the implementation can remain
-		// hidden. This also gives handy access to the Autowired instances in the container class.
-		
+		// This class is only used here, therefore changed it back to an inner class,
+		// removed the package level class.
+		// All calling classes related to OVSDB are calling the MonitorCallback
+		// interface, so the implementation can remain
+		// hidden. This also gives handy access to the Autowired instances in the
+		// container class.
+
 		class ConnectusMonitorCallback implements MonitorCallback {
 
 			private String connectedClientId;
@@ -75,23 +83,55 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
 			@Override
 			public void update(TableUpdates tableUpdates) {
+				Set<String> tableNames = tableUpdates.getTableUpdates().keySet();
 
-				// get session information for this client
-				OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(connectedClientId);
-				if (ovsdbSession == null) {
-					throw new IllegalStateException("AP with id " + connectedClientId + " is not connected");
+				for (String name : tableNames) {
+					LOG.debug("Receive update for table {}", name);
+
+					Map<UUID, RowUpdate> updates = tableUpdates.getTableUpdates().get(name).getRowUpdates();
+
+					for (UUID id : updates.keySet()) {
+
+						LOG.debug("Receive row update for uuid {}", id);
+
+						RowUpdate rowUpdate = updates.get(id);
+
+						Row newRow = rowUpdate.getNew();
+						Set<String> newRowColumns = newRow.getColumns().keySet();
+
+						Row oldRow = rowUpdate.getOld();
+
+						for (String column : newRowColumns) {
+
+							Value oldVal = null;
+							if (oldRow != null && oldRow.getColumns().containsKey(column)) oldVal = oldRow.getColumns().get(column);
+
+							Value newVal = newRow.getColumns().get(column);
+
+							LOG.debug("For column {} previous value {} is now {}", column, oldVal, newVal);
+						}
+
+					}
+
 				}
 
-				OvsdbClient ovsdbClient = ovsdbSession.getOvsdbClient();
-				OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(connectedClientId);
+				// get session information for this client
+				//				OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(connectedClientId);
+				//				if (ovsdbSession == null) {
+				//					throw new IllegalStateException("AP with id " + connectedClientId + " is not connected");
+				//				}
+				//
+				//				OvsdbClient ovsdbClient = ovsdbSession.getOvsdbClient();
+				//				OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(connectedClientId);
+
 
 				// TODO:
-				// wifiVifStateDbTable get MAC ADDRESS via ovsdbClient from
-				// Wifi_Associated_Clients given the associated UUID for the client
-				
+				//  example wifiVifStateDbTable get MAC ADDRESS via ovsdbClient from
+				//                  Wifi_Associated_Clients given the associated UUID for the client
+
 				// TODO:
-				// Changes from other Status (Wifi, Inet, etc.) tables? 
-				// Updates to session etc. 
+				// Changes from other Status (Wifi, Inet, etc.) tables?
+				// Updates to session etc.
 				// Needs to be reflected in the Cloud
 
 			}

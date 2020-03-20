@@ -213,9 +213,8 @@ public class OvsdbDao {
 			ovsdbClient.cancelMonitor(wifiInetStateDbTableMonitorId);
 			ovsdbClient.cancelMonitor(wifiRouteStateDbTableMonitorId);
 			ovsdbClient.cancelMonitor(wifiMasterStateDbTableMonitorId);
-
-		} catch (Exception e) {
-			LOG.error("Caught Exception {}", e);
+		} catch (OvsdbClientException e) {
+			LOG.debug("Could not cancel Monitor.  {}", e.getLocalizedMessage());
 		} 
 	}
 	public void monitorRadioConfigState (OvsdbClient ovsdbClient, MonitorCallback monitorCallback) {
