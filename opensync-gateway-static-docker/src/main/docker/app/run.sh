@@ -3,7 +3,7 @@ PROFILES=" -Dspring.profiles.include=mqtt_receiver,ovsdb_redirector,ovsdb_manage
 
 SSL_PROPS=" "
 SSL_PROPS+=" -Dssl.props=file:/opt/tip-wlan/certs/ssl.properties"
-SSL_PROPS+=" -Dwhizcontrol.httpClientConfig=file:/opt/tip-wlan/certs/httpClientConfig.json"
+SSL_PROPS+=" -Dtip.wlan.httpClientConfig=file:/opt/tip-wlan/certs/httpClientConfig.json"
 
 CLIENT_MQTT_SSL_PROPS=" "
 CLIENT_MQTT_SSL_PROPS+=" -Djavax.net.ssl.keyStore=/opt/tip-wlan/certs/client_keystore.jks"

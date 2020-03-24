@@ -85,7 +85,7 @@ PROFILES=" -Dspring.profiles.include=mqtt_receiver,ovsdb_redirector,ovsdb_manage
 
 SSL_PROPS=" "
 SSL_PROPS="$SSL_PROPS -Dssl.props=file:/app/ssl.properties"
-SSL_PROPS="$SSL_PROPS -Dwhizcontrol.httpClientConfig=file:/app/httpClientConfig.json"
+SSL_PROPS="$SSL_PROPS -Dtip.wlan.httpClientConfig=file:/app/httpClientConfig.json"
 
 CLIENT_MQTT_SSL_PROPS=" "
 CLIENT_MQTT_SSL_PROPS="$CLIENT_MQTT_SSL_PROPS -Djavax.net.ssl.keyStore=$MQTT_CLIENT_KEYSTORE_FILE"

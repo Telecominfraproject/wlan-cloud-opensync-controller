@@ -6,7 +6,7 @@ public class SslUtil {
      * Examples:<br>
      * <code>
      * subject=CN = PP302X-EX, C = US, O = Plume Design Inc., L = Palo Alto, ST = CA, emailAddress = support@plumewifi.com<br>
-     * subject=C = CA, ST = Ontario, L = Ottawa, O = WhizControl Canada Inc, OU = Research and Develpoment, CN = dev-ap-0001, emailAddress = devadmin@123wlan.com
+     * subject=C = CA, ST = Ontario, L = Ottawa, O = KodaCloud Canada Inc, OU = Research and Develpoment, CN = dev-ap-0001, emailAddress = devadmin@123wlan.com
      * </code>
      * @param subjectDn
      * @return Value of the CN attribute of the supplied subject DN, or empty string if it cannot be extracted
