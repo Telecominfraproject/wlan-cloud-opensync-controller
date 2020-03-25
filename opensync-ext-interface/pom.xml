@@ -17,7 +17,7 @@
 	</dependency>
 	<dependency>
         	<groupId>com.telecominfraproject.wlan</groupId>
-        	<artifactId>opensync-protobuf</artifactId>
+        	<artifactId>tip-wlan-opensync-protobuf</artifactId>
         	<version>${tip-wlan-cloud.release.version}</version>
 	</dependency>	 
       
