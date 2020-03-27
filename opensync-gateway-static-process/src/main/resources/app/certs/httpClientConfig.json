@@ -9,7 +9,7 @@
 "keystoreProvider":"SUN",
 "keystoreFile":"file:/opt/tip-wlan/certs/client_keystore.jks",
 "keystorePass":"mypassword",
-"keyAlias":"clientkeyalias",
+"keyAlias":"clientqrcode",
 "credentialsList":[
     {"host":"localhost","port":-1,"user":"user","password":"password"}
     ]
