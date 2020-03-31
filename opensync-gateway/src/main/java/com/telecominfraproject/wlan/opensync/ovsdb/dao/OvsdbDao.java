@@ -84,81 +84,39 @@ public class OvsdbDao {
     public static final String wifiInetConfigDbTable = "Wifi_Inet_Config";
     public static final String wifiInetStateDbTable = "Wifi_Inet_State";
 
-    public static final String wifiRouteStateDbTable = "Wifi_Route_State";
-    public static final String wifiMasterStateDbTable = "Wifi_Master_State";
+    public static final String wifiAssociatedClientsDbTable = "Wifi_Associated_Clients";
 
     private static final String wifiRadioStateDbTableMonitorId = "Wifi_Radio_State_Monitor_Id";
     private static final String wifiInetStateDbTableMonitorId = "Wifi_Inet_State_Monitor_Id";
     private static final String wifiVifStateDbTableMonitorId = "Wifi_VIF_State_Monitor_Id";
-    private static final String wifiRouteStateDbTableMonitorId = "Wifi_Route_State_Monitor_Id";
-    private static final String wifiMasterStateDbTableMonitorId = "Wifi_Master_State_Monitor_Id";
+    private static final String wifiAwlanNodeDbTableMonitorId = "AWLAN_Node_Monitor_Id";
+    private static final String wifiAssociatedClientsDbTableMonitorId = "Wifi_Associated_Clients_Monitor_Id";
 
-    public void monitorRouteState(OvsdbClient ovsdbClient, MonitorCallback monitorCallback) {
-
-        List<String> columns = new ArrayList<>();
-        columns.add("_uuid");
-        columns.add("_version");
-        columns.add("dest_addr");
-        columns.add("dest_mask");
-        columns.add("gateway");
-        columns.add("gateway_hwaddr");
-        columns.add("if_name");
-
+    public void monitorAwlanNode(OvsdbClient ovsdbClient, MonitorCallback monitorCallback) {
         MonitorRequest monitorRequest = new MonitorRequest();
-        MonitorRequests monitorRequests = new MonitorRequests(ImmutableMap.of(wifiRouteStateDbTable, monitorRequest));
-        try {
-            ovsdbClient.monitor(ovsdbName, wifiRouteStateDbTableMonitorId, monitorRequests, monitorCallback);
-        } catch (OvsdbClientException e) {
-            LOG.error("Unable to add Monitor to table " + wifiRouteStateDbTable, e);
-        }
+        MonitorRequests monitorRequests = new MonitorRequests(ImmutableMap.of(awlanNodeDbTable, monitorRequest));
 
+        try {
+            ovsdbClient.monitor(ovsdbName, wifiAwlanNodeDbTableMonitorId, monitorRequests, monitorCallback);
+        } catch (OvsdbClientException e) {
+            LOG.error("Unable to add Monitor to table " + awlanNodeDbTable, e);
+        }
     }
 
-    public void monitorMasterState(OvsdbClient ovsdbClient, MonitorCallback monitorCallback) {
-        List<String> columns = new ArrayList<>();
-        columns.add("_uuid");
-        columns.add("_version");
-        columns.add("dhcpc");
-        columns.add("if_name");
-        columns.add("if_type");
-        columns.add("inet_addr");
-        columns.add("netmask");
-        columns.add("network_state");
-        columns.add("port_state");
-
+    public void monitorAssociatedClients(OvsdbClient ovsdbClient, MonitorCallback monitorCallback) {
         MonitorRequest monitorRequest = new MonitorRequest();
-        MonitorRequests monitorRequests = new MonitorRequests(ImmutableMap.of(wifiMasterStateDbTable, monitorRequest));
+        MonitorRequests monitorRequests = new MonitorRequests(
+                ImmutableMap.of(wifiAssociatedClientsDbTable, monitorRequest));
 
         try {
-            ovsdbClient.monitor(ovsdbName, wifiMasterStateDbTableMonitorId, monitorRequests, monitorCallback);
+            ovsdbClient.monitor(ovsdbName, wifiAssociatedClientsDbTableMonitorId, monitorRequests, monitorCallback);
         } catch (OvsdbClientException e) {
-            LOG.error("Unable to add Monitor to table " + wifiMasterStateDbTable, e);
+            LOG.error("Unable to add Monitor to table " + wifiAssociatedClientsDbTable, e);
         }
+
     }
 
     public void monitorVIFState(OvsdbClient ovsdbClient, MonitorCallback monitorCallback) {
-        List<String> columns = new ArrayList<>();
-        columns.add("_uuid");
-        columns.add("_version");
-        columns.add("ap_bridge");
-        columns.add("associated_clients");
-        columns.add("bridge");
-        columns.add("btm");
-        columns.add("channel");
-        columns.add("dynamic_beacon");
-        columns.add("enabled");
-        columns.add("group_rekey");
-        columns.add("if_name");
-        columns.add("mac");
-        columns.add("min_hw_mode");
-        columns.add("mode");
-        columns.add("rrm");
-        columns.add("security");
-        columns.add("ssid");
-        columns.add("ssid_broadcast");
-        columns.add("uapsd_enable");
-        columns.add("vif_config");
-        columns.add("vif_radio_idx");
 
         MonitorRequest monitorRequest = new MonitorRequest();
         MonitorRequests monitorRequests = new MonitorRequests(ImmutableMap.of(wifiVifStateDbTable, monitorRequest));
@@ -208,8 +166,8 @@ public class OvsdbDao {
             ovsdbClient.cancelMonitor(wifiRadioStateDbTableMonitorId);
             ovsdbClient.cancelMonitor(wifiVifStateDbTableMonitorId);
             ovsdbClient.cancelMonitor(wifiInetStateDbTableMonitorId);
-            ovsdbClient.cancelMonitor(wifiRouteStateDbTableMonitorId);
-            ovsdbClient.cancelMonitor(wifiMasterStateDbTableMonitorId);
+            ovsdbClient.cancelMonitor(wifiAssociatedClientsDbTableMonitorId);
+            ovsdbClient.cancelMonitor(wifiAwlanNodeDbTableMonitorId);
         } catch (OvsdbClientException e) {
             LOG.debug("Could not cancel Monitor.  {}", e.getLocalizedMessage());
         }
@@ -1560,7 +1518,7 @@ public class OvsdbDao {
                 updateColumns.put("sampling_interval", new Atom<>(0));
                 updateColumns.put("stats_type", new Atom<>("device"));
                 // updateColumns.put("survey_interval_ms", new Atom<>(10) );
-                // updateColumns.put("survey_type", new Atom<>("on-chan") );
+                updateColumns.put("survey_type", new Atom<>("on-chan"));
                 // updateColumns.put("threshold", thresholds );
 
                 row = new Row(updateColumns);
@@ -1641,11 +1599,13 @@ public class OvsdbDao {
                 updateColumns = new HashMap<>();
                 // updateColumns.put("channel_list", channels );
                 updateColumns.put("radio_type", new Atom<>("5GL"));
+                updateColumns.put("report_type", new Atom<>("average"));
+
                 updateColumns.put("reporting_interval", new Atom<>(60));
                 updateColumns.put("sampling_interval", new Atom<>(10));
                 updateColumns.put("stats_type", new Atom<>("client"));
                 // updateColumns.put("survey_interval_ms", new Atom<>(0) );
-                // updateColumns.put("survey_type", new Atom<>("on-chan") );
+                updateColumns.put("survey_type", new Atom<>("on-chan"));
                 // updateColumns.put("threshold", thresholds );
 
                 row = new Row(updateColumns);
@@ -1658,11 +1618,13 @@ public class OvsdbDao {
                 updateColumns = new HashMap<>();
                 // updateColumns.put("channel_list", channels );
                 updateColumns.put("radio_type", new Atom<>("5GU"));
+                updateColumns.put("report_type", new Atom<>("average"));
+
                 updateColumns.put("reporting_interval", new Atom<>(60));
                 updateColumns.put("sampling_interval", new Atom<>(10));
                 updateColumns.put("stats_type", new Atom<>("client"));
                 // updateColumns.put("survey_interval_ms", new Atom<>(0) );
-                // updateColumns.put("survey_type", new Atom<>("on-chan") );
+                updateColumns.put("survey_type", new Atom<>("on-chan"));
                 // updateColumns.put("threshold", thresholds );
 
                 row = new Row(updateColumns);
@@ -1692,11 +1654,13 @@ public class OvsdbDao {
                 updateColumns = new HashMap<>();
                 // updateColumns.put("channel_list", channels );
                 updateColumns.put("radio_type", new Atom<>("2.4G"));
+                updateColumns.put("report_type", new Atom<>("average"));
+
                 updateColumns.put("reporting_interval", new Atom<>(60));
                 updateColumns.put("sampling_interval", new Atom<>(10));
                 updateColumns.put("stats_type", new Atom<>("client"));
                 // updateColumns.put("survey_interval_ms", new Atom<>(0) );
-                // updateColumns.put("survey_type", new Atom<>("on-chan") );
+                updateColumns.put("survey_type", new Atom<>("on-chan"));
                 // updateColumns.put("threshold", thresholds );
 
                 row = new Row(updateColumns);
@@ -1759,12 +1723,13 @@ public class OvsdbDao {
                 updateColumns = new HashMap<>();
                 updateColumns.put("radio_type", new Atom<>(band));
                 updateColumns.put("reporting_interval", new Atom<>(120));
-                updateColumns.put("sampling_interval", new Atom<>(0));
+                updateColumns.put("sampling_interval", new Atom<>(10));
+                updateColumns.put("report_type", new Atom<>("average"));
                 updateColumns.put("stats_type", new Atom<>("rssi"));
                 updateColumns.put("survey_interval_ms", new Atom<>(0));
                 updateColumns.put("survey_type", new Atom<>("on-chan"));
                 row = new Row(updateColumns);
-                
+
                 if (provisionedWifiStatsConfigs.containsKey(band + "_rssi_onChannel")) {
                     operations.add(new Update(wifiStatsConfigDbTable, row));
                 } else {

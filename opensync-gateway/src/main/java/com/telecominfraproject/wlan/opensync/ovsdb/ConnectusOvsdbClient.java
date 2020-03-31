@@ -2,6 +2,7 @@ package com.telecominfraproject.wlan.opensync.ovsdb;
 
 import java.security.cert.X509Certificate;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
 
@@ -26,7 +27,6 @@ import com.vmware.ovsdb.callback.MonitorCallback;
 import com.vmware.ovsdb.protocol.methods.RowUpdate;
 import com.vmware.ovsdb.protocol.methods.TableUpdates;
 import com.vmware.ovsdb.protocol.operation.notation.Row;
-import com.vmware.ovsdb.protocol.operation.notation.Value;
 import com.vmware.ovsdb.service.OvsdbClient;
 import com.vmware.ovsdb.service.OvsdbPassiveConnectionListener;
 
@@ -66,15 +66,6 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
     public void listenForConnections() {
 
-        // This class is only used here, therefore changed it back to an inner
-        // class,
-        // removed the package level class.
-        // All calling classes related to OVSDB are calling the MonitorCallback
-        // interface, so the implementation can remain
-        // hidden. This also gives handy access to the Autowired instances in
-        // the
-        // container class.
-
         class ConnectusMonitorCallback implements MonitorCallback {
 
             private String connectedClientId;
@@ -88,58 +79,55 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                 Set<String> tableNames = tableUpdates.getTableUpdates().keySet();
 
                 for (String name : tableNames) {
-                    LOG.trace("Receive update for table {}", name);
+                    if (name.equals(OvsdbDao.wifiAssociatedClientsDbTable)) {
+                        Map<UUID, RowUpdate> updates = tableUpdates.getTableUpdates().get(name).getRowUpdates();
+                        for (UUID id : updates.keySet()) {
 
-                    Map<UUID, RowUpdate> updates = tableUpdates.getTableUpdates().get(name).getRowUpdates();
+                            Row row = updates.get(id).getNew();
 
-                    for (UUID id : updates.keySet()) {
-
-                        LOG.trace("Receive row update for uuid {}", id);
-
-                        RowUpdate rowUpdate = updates.get(id);
-
-                        Row newRow = rowUpdate.getNew();
-                        if (newRow != null) {
-                            Set<String> newRowColumns = newRow.getColumns().keySet();
-                            Row oldRow = rowUpdate.getOld();
-
-                            for (String column : newRowColumns) {
-
-                                Value oldVal = null;
-                                if (oldRow != null && oldRow.getColumns().containsKey(column))
-                                    oldVal = oldRow.getColumns().get(column);
-
-                                Value newVal = newRow.getColumns().get(column);
-
-                            }
+                            if (row != null)
+                                extIntegrationInterface.handleClientsChanged(row.getColumns(), connectedClientId);
                         }
 
+                    } else if (name.equals(OvsdbDao.awlanNodeDbTable)) {
+                        Map<UUID, RowUpdate> updates = tableUpdates.getTableUpdates().get(name).getRowUpdates();
+                        for (UUID id : updates.keySet()) {
+
+                            Row row = updates.get(id).getNew();
+
+                            if (row != null)
+                                extIntegrationInterface.awlanChanged(row.getColumns(), connectedClientId);
+                        }
+                    } else if (name.equals(OvsdbDao.wifiVifStateDbTable)) {
+                        Map<UUID, RowUpdate> updates = tableUpdates.getTableUpdates().get(name).getRowUpdates();
+                        for (UUID id : updates.keySet()) {
+
+                            Row row = updates.get(id).getNew();
+
+                            if (row != null)
+                                extIntegrationInterface.wirelessStatusChanged(row.getColumns(), connectedClientId);
+                        }
+                    } else if (name.equals(OvsdbDao.wifiInetStateDbTable)) {
+                        Map<UUID, RowUpdate> updates = tableUpdates.getTableUpdates().get(name).getRowUpdates();
+
+                        for (UUID id : updates.keySet()) {
+
+                            Row row = updates.get(id).getNew();
+
+                            if (row != null)
+                                extIntegrationInterface.networkStatusChanged(row.getColumns(), connectedClientId);
+                        }
+                    } else if (name.equals(OvsdbDao.wifiRadioStateDbTable)) {
+                        Map<UUID, RowUpdate> updates = tableUpdates.getTableUpdates().get(name).getRowUpdates();
+                        for (UUID id : updates.keySet()) {
+
+                            Row row = updates.get(id).getNew();
+
+                            if (row != null)
+                                extIntegrationInterface.deviceStatusChanged(row.getColumns(), connectedClientId);
+                        }
                     }
-
                 }
-
-                // get session information for this client
-                // OvsdbSession ovsdbSession =
-                // ovsdbSessionMapInterface.getSession(connectedClientId);
-                // if (ovsdbSession == null) {
-                // throw new IllegalStateException("AP with id " +
-                // connectedClientId + " is not connected");
-                // }
-                //
-                // OvsdbClient ovsdbClient = ovsdbSession.getOvsdbClient();
-                // OpensyncAPConfig opensyncAPConfig =
-                // extIntegrationInterface.getApConfig(connectedClientId);
-
-                // TODO:
-                // example wifiVifStateDbTable get MAC ADDRESS via ovsdbClient
-                // from
-                // Wifi_Associated_Clients given the associated UUID for the
-                // client
-
-                // TODO:
-                // Changes from other Status (Wifi, Inet, etc.) tables?
-                // Updates to session etc.
-                // Needs to be reflected in the Cloud
 
             }
 
@@ -181,10 +169,11 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                     ovsdbDao.monitorInetState(ovsdbClient, new ConnectusMonitorCallback(key));
                     // monitor vif state
                     ovsdbDao.monitorVIFState(ovsdbClient, new ConnectusMonitorCallback(key));
-                    // monitor Route state
-                    ovsdbDao.monitorRouteState(ovsdbClient, new ConnectusMonitorCallback(key));
-                    // monitor Master State
-                    ovsdbDao.monitorMasterState(ovsdbClient, new ConnectusMonitorCallback(key));
+                    // monitor AWLAN_Node
+                    ovsdbDao.monitorAwlanNode(ovsdbClient, new ConnectusMonitorCallback(key));
+                    // monitor Wifi_Associated_Clients
+                    ovsdbDao.monitorAssociatedClients(ovsdbClient, new ConnectusMonitorCallback(key));
+
                 } catch (Exception e) {
                     LOG.error("ovsdbClient error", e);
                     // something is wrong with the SSL
