@@ -97,20 +97,20 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
     }
 
     @Override
-    public void wirelessStatusChanged(Map<String, com.vmware.ovsdb.protocol.operation.notation.Value> row,
+    public void wifiVIFStateDbTableUpdate(Map<String, com.vmware.ovsdb.protocol.operation.notation.Value> row,
             String apId) {
         // TODO Auto-generated method stub
         
     }
 
     @Override
-    public void deviceStatusChanged(Map<String, com.vmware.ovsdb.protocol.operation.notation.Value> row, String apId) {
+    public void wifiRadioStatusDbTableUpdate(Map<String, com.vmware.ovsdb.protocol.operation.notation.Value> row, String apId) {
         // TODO Auto-generated method stub
         
     }
 
     @Override
-    public void networkStatusChanged(Map<String, com.vmware.ovsdb.protocol.operation.notation.Value> row, String apId) {
+    public void wifiInetStateDbTableUpdate(Map<String, com.vmware.ovsdb.protocol.operation.notation.Value> row, String apId) {
         // TODO Auto-generated method stub
         
     }

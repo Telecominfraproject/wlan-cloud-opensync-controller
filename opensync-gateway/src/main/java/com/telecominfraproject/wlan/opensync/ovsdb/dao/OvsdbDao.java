@@ -86,131 +86,6 @@ public class OvsdbDao {
 
     public static final String wifiAssociatedClientsDbTable = "Wifi_Associated_Clients";
 
-    private static final String wifiRadioStateDbTableMonitorId = "Wifi_Radio_State_Monitor_Id";
-    private static final String wifiInetStateDbTableMonitorId = "Wifi_Inet_State_Monitor_Id";
-    private static final String wifiVifStateDbTableMonitorId = "Wifi_VIF_State_Monitor_Id";
-    private static final String wifiAwlanNodeDbTableMonitorId = "AWLAN_Node_Monitor_Id";
-    private static final String wifiAssociatedClientsDbTableMonitorId = "Wifi_Associated_Clients_Monitor_Id";
-
-    public void monitorAwlanNode(OvsdbClient ovsdbClient, MonitorCallback monitorCallback) {
-        MonitorRequest monitorRequest = new MonitorRequest();
-        MonitorRequests monitorRequests = new MonitorRequests(ImmutableMap.of(awlanNodeDbTable, monitorRequest));
-
-        try {
-            ovsdbClient.monitor(ovsdbName, wifiAwlanNodeDbTableMonitorId, monitorRequests, monitorCallback);
-        } catch (OvsdbClientException e) {
-            LOG.error("Unable to add Monitor to table " + awlanNodeDbTable, e);
-        }
-    }
-
-    public void monitorAssociatedClients(OvsdbClient ovsdbClient, MonitorCallback monitorCallback) {
-        MonitorRequest monitorRequest = new MonitorRequest();
-        MonitorRequests monitorRequests = new MonitorRequests(
-                ImmutableMap.of(wifiAssociatedClientsDbTable, monitorRequest));
-
-        try {
-            ovsdbClient.monitor(ovsdbName, wifiAssociatedClientsDbTableMonitorId, monitorRequests, monitorCallback);
-        } catch (OvsdbClientException e) {
-            LOG.error("Unable to add Monitor to table " + wifiAssociatedClientsDbTable, e);
-        }
-
-    }
-
-    public void monitorVIFState(OvsdbClient ovsdbClient, MonitorCallback monitorCallback) {
-
-        MonitorRequest monitorRequest = new MonitorRequest();
-        MonitorRequests monitorRequests = new MonitorRequests(ImmutableMap.of(wifiVifStateDbTable, monitorRequest));
-
-        try {
-            ovsdbClient.monitor(ovsdbName, wifiVifStateDbTableMonitorId, monitorRequests, monitorCallback);
-        } catch (OvsdbClientException e) {
-            LOG.error("Unable to add Monitor to table " + wifiVifStateDbTable, e);
-        }
-
-    }
-
-    public void monitorInetState(OvsdbClient ovsdbClient, MonitorCallback monitorCallback) {
-        List<String> columns = new ArrayList<>();
-        columns.add("_uuid");
-        columns.add("_version");
-        columns.add("broadcast");
-        columns.add("dhcpc");
-        columns.add("enabled");
-        columns.add("hwaddr");
-        columns.add("if_name");
-        columns.add("if_type");
-        columns.add("if_uuid");
-        columns.add("inet_addr");
-        columns.add("ip_assign_scheme");
-        columns.add("mtu");
-        columns.add("netmask");
-        columns.add("network");
-
-        MonitorRequest monitorRequest = new MonitorRequest();
-        MonitorRequests monitorRequests = new MonitorRequests(ImmutableMap.of(wifiInetStateDbTable, monitorRequest));
-
-        try {
-            ovsdbClient.monitor(ovsdbName, wifiInetStateDbTableMonitorId, monitorRequests, monitorCallback);
-        } catch (OvsdbClientException e) {
-            LOG.error("Unable to add Monitor to table " + wifiInetStateDbTable, e);
-        }
-
-    }
-
-    //
-    // Note: When talking to OVSDB always use future.get(X, TimeUnit.SECONDS); -
-    // to prevent DOS attacks with misbehaving clients
-    //
-    public void cancelMonitors(OvsdbClient ovsdbClient) {
-        try {
-            ovsdbClient.cancelMonitor(wifiRadioStateDbTableMonitorId);
-            ovsdbClient.cancelMonitor(wifiVifStateDbTableMonitorId);
-            ovsdbClient.cancelMonitor(wifiInetStateDbTableMonitorId);
-            ovsdbClient.cancelMonitor(wifiAssociatedClientsDbTableMonitorId);
-            ovsdbClient.cancelMonitor(wifiAwlanNodeDbTableMonitorId);
-        } catch (OvsdbClientException e) {
-            LOG.debug("Could not cancel Monitor.  {}", e.getLocalizedMessage());
-        }
-    }
-
-    public void monitorRadioConfigState(OvsdbClient ovsdbClient, MonitorCallback monitorCallback) {
-
-        List<String> columns = new ArrayList<>();
-        columns.add("_uuid");
-        columns.add("_version");
-        columns.add("allowed_channels");
-        columns.add("bcn_int");
-        columns.add("channel");
-        columns.add("channel_mode");
-        columns.add("channels");
-        columns.add("country");
-        columns.add("enabled");
-        columns.add("freq_band");
-        columns.add("ht_mode");
-        columns.add("hw_config");
-        columns.add("hw_mode");
-        columns.add("hw_params");
-        columns.add("if_name");
-        columns.add("mac");
-        columns.add("radio_config");
-        columns.add("tx_chainmask");
-        columns.add("tx_power");
-        columns.add("vif_states");
-
-        MonitorRequest monitorRequest = new MonitorRequest(columns, new MonitorSelect(true, true, true, true));
-
-        Map<String, MonitorRequest> monitorRequests = new HashMap<String, MonitorRequest>();
-        monitorRequests.put(wifiRadioStateDbTable, monitorRequest);
-        MonitorRequests requests = new MonitorRequests(monitorRequests);
-
-        try {
-            ovsdbClient.monitor(ovsdbName, wifiRadioStateDbTableMonitorId, requests, monitorCallback);
-        } catch (OvsdbClientException e) {
-            LOG.error("Unable to add Monitor to table " + wifiRadioStateDbTable, e);
-        }
-
-    }
-
     public ConnectNodeInfo getConnectNodeInfo(OvsdbClient ovsdbClient) {
         ConnectNodeInfo ret = new ConnectNodeInfo();
 
@@ -1719,23 +1594,22 @@ public class OvsdbDao {
                 //
             }
 
-            for (String band : new String[] { "2.4G", "5GL", "5G" }) {
-                updateColumns = new HashMap<>();
-                updateColumns.put("radio_type", new Atom<>(band));
-                updateColumns.put("reporting_interval", new Atom<>(120));
-                updateColumns.put("sampling_interval", new Atom<>(10));
-                updateColumns.put("report_type", new Atom<>("average"));
-                updateColumns.put("stats_type", new Atom<>("rssi"));
-                updateColumns.put("survey_interval_ms", new Atom<>(0));
-                updateColumns.put("survey_type", new Atom<>("on-chan"));
-                row = new Row(updateColumns);
-
-                if (provisionedWifiStatsConfigs.containsKey(band + "_rssi_onChannel")) {
-                    operations.add(new Update(wifiStatsConfigDbTable, row));
-                } else {
-                    operations.add(new Insert(wifiStatsConfigDbTable, row));
-                }
-            }
+//            for (String band : new String[] { "2.4G", "5GL", "5G" }) {
+//                if (!provisionedWifiStatsConfigs.containsKey(band + "_rssi_onChannel")) {
+//                    updateColumns = new HashMap<>();
+//                    updateColumns.put("radio_type", new Atom<>(band));
+//                    updateColumns.put("reporting_interval", new Atom<>(120));
+//                    updateColumns.put("sampling_interval", new Atom<>(10));
+//                    updateColumns.put("report_type", new Atom<>("average"));
+//                    updateColumns.put("stats_type", new Atom<>("rssi"));
+//                    updateColumns.put("survey_interval_ms", new Atom<>(0));
+//                    updateColumns.put("survey_type", new Atom<>("on-chan"));
+//                    row = new Row(updateColumns);
+//
+//                    operations.add(new Update(wifiStatsConfigDbTable, row));
+//                }
+//
+//            }
 
             if (!operations.isEmpty()) {
                 CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);

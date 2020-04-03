@@ -155,8 +155,8 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
 
                         //attempt to parse the message as protobuf
                         MessageOrBuilder encodedMsg = null;
-                        
                         try {
+
                             encodedMsg = Report.parseFrom(payload);
                             MQTT_LOG.info("topic = {} Report = {}", mqttMsg.getTopic(), jsonPrinter.print(encodedMsg));
                             extIntegrationInterface.processMqttMessage(mqttMsg.getTopic(), (Report) encodedMsg);

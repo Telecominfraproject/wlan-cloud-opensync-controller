@@ -17,11 +17,11 @@ public interface OpensyncExternalIntegrationInterface {
 
     OpensyncAPConfig getApConfig(String apId);
 
-    void wirelessStatusChanged(Map <String,Value> row,String apId);
+    void wifiVIFStateDbTableUpdate(Map <String,Value> row,String apId);
 
-    void deviceStatusChanged(Map <String,Value> row,String apId);
+    void wifiRadioStatusDbTableUpdate(Map <String,Value> row,String apId);
 
-    void networkStatusChanged(Map <String,Value> row,String apId);
+    void wifiInetStateDbTableUpdate(Map <String,Value> row,String apId);
 
     void processMqttMessage(String topic, Report report);
 
@@ -30,6 +30,6 @@ public interface OpensyncExternalIntegrationInterface {
     void processMqttMessage(String topic, WCStatsReport wcStatsReport);
 
     void handleClientsChanged(Map <String,Value> row, String connectedClientId);
-
+    
     void awlanChanged(Map <String,Value> row, String connectedClientId);
 }
