@@ -126,10 +126,25 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
                                                     if (oldRow != null && newRow.getColumns().keySet()
                                                             .containsAll(oldRow.getColumns().keySet())) {
-                                                        for (String column : oldRow.getColumns().keySet()) {
-                                                            rowContents.put(column,
-                                                                    ovsdbDao.getSingleValueFromSet(newRow, column));
+
+                                                        Set<Long> channel = newRow.getSetColumn("channel");
+                                                        if (!channel.isEmpty()) {
+                                                            rowContents.put("channel",
+                                                                    channel.stream().iterator().next().toString());
+                                                        } else {
+                                                            rowContents.put("channel", "");
                                                         }
+                                                        rowContents.put("ht_mode",
+                                                                ovsdbDao.getSingleValueFromSet(newRow, "ht_mode"));
+                                                        rowContents.put("hw_mode", newRow.getStringColumn("hw_mode"));
+                                                        rowContents.put("hw_type", newRow.getStringColumn("hw_type"));
+                                                        rowContents.put("hw_params", newRow.getStringColumn("hw_type"));
+                                                        rowContents.put("mac", newRow.getStringColumn("mac"));
+                                                        rowContents.put("if_name", newRow.getStringColumn("if_name"));
+                                                        rowContents.put("freq_band",
+                                                                ovsdbDao.getSingleValueFromSet(newRow, "freq_band"));
+                                                        rowContents.put("country", newRow.getStringColumn("country"));
+
                                                         extIntegrationInterface.wifiRadioStatusDbTableUpdate(
                                                                 rowContents, key,
                                                                 OpensyncExternalIntegrationInterface.RowUpdateOperation.MODIFY);
@@ -163,30 +178,46 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                                                     // init or insert
                                                     Row oldRow = rowUpdates.get(uuid).getOld();
                                                     Map<String, String> rowContents = new HashMap<String, String>();
-
                                                     if (oldRow == null) {
-                                                        // row init, or insert
-                                                        for (String column : newRow.getColumns().keySet()) {
-                                                            rowContents.put(column,
-                                                                    ovsdbDao.getSingleValueFromSet(newRow, column));
-                                                        }
+                                                        rowContents.put("if_type",
+                                                                ovsdbDao.getSingleValueFromSet(newRow, "if_type"));
+                                                        rowContents.put("hwaddr", newRow.getStringColumn("hwaddr"));
+                                                        rowContents.put("if_name", newRow.getStringColumn("if_name"));
+                                                        rowContents.put("inet_addr",
+                                                                newRow.getStringColumn("inet_addr"));
+                                                        rowContents.put("dhcpc",
+                                                                newRow.getMapColumn("dhcpc").toString());
+                                                        rowContents.put("network",
+                                                                newRow.getBooleanColumn("network").toString());
                                                         extIntegrationInterface.wifiInetStateDbTableUpdate(rowContents,
                                                                 key,
                                                                 OpensyncExternalIntegrationInterface.RowUpdateOperation.INSERT);
                                                     } else if (newRow == null) {
-                                                        for (String column : oldRow.getColumns().keySet()) {
-                                                            rowContents.put(column,
-                                                                    ovsdbDao.getSingleValueFromSet(oldRow, column));
-                                                        }
+                                                        rowContents.put("if_type",
+                                                                ovsdbDao.getSingleValueFromSet(oldRow, "if_type"));
+                                                        rowContents.put("hwaddr", oldRow.getStringColumn("hwaddr"));
+                                                        rowContents.put("if_name", oldRow.getStringColumn("if_name"));
+                                                        rowContents.put("inet_addr",
+                                                                oldRow.getStringColumn("inet_addr"));
+                                                        rowContents.put("dhcpc",
+                                                                oldRow.getMapColumn("dhcpc").toString());
+                                                        rowContents.put("network",
+                                                                oldRow.getBooleanColumn("network").toString());
                                                         extIntegrationInterface.wifiInetStateDbTableUpdate(rowContents,
                                                                 key,
                                                                 OpensyncExternalIntegrationInterface.RowUpdateOperation.DELETE);
                                                     } else if (newRow.getColumns().keySet()
                                                             .containsAll(oldRow.getColumns().keySet())) {
-                                                        for (String column : oldRow.getColumns().keySet()) {
-                                                            rowContents.put(column,
-                                                                    ovsdbDao.getSingleValueFromSet(newRow, column));
-                                                        }
+                                                        rowContents.put("if_type",
+                                                                ovsdbDao.getSingleValueFromSet(newRow, "if_type"));
+                                                        rowContents.put("hwaddr", newRow.getStringColumn("hwaddr"));
+                                                        rowContents.put("if_name", newRow.getStringColumn("if_name"));
+                                                        rowContents.put("inet_addr",
+                                                                newRow.getStringColumn("inet_addr"));
+                                                        rowContents.put("dhcpc",
+                                                                newRow.getMapColumn("dhcpc").toString());
+                                                        rowContents.put("network",
+                                                                newRow.getBooleanColumn("network").toString());
                                                         extIntegrationInterface.wifiInetStateDbTableUpdate(rowContents,
                                                                 key,
                                                                 OpensyncExternalIntegrationInterface.RowUpdateOperation.MODIFY);
@@ -220,30 +251,77 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                                                     // init or insert
                                                     Row oldRow = rowUpdates.get(uuid).getOld();
                                                     Map<String, String> rowContents = new HashMap<String, String>();
-
                                                     if (oldRow == null) {
-                                                        // row init, or insert
-                                                        for (String column : newRow.getColumns().keySet()) {
-                                                            rowContents.put(column,
-                                                                    ovsdbDao.getSingleValueFromSet(newRow, column));
+                                                        rowContents.put("min_hw_mode",
+                                                                ovsdbDao.getSingleValueFromSet(newRow, "min_hw_mode"));
+                                                        rowContents.put("if_name", newRow.getStringColumn("if_name"));
+                                                        rowContents.put("security",
+                                                                newRow.getMapColumn("security").toString());
+                                                        rowContents.put("bridge", newRow.getStringColumn("bridge"));
+
+                                                        Set<Long> channel = newRow.getSetColumn("channel");
+                                                        if (!channel.isEmpty()) {
+                                                            rowContents.put("channel",
+                                                                    channel.stream().iterator().next().toString());
+                                                        } else {
+                                                            rowContents.put("channel", "");
                                                         }
+
+                                                        rowContents.put("enabled",
+                                                                newRow.getBooleanColumn("enabled").toString());
+                                                        rowContents.put("ssid_broadcast", ovsdbDao
+                                                                .getSingleValueFromSet(newRow, "ssid_broadcast"));
+                                                        rowContents.put("mac", newRow.getStringColumn("mac"));
+                                                        rowContents.put("ssid", newRow.getStringColumn("ssid"));
                                                         extIntegrationInterface.wifiVIFStateDbTableUpdate(rowContents,
                                                                 key,
                                                                 OpensyncExternalIntegrationInterface.RowUpdateOperation.INSERT);
                                                     } else if (newRow == null) {
-                                                        for (String column : oldRow.getColumns().keySet()) {
-                                                            rowContents.put(column,
-                                                                    ovsdbDao.getSingleValueFromSet(oldRow, column));
+                                                        rowContents.put("min_hw_mode",
+                                                                ovsdbDao.getSingleValueFromSet(oldRow, "min_hw_mode"));
+                                                        rowContents.put("if_name", oldRow.getStringColumn("if_name"));
+                                                        rowContents.put("security",
+                                                                oldRow.getMapColumn("security").toString());
+                                                        rowContents.put("bridge", oldRow.getStringColumn("bridge"));
+                                                        Set<Long> channel = oldRow.getSetColumn("channel");
+                                                        if (!channel.isEmpty()) {
+                                                            rowContents.put("channel",
+                                                                    channel.stream().iterator().next().toString());
+                                                        } else {
+                                                            rowContents.put("channel", "");
                                                         }
+
+                                                        rowContents.put("enabled",
+                                                                oldRow.getBooleanColumn("enabled").toString());
+                                                        rowContents.put("ssid_broadcast", ovsdbDao
+                                                                .getSingleValueFromSet(oldRow, "ssid_broadcast"));
+                                                        rowContents.put("mac", oldRow.getStringColumn("mac"));
+                                                        rowContents.put("ssid", oldRow.getStringColumn("ssid"));
                                                         extIntegrationInterface.wifiVIFStateDbTableUpdate(rowContents,
                                                                 key,
                                                                 OpensyncExternalIntegrationInterface.RowUpdateOperation.DELETE);
                                                     } else if (newRow.getColumns().keySet()
                                                             .containsAll(oldRow.getColumns().keySet())) {
-                                                        for (String column : oldRow.getColumns().keySet()) {
-                                                            rowContents.put(column,
-                                                                    ovsdbDao.getSingleValueFromSet(newRow, column));
+                                                        rowContents.put("min_hw_mode",
+                                                                ovsdbDao.getSingleValueFromSet(newRow, "min_hw_mode"));
+                                                        rowContents.put("if_name", newRow.getStringColumn("if_name"));
+                                                        rowContents.put("security",
+                                                                newRow.getMapColumn("security").toString());
+                                                        rowContents.put("bridge", newRow.getStringColumn("bridge"));
+                                                        Set<Long> channel = newRow.getSetColumn("channel");
+                                                        if (!channel.isEmpty()) {
+                                                            rowContents.put("channel",
+                                                                    channel.stream().iterator().next().toString());
+                                                        } else {
+                                                            rowContents.put("channel", "");
                                                         }
+
+                                                        rowContents.put("enabled",
+                                                                newRow.getBooleanColumn("enabled").toString());
+                                                        rowContents.put("ssid_broadcast", ovsdbDao
+                                                                .getSingleValueFromSet(newRow, "ssid_broadcast"));
+                                                        rowContents.put("mac", newRow.getStringColumn("mac"));
+                                                        rowContents.put("ssid", newRow.getStringColumn("ssid"));
                                                         extIntegrationInterface.wifiVIFStateDbTableUpdate(rowContents,
                                                                 key,
                                                                 OpensyncExternalIntegrationInterface.RowUpdateOperation.MODIFY);
@@ -279,10 +357,18 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
                                                     if (oldRow != null && newRow.getColumns().keySet()
                                                             .containsAll(oldRow.getColumns().keySet())) {
-                                                        for (String column : oldRow.getColumns().keySet()) {
-                                                            rowContents.put(column,
-                                                                    ovsdbDao.getSingleValueFromSet(newRow, column));
-                                                        }
+                                                        rowContents.put("device_mode",
+                                                                ovsdbDao.getSingleValueFromSet(newRow, "device_mode"));
+                                                        rowContents.put("id", newRow.getStringColumn("id"));
+                                                        rowContents.put("model", newRow.getStringColumn("model"));
+                                                        rowContents.put("serial_number",
+                                                                newRow.getStringColumn("serial_number"));
+                                                        rowContents.put("firmware_version",
+                                                                newRow.getStringColumn("firmware_version"));
+                                                        rowContents.put("platform_version",
+                                                                newRow.getStringColumn("platform_version"));
+                                                        rowContents.put("redirector_addr",
+                                                                newRow.getStringColumn("redirector_addr"));
                                                         extIntegrationInterface.awlan_NodeDbTableUpdate(rowContents,
                                                                 key,
                                                                 OpensyncExternalIntegrationInterface.RowUpdateOperation.MODIFY);
@@ -317,19 +403,13 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                                                     Map<String, String> rowContents = new HashMap<String, String>();
 
                                                     if (oldRow == null) {
-                                                        // row init, or insert
-                                                        for (String column : newRow.getColumns().keySet()) {
-                                                            rowContents.put(column,
-                                                                    ovsdbDao.getSingleValueFromSet(newRow, column));
-                                                        }
+                                                        rowContents.put("mac", newRow.getStringColumn("mac"));
                                                         extIntegrationInterface.wifiAssociatedClientsDbTableUpdate(
                                                                 rowContents, key,
                                                                 OpensyncExternalIntegrationInterface.RowUpdateOperation.INSERT);
                                                     } else if (newRow == null) {
-                                                        for (String column : oldRow.getColumns().keySet()) {
-                                                            rowContents.put(column,
-                                                                    ovsdbDao.getSingleValueFromSet(oldRow, column));
-                                                        }
+                                                        rowContents.put("redirector_addr",
+                                                                oldRow.getStringColumn("redirector_addr"));
                                                         extIntegrationInterface.wifiAssociatedClientsDbTableUpdate(
                                                                 rowContents, key,
                                                                 OpensyncExternalIntegrationInterface.RowUpdateOperation.DELETE);
