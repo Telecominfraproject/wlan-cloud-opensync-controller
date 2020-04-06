@@ -143,7 +143,8 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                                                         rowContents.put("if_name", newRow.getStringColumn("if_name"));
                                                         rowContents.put("freq_band",
                                                                 ovsdbDao.getSingleValueFromSet(newRow, "freq_band"));
-                                                        rowContents.put("country", newRow.getStringColumn("country"));
+                                                        rowContents.put("country",
+                                                                newRow.getSetColumn("country").toString());
 
                                                         extIntegrationInterface.wifiRadioStatusDbTableUpdate(
                                                                 rowContents, key,
@@ -257,7 +258,8 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                                                         rowContents.put("if_name", newRow.getStringColumn("if_name"));
                                                         rowContents.put("security",
                                                                 newRow.getMapColumn("security").toString());
-                                                        rowContents.put("bridge", newRow.getStringColumn("bridge"));
+                                                        rowContents.put("bridge", newRow.getSetColumn("bridge")
+                                                                .iterator().next().toString());
 
                                                         Set<Long> channel = newRow.getSetColumn("channel");
                                                         if (!channel.isEmpty()) {
@@ -282,7 +284,8 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                                                         rowContents.put("if_name", oldRow.getStringColumn("if_name"));
                                                         rowContents.put("security",
                                                                 oldRow.getMapColumn("security").toString());
-                                                        rowContents.put("bridge", oldRow.getStringColumn("bridge"));
+                                                        rowContents.put("bridge", oldRow.getSetColumn("bridge")
+                                                                .iterator().next().toString());
                                                         Set<Long> channel = oldRow.getSetColumn("channel");
                                                         if (!channel.isEmpty()) {
                                                             rowContents.put("channel",
@@ -307,7 +310,8 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                                                         rowContents.put("if_name", newRow.getStringColumn("if_name"));
                                                         rowContents.put("security",
                                                                 newRow.getMapColumn("security").toString());
-                                                        rowContents.put("bridge", newRow.getStringColumn("bridge"));
+                                                        rowContents.put("bridge", newRow.getSetColumn("bridge")
+                                                                .iterator().next().toString());
                                                         Set<Long> channel = newRow.getSetColumn("channel");
                                                         if (!channel.isEmpty()) {
                                                             rowContents.put("channel",
@@ -464,6 +468,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                     ovsdbClient.cancelMonitor(OvsdbDao.wifiVifStateDbTable);
                     ovsdbClient.cancelMonitor(OvsdbDao.wifiInetStateDbTable);
                     ovsdbClient.cancelMonitor(OvsdbDao.awlanNodeDbTable);
+                    ovsdbClient.cancelMonitor(OvsdbDao.wifiAssociatedClientsDbTable);
                 } catch (OvsdbClientException e) {
                     LOG.warn("Could not cancel Monitor {}", e);
                 }
