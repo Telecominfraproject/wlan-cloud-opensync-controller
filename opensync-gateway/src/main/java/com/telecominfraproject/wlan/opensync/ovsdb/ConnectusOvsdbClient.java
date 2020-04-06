@@ -2,6 +2,7 @@ package com.telecominfraproject.wlan.opensync.ovsdb;
 
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -31,6 +32,7 @@ import com.vmware.ovsdb.protocol.methods.MonitorRequests;
 import com.vmware.ovsdb.protocol.methods.MonitorSelect;
 import com.vmware.ovsdb.protocol.methods.RowUpdate;
 import com.vmware.ovsdb.protocol.methods.TableUpdates;
+import com.vmware.ovsdb.protocol.operation.notation.Row;
 import com.vmware.ovsdb.service.OvsdbClient;
 import com.vmware.ovsdb.service.OvsdbPassiveConnectionListener;
 
@@ -39,18 +41,6 @@ import io.netty.handler.ssl.SslContext;
 @Profile("ovsdb_manager")
 @Component
 public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
-
-    private static final String[] AWLAN_NODE_DB_TABLE_COLUMNS = new String[] { "device_mode", "id", "model",
-            "serial_number", "firmware_version", "platform_version", "redirector_addr" };
-
-    private static final String[] WIFI_VIF_STATE_DB_TABLE_COLUMNS = new String[] { "min_hw_mode", "if_name", "security",
-            "bridge", "channel", "enabled", "ssid_broadcast", "mac", "ssid" };
-
-    private static final String[] WIFI_INET_STATE_DB_TABLE_COLUMNS = new String[] { "hwaddr", "if_type", "if_name",
-            "inet_addr", "dhcpc", "network" };
-
-    private static final String[] WIFI_RADIO_STATE_DB_TABLE_COLUMNS = new String[] { "ht_mode", "hw_mode", "hw_params",
-            "hw_type", "mac", "if_name", "freq_band", "country", "channel" };
 
     private static final Logger LOG = LoggerFactory.getLogger(ConnectusOvsdbClient.class);
 
@@ -126,8 +116,25 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                                             tableUpdates.getTableUpdates().entrySet().stream().forEach(e -> {
                                                 Map<UUID, RowUpdate> rowUpdates = e.getValue().getRowUpdates();
                                                 for (UUID uuid : rowUpdates.keySet()) {
-                                                    extIntegrationInterface.wifiRadioStatusDbTableUpdate(
-                                                            rowUpdates.get(uuid).getNew().getColumns(), key);
+                                                    // initial, insert, modify,
+                                                    // null if delete
+                                                    Row newRow = rowUpdates.get(uuid).getNew();
+                                                    // delete, modify, null if
+                                                    // init or insert
+                                                    Row oldRow = rowUpdates.get(uuid).getOld();
+                                                    Map<String, String> rowContents = new HashMap<String, String>();
+
+                                                    if (oldRow != null && newRow.getColumns().keySet()
+                                                            .containsAll(oldRow.getColumns().keySet())) {
+                                                        for (String column : oldRow.getColumns().keySet()) {
+                                                            rowContents.put(column,
+                                                                    ovsdbDao.getSingleValueFromSet(newRow, column));
+                                                        }
+                                                        extIntegrationInterface.wifiRadioStatusDbTableUpdate(
+                                                                rowContents, key,
+                                                                OpensyncExternalIntegrationInterface.RowUpdateOperation.MODIFY);
+                                                    }
+
                                                 }
 
                                             });
@@ -149,8 +156,42 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                                             tableUpdates.getTableUpdates().entrySet().stream().forEach(e -> {
                                                 Map<UUID, RowUpdate> rowUpdates = e.getValue().getRowUpdates();
                                                 for (UUID uuid : rowUpdates.keySet()) {
-                                                    extIntegrationInterface.wifiInetStateDbTableUpdate(
-                                                            rowUpdates.get(uuid).getNew().getColumns(), key);
+                                                    // initial, insert, modify,
+                                                    // null if delete
+                                                    Row newRow = rowUpdates.get(uuid).getNew();
+                                                    // delete, modify, null if
+                                                    // init or insert
+                                                    Row oldRow = rowUpdates.get(uuid).getOld();
+                                                    Map<String, String> rowContents = new HashMap<String, String>();
+
+                                                    if (oldRow == null) {
+                                                        // row init, or insert
+                                                        for (String column : newRow.getColumns().keySet()) {
+                                                            rowContents.put(column,
+                                                                    ovsdbDao.getSingleValueFromSet(newRow, column));
+                                                        }
+                                                        extIntegrationInterface.wifiInetStateDbTableUpdate(rowContents,
+                                                                key,
+                                                                OpensyncExternalIntegrationInterface.RowUpdateOperation.INSERT);
+                                                    } else if (newRow == null) {
+                                                        for (String column : oldRow.getColumns().keySet()) {
+                                                            rowContents.put(column,
+                                                                    ovsdbDao.getSingleValueFromSet(oldRow, column));
+                                                        }
+                                                        extIntegrationInterface.wifiInetStateDbTableUpdate(rowContents,
+                                                                key,
+                                                                OpensyncExternalIntegrationInterface.RowUpdateOperation.DELETE);
+                                                    } else if (newRow.getColumns().keySet()
+                                                            .containsAll(oldRow.getColumns().keySet())) {
+                                                        for (String column : oldRow.getColumns().keySet()) {
+                                                            rowContents.put(column,
+                                                                    ovsdbDao.getSingleValueFromSet(newRow, column));
+                                                        }
+                                                        extIntegrationInterface.wifiInetStateDbTableUpdate(rowContents,
+                                                                key,
+                                                                OpensyncExternalIntegrationInterface.RowUpdateOperation.MODIFY);
+                                                    }
+
                                                 }
 
                                             });
@@ -163,7 +204,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                             .monitor(OvsdbDao.ovsdbName, OvsdbDao.wifiVifStateDbTable,
                                     new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiVifStateDbTable,
                                             new MonitorRequest(Arrays.asList(WIFI_VIF_STATE_DB_TABLE_COLUMNS),
-                                                    new MonitorSelect(true, false, false, true)))),
+                                                    new MonitorSelect(true, true, true, true)))),
                                     new MonitorCallback() {
 
                                         @Override
@@ -172,8 +213,42 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                                             tableUpdates.getTableUpdates().entrySet().stream().forEach(e -> {
                                                 Map<UUID, RowUpdate> rowUpdates = e.getValue().getRowUpdates();
                                                 for (UUID uuid : rowUpdates.keySet()) {
-                                                    extIntegrationInterface.wifiVIFStateDbTableUpdate(
-                                                            rowUpdates.get(uuid).getNew().getColumns(), key);
+                                                    // initial, insert, modify,
+                                                    // null if delete
+                                                    Row newRow = rowUpdates.get(uuid).getNew();
+                                                    // delete, modify, null if
+                                                    // init or insert
+                                                    Row oldRow = rowUpdates.get(uuid).getOld();
+                                                    Map<String, String> rowContents = new HashMap<String, String>();
+
+                                                    if (oldRow == null) {
+                                                        // row init, or insert
+                                                        for (String column : newRow.getColumns().keySet()) {
+                                                            rowContents.put(column,
+                                                                    ovsdbDao.getSingleValueFromSet(newRow, column));
+                                                        }
+                                                        extIntegrationInterface.wifiVIFStateDbTableUpdate(rowContents,
+                                                                key,
+                                                                OpensyncExternalIntegrationInterface.RowUpdateOperation.INSERT);
+                                                    } else if (newRow == null) {
+                                                        for (String column : oldRow.getColumns().keySet()) {
+                                                            rowContents.put(column,
+                                                                    ovsdbDao.getSingleValueFromSet(oldRow, column));
+                                                        }
+                                                        extIntegrationInterface.wifiVIFStateDbTableUpdate(rowContents,
+                                                                key,
+                                                                OpensyncExternalIntegrationInterface.RowUpdateOperation.DELETE);
+                                                    } else if (newRow.getColumns().keySet()
+                                                            .containsAll(oldRow.getColumns().keySet())) {
+                                                        for (String column : oldRow.getColumns().keySet()) {
+                                                            rowContents.put(column,
+                                                                    ovsdbDao.getSingleValueFromSet(newRow, column));
+                                                        }
+                                                        extIntegrationInterface.wifiVIFStateDbTableUpdate(rowContents,
+                                                                key,
+                                                                OpensyncExternalIntegrationInterface.RowUpdateOperation.MODIFY);
+                                                    }
+
                                                 }
                                             });
 
@@ -194,8 +269,72 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                                             tableUpdates.getTableUpdates().entrySet().stream().forEach(e -> {
                                                 Map<UUID, RowUpdate> rowUpdates = e.getValue().getRowUpdates();
                                                 for (UUID uuid : rowUpdates.keySet()) {
-                                                    extIntegrationInterface.awlanChanged(
-                                                            rowUpdates.get(uuid).getNew().getColumns(), key);
+                                                    // initial, insert, modify,
+                                                    // null if delete
+                                                    Row newRow = rowUpdates.get(uuid).getNew();
+                                                    // delete, modify, null if
+                                                    // init or insert
+                                                    Row oldRow = rowUpdates.get(uuid).getOld();
+                                                    Map<String, String> rowContents = new HashMap<String, String>();
+
+                                                    if (oldRow != null && newRow.getColumns().keySet()
+                                                            .containsAll(oldRow.getColumns().keySet())) {
+                                                        for (String column : oldRow.getColumns().keySet()) {
+                                                            rowContents.put(column,
+                                                                    ovsdbDao.getSingleValueFromSet(newRow, column));
+                                                        }
+                                                        extIntegrationInterface.awlan_NodeDbTableUpdate(rowContents,
+                                                                key,
+                                                                OpensyncExternalIntegrationInterface.RowUpdateOperation.MODIFY);
+                                                    }
+
+                                                }
+                                            });
+
+                                        }
+
+                                    });
+
+                    ovsdbClient
+                            .monitor(OvsdbDao.ovsdbName, OvsdbDao.wifiAssociatedClientsDbTable,
+                                    new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiAssociatedClientsDbTable,
+                                            new MonitorRequest(Arrays.asList(WIFI_ASSOCIATED_CLIENTS_DB_TABLE_COLUMNS),
+                                                    new MonitorSelect(true, true, true, false)))),
+                                    new MonitorCallback() {
+
+                                        @Override
+                                        public void update(TableUpdates tableUpdates) {
+
+                                            tableUpdates.getTableUpdates().entrySet().stream().forEach(e -> {
+                                                Map<UUID, RowUpdate> rowUpdates = e.getValue().getRowUpdates();
+                                                for (UUID uuid : rowUpdates.keySet()) {
+                                                    // initial, insert, modify,
+                                                    // null if delete
+                                                    Row newRow = rowUpdates.get(uuid).getNew();
+                                                    // delete, modify, null if
+                                                    // init or insert
+                                                    Row oldRow = rowUpdates.get(uuid).getOld();
+                                                    Map<String, String> rowContents = new HashMap<String, String>();
+
+                                                    if (oldRow == null) {
+                                                        // row init, or insert
+                                                        for (String column : newRow.getColumns().keySet()) {
+                                                            rowContents.put(column,
+                                                                    ovsdbDao.getSingleValueFromSet(newRow, column));
+                                                        }
+                                                        extIntegrationInterface.wifiAssociatedClientsDbTableUpdate(
+                                                                rowContents, key,
+                                                                OpensyncExternalIntegrationInterface.RowUpdateOperation.INSERT);
+                                                    } else if (newRow == null) {
+                                                        for (String column : oldRow.getColumns().keySet()) {
+                                                            rowContents.put(column,
+                                                                    ovsdbDao.getSingleValueFromSet(oldRow, column));
+                                                        }
+                                                        extIntegrationInterface.wifiAssociatedClientsDbTableUpdate(
+                                                                rowContents, key,
+                                                                OpensyncExternalIntegrationInterface.RowUpdateOperation.DELETE);
+                                                    }
+
                                                 }
                                             });
 

@@ -97,34 +97,34 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
     }
 
     @Override
-    public void wifiVIFStateDbTableUpdate(Map<String, com.vmware.ovsdb.protocol.operation.notation.Value> row,
-            String apId) {
+    public void wifiVIFStateDbTableUpdate(Map<String, String> row,
+            String apId, RowUpdateOperation operation) {
         // TODO Auto-generated method stub
         
     }
 
     @Override
-    public void wifiRadioStatusDbTableUpdate(Map<String, com.vmware.ovsdb.protocol.operation.notation.Value> row, String apId) {
+    public void wifiRadioStatusDbTableUpdate(Map<String, String> row, String apId, RowUpdateOperation operation) {
         // TODO Auto-generated method stub
         
     }
 
     @Override
-    public void wifiInetStateDbTableUpdate(Map<String, com.vmware.ovsdb.protocol.operation.notation.Value> row, String apId) {
+    public void wifiInetStateDbTableUpdate(Map<String, String> row, String apId, RowUpdateOperation operation) {
         // TODO Auto-generated method stub
         
     }
 
     @Override
-    public void handleClientsChanged(Map<String, com.vmware.ovsdb.protocol.operation.notation.Value> row,
-            String connectedClientId) {
+    public void wifiAssociatedClientsDbTableUpdate(Map<String, String> row,
+            String apId, RowUpdateOperation operation) {
         // TODO Auto-generated method stub
         
     }
 
     @Override
-    public void awlanChanged(Map<String, com.vmware.ovsdb.protocol.operation.notation.Value> row,
-            String connectedClientId) {
+    public void awlan_NodeDbTableUpdate(Map<String, String> row, String connectedClientId,
+            RowUpdateOperation operation) {
         // TODO Auto-generated method stub
         
     }
