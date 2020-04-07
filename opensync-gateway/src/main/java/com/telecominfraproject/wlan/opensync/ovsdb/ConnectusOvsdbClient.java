@@ -107,7 +107,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                             .monitor(OvsdbDao.ovsdbName, OvsdbDao.wifiRadioStateDbTable,
                                     new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiRadioStateDbTable,
                                             new MonitorRequest(Arrays.asList(WIFI_RADIO_STATE_DB_TABLE_COLUMNS),
-                                                    new MonitorSelect(true, false, false, true)))),
+                                                    new MonitorSelect(true, true, true, true)))),
                                     new MonitorCallback() {
 
                                         @Override
@@ -123,8 +123,54 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                                                     // init or insert
                                                     Row oldRow = rowUpdates.get(uuid).getOld();
                                                     Map<String, String> rowContents = new HashMap<String, String>();
+                                                    if (oldRow == null) {
 
-                                                    if (oldRow != null && newRow.getColumns().keySet()
+                                                        Set<Long> channel = newRow.getSetColumn("channel");
+                                                        if (!channel.isEmpty()) {
+                                                            rowContents.put("channel",
+                                                                    channel.stream().iterator().next().toString());
+                                                        } else {
+                                                            rowContents.put("channel", "");
+                                                        }
+                                                        rowContents.put("ht_mode",
+                                                                ovsdbDao.getSingleValueFromSet(newRow, "ht_mode"));
+                                                        rowContents.put("hw_mode", newRow.getStringColumn("hw_mode"));
+                                                        rowContents.put("hw_type", newRow.getStringColumn("hw_type"));
+                                                        rowContents.put("hw_params", newRow.getStringColumn("hw_type"));
+                                                        rowContents.put("mac", newRow.getStringColumn("mac"));
+                                                        rowContents.put("if_name", newRow.getStringColumn("if_name"));
+                                                        rowContents.put("freq_band",
+                                                                ovsdbDao.getSingleValueFromSet(newRow, "freq_band"));
+                                                        rowContents.put("country",
+                                                                newRow.getSetColumn("country").toString());
+
+                                                        extIntegrationInterface.wifiRadioStatusDbTableUpdate(
+                                                                rowContents, key,
+                                                                OpensyncExternalIntegrationInterface.RowUpdateOperation.INSERT);
+                                                    } else if (newRow == null) {
+                                                        Set<Long> channel = oldRow.getSetColumn("channel");
+                                                        if (!channel.isEmpty()) {
+                                                            rowContents.put("channel",
+                                                                    channel.stream().iterator().next().toString());
+                                                        } else {
+                                                            rowContents.put("channel", "");
+                                                        }
+                                                        rowContents.put("ht_mode",
+                                                                ovsdbDao.getSingleValueFromSet(oldRow, "ht_mode"));
+                                                        rowContents.put("hw_mode", oldRow.getStringColumn("hw_mode"));
+                                                        rowContents.put("hw_type", oldRow.getStringColumn("hw_type"));
+                                                        rowContents.put("hw_params", oldRow.getStringColumn("hw_type"));
+                                                        rowContents.put("mac", oldRow.getStringColumn("mac"));
+                                                        rowContents.put("if_name", oldRow.getStringColumn("if_name"));
+                                                        rowContents.put("freq_band",
+                                                                ovsdbDao.getSingleValueFromSet(oldRow, "freq_band"));
+                                                        rowContents.put("country",
+                                                                oldRow.getSetColumn("country").toString());
+
+                                                        extIntegrationInterface.wifiRadioStatusDbTableUpdate(
+                                                                rowContents, key,
+                                                                OpensyncExternalIntegrationInterface.RowUpdateOperation.DELETE);
+                                                    } else if (oldRow != null && newRow.getColumns().keySet()
                                                             .containsAll(oldRow.getColumns().keySet())) {
 
                                                         Set<Long> channel = newRow.getSetColumn("channel");
@@ -258,8 +304,8 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                                                         rowContents.put("if_name", newRow.getStringColumn("if_name"));
                                                         rowContents.put("security",
                                                                 newRow.getMapColumn("security").toString());
-                                                        rowContents.put("bridge", newRow.getSetColumn("bridge")
-                                                                .iterator().next().toString());
+                                                        rowContents.put("bridge",
+                                                                newRow.getSetColumn("bridge").toString());
 
                                                         Set<Long> channel = newRow.getSetColumn("channel");
                                                         if (!channel.isEmpty()) {
@@ -284,8 +330,8 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                                                         rowContents.put("if_name", oldRow.getStringColumn("if_name"));
                                                         rowContents.put("security",
                                                                 oldRow.getMapColumn("security").toString());
-                                                        rowContents.put("bridge", oldRow.getSetColumn("bridge")
-                                                                .iterator().next().toString());
+                                                        rowContents.put("bridge",
+                                                                oldRow.getSetColumn("bridge").toString());
                                                         Set<Long> channel = oldRow.getSetColumn("channel");
                                                         if (!channel.isEmpty()) {
                                                             rowContents.put("channel",
@@ -310,8 +356,8 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                                                         rowContents.put("if_name", newRow.getStringColumn("if_name"));
                                                         rowContents.put("security",
                                                                 newRow.getMapColumn("security").toString());
-                                                        rowContents.put("bridge", newRow.getSetColumn("bridge")
-                                                                .iterator().next().toString());
+                                                        rowContents.put("bridge",
+                                                                newRow.getSetColumn("bridge").toString());
                                                         Set<Long> channel = newRow.getSetColumn("channel");
                                                         if (!channel.isEmpty()) {
                                                             rowContents.put("channel",
@@ -389,7 +435,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                             .monitor(OvsdbDao.ovsdbName, OvsdbDao.wifiAssociatedClientsDbTable,
                                     new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiAssociatedClientsDbTable,
                                             new MonitorRequest(Arrays.asList(WIFI_ASSOCIATED_CLIENTS_DB_TABLE_COLUMNS),
-                                                    new MonitorSelect(true, true, true, false)))),
+                                                    new MonitorSelect(true, true, true, true)))),
                                     new MonitorCallback() {
 
                                         @Override
@@ -412,11 +458,16 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                                                                 rowContents, key,
                                                                 OpensyncExternalIntegrationInterface.RowUpdateOperation.INSERT);
                                                     } else if (newRow == null) {
-                                                        rowContents.put("redirector_addr",
-                                                                oldRow.getStringColumn("redirector_addr"));
+                                                        rowContents.put("mac", oldRow.getStringColumn("mac"));
                                                         extIntegrationInterface.wifiAssociatedClientsDbTableUpdate(
                                                                 rowContents, key,
                                                                 OpensyncExternalIntegrationInterface.RowUpdateOperation.DELETE);
+                                                    } else if (oldRow != null && newRow.getColumns().keySet()
+                                                            .containsAll(oldRow.getColumns().keySet())) {
+                                                        rowContents.put("mac", newRow.getStringColumn("mac"));
+                                                        extIntegrationInterface.wifiAssociatedClientsDbTableUpdate(
+                                                                rowContents, key,
+                                                                OpensyncExternalIntegrationInterface.RowUpdateOperation.MODIFY);
                                                     }
 
                                                 }
@@ -479,6 +530,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                 LOG.info("ovsdbClient connectedClients = {}",
                         ConnectusOvsdbClient.this.ovsdbSessionMapInterface.getNumSessions());
             }
+
         };
 
         listener.startListeningWithSsl(ovsdbListenPort, sslContext, connectionCallback).join();
