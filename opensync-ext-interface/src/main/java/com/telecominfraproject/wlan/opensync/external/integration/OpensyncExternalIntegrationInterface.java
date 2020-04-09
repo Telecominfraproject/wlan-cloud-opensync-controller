@@ -1,9 +1,8 @@
 package com.telecominfraproject.wlan.opensync.external.integration;
 
-import java.util.Map;
-
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
+import com.vmware.ovsdb.protocol.methods.TableUpdates;
 
 import sts.PlumeStats.Report;
 import traffic.NetworkMetadata.FlowReport;
@@ -20,11 +19,11 @@ public interface OpensyncExternalIntegrationInterface {
 
     OpensyncAPConfig getApConfig(String apId);
 
-    void wifiVIFStateDbTableUpdate(Map<String, String> row, String apId, RowUpdateOperation operation);
+    void wifiVIFStateDbTableUpdate(TableUpdates tableUpdates, String apId);
 
-    void wifiRadioStatusDbTableUpdate(Map<String, String> row, String apId, RowUpdateOperation operation);
+    void wifiRadioStatusDbTableUpdate(TableUpdates tableUpdates, String apId);
 
-    void wifiInetStateDbTableUpdate(Map<String, String> row, String apId, RowUpdateOperation operation);
+    void wifiInetStateDbTableUpdate(TableUpdates tableUpdates, String apId);
 
     void processMqttMessage(String topic, Report report);
 
@@ -32,7 +31,7 @@ public interface OpensyncExternalIntegrationInterface {
 
     void processMqttMessage(String topic, WCStatsReport wcStatsReport);
 
-    void wifiAssociatedClientsDbTableUpdate(Map<String, String> row, String apId, RowUpdateOperation operation);
+    void wifiAssociatedClientsDbTableUpdate(TableUpdates tableUpdates, String apId);
 
-    void awlan_NodeDbTableUpdate(Map<String, String> row, String connectedClientId, RowUpdateOperation operation);
+    void awlanNodeDbTableUpdate(TableUpdates tableUpdates, String connectedClientId);
 }
