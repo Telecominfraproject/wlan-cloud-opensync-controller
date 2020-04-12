@@ -1,8 +1,6 @@
 package com.telecominfraproject.wlan.opensync.external.integration;
 
 import java.io.IOException;
-import java.util.Map;
-import java.util.Set;
 
 import javax.annotation.PostConstruct;
 
@@ -14,7 +12,7 @@ import org.springframework.stereotype.Component;
 
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
-import com.vmware.ovsdb.protocol.operation.notation.Uuid;
+import com.vmware.ovsdb.protocol.methods.TableUpdates;
 
 import sts.PlumeStats.Report;
 import traffic.NetworkMetadata.FlowReport;
@@ -97,34 +95,33 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
     }
 
     @Override
-    public void wifiVIFStateDbTableUpdate(Map<String, String> row,
-            String apId, RowUpdateOperation operation) {
+    public void wifiVIFStateDbTableUpdate(TableUpdates tableUpdates,
+            String apId) {
         // TODO Auto-generated method stub
         
     }
 
     @Override
-    public void wifiRadioStatusDbTableUpdate(Map<String, String> row, String apId, RowUpdateOperation operation) {
+    public void wifiRadioStatusDbTableUpdate(TableUpdates tableUpdates, String apId) {
         // TODO Auto-generated method stub
         
     }
 
     @Override
-    public void wifiInetStateDbTableUpdate(Map<String, String> row, String apId, RowUpdateOperation operation) {
+    public void wifiInetStateDbTableUpdate(TableUpdates tableUpdates, String apId) {
         // TODO Auto-generated method stub
         
     }
 
     @Override
-    public void wifiAssociatedClientsDbTableUpdate(Map<String, String> row,
-            String apId, RowUpdateOperation operation) {
+    public void wifiAssociatedClientsDbTableUpdate(TableUpdates tableUpdates,
+            String apId) {
         // TODO Auto-generated method stub
         
     }
 
     @Override
-    public void awlan_NodeDbTableUpdate(Map<String, String> row, String connectedClientId,
-            RowUpdateOperation operation) {
+    public void awlanNodeDbTableUpdate(TableUpdates tableUpdates, String connectedClientId) {
         // TODO Auto-generated method stub
         
     }
