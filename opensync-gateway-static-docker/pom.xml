@@ -13,7 +13,7 @@
 
 	<properties>
 		<docker.fabric.version>0.28.0</docker.fabric.version>
-		<docker.push.registry>ec2-54-80-163-0.compute-1.amazonaws.com:5000</docker.push.registry>
+		<docker.push.registry>tip-tip-wlan-cloud-docker-repo.jfrog.io</docker.push.registry>
 	</properties>
 
 	<dependencies>
