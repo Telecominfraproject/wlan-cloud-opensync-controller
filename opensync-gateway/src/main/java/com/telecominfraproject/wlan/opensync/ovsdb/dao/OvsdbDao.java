@@ -593,7 +593,7 @@ public class OvsdbDao {
                     channelTmp = -1L;
                 }
                 wifiRadioConfigInfo.channel = channelTmp.intValue();
-                wifiRadioConfigInfo.channelMode = row.getStringColumn("channel_mode");
+                wifiRadioConfigInfo.channelMode = getSingleValueFromSet(row, "channel_mode");
                 wifiRadioConfigInfo.country = getSingleValueFromSet(row, "country");
                 Boolean tmp = getSingleValueFromSet(row, "enabled");
                 wifiRadioConfigInfo.enabled = tmp != null ? tmp : false;
