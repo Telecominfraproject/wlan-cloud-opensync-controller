@@ -18,12 +18,12 @@ VOLUME ["/mosquitto/data", "/mosquitto/log"]
 
 
 # Configure OpenSync Gateway
-RUN mkdir -p /app/logs /app/opensync
+RUN mkdir -p /app/logs /app/opensync /app/config
 COPY maven/app.jar /app
 COPY app/opensync/logback.xml /app/opensync/logback.xml
 COPY app/run.sh /app
 COPY app/opensync/config_2_ssids.json /app/opensync/config_2_ssids.json
-VOLUME ["/app/logs"]
+VOLUME ["/app/logs", "/app/config"]
 
 RUN chmod +x /app/run.sh
 
