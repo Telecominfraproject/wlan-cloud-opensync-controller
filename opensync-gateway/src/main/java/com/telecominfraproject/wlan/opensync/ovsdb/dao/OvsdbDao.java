@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -15,11 +16,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import com.google.common.collect.ImmutableMap;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPInetState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioConfig;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPSsidConfig;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAWLANNode;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.BridgeInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.InterfaceInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.PortInfo;
@@ -27,11 +32,10 @@ import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiInetConfigInfo
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiRadioConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiStatsConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiVifConfigInfo;
-import com.vmware.ovsdb.callback.MonitorCallback;
 import com.vmware.ovsdb.exception.OvsdbClientException;
-import com.vmware.ovsdb.protocol.methods.MonitorRequest;
-import com.vmware.ovsdb.protocol.methods.MonitorRequests;
-import com.vmware.ovsdb.protocol.methods.MonitorSelect;
+import com.vmware.ovsdb.protocol.methods.RowUpdate;
+import com.vmware.ovsdb.protocol.methods.TableUpdate;
+import com.vmware.ovsdb.protocol.methods.TableUpdates;
 import com.vmware.ovsdb.protocol.operation.Delete;
 import com.vmware.ovsdb.protocol.operation.Insert;
 import com.vmware.ovsdb.protocol.operation.Operation;
@@ -1105,6 +1109,214 @@ public class OvsdbDao {
             LOG.error("Error in configureWifiRadios", e);
             throw new RuntimeException(e);
         }
+
+    }
+
+    public List<OpensyncAPRadioState> getOpensyncAPRadioState(TableUpdates tableUpdates, String apId,
+            OvsdbClient ovsdbClient) {
+        List<OpensyncAPRadioState> ret = new ArrayList<OpensyncAPRadioState>();
+
+        try {
+            tableUpdates.getTableUpdates().values().stream().forEach(tu -> {
+                tu.getRowUpdates().values().stream().forEach(ru -> {
+
+                    Row newRow = ru.getNew();
+
+                    if (newRow != null) {
+
+                        OpensyncAPRadioState apRadioState = new OpensyncAPRadioState();
+
+                        apRadioState.setMac(newRow.getStringColumn("mac"));
+                        Long channelTmp = getSingleValueFromSet(newRow, "channel");
+                        if (channelTmp == null) {
+                            channelTmp = -1L;
+                        }
+                        apRadioState.setChannel(channelTmp.intValue());
+                        apRadioState.setFreqBand(newRow.getStringColumn("freq_band"));
+                        apRadioState.setIfName(newRow.getStringColumn("if_name"));
+                        apRadioState.setChannelMode(getSingleValueFromSet(newRow, "channel_mode"));
+                        apRadioState.setCountry(getSingleValueFromSet(newRow, "country"));
+                        Boolean tmp = getSingleValueFromSet(newRow, "enabled");
+                        apRadioState.setEnabled(tmp != null ? tmp : false);
+                        apRadioState.setHtMode(getSingleValueFromSet(newRow, "ht_mode"));
+                        if (newRow.getIntegerColumn("txPower") != null)
+                            apRadioState.setTxPower(newRow.getIntegerColumn("txPower").intValue());
+                        // apRadioState.setTxPower(getSingleValueFromSet(newRow,
+                        // "txPower"));
+                        apRadioState.setHwConfig(newRow.getMapColumn("hw_config"));
+                        apRadioState.setVersion(newRow.getUuidColumn("_version"));
+                        if (newRow.getUuidColumn("_uuid") != null)
+                            apRadioState.set_uuid(newRow.getUuidColumn("_uuid"));
+                        ret.add(apRadioState);
+                    }
+
+                });
+            });
+        } catch (Exception e) {
+            LOG.error("Could not parse update for Wifi_Radio_State", e);
+        }
+
+        return ret;
+    }
+
+    public List<OpensyncAPInetState> getOpensyncAPInetState(TableUpdates tableUpdates, String apId,
+            OvsdbClient ovsdbClient) {
+        List<OpensyncAPInetState> ret = new ArrayList<OpensyncAPInetState>();
+
+        try {
+            tableUpdates.getTableUpdates().values().stream().forEach(tu -> {
+                tu.getRowUpdates().values().stream().forEach(ru -> {
+
+                    Row row = ru.getNew();
+
+                    if (row != null) {
+
+                        OpensyncAPInetState apInetState = new OpensyncAPInetState();
+                        Boolean natTmp = getSingleValueFromSet(row, "NAT");
+                        apInetState.setNat(natTmp != null ? natTmp : false);
+                        apInetState.setEnabled(row.getBooleanColumn("enabled"));
+                        apInetState.setIfName(row.getStringColumn("if_name"));
+                        apInetState.setIfType(row.getStringColumn("if_type"));
+                        apInetState.setIpAssignScheme(row.getStringColumn("ip_assign_scheme"));
+                        apInetState.setNetwork(row.getBooleanColumn("network"));
+                        apInetState.setHwAddr(row.getStringColumn("hwaddr"));
+                        apInetState.setVersion(row.getUuidColumn("_version"));
+                        if (row.getUuidColumn("_uuid") != null)
+                            apInetState.set_uuid(row.getUuidColumn("_uuid"));
+
+                        ret.add(apInetState);
+                    }
+
+                });
+            });
+        } catch (Exception e) {
+            LOG.error("Could not parse update for Wifi_Inet_State", e);
+        }
+        return ret;
+    }
+
+    public List<OpensyncAPVIFState> getOpensyncAPVIFState(TableUpdates tableUpdates, String apId,
+            OvsdbClient ovsdbClient) {
+        List<OpensyncAPVIFState> ret = new ArrayList<OpensyncAPVIFState>();
+        try {
+            tableUpdates.getTableUpdates().values().stream().forEach(tu -> {
+                tu.getRowUpdates().values().stream().forEach(ru -> {
+
+                    Row row = ru.getNew();
+                    if (row != null) {
+                        OpensyncAPVIFState apVifState = new OpensyncAPVIFState();
+                        apVifState.setBridge(row.getStringColumn("bridge"));
+                        apVifState.setBtm(row.getIntegerColumn("btm").intValue());
+                        Long channelTmp = getSingleValueFromSet(row, "channel");
+                        if (channelTmp == null) {
+                            channelTmp = -1L;
+                        }
+                        apVifState.setChannel(channelTmp.intValue());
+                        apVifState.setEnabled(row.getBooleanColumn("enabled"));
+                        apVifState.setFtPsk(row.getIntegerColumn("ft_psk").intValue());
+                        apVifState.setGroupRekey(row.getIntegerColumn("group_rekey").intValue());
+                        apVifState.setIfName(row.getStringColumn("if_name"));
+                        apVifState.setMode(row.getStringColumn("mode"));
+                        apVifState.setRrm(row.getIntegerColumn("rrm").intValue());
+                        apVifState.setSsid(row.getStringColumn("ssid"));
+                        apVifState.setSsidBroadcast(row.getStringColumn("ssid_broadcast"));
+                        apVifState.setUapsdEnable(row.getBooleanColumn("uapsd_enable"));
+                        apVifState.setVifRadioIdx(row.getIntegerColumn("vif_radio_idx").intValue());
+                        apVifState.setAssociatedClients(row.getSetColumn("associated_clients"));
+                        apVifState.setSecurity(row.getMapColumn("security"));
+                        apVifState.setVersion(row.getUuidColumn("_version"));
+                        if (row.getUuidColumn("_uuid") != null)
+                            apVifState.set_uuid(row.getUuidColumn("_uuid"));
+                        ret.add(apVifState);
+                    }
+
+                });
+            });
+        } catch (Exception e) {
+            LOG.error("Could not parse update for Wifi_VIF_State", e);
+
+        }
+        return ret;
+    }
+
+    public List<OpensyncWifiAssociatedClients> getOpensyncWifiAssociatedClients(TableUpdates tableUpdates, String apId,
+            OvsdbClient ovsdbClient) {
+        List<OpensyncWifiAssociatedClients> ret = new ArrayList<OpensyncWifiAssociatedClients>();
+
+        try {
+            tableUpdates.getTableUpdates().values().stream().forEach(tu -> {
+                tu.getRowUpdates().values().stream().forEach(ru -> {
+
+                    Row row = ru.getNew();
+
+                    if (row != null) {
+                        OpensyncWifiAssociatedClients wifiClient = new OpensyncWifiAssociatedClients();
+                        wifiClient.setMac(row.getStringColumn("mac"));
+                        wifiClient.setCapabilities(row.getSetColumn("capabilities"));
+                        wifiClient.setState(getSingleValueFromSet(row, "state"));
+                        wifiClient.setVersion(row.getUuidColumn("_version"));
+                        if (row.getUuidColumn("_uuid") != null)
+                            wifiClient.set_uuid(row.getUuidColumn("_uuid"));
+
+                        ret.add(wifiClient);
+                    }
+                });
+            });
+        } catch (Exception e) {
+            LOG.error("Could not get Wifi_Associated_Clients list from table update", e);
+        }
+
+        return ret;
+    }
+
+    public OpensyncAWLANNode getOpensyncAWLANNode(TableUpdates tableUpdates, String apId, OvsdbClient ovsdbClient) {
+        OpensyncAWLANNode ret = new OpensyncAWLANNode();
+
+        Map<String, TableUpdate> updates = tableUpdates.getTableUpdates();
+
+        for (TableUpdate update : updates.values()) {
+
+            Map<UUID, RowUpdate> rowUpdates = update.getRowUpdates();
+
+            for (RowUpdate rowUpdate : rowUpdates.values()) {
+
+                Row row = rowUpdate.getNew();
+
+                if (row != null) {
+                    ret.setMqttSettings(row.getMapColumn("mqtt_settings").toString());
+                    ret.setModel(row.getStringColumn("model"));
+                    ret.setSkuNumber(row.getStringColumn("sku_number"));
+                    ret.setId(row.getStringColumn("id"));
+                    ret.setVersionMatrix(row.getMapColumn("version_matrix"));
+                    ret.setFirmwareVersion(row.getStringColumn("firmware_version"));
+                    ret.setFirmwareUrl(row.getStringColumn("firmware_url"));
+                    if (row.getUuidColumn("_uuid") != null)
+                        ret.set_uuid(row.getUuidColumn("_uuid"));
+                    ret.setUpgradeDlTimer(row.getIntegerColumn("upgrade_dl_timer").intValue());
+                    ret.setPlatformVersion(row.getStringColumn("platform_version"));
+                    ret.setFirmwarePass(row.getStringColumn("firmware_pass"));
+                    ret.setUpgradeTimer(row.getIntegerColumn("upgrade_timer").intValue());
+                    ret.setMaxBackoff(row.getIntegerColumn("max_backoff").intValue());
+                    ret.setLedConfig(row.getMapColumn("led_config"));
+                    ret.setRedirectorAddr(row.getStringColumn("redirector_addr"));
+                    ret.setMqttHeaders(row.getMapColumn("mqtt_headers"));
+                    ret.setSerialNumber(row.getStringColumn("serial_number"));
+                    ret.setVersion(row.getUuidColumn("_version"));
+                    ret.setUpgradeStatus(row.getIntegerColumn("upgrade_status").intValue());
+                    ret.setDeviceMode(getSingleValueFromSet(row, "device_mode"));
+                    ret.setMinBackoff(row.getIntegerColumn("min_backoff").intValue());
+                    ret.setMqttTopics(row.getMapColumn("mqtt_topics"));
+                    ret.setRevision(row.getStringColumn("revision"));
+                    ret.setManagerAddr(row.getStringColumn("manager_addr"));
+                    Boolean factoryReset = getSingleValueFromSet(row, "factory_reset");
+                    ret.setFactoryReset(factoryReset != null ? factoryReset : false);
+                }
+
+            }
+
+        }
+
+        return ret;
 
     }
 

@@ -1,8 +1,14 @@
 package com.telecominfraproject.wlan.opensync.external.integration;
 
+import java.util.List;
+
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
-import com.vmware.ovsdb.protocol.methods.TableUpdates;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPInetState;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioState;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAWLANNode;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
 
 import sts.PlumeStats.Report;
 import traffic.NetworkMetadata.FlowReport;
@@ -19,11 +25,11 @@ public interface OpensyncExternalIntegrationInterface {
 
     OpensyncAPConfig getApConfig(String apId);
 
-    void wifiVIFStateDbTableUpdate(TableUpdates tableUpdates, String apId);
+    void wifiVIFStateDbTableUpdate(List<OpensyncAPVIFState> vifStateTables, String apId);
 
-    void wifiRadioStatusDbTableUpdate(TableUpdates tableUpdates, String apId);
+    void wifiRadioStatusDbTableUpdate(List<OpensyncAPRadioState> radioStateTables, String apId);
 
-    void wifiInetStateDbTableUpdate(TableUpdates tableUpdates, String apId);
+    void wifiInetStateDbTableUpdate(List<OpensyncAPInetState> inetStateTables, String apId);
 
     void processMqttMessage(String topic, Report report);
 
@@ -31,7 +37,7 @@ public interface OpensyncExternalIntegrationInterface {
 
     void processMqttMessage(String topic, WCStatsReport wcStatsReport);
 
-    void wifiAssociatedClientsDbTableUpdate(TableUpdates tableUpdates, String apId);
+    void wifiAssociatedClientsDbTableUpdate(List<OpensyncWifiAssociatedClients> wifiAssociatedClients, String apId);
 
-    void awlanNodeDbTableUpdate(TableUpdates tableUpdates, String connectedClientId);
+    void awlanNodeDbTableUpdate(OpensyncAWLANNode opensyncAPState, String apId);
 }

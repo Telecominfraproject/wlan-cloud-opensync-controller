@@ -1,6 +1,7 @@
 package com.telecominfraproject.wlan.opensync.external.integration;
 
 import java.io.IOException;
+import java.util.List;
 
 import javax.annotation.PostConstruct;
 
@@ -12,6 +13,11 @@ import org.springframework.stereotype.Component;
 
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPInetState;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioState;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAWLANNode;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
 import com.vmware.ovsdb.protocol.methods.TableUpdates;
 
 import sts.PlumeStats.Report;
@@ -22,110 +28,105 @@ import wc.stats.IpDnsTelemetry.WCStatsReport;
 @Component
 public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegrationInterface {
 
-    private static final Logger LOG = LoggerFactory.getLogger(OpensyncExternalIntegrationSimple.class);
+	private static final Logger LOG = LoggerFactory.getLogger(OpensyncExternalIntegrationSimple.class);
 
-    @Value("${connectus.ovsdb.configFileName:/Users/dtop/Documents/TIP_WLAN_repos/opensync_wifi_controller/opensync_ext_static/src/main/resources/config_2_ssids.json}")
-    private String configFileName;
+	@Value("${connectus.ovsdb.configFileName:/Users/dtop/Documents/TIP_WLAN_repos/opensync_wifi_controller/opensync_ext_static/src/main/resources/config_2_ssids.json}")
+	private String configFileName;
 
-    @PostConstruct
-    private void postCreate() {
-        LOG.info("Using Static integration");
-    }
+	@PostConstruct
+	private void postCreate() {
+		LOG.info("Using Static integration");
+	}
 
-    public void apConnected(String apId, ConnectNodeInfo connectNodeInfo) {
-        LOG.info("AP {} got connected to the gateway", apId);
-        LOG.info("ConnectNodeInfo {}", connectNodeInfo);
+	public void apConnected(String apId, ConnectNodeInfo connectNodeInfo) {
+		LOG.info("AP {} got connected to the gateway", apId);
+		LOG.info("ConnectNodeInfo {}", connectNodeInfo);
 
-    }
+	}
 
-    public void apDisconnected(String apId) {
-        LOG.info("AP {} got disconnected from the gateway", apId);
-    }
+	public void apDisconnected(String apId) {
+		LOG.info("AP {} got disconnected from the gateway", apId);
+	}
 
- 
+	public OpensyncAPConfig getApConfig(String apId) {
+		LOG.info("Retrieving config for AP {} from file {}", apId, configFileName);
+		OpensyncAPConfig ret = null;
 
-    public OpensyncAPConfig getApConfig(String apId) {
-        LOG.info("Retrieving config for AP {} from file {}", apId, configFileName);
-        OpensyncAPConfig ret = null;
+		try {
+			ret = OpensyncAPConfig.fromFile(configFileName, OpensyncAPConfig.class);
+		} catch (IOException e) {
+			LOG.error("Cannot read config from {}", configFileName, e);
+		}
 
-        try {
-            ret = OpensyncAPConfig.fromFile(configFileName, OpensyncAPConfig.class);
-        } catch (IOException e) {
-            LOG.error("Cannot read config from {}", configFileName, e);
-        }
+		LOG.debug("Config content : {}", ret);
 
-        LOG.debug("Config content : {}", ret);
+		return ret;
+	}
 
-        return ret;
-    }
+	public void processMqttMessage(String topic, Report report) {
 
-    public void processMqttMessage(String topic, Report report) {
+		LOG.info("Received PlumeStatsReport on topic {} for ap {}", topic, report.getNodeID());
 
-        LOG.info("Received PlumeStatsReport on topic {} for ap {}", topic, report.getNodeID());
+		if (report.getClientsCount() > 0) {
+			LOG.debug("Received {} client reports for AP {}", report.getClientsCount(), report.getNodeID());
+			report.getClientsList().forEach(c -> LOG.trace("ClientReport {}", c));
+		}
+		if (report.getNeighborsCount() > 0) {
+			LOG.debug("Received {} neighbor reports for AP {}", report.getNeighborsCount(), report.getNodeID());
+			report.getNeighborsList().forEach(c -> LOG.trace("NeighborReport {}", c));
+		}
+		if (report.getDeviceCount() > 0) {
+			LOG.debug("Received {} device reports for AP {}", report.getDeviceCount(), report.getNodeID());
+			report.getDeviceList().forEach(c -> LOG.trace("DeviceReport {}", c));
+		}
+		if (report.getSurveyCount() > 0) {
+			LOG.debug("Received {} survey reports for AP {}", report.getSurveyCount(), report.getNodeID());
+			report.getSurveyList().forEach(c -> LOG.trace("SurveyReport {}", c));
+		}
+		if (report.getRssiReportCount() > 0) {
+			LOG.debug("Received {} rssi reports for AP {}", report.getRssiReportCount(), report.getNodeID());
+			report.getRssiReportList().forEach(c -> LOG.trace("RSSI Report {}", c));
+		}
+	}
 
-        if (report.getClientsCount() > 0) {
-            LOG.debug("Received {} client reports for AP {}", report.getClientsCount(), report.getNodeID());
-            report.getClientsList().forEach(c -> LOG.trace("ClientReport {}", c));
-        }
-        if (report.getNeighborsCount() > 0) {
-            LOG.debug("Received {} neighbor reports for AP {}", report.getNeighborsCount(), report.getNodeID());
-            report.getNeighborsList().forEach(c -> LOG.trace("NeighborReport {}", c));
-        }
-        if (report.getDeviceCount() > 0) {
-            LOG.debug("Received {} device reports for AP {}", report.getDeviceCount(), report.getNodeID());
-            report.getDeviceList().forEach(c -> LOG.trace("DeviceReport {}", c));
-        }
-        if (report.getSurveyCount() > 0) {
-            LOG.debug("Received {} survey reports for AP {}", report.getSurveyCount(), report.getNodeID());
-            report.getSurveyList().forEach(c -> LOG.trace("SurveyReport {}", c));
-        }
-        if (report.getRssiReportCount() > 0) {
-            LOG.debug("Received {} rssi reports for AP {}", report.getRssiReportCount(), report.getNodeID());
-            report.getRssiReportList().forEach(c -> LOG.trace("RSSI Report {}", c));
-        }
-    }
+	public void processMqttMessage(String topic, FlowReport flowReport) {
+		LOG.info("Received flowReport on topic {} for ap {}", topic, flowReport.getObservationPoint().getNodeId());
+	}
 
-    public void processMqttMessage(String topic, FlowReport flowReport) {
-        LOG.info("Received flowReport on topic {} for ap {}", topic, flowReport.getObservationPoint().getNodeId());
-    }
+	public void processMqttMessage(String topic, WCStatsReport wcStatsReport) {
+		LOG.info("Received wcStatsReport on topic {} for ap {}", topic,
+				wcStatsReport.getObservationPoint().getNodeId());
+	}
 
-    public void processMqttMessage(String topic, WCStatsReport wcStatsReport) {
-        LOG.info("Received wcStatsReport on topic {} for ap {}", topic,
-                wcStatsReport.getObservationPoint().getNodeId());
-    }
+	@Override
+	public void wifiVIFStateDbTableUpdate(List<OpensyncAPVIFState> vifStateTables, String apId) {
+		// TODO Auto-generated method stub
 
-    @Override
-    public void wifiVIFStateDbTableUpdate(TableUpdates tableUpdates,
-            String apId) {
-        // TODO Auto-generated method stub
-        
-    }
+	}
 
-    @Override
-    public void wifiRadioStatusDbTableUpdate(TableUpdates tableUpdates, String apId) {
-        // TODO Auto-generated method stub
-        
-    }
+	@Override
+	public void wifiRadioStatusDbTableUpdate(List<OpensyncAPRadioState> radioStateTable, String apId) {
+		// TODO Auto-generated method stub
 
-    @Override
-    public void wifiInetStateDbTableUpdate(TableUpdates tableUpdates, String apId) {
-        // TODO Auto-generated method stub
-        
-    }
+	}
 
-    @Override
-    public void wifiAssociatedClientsDbTableUpdate(TableUpdates tableUpdates,
-            String apId) {
-        // TODO Auto-generated method stub
-        
-    }
+	@Override
+	public void wifiInetStateDbTableUpdate(List<OpensyncAPInetState> inetStateTable, String apId) {
+		// TODO Auto-generated method stub
 
-    @Override
-    public void awlanNodeDbTableUpdate(TableUpdates tableUpdates, String connectedClientId) {
-        // TODO Auto-generated method stub
-        
-    }
+	}
 
-   
+	@Override
+	public void wifiAssociatedClientsDbTableUpdate(List<OpensyncWifiAssociatedClients> wifiAssociatedClients,
+			String apId) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void awlanNodeDbTableUpdate(OpensyncAWLANNode opensyncAPState, String apId) {
+		// TODO Auto-generated method stub
+
+	}
 
 }
