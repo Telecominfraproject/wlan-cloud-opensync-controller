@@ -240,7 +240,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
         CompletableFuture<TableUpdates> rsCf = ovsdbClient
                 .monitor(OvsdbDao.ovsdbName, OvsdbDao.wifiRadioStateDbTable + "_" + key,
                         new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiRadioStateDbTable,
-                                new MonitorRequest(new MonitorSelect(true, false, false, true)))),
+                                new MonitorRequest(new MonitorSelect(true, true, false, true)))),
                         new MonitorCallback() {
 
                             @Override
@@ -257,7 +257,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
         CompletableFuture<TableUpdates> isCf = ovsdbClient
                 .monitor(OvsdbDao.ovsdbName, OvsdbDao.wifiInetStateDbTable + "_" + key,
                         new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiInetStateDbTable,
-                                new MonitorRequest(new MonitorSelect(true, false, false, true)))),
+                                new MonitorRequest(new MonitorSelect(true, true, false, true)))),
                         new MonitorCallback() {
 
                             @Override
