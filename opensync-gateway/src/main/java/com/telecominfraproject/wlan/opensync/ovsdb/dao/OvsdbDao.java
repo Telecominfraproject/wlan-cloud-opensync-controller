@@ -1120,33 +1120,46 @@ public class OvsdbDao {
             tableUpdates.getTableUpdates().values().stream().forEach(tu -> {
                 tu.getRowUpdates().values().stream().forEach(ru -> {
 
-                    Row newRow = ru.getNew();
+                    Row row = ru.getNew();
 
-                    if (newRow != null) {
+                    if (row != null) {
 
                         OpensyncAPRadioState apRadioState = new OpensyncAPRadioState();
 
-                        apRadioState.setMac(newRow.getStringColumn("mac"));
-                        Long channelTmp = getSingleValueFromSet(newRow, "channel");
-                        if (channelTmp == null) {
-                            channelTmp = -1L;
-                        }
-                        apRadioState.setChannel(channelTmp.intValue());
-                        apRadioState.setFreqBand(newRow.getStringColumn("freq_band"));
-                        apRadioState.setIfName(newRow.getStringColumn("if_name"));
-                        apRadioState.setChannelMode(getSingleValueFromSet(newRow, "channel_mode"));
-                        apRadioState.setCountry(getSingleValueFromSet(newRow, "country"));
-                        Boolean tmp = getSingleValueFromSet(newRow, "enabled");
-                        apRadioState.setEnabled(tmp != null ? tmp : false);
-                        apRadioState.setHtMode(getSingleValueFromSet(newRow, "ht_mode"));
-                        if (newRow.getIntegerColumn("txPower") != null)
-                            apRadioState.setTxPower(newRow.getIntegerColumn("txPower").intValue());
-                        // apRadioState.setTxPower(getSingleValueFromSet(newRow,
-                        // "txPower"));
-                        apRadioState.setHwConfig(newRow.getMapColumn("hw_config"));
-                        apRadioState.setVersion(newRow.getUuidColumn("_version"));
-                        if (newRow.getUuidColumn("_uuid") != null)
-                            apRadioState.set_uuid(newRow.getUuidColumn("_uuid"));
+                        String mac = getSingleValueFromSet(row, "mac");
+                        if (mac != null)
+                            apRadioState.setMac(mac);
+                        Long channelTmp = getSingleValueFromSet(row, "channel");
+                        if (channelTmp != null)
+                            apRadioState.setChannel(channelTmp.intValue());
+                        String freq_band = getSingleValueFromSet(row, "freq_band");
+                        if (freq_band != null)
+                            apRadioState.setFreqBand(freq_band);
+                        String ifName = getSingleValueFromSet(row, "if_name");
+                        if (ifName != null)
+                            apRadioState.setIfName(ifName);
+                        String channelMode = getSingleValueFromSet(row, "channel_mode");
+                        if (channelMode != null)
+                            apRadioState.setChannelMode(channelMode);
+                        String country = getSingleValueFromSet(row, "country");
+                        if (country != null)
+                            apRadioState.setCountry(country);
+                        Boolean tmp = getSingleValueFromSet(row, "enabled");
+                        if (tmp != null)
+                            apRadioState.setEnabled(tmp);
+                        String htMode = getSingleValueFromSet(row, "ht_mode");
+                        if (htMode != null)
+                            apRadioState.setHtMode(htMode);
+                        Long txPower = getSingleValueFromSet(row, "tx_power");
+                        if (txPower != null)
+                            apRadioState.setTxPower(txPower.intValue());
+                        apRadioState.setHwConfig(row.getMapColumn("hw_config"));
+                        Uuid version = getSingleValueFromSet(row, "_version");
+                        if (version != null)
+                            apRadioState.setVersion(version);
+                        Uuid uuid = getSingleValueFromSet(row, "_uuid");
+                        if (uuid != null)
+                            apRadioState.set_uuid(uuid);
                         ret.add(apRadioState);
                     }
 
@@ -1172,17 +1185,34 @@ public class OvsdbDao {
                     if (row != null) {
 
                         OpensyncAPInetState apInetState = new OpensyncAPInetState();
+
                         Boolean natTmp = getSingleValueFromSet(row, "NAT");
-                        apInetState.setNat(natTmp != null ? natTmp : false);
-                        apInetState.setEnabled(row.getBooleanColumn("enabled"));
-                        apInetState.setIfName(row.getStringColumn("if_name"));
-                        apInetState.setIfType(row.getStringColumn("if_type"));
-                        apInetState.setIpAssignScheme(row.getStringColumn("ip_assign_scheme"));
-                        apInetState.setNetwork(row.getBooleanColumn("network"));
-                        apInetState.setHwAddr(row.getStringColumn("hwaddr"));
-                        apInetState.setVersion(row.getUuidColumn("_version"));
-                        if (row.getUuidColumn("_uuid") != null)
-                            apInetState.set_uuid(row.getUuidColumn("_uuid"));
+                        if (natTmp != null)
+                            apInetState.setNat(natTmp);
+                        Boolean enabled = getSingleValueFromSet(row, "enabled");
+                        if (enabled != null)
+                            apInetState.setEnabled(enabled);
+                        String ifName = getSingleValueFromSet(row, "if_name");
+                        if (ifName != null)
+                            apInetState.setIfName(ifName);
+                        String ifType = getSingleValueFromSet(row, "if_type");
+                        if (ifType != null)
+                            apInetState.setIfType(ifType);
+                        String ipScheme = getSingleValueFromSet(row, "ip_assign_scheme");
+                        if (ipScheme != null)
+                            apInetState.setIpAssignScheme(ipScheme);
+                        Boolean network = getSingleValueFromSet(row, "network");
+                        if (network != null)
+                            apInetState.setNetwork(network);
+                        String hwAddr = getSingleValueFromSet(row, "hwaddr");
+                        if (hwAddr != null)
+                            apInetState.setHwAddr(hwAddr);
+                        Uuid version = getSingleValueFromSet(row, "_version");
+                        if (version != null)
+                            apInetState.setVersion(version);
+                        Uuid uuid = getSingleValueFromSet(row, "_uuid");
+                        if (uuid != null)
+                            apInetState.set_uuid(uuid);
 
                         ret.add(apInetState);
                     }
@@ -1204,9 +1234,9 @@ public class OvsdbDao {
 
                     Row row = ru.getNew();
                     if (row != null) {
-                        
+
                         OpensyncAPVIFState apVifState = new OpensyncAPVIFState();
-                        
+
                         String tmpBridge = getSingleValueFromSet(row, "bridge");
                         if (tmpBridge != null)
                             apVifState.setBridge(getSingleValueFromSet(row, "bridge"));
@@ -1262,13 +1292,13 @@ public class OvsdbDao {
 
                         apVifState.setSecurity(row.getMapColumn("security"));
 
-                        apVifState.setVersion(row.getUuidColumn("_version"));
+                        Uuid version = getSingleValueFromSet(row, "_version");
+                        if (version != null)
+                            apVifState.setVersion(version);
+                        Uuid uuid = getSingleValueFromSet(row, "_uuid");
+                        if (uuid != null)
+                            apVifState.set_uuid(uuid);
 
-                        if (row.getUuidColumn("_uuid") != null)
-                            apVifState.set_uuid(row.getUuidColumn("_uuid"));
-                        ret.add(apVifState);
-
-                        LOG.debug("Created Wifi_VIF_State Row {}", apVifState.toPrettyString());
                     }
 
                 });
@@ -1292,12 +1322,19 @@ public class OvsdbDao {
 
                     if (row != null) {
                         OpensyncWifiAssociatedClients wifiClient = new OpensyncWifiAssociatedClients();
-                        wifiClient.setMac(row.getStringColumn("mac"));
+                        String mac = getSingleValueFromSet(row, "mac");
+                        if (mac != null)
+                            wifiClient.setMac(mac);
                         wifiClient.setCapabilities(row.getSetColumn("capabilities"));
-                        wifiClient.setState(getSingleValueFromSet(row, "state"));
-                        wifiClient.setVersion(row.getUuidColumn("_version"));
-                        if (row.getUuidColumn("_uuid") != null)
-                            wifiClient.set_uuid(row.getUuidColumn("_uuid"));
+                        String state = getSingleValueFromSet(row, "state");
+                        if (state != null)
+                            wifiClient.setState(state);
+                        Uuid version = getSingleValueFromSet(row, "_version");
+                        if (version != null)
+                            wifiClient.setVersion(version);
+                        Uuid uuid = getSingleValueFromSet(row, "_uuid");
+                        if (uuid != null)
+                            wifiClient.set_uuid(uuid);
 
                         ret.add(wifiClient);
                     }
@@ -1325,32 +1362,71 @@ public class OvsdbDao {
 
                 if (row != null) {
                     ret.setMqttSettings(row.getMapColumn("mqtt_settings").toString());
-                    ret.setModel(row.getStringColumn("model"));
-                    ret.setSkuNumber(row.getStringColumn("sku_number"));
-                    ret.setId(row.getStringColumn("id"));
+                    String model = getSingleValueFromSet(row, "model");
+                    if (model != null)
+                        ret.setModel(model);
+                    String skuNumber = getSingleValueFromSet(row, "sku_number");
+                    if (skuNumber != null)
+                        ret.setSkuNumber(skuNumber);
+                    String id = getSingleValueFromSet(row, "id");
+                    if (id != null)
+                        ret.setId(id);
+
                     ret.setVersionMatrix(row.getMapColumn("version_matrix"));
-                    ret.setFirmwareVersion(row.getStringColumn("firmware_version"));
-                    ret.setFirmwareUrl(row.getStringColumn("firmware_url"));
-                    if (row.getUuidColumn("_uuid") != null)
-                        ret.set_uuid(row.getUuidColumn("_uuid"));
-                    ret.setUpgradeDlTimer(row.getIntegerColumn("upgrade_dl_timer").intValue());
-                    ret.setPlatformVersion(row.getStringColumn("platform_version"));
-                    ret.setFirmwarePass(row.getStringColumn("firmware_pass"));
-                    ret.setUpgradeTimer(row.getIntegerColumn("upgrade_timer").intValue());
-                    ret.setMaxBackoff(row.getIntegerColumn("max_backoff").intValue());
+                    String fwVersion = getSingleValueFromSet(row, "firmware_version");
+                    if (fwVersion != null)
+                        ret.setFirmwareVersion(fwVersion);
+                    String fwUrl = getSingleValueFromSet(row, "firmware_url");
+                    if (fwUrl != null)
+                        ret.setFirmwareUrl(fwUrl);
+                    Uuid uuid = getSingleValueFromSet(row, "_uuid");
+                    if (uuid != null)
+                        ret.set_uuid(uuid);
+                    Long ugDlTimer = getSingleValueFromSet(row, "upgrade_dl_timer");
+                    if (ugDlTimer != null)
+                        ret.setUpgradeDlTimer(ugDlTimer.intValue());
+                    String platform = getSingleValueFromSet(row, "platform_version");
+                    if (platform != null)
+                        ret.setPlatformVersion(platform);
+                    String fwPass = getSingleValueFromSet(row, "firmware_pass");
+                    if (fwPass != null)
+                        ret.setFirmwarePass(fwPass);
+                    Long ugTimer = getSingleValueFromSet(row, "upgrade_timer");
+                    if (ugTimer != null)
+                        ret.setUpgradeTimer(ugTimer.intValue());
+                    Long maxBackoff = getSingleValueFromSet(row, "max_backoff");
+                    if (maxBackoff != null)
+                        ret.setMaxBackoff(maxBackoff.intValue());
                     ret.setLedConfig(row.getMapColumn("led_config"));
-                    ret.setRedirectorAddr(row.getStringColumn("redirector_addr"));
+                    String redirector = getSingleValueFromSet(row, "redirector_addr");
+                    if (redirector != null)
+                        ret.setRedirectorAddr(redirector);
                     ret.setMqttHeaders(row.getMapColumn("mqtt_headers"));
-                    ret.setSerialNumber(row.getStringColumn("serial_number"));
-                    ret.setVersion(row.getUuidColumn("_version"));
-                    ret.setUpgradeStatus(row.getIntegerColumn("upgrade_status").intValue());
-                    ret.setDeviceMode(getSingleValueFromSet(row, "device_mode"));
-                    ret.setMinBackoff(row.getIntegerColumn("min_backoff").intValue());
+                    String serial = getSingleValueFromSet(row, "serial_number");
+                    if (serial != null)
+                        ret.setSerialNumber(serial);
+                    Uuid version = getSingleValueFromSet(row, "_version");
+                    if (version != null)
+                        ret.setVersion(version);
+                    Long ugStatus = getSingleValueFromSet(row, "upgrade_status");
+                    if (ugStatus != null)
+                        ret.setUpgradeStatus(ugStatus.intValue());
+                    String deviceMode = getSingleValueFromSet(row, "device_mode");
+                    if (deviceMode != null)
+                        ret.setDeviceMode(deviceMode);
+                    Long minBackoff = getSingleValueFromSet(row, "min_backoff");
+                    if (minBackoff != null)
+                        ret.setMinBackoff(minBackoff.intValue());
                     ret.setMqttTopics(row.getMapColumn("mqtt_topics"));
-                    ret.setRevision(row.getStringColumn("revision"));
-                    ret.setManagerAddr(row.getStringColumn("manager_addr"));
+                    String revision = getSingleValueFromSet(row, "revision");
+                    if (revision != null)
+                        ret.setRevision(revision);
+                    String mgrAddress = getSingleValueFromSet(row, "manager_addr");
+                    if (mgrAddress != null)
+                        ret.setManagerAddr(mgrAddress);
                     Boolean factoryReset = getSingleValueFromSet(row, "factory_reset");
-                    ret.setFactoryReset(factoryReset != null ? factoryReset : false);
+                    if (factoryReset != null)
+                        ret.setFactoryReset(factoryReset);
                 }
 
             }
@@ -1653,7 +1729,7 @@ public class OvsdbDao {
                 operations.add(new Insert(wifiStatsConfigDbTable, row));
                 //
             }
-            
+
             if (!provisionedWifiStatsConfigs.containsKey("5GL_device_on-chan")) {
                 //
                 // updateColumns.put("channel_list", channels );
