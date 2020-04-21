@@ -18,7 +18,6 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAWLANNode;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
-import com.vmware.ovsdb.protocol.methods.TableUpdates;
 
 import sts.PlumeStats.Report;
 import traffic.NetworkMetadata.FlowReport;
@@ -128,5 +127,17 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 		// TODO Auto-generated method stub
 
 	}
+
+    @Override
+    public void wifiVIFStateDbTableDelete(List<OpensyncAPVIFState> vifStateTables, String apId) {
+        // TODO Auto-generated method stub
+        
+    }
+
+    @Override
+    public void wifiAssociatedClientsDbTableDelete(String deletedClientMac, String apId) {
+        // TODO Auto-generated method stub
+        
+    }
 
 }

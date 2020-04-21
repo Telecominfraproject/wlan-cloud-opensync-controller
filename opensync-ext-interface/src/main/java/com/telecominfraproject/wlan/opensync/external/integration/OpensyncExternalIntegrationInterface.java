@@ -27,6 +27,8 @@ public interface OpensyncExternalIntegrationInterface {
 
     void wifiVIFStateDbTableUpdate(List<OpensyncAPVIFState> vifStateTables, String apId);
 
+    void wifiVIFStateDbTableDelete(List<OpensyncAPVIFState> vifStateTables, String apId);
+
     void wifiRadioStatusDbTableUpdate(List<OpensyncAPRadioState> radioStateTables, String apId);
 
     void wifiInetStateDbTableUpdate(List<OpensyncAPInetState> inetStateTables, String apId);
@@ -38,6 +40,8 @@ public interface OpensyncExternalIntegrationInterface {
     void processMqttMessage(String topic, WCStatsReport wcStatsReport);
 
     void wifiAssociatedClientsDbTableUpdate(List<OpensyncWifiAssociatedClients> wifiAssociatedClients, String apId);
+
+    void wifiAssociatedClientsDbTableDelete(String deletedClientMac, String apId);
 
     void awlanNodeDbTableUpdate(OpensyncAWLANNode opensyncAPState, String apId);
 }
