@@ -1205,8 +1205,11 @@ public class OvsdbDao {
                     Row row = ru.getNew();
                     if (row != null) {
                         OpensyncAPVIFState apVifState = new OpensyncAPVIFState();
-                        apVifState.setBridge(row.getStringColumn("bridge"));
-                        apVifState.setBtm(row.getIntegerColumn("btm").intValue());
+                        apVifState.setBridge(getSingleValueFromSet(row, "bridge"));
+                        Long btmTmp = getSingleValueFromSet(row, "btm");
+                        if (btmTmp == null)
+                            btmTmp = 0L;
+                        apVifState.setBtm(btmTmp.intValue());
                         Long channelTmp = getSingleValueFromSet(row, "channel");
                         if (channelTmp == null) {
                             channelTmp = -1L;
