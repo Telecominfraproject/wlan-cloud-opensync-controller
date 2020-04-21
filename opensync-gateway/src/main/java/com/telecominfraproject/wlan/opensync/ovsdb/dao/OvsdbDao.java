@@ -1204,33 +1204,71 @@ public class OvsdbDao {
 
                     Row row = ru.getNew();
                     if (row != null) {
+                        
                         OpensyncAPVIFState apVifState = new OpensyncAPVIFState();
-                        apVifState.setBridge(getSingleValueFromSet(row, "bridge"));
+                        
+                        String tmpBridge = getSingleValueFromSet(row, "bridge");
+                        if (tmpBridge != null)
+                            apVifState.setBridge(getSingleValueFromSet(row, "bridge"));
                         Long btmTmp = getSingleValueFromSet(row, "btm");
-                        if (btmTmp == null)
-                            btmTmp = 0L;
-                        apVifState.setBtm(btmTmp.intValue());
+                        if (btmTmp != null)
+                            apVifState.setBtm(btmTmp.intValue());
+
                         Long channelTmp = getSingleValueFromSet(row, "channel");
-                        if (channelTmp == null) {
-                            channelTmp = -1L;
-                        }
-                        apVifState.setChannel(channelTmp.intValue());
-                        apVifState.setEnabled(row.getBooleanColumn("enabled"));
-                        apVifState.setFtPsk(row.getIntegerColumn("ft_psk").intValue());
-                        apVifState.setGroupRekey(row.getIntegerColumn("group_rekey").intValue());
-                        apVifState.setIfName(row.getStringColumn("if_name"));
-                        apVifState.setMode(row.getStringColumn("mode"));
-                        apVifState.setRrm(row.getIntegerColumn("rrm").intValue());
-                        apVifState.setSsid(row.getStringColumn("ssid"));
-                        apVifState.setSsidBroadcast(row.getStringColumn("ssid_broadcast"));
-                        apVifState.setUapsdEnable(row.getBooleanColumn("uapsd_enable"));
-                        apVifState.setVifRadioIdx(row.getIntegerColumn("vif_radio_idx").intValue());
+                        if (channelTmp != null)
+                            apVifState.setChannel(channelTmp.intValue());
+
+                        Boolean enabledTmp = getSingleValueFromSet(row, "enabled");
+                        if (enabledTmp != null)
+                            apVifState.setEnabled(enabledTmp);
+
+                        Long tmpFtPsk = getSingleValueFromSet(row, "ft_psk");
+                        if (tmpFtPsk != null)
+                            apVifState.setFtPsk(tmpFtPsk.intValue());
+
+                        Long groupRekey = getSingleValueFromSet(row, "group_rekey");
+                        if (groupRekey != null)
+                            apVifState.setGroupRekey(groupRekey.intValue());
+
+                        String ifName = getSingleValueFromSet(row, "if_name");
+                        if (ifName != null)
+                            apVifState.setIfName(ifName);
+
+                        String mode = getSingleValueFromSet(row, "mode");
+                        if (mode != null)
+                            apVifState.setMode(mode);
+
+                        Long rrm = getSingleValueFromSet(row, "rrm");
+                        if (rrm != null)
+                            apVifState.setRrm(rrm.intValue());
+
+                        String ssid = getSingleValueFromSet(row, "ssid");
+                        if (ssid != null)
+                            apVifState.setSsid(ssid);
+
+                        String ssidBroadcast = getSingleValueFromSet(row, "ssid_broadcast");
+                        if (ssidBroadcast != null)
+                            apVifState.setSsidBroadcast(ssidBroadcast);
+
+                        Boolean uapsdEnable = getSingleValueFromSet(row, "uapsd_enable");
+                        if (uapsdEnable != null)
+                            apVifState.setUapsdEnable(uapsdEnable);
+
+                        Long vifRadioIdx = getSingleValueFromSet(row, "vif_radio_idx");
+                        if (vifRadioIdx != null)
+                            apVifState.setVifRadioIdx(vifRadioIdx.intValue());
+
                         apVifState.setAssociatedClients(row.getSetColumn("associated_clients"));
+
                         apVifState.setSecurity(row.getMapColumn("security"));
+
                         apVifState.setVersion(row.getUuidColumn("_version"));
+
                         if (row.getUuidColumn("_uuid") != null)
                             apVifState.set_uuid(row.getUuidColumn("_uuid"));
                         ret.add(apVifState);
+
+                        LOG.debug("Created Wifi_VIF_State Row {}", apVifState.toPrettyString());
                     }
 
                 });
@@ -1604,7 +1642,23 @@ public class OvsdbDao {
                 //
                 // updateColumns.put("channel_list", channels );
                 updateColumns.put("radio_type", new Atom<>("2.4G"));
-                updateColumns.put("reporting_interval", new Atom<>(10));
+                updateColumns.put("reporting_interval", new Atom<>(60));
+                updateColumns.put("sampling_interval", new Atom<>(0));
+                updateColumns.put("stats_type", new Atom<>("device"));
+                // updateColumns.put("survey_interval_ms", new Atom<>(10) );
+                updateColumns.put("survey_type", new Atom<>("on-chan"));
+                // updateColumns.put("threshold", thresholds );
+
+                row = new Row(updateColumns);
+                operations.add(new Insert(wifiStatsConfigDbTable, row));
+                //
+            }
+            
+            if (!provisionedWifiStatsConfigs.containsKey("5GL_device_on-chan")) {
+                //
+                // updateColumns.put("channel_list", channels );
+                updateColumns.put("radio_type", new Atom<>("5GL"));
+                updateColumns.put("reporting_interval", new Atom<>(60));
                 updateColumns.put("sampling_interval", new Atom<>(0));
                 updateColumns.put("stats_type", new Atom<>("device"));
                 // updateColumns.put("survey_interval_ms", new Atom<>(10) );
@@ -1689,7 +1743,7 @@ public class OvsdbDao {
                 updateColumns = new HashMap<>();
                 // updateColumns.put("channel_list", channels );
                 updateColumns.put("radio_type", new Atom<>("5GL"));
-                updateColumns.put("report_type", new Atom<>("average"));
+                updateColumns.put("report_type", new Atom<>("raw"));
 
                 updateColumns.put("reporting_interval", new Atom<>(60));
                 updateColumns.put("sampling_interval", new Atom<>(10));
@@ -1708,7 +1762,7 @@ public class OvsdbDao {
                 updateColumns = new HashMap<>();
                 // updateColumns.put("channel_list", channels );
                 updateColumns.put("radio_type", new Atom<>("5GU"));
-                updateColumns.put("report_type", new Atom<>("average"));
+                updateColumns.put("report_type", new Atom<>("raw"));
 
                 updateColumns.put("reporting_interval", new Atom<>(60));
                 updateColumns.put("sampling_interval", new Atom<>(10));
@@ -1744,7 +1798,7 @@ public class OvsdbDao {
                 updateColumns = new HashMap<>();
                 // updateColumns.put("channel_list", channels );
                 updateColumns.put("radio_type", new Atom<>("2.4G"));
-                updateColumns.put("report_type", new Atom<>("average"));
+                updateColumns.put("report_type", new Atom<>("raw"));
 
                 updateColumns.put("reporting_interval", new Atom<>(60));
                 updateColumns.put("sampling_interval", new Atom<>(10));
@@ -1809,13 +1863,13 @@ public class OvsdbDao {
                 //
             }
 
-            for (String band : new String[] { "2.4G", "5GL", "5G" }) {
+            for (String band : new String[] { "2.4G", "5GL" }) {
                 if (!provisionedWifiStatsConfigs.containsKey(band + "_rssi_on-chan")) {
                     updateColumns = new HashMap<>();
                     updateColumns.put("radio_type", new Atom<>(band));
-                    updateColumns.put("reporting_interval", new Atom<>(120));
+                    updateColumns.put("reporting_interval", new Atom<>(60));
                     updateColumns.put("sampling_interval", new Atom<>(10));
-                    updateColumns.put("report_type", new Atom<>("average"));
+                    updateColumns.put("report_type", new Atom<>("raw"));
                     updateColumns.put("stats_type", new Atom<>("rssi"));
                     updateColumns.put("survey_interval_ms", new Atom<>(0));
                     updateColumns.put("survey_type", new Atom<>("on-chan"));
