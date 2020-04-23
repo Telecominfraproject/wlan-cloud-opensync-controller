@@ -17,7 +17,7 @@ public class OpensyncAWLANNode extends BaseJsonModel {
 
     private static final long serialVersionUID = -6172956297643126710L;
 
-    public String mqttSettings;
+    public Map<Object, Object> mqttSettings;
     public String model;
     public String skuNumber;
     public String id;
@@ -43,12 +43,12 @@ public class OpensyncAWLANNode extends BaseJsonModel {
     public Uuid _uuid;
     public Uuid version;
 
-    public String getMqttSettings() {
+    public Map<Object, Object> getMqttSettings() {
         return mqttSettings;
     }
 
-    public void setMqttSettings(String mqttSettings) {
-        this.mqttSettings = mqttSettings;
+    public void setMqttSettings(Map<Object, Object> map) {
+        this.mqttSettings = map;
     }
 
     public String getModel() {

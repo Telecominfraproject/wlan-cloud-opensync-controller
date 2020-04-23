@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -22,8 +23,8 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioConfig;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPSsidConfig;
-import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAWLANNode;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAWLANNode;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.BridgeInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.InterfaceInfo;
@@ -1114,57 +1115,82 @@ public class OvsdbDao {
 
     public List<OpensyncAPRadioState> getOpensyncAPRadioState(TableUpdates tableUpdates, String apId,
             OvsdbClient ovsdbClient) {
+
         List<OpensyncAPRadioState> ret = new ArrayList<OpensyncAPRadioState>();
 
         try {
-            tableUpdates.getTableUpdates().values().stream().forEach(tu -> {
-                tu.getRowUpdates().values().stream().forEach(ru -> {
 
-                    Row row = ru.getNew();
+            for (Entry<String, TableUpdate> tableUpdate : tableUpdates.getTableUpdates().entrySet()) {
+
+                for (Entry<UUID, RowUpdate> rowUpdate : tableUpdate.getValue().getRowUpdates().entrySet()) {
+
+                    Row row = rowUpdate.getValue().getNew();
+                    // Row old = rowUpdate.getOld();
 
                     if (row != null) {
 
-                        OpensyncAPRadioState apRadioState = new OpensyncAPRadioState();
+                        OpensyncAPRadioState tableState = new OpensyncAPRadioState();
 
-                        String mac = getSingleValueFromSet(row, "mac");
-                        if (mac != null)
-                            apRadioState.setMac(mac);
-                        Long channelTmp = getSingleValueFromSet(row, "channel");
-                        if (channelTmp != null)
-                            apRadioState.setChannel(channelTmp.intValue());
-                        String freq_band = getSingleValueFromSet(row, "freq_band");
-                        if (freq_band != null)
-                            apRadioState.setFreqBand(freq_band);
-                        String ifName = getSingleValueFromSet(row, "if_name");
-                        if (ifName != null)
-                            apRadioState.setIfName(ifName);
-                        String channelMode = getSingleValueFromSet(row, "channel_mode");
-                        if (channelMode != null)
-                            apRadioState.setChannelMode(channelMode);
-                        String country = getSingleValueFromSet(row, "country");
-                        if (country != null)
-                            apRadioState.setCountry(country);
-                        Boolean tmp = getSingleValueFromSet(row, "enabled");
-                        if (tmp != null)
-                            apRadioState.setEnabled(tmp);
-                        String htMode = getSingleValueFromSet(row, "ht_mode");
-                        if (htMode != null)
-                            apRadioState.setHtMode(htMode);
-                        Long txPower = getSingleValueFromSet(row, "tx_power");
-                        if (txPower != null)
-                            apRadioState.setTxPower(txPower.intValue());
-                        apRadioState.setHwConfig(row.getMapColumn("hw_config"));
-                        Uuid version = getSingleValueFromSet(row, "_version");
-                        if (version != null)
-                            apRadioState.setVersion(version);
-                        Uuid uuid = getSingleValueFromSet(row, "_uuid");
-                        if (uuid != null)
-                            apRadioState.set_uuid(uuid);
-                        ret.add(apRadioState);
+                        Map<String, Value> map = row.getColumns();
+
+                        if (map.get("mac") != null && map.get("mac").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setMac(row.getStringColumn("mac"));
+                        }
+                        if (map.get("channel") != null && map.get("channel").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setChannel(row.getIntegerColumn("channel").intValue());
+                        }
+                        if (map.get("freq_band") != null && map.get("freq_band").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setFreqBand(row.getStringColumn("freq_band"));
+                        }
+                        if (map.get("if_name") != null && map.get("if_name").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setIfName(row.getStringColumn("if_name"));
+                        }
+                        if (map.get("channel_mode") != null && map.get("channel_mode").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setChannelMode(row.getStringColumn("channel_mode"));
+                        }
+                        if (map.get("country") != null && map.get("country").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setCountry(row.getStringColumn("country"));
+                        }
+                        if (map.get("enabled") != null && map.get("enabled").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setEnabled(row.getBooleanColumn("enabled"));
+                        }
+                        if (map.get("ht_mode") != null && map.get("ht_mode").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setHtMode(row.getStringColumn("ht_mode"));
+                        }
+                        if (map.get("tx_power") != null && map.get("tx_power").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setTxPower(row.getIntegerColumn("tx_power").intValue());
+                        }
+                        if (map.get("hw_config") != null && map.get("hw_config").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Map.class)) {
+                            tableState.setHwConfig(row.getMapColumn("hw_config"));
+                        }
+                        if (map.get("_version") != null && map.get("_version").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setVersion(row.getUuidColumn("_version"));
+                        }
+                        if (map.get("_uuid") != null && map.get("_uuid").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setVersion(row.getUuidColumn("_uuid"));
+                        }
+
+                        ret.add(tableState);
                     }
+                }
+            }
 
-                });
+            ret.stream().forEach(wrs -> {
+                LOG.debug("Wifi_Radio_State row {}", wrs.toPrettyString());
             });
+
         } catch (Exception e) {
             LOG.error("Could not parse update for Wifi_Radio_State", e);
         }
@@ -1177,48 +1203,65 @@ public class OvsdbDao {
         List<OpensyncAPInetState> ret = new ArrayList<OpensyncAPInetState>();
 
         try {
-            tableUpdates.getTableUpdates().values().stream().forEach(tu -> {
-                tu.getRowUpdates().values().stream().forEach(ru -> {
 
-                    Row row = ru.getNew();
+            for (TableUpdate tableUpdate : tableUpdates.getTableUpdates().values()) {
+
+                for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
+
+                    Row row = rowUpdate.getNew();
+                    // Row old = rowUpdate.getOld();
 
                     if (row != null) {
 
-                        OpensyncAPInetState apInetState = new OpensyncAPInetState();
+                        OpensyncAPInetState tableState = new OpensyncAPInetState();
+                        Map<String, Value> map = row.getColumns();
 
-                        Boolean natTmp = getSingleValueFromSet(row, "NAT");
-                        if (natTmp != null)
-                            apInetState.setNat(natTmp);
-                        Boolean enabled = getSingleValueFromSet(row, "enabled");
-                        if (enabled != null)
-                            apInetState.setEnabled(enabled);
-                        String ifName = getSingleValueFromSet(row, "if_name");
-                        if (ifName != null)
-                            apInetState.setIfName(ifName);
-                        String ifType = getSingleValueFromSet(row, "if_type");
-                        if (ifType != null)
-                            apInetState.setIfType(ifType);
-                        String ipScheme = getSingleValueFromSet(row, "ip_assign_scheme");
-                        if (ipScheme != null)
-                            apInetState.setIpAssignScheme(ipScheme);
-                        Boolean network = getSingleValueFromSet(row, "network");
-                        if (network != null)
-                            apInetState.setNetwork(network);
-                        String hwAddr = getSingleValueFromSet(row, "hwaddr");
-                        if (hwAddr != null)
-                            apInetState.setHwAddr(hwAddr);
-                        Uuid version = getSingleValueFromSet(row, "_version");
-                        if (version != null)
-                            apInetState.setVersion(version);
-                        Uuid uuid = getSingleValueFromSet(row, "_uuid");
-                        if (uuid != null)
-                            apInetState.set_uuid(uuid);
-
-                        ret.add(apInetState);
+                        if (map.get("NAT") != null && map.get("NAT").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setNat(row.getBooleanColumn("NAT"));
+                        }
+                        if (map.get("enabled") != null && map.get("enabled").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setEnabled(row.getBooleanColumn("enabled"));
+                        }
+                        if (map.get("if_name") != null && map.get("if_name").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setIfName(row.getStringColumn("if_name"));
+                        }
+                        if (map.get("if_type") != null && map.get("if_type").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setIfType(row.getStringColumn("if_type"));
+                        }
+                        if (map.get("ip_assign_scheme") != null && map.get("ip_assign_scheme").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setIpAssignScheme(row.getStringColumn("ip_assign_scheme"));
+                        }
+                        if (map.get("network") != null && map.get("network").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setNetwork(row.getBooleanColumn("network"));
+                        }
+                        if (map.get("hwaddr") != null && map.get("hwaddr").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setHwAddr(row.getStringColumn("hwaddr"));
+                        }
+                        if (map.get("_version") != null && map.get("_version").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setVersion(row.getUuidColumn("_version"));
+                        }
+                        if (map.get("_uuid") != null && map.get("_uuid").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setVersion(row.getUuidColumn("_uuid"));
+                        }
+                        ret.add(tableState);
                     }
 
-                });
+                }
+            }
+            
+            ret.stream().forEach(wrs -> {
+                LOG.debug("Wifi_Inet_State row {}", wrs.toPrettyString());
             });
+            
         } catch (Exception e) {
             LOG.error("Could not parse update for Wifi_Inet_State", e);
         }
@@ -1229,80 +1272,103 @@ public class OvsdbDao {
             OvsdbClient ovsdbClient) {
         List<OpensyncAPVIFState> ret = new ArrayList<OpensyncAPVIFState>();
         try {
-            tableUpdates.getTableUpdates().values().stream().forEach(tu -> {
-                tu.getRowUpdates().values().stream().forEach(ru -> {
 
-                    Row row = ru.getNew();
+            for (TableUpdate tableUpdate : tableUpdates.getTableUpdates().values()) {
+
+                for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
+
+                    Row row = rowUpdate.getNew();
+                    // Row old = rowUpdate.getOld();
+
                     if (row != null) {
 
-                        OpensyncAPVIFState apVifState = new OpensyncAPVIFState();
+                        OpensyncAPVIFState tableState = new OpensyncAPVIFState();
 
-                        String tmpBridge = getSingleValueFromSet(row, "bridge");
-                        if (tmpBridge != null)
-                            apVifState.setBridge(getSingleValueFromSet(row, "bridge"));
-                        Long btmTmp = getSingleValueFromSet(row, "btm");
-                        if (btmTmp != null)
-                            apVifState.setBtm(btmTmp.intValue());
+                        Map<String, Value> map = row.getColumns();
 
-                        Long channelTmp = getSingleValueFromSet(row, "channel");
-                        if (channelTmp != null)
-                            apVifState.setChannel(channelTmp.intValue());
+                        if (map.get("mac") != null && map.get("mac").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setMac(row.getStringColumn("mac"));
+                        }
+                        if (map.get("bridge") != null && map.get("bridge").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setBridge(row.getStringColumn("bridge"));
+                        }
+                        if (map.get("btm") != null && map.get("btm").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setBtm(row.getIntegerColumn("btm").intValue());
+                        }
 
-                        Boolean enabledTmp = getSingleValueFromSet(row, "enabled");
-                        if (enabledTmp != null)
-                            apVifState.setEnabled(enabledTmp);
+                        if (map.get("channel") != null && map.get("channel").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setChannel(row.getIntegerColumn("channel").intValue());
+                        }
 
-                        Long tmpFtPsk = getSingleValueFromSet(row, "ft_psk");
-                        if (tmpFtPsk != null)
-                            apVifState.setFtPsk(tmpFtPsk.intValue());
+                        if (map.get("enabled") != null && map.get("enabled").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setEnabled(row.getBooleanColumn("enabled"));
+                        }
 
-                        Long groupRekey = getSingleValueFromSet(row, "group_rekey");
-                        if (groupRekey != null)
-                            apVifState.setGroupRekey(groupRekey.intValue());
+                        if (map.get("group_rekey") != null && map.get("group_rekey").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setGroupRekey(row.getIntegerColumn("group_rekey").intValue());
+                        }
+                        if (map.get("if_name") != null && map.get("if_name").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setIfName(row.getStringColumn("if_name"));
+                        }
 
-                        String ifName = getSingleValueFromSet(row, "if_name");
-                        if (ifName != null)
-                            apVifState.setIfName(ifName);
+                        if (map.get("mode") != null && map.get("mode").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setMode(row.getStringColumn("mode"));
+                        }
 
-                        String mode = getSingleValueFromSet(row, "mode");
-                        if (mode != null)
-                            apVifState.setMode(mode);
+                        if (map.get("rrm") != null && map.get("rrm").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setRrm(row.getIntegerColumn("rrm").intValue());
+                        }
+                        if (map.get("ssid") != null && map.get("ssid").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setSsid(row.getStringColumn("ssid"));
+                        }
 
-                        Long rrm = getSingleValueFromSet(row, "rrm");
-                        if (rrm != null)
-                            apVifState.setRrm(rrm.intValue());
+                        if (map.get("ssid_broadcast") != null && map.get("ssid_broadcast").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setSsidBroadcast(row.getStringColumn("ssid_broadcast"));
+                        }
+                        if (map.get("uapsd_enable") != null && map.get("uapsd_enable").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setUapsdEnable(row.getBooleanColumn("uapsd_enable"));
+                        }
+                        if (map.get("vif_radio_idx") != null && map.get("vif_radio_idx").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setVifRadioIdx(row.getIntegerColumn("vif_radio_idx").intValue());
+                        }
 
-                        String ssid = getSingleValueFromSet(row, "ssid");
-                        if (ssid != null)
-                            apVifState.setSsid(ssid);
+                        if (map.get("associated_clients") != null)
+                            tableState.setAssociatedClients(row.getSetColumn("associated_clients"));
 
-                        String ssidBroadcast = getSingleValueFromSet(row, "ssid_broadcast");
-                        if (ssidBroadcast != null)
-                            apVifState.setSsidBroadcast(ssidBroadcast);
+                        if (map.get("security") != null)
+                            tableState.setSecurity(row.getMapColumn("security"));
 
-                        Boolean uapsdEnable = getSingleValueFromSet(row, "uapsd_enable");
-                        if (uapsdEnable != null)
-                            apVifState.setUapsdEnable(uapsdEnable);
-
-                        Long vifRadioIdx = getSingleValueFromSet(row, "vif_radio_idx");
-                        if (vifRadioIdx != null)
-                            apVifState.setVifRadioIdx(vifRadioIdx.intValue());
-
-                        apVifState.setAssociatedClients(row.getSetColumn("associated_clients"));
-
-                        apVifState.setSecurity(row.getMapColumn("security"));
-
-                        Uuid version = getSingleValueFromSet(row, "_version");
-                        if (version != null)
-                            apVifState.setVersion(version);
-                        Uuid uuid = getSingleValueFromSet(row, "_uuid");
-                        if (uuid != null)
-                            apVifState.set_uuid(uuid);
+                        if (map.get("_version") != null && map.get("_version").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setVersion(row.getUuidColumn("_version"));
+                        }
+                        if (map.get("_uuid") != null && map.get("_uuid").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setVersion(row.getUuidColumn("_uuid"));
+                        }
 
                     }
 
-                });
+                }
+            }
+            
+            ret.stream().forEach(wrs -> {
+                LOG.debug("Wifi_VIF_State row {}", wrs.toPrettyString());
             });
+            
         } catch (Exception e) {
             LOG.error("Could not parse update for Wifi_VIF_State", e);
 
@@ -1315,30 +1381,44 @@ public class OvsdbDao {
         List<OpensyncWifiAssociatedClients> ret = new ArrayList<OpensyncWifiAssociatedClients>();
 
         try {
-            tableUpdates.getTableUpdates().values().stream().forEach(tu -> {
-                tu.getRowUpdates().values().stream().forEach(ru -> {
 
-                    Row row = ru.getNew();
+            for (TableUpdate tableUpdate : tableUpdates.getTableUpdates().values()) {
+
+                for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
+
+                    Row row = rowUpdate.getNew();
 
                     if (row != null) {
-                        OpensyncWifiAssociatedClients wifiClient = new OpensyncWifiAssociatedClients();
-                        String mac = getSingleValueFromSet(row, "mac");
-                        if (mac != null)
-                            wifiClient.setMac(mac);
-                        wifiClient.setCapabilities(row.getSetColumn("capabilities"));
-                        String state = getSingleValueFromSet(row, "state");
-                        if (state != null)
-                            wifiClient.setState(state);
-                        Uuid version = getSingleValueFromSet(row, "_version");
-                        if (version != null)
-                            wifiClient.setVersion(version);
-                        Uuid uuid = getSingleValueFromSet(row, "_uuid");
-                        if (uuid != null)
-                            wifiClient.set_uuid(uuid);
 
-                        ret.add(wifiClient);
+                        OpensyncWifiAssociatedClients tableState = new OpensyncWifiAssociatedClients();
+                        Map<String, Value> map = row.getColumns();
+
+                        if (map.get("mac") != null && map.get("mac").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setMac(row.getStringColumn("mac"));
+                        }
+                        if (row.getSetColumn("capabilities") != null)
+                            tableState.setCapabilities(row.getSetColumn("capabilities"));
+                        if (map.get("state") != null && map.get("state").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setState(row.getBooleanColumn("state"));
+                        }
+                        if (map.get("_version") != null && map.get("_version").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setVersion(row.getUuidColumn("_version"));
+                        }
+                        if (map.get("_uuid") != null && map.get("_uuid").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setVersion(row.getUuidColumn("_uuid"));
+                        }
+
+                        ret.add(tableState);
+
                     }
-                });
+                }
+            }
+            ret.stream().forEach(wrs -> {
+                LOG.debug("Wifi_Associated_Clients row {}", wrs.toPrettyString());
             });
         } catch (Exception e) {
             LOG.error("Could not get Wifi_Associated_Clients list from table update", e);
@@ -1348,92 +1428,127 @@ public class OvsdbDao {
     }
 
     public OpensyncAWLANNode getOpensyncAWLANNode(TableUpdates tableUpdates, String apId, OvsdbClient ovsdbClient) {
-        OpensyncAWLANNode ret = new OpensyncAWLANNode();
+        OpensyncAWLANNode tableState = new OpensyncAWLANNode();
 
-        Map<String, TableUpdate> updates = tableUpdates.getTableUpdates();
+        try {
 
-        for (TableUpdate update : updates.values()) {
+            for (TableUpdate tableUpdate : tableUpdates.getTableUpdates().values()) {
 
-            Map<UUID, RowUpdate> rowUpdates = update.getRowUpdates();
+                for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
 
-            for (RowUpdate rowUpdate : rowUpdates.values()) {
+                    Row row = rowUpdate.getNew();
 
-                Row row = rowUpdate.getNew();
+                    if (row != null) {
 
-                if (row != null) {
-                    ret.setMqttSettings(row.getMapColumn("mqtt_settings").toString());
-                    String model = getSingleValueFromSet(row, "model");
-                    if (model != null)
-                        ret.setModel(model);
-                    String skuNumber = getSingleValueFromSet(row, "sku_number");
-                    if (skuNumber != null)
-                        ret.setSkuNumber(skuNumber);
-                    String id = getSingleValueFromSet(row, "id");
-                    if (id != null)
-                        ret.setId(id);
+                        Map<String, Value> map = row.getColumns();
 
-                    ret.setVersionMatrix(row.getMapColumn("version_matrix"));
-                    String fwVersion = getSingleValueFromSet(row, "firmware_version");
-                    if (fwVersion != null)
-                        ret.setFirmwareVersion(fwVersion);
-                    String fwUrl = getSingleValueFromSet(row, "firmware_url");
-                    if (fwUrl != null)
-                        ret.setFirmwareUrl(fwUrl);
-                    Uuid uuid = getSingleValueFromSet(row, "_uuid");
-                    if (uuid != null)
-                        ret.set_uuid(uuid);
-                    Long ugDlTimer = getSingleValueFromSet(row, "upgrade_dl_timer");
-                    if (ugDlTimer != null)
-                        ret.setUpgradeDlTimer(ugDlTimer.intValue());
-                    String platform = getSingleValueFromSet(row, "platform_version");
-                    if (platform != null)
-                        ret.setPlatformVersion(platform);
-                    String fwPass = getSingleValueFromSet(row, "firmware_pass");
-                    if (fwPass != null)
-                        ret.setFirmwarePass(fwPass);
-                    Long ugTimer = getSingleValueFromSet(row, "upgrade_timer");
-                    if (ugTimer != null)
-                        ret.setUpgradeTimer(ugTimer.intValue());
-                    Long maxBackoff = getSingleValueFromSet(row, "max_backoff");
-                    if (maxBackoff != null)
-                        ret.setMaxBackoff(maxBackoff.intValue());
-                    ret.setLedConfig(row.getMapColumn("led_config"));
-                    String redirector = getSingleValueFromSet(row, "redirector_addr");
-                    if (redirector != null)
-                        ret.setRedirectorAddr(redirector);
-                    ret.setMqttHeaders(row.getMapColumn("mqtt_headers"));
-                    String serial = getSingleValueFromSet(row, "serial_number");
-                    if (serial != null)
-                        ret.setSerialNumber(serial);
-                    Uuid version = getSingleValueFromSet(row, "_version");
-                    if (version != null)
-                        ret.setVersion(version);
-                    Long ugStatus = getSingleValueFromSet(row, "upgrade_status");
-                    if (ugStatus != null)
-                        ret.setUpgradeStatus(ugStatus.intValue());
-                    String deviceMode = getSingleValueFromSet(row, "device_mode");
-                    if (deviceMode != null)
-                        ret.setDeviceMode(deviceMode);
-                    Long minBackoff = getSingleValueFromSet(row, "min_backoff");
-                    if (minBackoff != null)
-                        ret.setMinBackoff(minBackoff.intValue());
-                    ret.setMqttTopics(row.getMapColumn("mqtt_topics"));
-                    String revision = getSingleValueFromSet(row, "revision");
-                    if (revision != null)
-                        ret.setRevision(revision);
-                    String mgrAddress = getSingleValueFromSet(row, "manager_addr");
-                    if (mgrAddress != null)
-                        ret.setManagerAddr(mgrAddress);
-                    Boolean factoryReset = getSingleValueFromSet(row, "factory_reset");
-                    if (factoryReset != null)
-                        ret.setFactoryReset(factoryReset);
+                        if (map.get("mqtt_settings") != null) {
+                            tableState.setMqttSettings(row.getMapColumn("mqtt_settings"));
+                        }
+                        if (map.get("mqtt_headers") != null) {
+                            tableState.setMqttHeaders(row.getMapColumn("mqtt_headers"));
+                        }
+                        if (map.get("mqtt_topics") != null) {
+                            tableState.setMqttHeaders(row.getMapColumn("mqtt_topics"));
+                        }
+
+                        if (map.get("model") != null && map.get("model").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setModel(row.getStringColumn("model"));
+                        }
+                        if (map.get("sku_number") != null && map.get("sku_number").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setSkuNumber(row.getStringColumn("sku_number"));
+                        }
+                        if (map.get("id") != null && map.get("id").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setId(row.getStringColumn("id"));
+                        }
+
+                        if (map.get("version_matrix") != null)
+                            tableState.setVersionMatrix(row.getMapColumn("version_matrix"));
+                        if (map.get("firmware_version") != null && map.get("firmware_version").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setFirmwareVersion(row.getStringColumn("firmware_version"));
+                        }
+                        if (map.get("firmware_url") != null && map.get("firmware_url").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setFirmwareUrl(row.getStringColumn("firmware_url"));
+                        }
+
+                        if (map.get("_uuid") != null && map.get("_uuid").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setVersion(row.getUuidColumn("_uuid"));
+                        }
+                        if (map.get("upgrade_dl_timer") != null && map.get("upgrade_dl_timer").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setUpgradeDlTimer(row.getIntegerColumn("upgrade_dl_timer").intValue());
+                        }
+                        if (map.get("platform_version") != null && map.get("platform_version").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setPlatformVersion(row.getStringColumn("platform_version"));
+                        }
+                        if (map.get("firmware_pass") != null && map.get("firmware_pass").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setFirmwarePass(row.getStringColumn("firmware_pass"));
+                        }
+                        if (map.get("upgrade_timer") != null && map.get("upgrade_timer").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setUpgradeTimer(row.getIntegerColumn("upgrade_timer").intValue());
+                        }
+                        if (map.get("max_backoff") != null && map.get("max_backoff").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setMaxBackoff(row.getIntegerColumn("max_backoff").intValue());
+                        }
+                        if (map.get("led_config") != null)
+                            tableState.setLedConfig(row.getMapColumn("led_config"));
+                        if (map.get("redirector_addr") != null && map.get("redirector_addr").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setRedirectorAddr(row.getStringColumn("redirector_addr"));
+                        }
+                        if (map.get("serial_number") != null && map.get("serial_number").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setSerialNumber(row.getStringColumn("serial_number"));
+                        }
+                        if (map.get("_version") != null && map.get("_version").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setVersion(row.getUuidColumn("_version"));
+                        }
+                        if (map.get("upgrade_status") != null && map.get("upgrade_status").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setUpgradeTimer(row.getIntegerColumn("upgrade_status").intValue());
+                        }
+                        if (map.get("device_mode") != null && map.get("device_mode").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setDeviceMode(row.getStringColumn("device_mode"));
+                        }
+                        if (map.get("min_backoff") != null && map.get("min_backoff").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setMinBackoff(row.getIntegerColumn("min_backoff").intValue());
+                        }
+
+                        if (map.get("revision") != null && map.get("revision").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setRevision(row.getStringColumn("revision"));
+                        }
+                        if (map.get("manager_addr") != null && map.get("manager_addr").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setManagerAddr(row.getStringColumn("manager_addr"));
+                        }
+                        if (map.get("factory_reset") != null && map.get("factory_reset").getClass()
+                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                            tableState.setFactoryReset(row.getBooleanColumn("factory_reset"));
+                        }
+                    }
+
                 }
 
             }
-
+        } catch (Exception e) {
+            LOG.error("Failed to handle AWLAN_Node update", e);
         }
 
-        return ret;
+        return tableState;
 
     }
 

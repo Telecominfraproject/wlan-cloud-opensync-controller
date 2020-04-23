@@ -19,7 +19,7 @@ public class OpensyncWifiAssociatedClients extends BaseJsonModel {
 
     public String keyId;
     public String mac;
-    public String state;
+    public Boolean state;
     public Set<String> capabilities;
     public int uapsd;
     public String kick;
@@ -43,11 +43,11 @@ public class OpensyncWifiAssociatedClients extends BaseJsonModel {
         this.mac = mac;
     }
 
-    public String getState() {
+    public Boolean getState() {
         return state;
     }
 
-    public void setState(String state) {
+    public void setState(Boolean state) {
         this.state = state;
     }
 
