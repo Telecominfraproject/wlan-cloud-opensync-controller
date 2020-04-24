@@ -1257,11 +1257,11 @@ public class OvsdbDao {
 
                 }
             }
-            
+
             ret.stream().forEach(wrs -> {
                 LOG.debug("Wifi_Inet_State row {}", wrs.toPrettyString());
             });
-            
+
         } catch (Exception e) {
             LOG.error("Could not parse update for Wifi_Inet_State", e);
         }
@@ -1360,15 +1360,17 @@ public class OvsdbDao {
                             tableState.setVersion(row.getUuidColumn("_uuid"));
                         }
 
+                        ret.add(tableState);
+
                     }
 
                 }
             }
-            
+
             ret.stream().forEach(wrs -> {
                 LOG.debug("Wifi_VIF_State row {}", wrs.toPrettyString());
             });
-            
+
         } catch (Exception e) {
             LOG.error("Could not parse update for Wifi_VIF_State", e);
 
