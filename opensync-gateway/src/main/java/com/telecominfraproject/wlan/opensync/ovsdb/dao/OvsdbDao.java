@@ -1401,7 +1401,7 @@ public class OvsdbDao {
                             tableState.setCapabilities(row.getSetColumn("capabilities"));
                         if (map.get("state") != null && map.get("state").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
-                            tableState.setState(row.getBooleanColumn("state"));
+                            tableState.setState(row.getStringColumn("state"));
                         }
                         if (map.get("_version") != null && map.get("_version").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
