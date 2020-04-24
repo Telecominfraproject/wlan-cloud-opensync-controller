@@ -281,45 +281,49 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
         extIntegrationInterface
                 .wifiInetStateDbTableUpdate(ovsdbDao.getOpensyncAPInetState(isCf.join(), key, ovsdbClient), key);
 
-        CompletableFuture<TableUpdates> vsCf = ovsdbClient
-                .monitor(OvsdbDao.ovsdbName, OvsdbDao.wifiVifStateDbTable + "_" + key,
-                        new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiVifStateDbTable,
-                                new MonitorRequest(new MonitorSelect(true, true, true, true)))),
-                        new MonitorCallback() {
-                            @Override
-                            public void update(TableUpdates tableUpdates) {
-                                // extIntegrationInterface.wifiVIFStateDbTableUpdate(
-                                // ovsdbDao.getOpensyncAPVIFState(tableUpdates,
-                                // key, ovsdbClient), key);
-                                List<OpensyncAPVIFState> vifsToDelete = new ArrayList<OpensyncAPVIFState>();
-                                for (Entry<String, TableUpdate> tableUpdate : tableUpdates.getTableUpdates()
-                                        .entrySet()) {
+        CompletableFuture<TableUpdates> vsCf = ovsdbClient.monitor(OvsdbDao.ovsdbName,
+                OvsdbDao.wifiVifStateDbTable + "_" + key,
+                new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiVifStateDbTable,
+                        new MonitorRequest(new MonitorSelect(true, true, true, true)))),
+                new MonitorCallback() {
+                    @Override
+                    public void update(TableUpdates tableUpdates) {
+                        // extIntegrationInterface.wifiVIFStateDbTableUpdate(
+                        // ovsdbDao.getOpensyncAPVIFState(tableUpdates,
+                        // key, ovsdbClient), key);
+                        List<OpensyncAPVIFState> vifsToDelete = new ArrayList<OpensyncAPVIFState>();
+                        for (Entry<String, TableUpdate> tableUpdate : tableUpdates.getTableUpdates().entrySet()) {
 
-                                    for (Entry<UUID, RowUpdate> rowUpdate : tableUpdate.getValue().getRowUpdates()
-                                            .entrySet()) {
-                                        if (rowUpdate.getValue().getOld() != null
-                                                && rowUpdate.getValue().getNew() == null) {
-                                            Row row = rowUpdate.getValue().getOld();
-                                            String ifName = row.getStringColumn("if_name");
-                                            String ssid = row.getStringColumn("ssid");
-                                            OpensyncAPVIFState toBeDeleted = new OpensyncAPVIFState();
-                                            toBeDeleted.setSsid(ssid);
-                                            toBeDeleted.setIfName(ifName);
-                                            vifsToDelete.add(toBeDeleted);
-                                            tableUpdate.getValue().getRowUpdates().entrySet().remove(rowUpdate);
-                                        }
-                                    }
+                            for (Entry<UUID, RowUpdate> rowUpdate : tableUpdate.getValue().getRowUpdates().entrySet()) {
+                                if (rowUpdate.getValue().getOld() != null && rowUpdate.getValue().getNew() == null) {
+                                    Row row = rowUpdate.getValue().getOld();
+                                    String ifName = row.getStringColumn("if_name");
+                                    String ssid = row.getStringColumn("ssid");
+                                    OpensyncAPVIFState toBeDeleted = new OpensyncAPVIFState();
+                                    toBeDeleted.setSsid(ssid);
+                                    toBeDeleted.setIfName(ifName);
+                                    vifsToDelete.add(toBeDeleted);
+                                    tableUpdate.getValue().getRowUpdates().remove(rowUpdate.getKey());
                                 }
-
-                                if (!vifsToDelete.isEmpty()) {
-                                    extIntegrationInterface.wifiVIFStateDbTableDelete(vifsToDelete, key);
-                                }
-                                extIntegrationInterface.wifiVIFStateDbTableUpdate(
-                                        ovsdbDao.getOpensyncAPVIFState(tableUpdates, key, ovsdbClient), key);
 
                             }
 
-                        });
+                            if (tableUpdate.getValue().getRowUpdates().values().isEmpty()) {
+                                tableUpdates.getTableUpdates().remove(tableUpdate.getKey());
+                            }
+
+                        }
+
+                        if (!vifsToDelete.isEmpty()) {
+                            extIntegrationInterface.wifiVIFStateDbTableDelete(vifsToDelete, key);
+                        }
+                        if (tableUpdates.getTableUpdates().entrySet().isEmpty())
+                            extIntegrationInterface.wifiVIFStateDbTableUpdate(
+                                    ovsdbDao.getOpensyncAPVIFState(tableUpdates, key, ovsdbClient), key);
+
+                    }
+
+                });
 
         extIntegrationInterface.wifiVIFStateDbTableUpdate(ovsdbDao.getOpensyncAPVIFState(vsCf.join(), key, ovsdbClient),
                 key);
