@@ -141,20 +141,23 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                 String key = ConnectusOvsdbClient.this.ovsdbSessionMapInterface.lookupClientId(ovsdbClient);
 
                 if (key != null) {
+                    
+                    // turn off monitor
+                    try {
+                        ovsdbClient.cancelMonitor(OvsdbDao.wifiRadioStateDbTable + "_" + key);
+                        ovsdbClient.cancelMonitor(OvsdbDao.wifiVifStateDbTable + "_" + key);
+                        ovsdbClient.cancelMonitor(OvsdbDao.wifiInetStateDbTable + "_" + key);
+                        ovsdbClient.cancelMonitor(OvsdbDao.wifiAssociatedClientsDbTable + "_" + key);
+                        ovsdbClient.cancelMonitor(OvsdbDao.awlanNodeDbTable + "_" + key);
+
+                    } catch (OvsdbClientException e) {
+                        LOG.warn("Could not cancel Monitor {}", e);
+                    }
+                    
                     extIntegrationInterface.apDisconnected(key);
                     ConnectusOvsdbClient.this.ovsdbSessionMapInterface.removeSession(key);
                 }
-                // turn off monitor
-                try {
-                    ovsdbClient.cancelMonitor(OvsdbDao.wifiRadioStateDbTable + "_" + key);
-                    ovsdbClient.cancelMonitor(OvsdbDao.wifiVifStateDbTable + "_" + key);
-                    ovsdbClient.cancelMonitor(OvsdbDao.wifiInetStateDbTable + "_" + key);
-                    ovsdbClient.cancelMonitor(OvsdbDao.wifiAssociatedClientsDbTable + "_" + key);
-                    ovsdbClient.cancelMonitor(OvsdbDao.awlanNodeDbTable + "_" + key);
 
-                } catch (OvsdbClientException e) {
-                    LOG.warn("Could not cancel Monitor {}", e);
-                }
                 ovsdbClient.shutdown();
 
                 LOG.info("ovsdbClient disconnected from {} on port {} clientCn {} key {} ", remoteHost, localPort,
@@ -299,10 +302,20 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                                     Row row = rowUpdate.getValue().getOld();
                                     String ifName = row.getStringColumn("if_name");
                                     String ssid = row.getStringColumn("ssid");
-                                    OpensyncAPVIFState toBeDeleted = new OpensyncAPVIFState();
-                                    toBeDeleted.setSsid(ssid);
-                                    toBeDeleted.setIfName(ifName);
-                                    vifsToDelete.add(toBeDeleted);
+                                    if (row.getColumns().get("ssid") != null && row.getColumns().get("ssid").getClass()
+                                            .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                                        ssid = row.getStringColumn("ssid");
+                                    } 
+                                    if (row.getColumns().get("if_name") != null && row.getColumns().get("if_name").getClass()
+                                            .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                                        ifName = row.getStringColumn("if_name");
+                                    } 
+                                    if (ifName != null && ssid != null) {
+                                        OpensyncAPVIFState toBeDeleted = new OpensyncAPVIFState();
+                                        toBeDeleted.setSsid(ssid);
+                                        toBeDeleted.setIfName(ifName);
+                                        vifsToDelete.add(toBeDeleted);
+                                    }
                                     tableUpdate.getValue().getRowUpdates().remove(rowUpdate.getKey());
                                 }
 

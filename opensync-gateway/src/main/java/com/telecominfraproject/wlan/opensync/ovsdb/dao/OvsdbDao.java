@@ -777,8 +777,12 @@ public class OvsdbDao {
                 wifiStatsConfigInfo.threshold = row.getMapColumn("threshold");
                 wifiStatsConfigInfo.uuid = row.getUuidColumn("_uuid");
 
-                ret.put(wifiStatsConfigInfo.radioType + "_" + wifiStatsConfigInfo.statsType + "_"
-                        + wifiStatsConfigInfo.surveyType, wifiStatsConfigInfo);
+                if (wifiStatsConfigInfo.surveyType == null) {
+                    ret.put(wifiStatsConfigInfo.radioType + "_" + wifiStatsConfigInfo.statsType, wifiStatsConfigInfo);
+                } else {
+                    ret.put(wifiStatsConfigInfo.radioType + "_" + wifiStatsConfigInfo.statsType + "_"
+                            + wifiStatsConfigInfo.surveyType, wifiStatsConfigInfo);
+                }
             }
 
             LOG.debug("Retrieved WifiStatsConfigs: {}", ret);
@@ -1814,15 +1818,6 @@ public class OvsdbDao {
         try {
             List<Operation> operations = new ArrayList<>();
             Map<String, Value> updateColumns = new HashMap<>();
-            Row row;
-
-            Set<Integer> channelSet = new HashSet<>();
-            channelSet.add(1);
-            channelSet.add(6);
-            channelSet.add(11);
-            com.vmware.ovsdb.protocol.operation.notation.Set channels = com.vmware.ovsdb.protocol.operation.notation.Set
-                    .of(channelSet);
-
             Map<String, Integer> thresholdMap = new HashMap<>();
             thresholdMap.put("max_delay", 600);
             thresholdMap.put("util", 10);
@@ -1831,247 +1826,15 @@ public class OvsdbDao {
             com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer> thresholds = com.vmware.ovsdb.protocol.operation.notation.Map
                     .of(thresholdMap);
 
-            if (!provisionedWifiStatsConfigs.containsKey("2.4G_device_on-chan")) {
-                //
-                // updateColumns.put("channel_list", channels );
-                updateColumns.put("radio_type", new Atom<>("2.4G"));
-                updateColumns.put("reporting_interval", new Atom<>(60));
-                updateColumns.put("sampling_interval", new Atom<>(0));
-                updateColumns.put("stats_type", new Atom<>("device"));
-                // updateColumns.put("survey_interval_ms", new Atom<>(10) );
-                updateColumns.put("survey_type", new Atom<>("on-chan"));
-                // updateColumns.put("threshold", thresholds );
+            provisionWifiStatsConfigDevice(provisionedWifiStatsConfigs, operations, updateColumns);
 
-                row = new Row(updateColumns);
-                operations.add(new Insert(wifiStatsConfigDbTable, row));
-                //
-            }
+            provisionWifiStatsConfigSurvey(provisionedWifiStatsConfigs, operations, thresholds);
 
-            if (!provisionedWifiStatsConfigs.containsKey("5GL_device_on-chan")) {
-                //
-                // updateColumns.put("channel_list", channels );
-                updateColumns.put("radio_type", new Atom<>("5GL"));
-                updateColumns.put("reporting_interval", new Atom<>(60));
-                updateColumns.put("sampling_interval", new Atom<>(0));
-                updateColumns.put("stats_type", new Atom<>("device"));
-                // updateColumns.put("survey_interval_ms", new Atom<>(10) );
-                updateColumns.put("survey_type", new Atom<>("on-chan"));
-                // updateColumns.put("threshold", thresholds );
+            provisionWifiStatsConfigNeighbor(provisionedWifiStatsConfigs, operations);
 
-                row = new Row(updateColumns);
-                operations.add(new Insert(wifiStatsConfigDbTable, row));
-                //
-            }
+            provisionWifiStatsConfigClient(provisionedWifiStatsConfigs, operations);
 
-            if (!provisionedWifiStatsConfigs.containsKey("5GL_survey_on-chan")) {
-                //
-                updateColumns = new HashMap<>();
-                // updateColumns.put("channel_list", channels );
-                updateColumns.put("radio_type", new Atom<>("5GL"));
-                updateColumns.put("reporting_interval", new Atom<>(60));
-                updateColumns.put("sampling_interval", new Atom<>(10));
-                updateColumns.put("stats_type", new Atom<>("survey"));
-                updateColumns.put("survey_interval_ms", new Atom<>(0));
-                updateColumns.put("survey_type", new Atom<>("on-chan"));
-                // updateColumns.put("threshold", thresholds );
-
-                row = new Row(updateColumns);
-                operations.add(new Insert(wifiStatsConfigDbTable, row));
-                //
-            }
-
-            if (!provisionedWifiStatsConfigs.containsKey("2.4G_survey_off-chan")) {
-                //
-                updateColumns = new HashMap<>();
-                updateColumns.put("channel_list", channels);
-                updateColumns.put("radio_type", new Atom<>("2.4G"));
-                updateColumns.put("reporting_interval", new Atom<>(120));
-                updateColumns.put("sampling_interval", new Atom<>(10));
-                updateColumns.put("stats_type", new Atom<>("survey"));
-                updateColumns.put("survey_interval_ms", new Atom<>(50));
-                updateColumns.put("survey_type", new Atom<>("off-chan"));
-                updateColumns.put("threshold", thresholds);
-
-                row = new Row(updateColumns);
-                operations.add(new Insert(wifiStatsConfigDbTable, row));
-                //
-            }
-
-            if (!provisionedWifiStatsConfigs.containsKey("2.4G_neighbor_off-chan")) {
-                //
-                updateColumns = new HashMap<>();
-                updateColumns.put("channel_list", channels);
-                updateColumns.put("radio_type", new Atom<>("2.4G"));
-                updateColumns.put("reporting_interval", new Atom<>(120));
-                updateColumns.put("sampling_interval", new Atom<>(0));
-                updateColumns.put("stats_type", new Atom<>("neighbor"));
-                updateColumns.put("survey_interval_ms", new Atom<>(0));
-                updateColumns.put("survey_type", new Atom<>("off-chan"));
-                // updateColumns.put("threshold", thresholds );
-
-                row = new Row(updateColumns);
-                operations.add(new Insert(wifiStatsConfigDbTable, row));
-                //
-            }
-
-            if (!provisionedWifiStatsConfigs.containsKey("5GU_neighbor_on-chan")) {
-                //
-                updateColumns = new HashMap<>();
-                // updateColumns.put("channel_list", channels );
-                updateColumns.put("radio_type", new Atom<>("5GU"));
-                updateColumns.put("reporting_interval", new Atom<>(60));
-                updateColumns.put("sampling_interval", new Atom<>(0));
-                updateColumns.put("stats_type", new Atom<>("neighbor"));
-                updateColumns.put("survey_interval_ms", new Atom<>(0));
-                updateColumns.put("survey_type", new Atom<>("on-chan"));
-                // updateColumns.put("threshold", thresholds );
-
-                row = new Row(updateColumns);
-                operations.add(new Insert(wifiStatsConfigDbTable, row));
-                //
-            }
-
-            if (!provisionedWifiStatsConfigs.containsKey("5GL_client_on-chan")) {
-                //
-                updateColumns = new HashMap<>();
-                // updateColumns.put("channel_list", channels );
-                updateColumns.put("radio_type", new Atom<>("5GL"));
-                updateColumns.put("report_type", new Atom<>("raw"));
-
-                updateColumns.put("reporting_interval", new Atom<>(60));
-                updateColumns.put("sampling_interval", new Atom<>(10));
-                updateColumns.put("stats_type", new Atom<>("client"));
-                // updateColumns.put("survey_interval_ms", new Atom<>(0) );
-                updateColumns.put("survey_type", new Atom<>("on-chan"));
-                // updateColumns.put("threshold", thresholds );
-
-                row = new Row(updateColumns);
-                operations.add(new Insert(wifiStatsConfigDbTable, row));
-                //
-            }
-
-            if (!provisionedWifiStatsConfigs.containsKey("5GU_client_on-chan")) {
-                //
-                updateColumns = new HashMap<>();
-                // updateColumns.put("channel_list", channels );
-                updateColumns.put("radio_type", new Atom<>("5GU"));
-                updateColumns.put("report_type", new Atom<>("raw"));
-
-                updateColumns.put("reporting_interval", new Atom<>(60));
-                updateColumns.put("sampling_interval", new Atom<>(10));
-                updateColumns.put("stats_type", new Atom<>("client"));
-                // updateColumns.put("survey_interval_ms", new Atom<>(0) );
-                updateColumns.put("survey_type", new Atom<>("on-chan"));
-                // updateColumns.put("threshold", thresholds );
-
-                row = new Row(updateColumns);
-                operations.add(new Insert(wifiStatsConfigDbTable, row));
-                //
-            }
-
-            if (!provisionedWifiStatsConfigs.containsKey("2.4G_survey_on-chan")) {
-                //
-                updateColumns = new HashMap<>();
-                // updateColumns.put("channel_list", channels );
-                updateColumns.put("radio_type", new Atom<>("2.4G"));
-                updateColumns.put("reporting_interval", new Atom<>(60));
-                updateColumns.put("sampling_interval", new Atom<>(10));
-                updateColumns.put("stats_type", new Atom<>("survey"));
-                updateColumns.put("survey_interval_ms", new Atom<>(0));
-                updateColumns.put("survey_type", new Atom<>("on-chan"));
-                // updateColumns.put("threshold", thresholds );
-
-                row = new Row(updateColumns);
-                operations.add(new Insert(wifiStatsConfigDbTable, row));
-                //
-            }
-
-            if (!provisionedWifiStatsConfigs.containsKey("2.4G_client_on-chan")) {
-                //
-                updateColumns = new HashMap<>();
-                // updateColumns.put("channel_list", channels );
-                updateColumns.put("radio_type", new Atom<>("2.4G"));
-                updateColumns.put("report_type", new Atom<>("raw"));
-
-                updateColumns.put("reporting_interval", new Atom<>(60));
-                updateColumns.put("sampling_interval", new Atom<>(10));
-                updateColumns.put("stats_type", new Atom<>("client"));
-                // updateColumns.put("survey_interval_ms", new Atom<>(0) );
-                updateColumns.put("survey_type", new Atom<>("on-chan"));
-                // updateColumns.put("threshold", thresholds );
-
-                row = new Row(updateColumns);
-                operations.add(new Insert(wifiStatsConfigDbTable, row));
-                //
-            }
-
-            if (!provisionedWifiStatsConfigs.containsKey("2.4G_neighbor_on-chan")) {
-                //
-                updateColumns = new HashMap<>();
-                // updateColumns.put("channel_list", channels );
-                updateColumns.put("radio_type", new Atom<>("2.4G"));
-                updateColumns.put("reporting_interval", new Atom<>(60));
-                updateColumns.put("sampling_interval", new Atom<>(0));
-                updateColumns.put("stats_type", new Atom<>("neighbor"));
-                updateColumns.put("survey_interval_ms", new Atom<>(0));
-                updateColumns.put("survey_type", new Atom<>("on-chan"));
-                // updateColumns.put("threshold", thresholds );
-
-                row = new Row(updateColumns);
-                operations.add(new Insert(wifiStatsConfigDbTable, row));
-                //
-            }
-
-            if (!provisionedWifiStatsConfigs.containsKey("5GU_survey_on-chan")) {
-                //
-                updateColumns = new HashMap<>();
-                // updateColumns.put("channel_list", channels );
-                updateColumns.put("radio_type", new Atom<>("5GU"));
-                updateColumns.put("reporting_interval", new Atom<>(60));
-                updateColumns.put("sampling_interval", new Atom<>(10));
-                updateColumns.put("stats_type", new Atom<>("survey"));
-                updateColumns.put("survey_interval_ms", new Atom<>(0));
-                updateColumns.put("survey_type", new Atom<>("on-chan"));
-                // updateColumns.put("threshold", thresholds );
-
-                row = new Row(updateColumns);
-                operations.add(new Insert(wifiStatsConfigDbTable, row));
-                //
-            }
-
-            if (!provisionedWifiStatsConfigs.containsKey("5GL_neighbor_on-chan")) {
-                //
-                updateColumns = new HashMap<>();
-                // updateColumns.put("channel_list", channels );
-                updateColumns.put("radio_type", new Atom<>("5GL"));
-                updateColumns.put("reporting_interval", new Atom<>(60));
-                updateColumns.put("sampling_interval", new Atom<>(0));
-                updateColumns.put("stats_type", new Atom<>("neighbor"));
-                updateColumns.put("survey_interval_ms", new Atom<>(0));
-                updateColumns.put("survey_type", new Atom<>("on-chan"));
-                // updateColumns.put("threshold", thresholds );
-
-                row = new Row(updateColumns);
-                operations.add(new Insert(wifiStatsConfigDbTable, row));
-                //
-            }
-
-            for (String band : new String[] { "2.4G", "5GL" }) {
-                if (!provisionedWifiStatsConfigs.containsKey(band + "_rssi_on-chan")) {
-                    updateColumns = new HashMap<>();
-                    updateColumns.put("radio_type", new Atom<>(band));
-                    updateColumns.put("reporting_interval", new Atom<>(60));
-                    updateColumns.put("sampling_interval", new Atom<>(10));
-                    updateColumns.put("report_type", new Atom<>("raw"));
-                    updateColumns.put("stats_type", new Atom<>("rssi"));
-                    updateColumns.put("survey_interval_ms", new Atom<>(0));
-                    updateColumns.put("survey_type", new Atom<>("on-chan"));
-                    row = new Row(updateColumns);
-
-                    operations.add(new Insert(wifiStatsConfigDbTable, row));
-                }
-
-            }
+            provisionWifiStatsRssi(provisionedWifiStatsConfigs, operations);
 
             if (!operations.isEmpty()) {
                 CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
@@ -2088,6 +1851,351 @@ public class OvsdbDao {
 
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private void provisionWifiStatsRssi(Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs,
+            List<Operation> operations) {
+        Map<String, Value> updateColumns;
+        Row row;
+        for (String band : new String[] { "2.4G", "5GL","5GU" }) {
+            if (!provisionedWifiStatsConfigs.containsKey(band + "_rssi_on-chan")) {
+                updateColumns = new HashMap<>();
+                updateColumns.put("radio_type", new Atom<>(band));
+                updateColumns.put("reporting_count", new Atom<>(0));
+                updateColumns.put("reporting_interval", new Atom<>(60));
+                updateColumns.put("sampling_interval", new Atom<>(10));
+                updateColumns.put("stats_type", new Atom<>("rssi"));
+                updateColumns.put("survey_interval_ms", new Atom<>(0));
+                updateColumns.put("survey_type", new Atom<>("on-chan"));
+                row = new Row(updateColumns);
+
+                operations.add(new Insert(wifiStatsConfigDbTable, row));
+            }
+
+        }
+    }
+
+    private void provisionWifiStatsConfigNeighbor(Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs,
+            List<Operation> operations) {
+        Map<String, Value> updateColumns;
+        Row row;
+
+        Set<Integer> channelSet2g = new HashSet<>();
+        channelSet2g.add(1);
+        channelSet2g.add(6);
+        channelSet2g.add(11);
+        com.vmware.ovsdb.protocol.operation.notation.Set channels2g = com.vmware.ovsdb.protocol.operation.notation.Set
+                .of(channelSet2g);
+
+        Set<Integer> channelSet5gl = new HashSet<>();
+        channelSet5gl.add(36);
+        channelSet5gl.add(44);
+        channelSet5gl.add(52);
+        com.vmware.ovsdb.protocol.operation.notation.Set channels5gl = com.vmware.ovsdb.protocol.operation.notation.Set
+                .of(channelSet5gl);
+
+        Set<Integer> channelSet5gu = new HashSet<>();
+        channelSet5gu.add(100);
+        channelSet5gu.add(108);
+        channelSet5gu.add(116);
+        com.vmware.ovsdb.protocol.operation.notation.Set channels5gu = com.vmware.ovsdb.protocol.operation.notation.Set
+                .of(channelSet5gu);
+
+        if (!provisionedWifiStatsConfigs.containsKey("2.4G_neighbor_off-chan")) {
+
+            updateColumns = new HashMap<>();
+            updateColumns.put("channel_list", channels2g);
+            updateColumns.put("radio_type", new Atom<>("2.4G"));
+            updateColumns.put("reporting_interval", new Atom<>(120));
+            updateColumns.put("sampling_interval", new Atom<>(0));
+            updateColumns.put("stats_type", new Atom<>("neighbor"));
+            updateColumns.put("survey_interval_ms", new Atom<>(0));
+            updateColumns.put("survey_type", new Atom<>("off-chan"));
+            // updateColumns.put("threshold", thresholds );
+
+            row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+
+        }
+        
+        if (!provisionedWifiStatsConfigs.containsKey("5GL_neighbor_off-chan")) {
+
+            updateColumns = new HashMap<>();
+            updateColumns.put("channel_list", channels5gl);
+            updateColumns.put("radio_type", new Atom<>("5GL"));
+            updateColumns.put("reporting_interval", new Atom<>(120));
+            updateColumns.put("sampling_interval", new Atom<>(0));
+            updateColumns.put("stats_type", new Atom<>("neighbor"));
+            updateColumns.put("survey_interval_ms", new Atom<>(0));
+            updateColumns.put("survey_type", new Atom<>("off-chan"));
+            // updateColumns.put("threshold", thresholds );
+
+            row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+
+        }
+        
+        if (!provisionedWifiStatsConfigs.containsKey("5GU_neighbor_off-chan")) {
+
+            updateColumns = new HashMap<>();
+            updateColumns.put("channel_list", channels5gu);
+            updateColumns.put("radio_type", new Atom<>("5GU"));
+            updateColumns.put("reporting_interval", new Atom<>(120));
+            updateColumns.put("sampling_interval", new Atom<>(0));
+            updateColumns.put("stats_type", new Atom<>("neighbor"));
+            updateColumns.put("survey_interval_ms", new Atom<>(0));
+            updateColumns.put("survey_type", new Atom<>("off-chan"));
+            // updateColumns.put("threshold", thresholds );
+
+            row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+
+        }
+
+        if (!provisionedWifiStatsConfigs.containsKey("5GU_neighbor_on-chan")) {
+            //
+            updateColumns = new HashMap<>();
+            // updateColumns.put("channel_list", channels );
+            updateColumns.put("radio_type", new Atom<>("5GU"));
+            updateColumns.put("reporting_interval", new Atom<>(60));
+            updateColumns.put("sampling_interval", new Atom<>(0));
+            updateColumns.put("stats_type", new Atom<>("neighbor"));
+            updateColumns.put("survey_interval_ms", new Atom<>(0));
+            updateColumns.put("survey_type", new Atom<>("on-chan"));
+            // updateColumns.put("threshold", thresholds );
+
+            row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+            //
+        }
+
+        if (!provisionedWifiStatsConfigs.containsKey("5GL_neighbor_on-chan")) {
+            //
+            updateColumns = new HashMap<>();
+            // updateColumns.put("channel_list", channels );
+            updateColumns.put("radio_type", new Atom<>("5GL"));
+            updateColumns.put("reporting_interval", new Atom<>(60));
+            updateColumns.put("sampling_interval", new Atom<>(0));
+            updateColumns.put("stats_type", new Atom<>("neighbor"));
+            updateColumns.put("survey_interval_ms", new Atom<>(0));
+            updateColumns.put("survey_type", new Atom<>("on-chan"));
+            // updateColumns.put("threshold", thresholds );
+
+            row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+            //
+        }
+
+        if (!provisionedWifiStatsConfigs.containsKey("2.4G_neighbor_on-chan")) {
+            //
+            updateColumns = new HashMap<>();
+            // updateColumns.put("channel_list", channels );
+            updateColumns.put("radio_type", new Atom<>("2.4G"));
+            updateColumns.put("reporting_interval", new Atom<>(60));
+            updateColumns.put("sampling_interval", new Atom<>(0));
+            updateColumns.put("stats_type", new Atom<>("neighbor"));
+            updateColumns.put("survey_interval_ms", new Atom<>(0));
+            updateColumns.put("survey_type", new Atom<>("on-chan"));
+            // updateColumns.put("threshold", thresholds );
+
+            row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+            //
+        }
+    }
+
+    private void provisionWifiStatsConfigSurvey(Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs,
+            List<Operation> operations, com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer> thresholds) {
+
+        Set<Integer> channelSet2g = new HashSet<>();
+        channelSet2g.add(1);
+        channelSet2g.add(6);
+        channelSet2g.add(11);
+        com.vmware.ovsdb.protocol.operation.notation.Set channels2g = com.vmware.ovsdb.protocol.operation.notation.Set
+                .of(channelSet2g);
+
+        Set<Integer> channelSet5gl = new HashSet<>();
+        channelSet5gl.add(36);
+        channelSet5gl.add(44);
+        channelSet5gl.add(52);
+        com.vmware.ovsdb.protocol.operation.notation.Set channels5gl = com.vmware.ovsdb.protocol.operation.notation.Set
+                .of(channelSet5gl);
+
+        Set<Integer> channelSet5gu = new HashSet<>();
+        channelSet5gu.add(100);
+        channelSet5gu.add(108);
+        channelSet5gu.add(116);
+        com.vmware.ovsdb.protocol.operation.notation.Set channels5gu = com.vmware.ovsdb.protocol.operation.notation.Set
+                .of(channelSet5gu);
+
+        Map<String, Value> updateColumns;
+        Row row;
+
+        if (!provisionedWifiStatsConfigs.containsKey("2.4G_survey_on-chan")) {
+            //
+            updateColumns = new HashMap<>();
+            updateColumns.put("radio_type", new Atom<>("2.4G"));
+            updateColumns.put("reporting_count", new Atom<>(0));
+            updateColumns.put("reporting_interval", new Atom<>(60));
+            updateColumns.put("sampling_interval", new Atom<>(10));
+            updateColumns.put("stats_type", new Atom<>("survey"));
+            updateColumns.put("survey_interval_ms", new Atom<>(0));
+            updateColumns.put("survey_type", new Atom<>("on-chan"));
+            row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+            //
+        }
+
+        if (!provisionedWifiStatsConfigs.containsKey("5GL_survey_on-chan")) {
+            //
+            updateColumns = new HashMap<>();
+            updateColumns.put("radio_type", new Atom<>("5GL"));
+            updateColumns.put("reporting_count", new Atom<>(0));
+            updateColumns.put("reporting_interval", new Atom<>(60));
+            updateColumns.put("sampling_interval", new Atom<>(10));
+            updateColumns.put("stats_type", new Atom<>("survey"));
+            updateColumns.put("survey_interval_ms", new Atom<>(0));
+            updateColumns.put("survey_type", new Atom<>("on-chan"));
+            row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+            //
+        }
+
+        if (!provisionedWifiStatsConfigs.containsKey("5GU_survey_on-chan")) {
+            updateColumns = new HashMap<>();
+            updateColumns.put("radio_type", new Atom<>("5GU"));
+            updateColumns.put("reporting_count", new Atom<>(0));
+            updateColumns.put("reporting_interval", new Atom<>(60));
+            updateColumns.put("sampling_interval", new Atom<>(10));
+            updateColumns.put("stats_type", new Atom<>("survey"));
+            updateColumns.put("survey_interval_ms", new Atom<>(0));
+            updateColumns.put("survey_type", new Atom<>("on-chan"));
+            row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+        }
+
+        if (!provisionedWifiStatsConfigs.containsKey("2.4G_survey_off-chan")) {
+            //
+            updateColumns = new HashMap<>();
+            updateColumns.put("channel_list", channels2g);
+            updateColumns.put("radio_type", new Atom<>("2.4G"));
+            updateColumns.put("reporting_interval", new Atom<>(0));
+            updateColumns.put("sampling_interval", new Atom<>(0));
+            updateColumns.put("stats_type", new Atom<>("survey"));
+            updateColumns.put("survey_interval_ms", new Atom<>(10));
+            updateColumns.put("survey_type", new Atom<>("off-chan"));
+            updateColumns.put("threshold", thresholds);
+            row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+            //
+        }
+        
+        if (!provisionedWifiStatsConfigs.containsKey("5GL_survey_off-chan")) {
+            //
+            updateColumns = new HashMap<>();
+            updateColumns.put("channel_list", channels5gl);
+            updateColumns.put("radio_type", new Atom<>("5GL"));
+            updateColumns.put("reporting_interval", new Atom<>(0));
+            updateColumns.put("sampling_interval", new Atom<>(0));
+            updateColumns.put("stats_type", new Atom<>("survey"));
+            updateColumns.put("survey_interval_ms", new Atom<>(10));
+            updateColumns.put("survey_type", new Atom<>("off-chan"));
+            updateColumns.put("threshold", thresholds);
+            row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+            //
+        }
+        
+        if (!provisionedWifiStatsConfigs.containsKey("5GU_survey_off-chan")) {
+            //
+            updateColumns = new HashMap<>();
+            updateColumns.put("channel_list", channels5gu);
+            updateColumns.put("radio_type", new Atom<>("5GU"));
+            updateColumns.put("reporting_interval", new Atom<>(0));
+            updateColumns.put("sampling_interval", new Atom<>(0));
+            updateColumns.put("stats_type", new Atom<>("survey"));
+            updateColumns.put("survey_interval_ms", new Atom<>(10));
+            updateColumns.put("survey_type", new Atom<>("off-chan"));
+            updateColumns.put("threshold", thresholds);
+            row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+            //
+        }
+
+    }
+
+    private void provisionWifiStatsConfigDevice(Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs,
+            List<Operation> operations, Map<String, Value> updateColumns) {
+        Row row;
+        if (!provisionedWifiStatsConfigs.containsKey("2.4G_device")) {
+            updateColumns.put("radio_type", new Atom<>("2.4G"));
+            updateColumns.put("reporting_interval", new Atom<>(900));
+            updateColumns.put("sampling_interval", new Atom<>(0));
+            updateColumns.put("stats_type", new Atom<>("device"));
+            row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+        }
+
+        if (!provisionedWifiStatsConfigs.containsKey("5GL_device")) {
+            // updateColumns.put("channel_list", channels );
+            updateColumns.put("radio_type", new Atom<>("5GL"));
+            updateColumns.put("reporting_interval", new Atom<>(900));
+            updateColumns.put("sampling_interval", new Atom<>(0));
+            updateColumns.put("stats_type", new Atom<>("device"));
+            row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+        }
+
+        if (!provisionedWifiStatsConfigs.containsKey("5GU_device")) {
+            // updateColumns.put("channel_list", channels );
+            updateColumns.put("radio_type", new Atom<>("5GU"));
+            updateColumns.put("reporting_interval", new Atom<>(900));
+            updateColumns.put("sampling_interval", new Atom<>(0));
+            updateColumns.put("stats_type", new Atom<>("device"));
+            row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+        }
+    }
+
+    private void provisionWifiStatsConfigClient(Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs,
+            List<Operation> operations) {
+        Map<String, Value> updateColumns;
+        Row row;
+        if (!provisionedWifiStatsConfigs.containsKey("2.4G_client")) {
+            updateColumns = new HashMap<>();
+            updateColumns.put("radio_type", new Atom<>("2.4G"));
+            updateColumns.put("reporting_count", new Atom<>(0));
+            updateColumns.put("reporting_interval", new Atom<>(60));
+            updateColumns.put("sampling_interval", new Atom<>(10));
+            updateColumns.put("stats_type", new Atom<>("client"));
+            row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+        }
+
+        if (!provisionedWifiStatsConfigs.containsKey("5GL_client")) {
+
+            updateColumns = new HashMap<>();
+            updateColumns.put("radio_type", new Atom<>("5GL"));
+            updateColumns.put("reporting_count", new Atom<>(0));
+            updateColumns.put("reporting_interval", new Atom<>(60));
+            updateColumns.put("sampling_interval", new Atom<>(10));
+            updateColumns.put("stats_type", new Atom<>("client"));
+            row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+
+        }
+
+        if (!provisionedWifiStatsConfigs.containsKey("5GU_client")) {
+
+            updateColumns = new HashMap<>();
+            updateColumns.put("radio_type", new Atom<>("5GU"));
+            updateColumns.put("reporting_count", new Atom<>(0));
+            updateColumns.put("reporting_interval", new Atom<>(60));
+            updateColumns.put("sampling_interval", new Atom<>(10));
+            updateColumns.put("stats_type", new Atom<>("client"));
+            row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
         }
     }
 
