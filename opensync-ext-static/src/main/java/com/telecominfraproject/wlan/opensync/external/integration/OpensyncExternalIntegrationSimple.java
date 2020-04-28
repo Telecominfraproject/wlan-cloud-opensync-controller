@@ -63,29 +63,7 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 	}
 
 	public void processMqttMessage(String topic, Report report) {
-
-		LOG.info("Received PlumeStatsReport on topic {} for ap {}", topic, report.getNodeID());
-
-		if (report.getClientsCount() > 0) {
-			LOG.debug("Received {} client reports for AP {}", report.getClientsCount(), report.getNodeID());
-			report.getClientsList().forEach(c -> LOG.debug("ClientReport {}", c));
-		}
-		if (report.getNeighborsCount() > 0) {
-			LOG.debug("Received {} neighbor reports for AP {}", report.getNeighborsCount(), report.getNodeID());
-			report.getNeighborsList().forEach(c -> LOG.debug("NeighborReport {}", c));
-		}
-		if (report.getDeviceCount() > 0) {
-			LOG.debug("Received {} device reports for AP {}", report.getDeviceCount(), report.getNodeID());
-			report.getDeviceList().forEach(c -> LOG.debug("DeviceReport {}", c));
-		}
-		if (report.getSurveyCount() > 0) {
-			LOG.debug("Received {} survey reports for AP {}", report.getSurveyCount(), report.getNodeID());
-			report.getSurveyList().forEach(c -> LOG.debug("SurveyReport {}", c));
-		}
-		if (report.getRssiReportCount() > 0) {
-			LOG.debug("Received {} rssi reports for AP {}", report.getRssiReportCount(), report.getNodeID());
-			report.getRssiReportList().forEach(c -> LOG.debug("RSSI Report {}", c));
-		}
+		LOG.info("Received PlumeStatsReport on topic {} for ap {}\n{}", topic, report.getNodeID(),report.toString());
 	}
 
 	public void processMqttMessage(String topic, FlowReport flowReport) {
