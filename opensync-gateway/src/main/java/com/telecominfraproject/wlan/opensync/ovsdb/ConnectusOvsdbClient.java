@@ -300,8 +300,8 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                             for (Entry<UUID, RowUpdate> rowUpdate : tableUpdate.getValue().getRowUpdates().entrySet()) {
                                 if (rowUpdate.getValue().getOld() != null && rowUpdate.getValue().getNew() == null) {
                                     Row row = rowUpdate.getValue().getOld();
-                                    String ifName = row.getStringColumn("if_name");
-                                    String ssid = row.getStringColumn("ssid");
+                                    String ifName = null;
+                                    String ssid = null;
                                     if (row.getColumns().get("ssid") != null && row.getColumns().get("ssid").getClass()
                                             .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                                         ssid = row.getStringColumn("ssid");
