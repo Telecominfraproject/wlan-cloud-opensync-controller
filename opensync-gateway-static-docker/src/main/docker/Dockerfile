@@ -1,4 +1,4 @@
-FROM openjdk:13-alpine
+FROM adoptopenjdk/openjdk13:alpine-jre
 MAINTAINER ConnectUs
 
 # Update the package list and upgrade installed packages
