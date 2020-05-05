@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- For assistance related to logback-translator or configuration  -->
+<!-- files in general, please contact the logback user mailing list -->
+<!-- at http://www.qos.ch/mailman/listinfo/logback-user             -->
+<!--                                                                -->
+<!-- For professional support please see                            -->
+<!--    http://www.qos.ch/shop/products/professionalSupport         -->
+<!--                                                                -->
+<configuration>
+  <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{yyyy-MM-DD HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
+  
+  <!-- 
+  <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+    <file>myApp.log</file>
+
+    <encoder>
+      <pattern>%date %level [%thread] %logger{10} [%file:%line] %msg%n</pattern>
+    </encoder>
+  </appender>
+  -->
+  
+  <!-- 
+  <appender name="logfile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>/var/log/a2w/opensyncgw.log</file>
+    <append>true</append>
+    <encoder>
+      <pattern>%date %level [%thread] %logger{36} [%file:%line] %msg%n</pattern>
+    </encoder>
+    <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+      <fileNamePattern>/var/log/a2w/opensyncgw.%i.log.gz</fileNamePattern>
+      <minIndex>1</minIndex>
+      <maxIndex>3</maxIndex>
+    </rollingPolicy>
+    <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+      <maxFileSize>20MB</maxFileSize>
+    </triggeringPolicy>
+  </appender>
+   -->
+       
+  <!--
+  details: http://logback.qos.ch/manual/configuration.html#auto_configuration
+   
+  runtime configuration, if need to override the defaults: 
+  	-Dlogback.configurationFile=/path/to/logback.xml
+  
+  for log configuration debugging - use 
+  	-Dlogback.statusListenerClass=ch.qos.logback.core.status.OnConsoleStatusListener
+  
+  log levels:
+	OFF ERROR WARN INFO DEBUG TRACE  
+   -->
+  <logger name="org.apache.catalina.startup.DigesterFactory" level="ERROR"/>
+  <logger name="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping" level="INFO"/>
+  <logger name="org.springframework.boot.context.embedded.tomcat.TomcatEmbeddedServletContainer" level="INFO"/>
+  <logger name ="com.telecominfraproject.wlan.core.server.webconfig.WebMvcRegistrationsConfiguration$1$1" level="INFO"/>
+  
+  <logger name="com.telecominfraproject.wlan" level="DEBUG"/>
+  <logger name="ai.connectus" level="DEBUG"/>
+  <logger name="com.vmware.ovsdb.service.OvsdbConnectionInfo" level="OFF"/>
+  <logger name="com.vmware.ovsdb.netty.OvsdbConnectionHandler" level="ERROR"/>
+  
+  <logger name="MQTT_DATA" level="DEBUG"/>
+
+  <!--   
+  <logger name="org.springframework.security.web.authentication.preauth" level="DEBUG"/>
+   -->
+   
+  <root level="WARN">
+    <appender-ref ref="stdout"/>
+  	<!-- 
+    <appender-ref ref="logfile"/>
+    -->
+  </root>
+  
+</configuration>

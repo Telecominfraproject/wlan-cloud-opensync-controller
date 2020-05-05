@@ -151,7 +151,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                         ovsdbClient.cancelMonitor(OvsdbDao.awlanNodeDbTable + "_" + key);
 
                     } catch (OvsdbClientException e) {
-                        LOG.warn("Could not cancel Monitor {}", e);
+                        LOG.warn("Could not cancel Monitor {}", e.getMessage());
                     }
                     
                     extIntegrationInterface.apDisconnected(key);

@@ -1,0 +1,27 @@
+{
+  "model_type" : "OpensyncAPConfig",
+  "radioConfig" : {
+    "model_type" : "OpensyncAPRadioConfig",
+    "country" : "CA",
+    "radioChannel24G" : 1,
+    "radioChannel5LG" : 44,
+    "radioChannel5HG" : 108
+  },
+  "ssidConfigs" : [ {
+    "model_type" : "OpensyncAPSsidConfig",
+    "radioType" : "is2dot4GHz",
+    "ssid" : "Connectus-local",
+    "encryption" : "WPA-PSK",
+    "key" : "12345678",
+    "mode" : "2",
+    "broadcast" : true
+  }, {
+    "model_type" : "OpensyncAPSsidConfig",
+    "radioType" : "is5GHz",
+    "ssid" : "Connectus-local-5",
+    "encryption" : "WPA-PSK",
+    "key" : "12345678",
+    "mode" : "2",
+    "broadcast" : true    
+  } ]
+}
