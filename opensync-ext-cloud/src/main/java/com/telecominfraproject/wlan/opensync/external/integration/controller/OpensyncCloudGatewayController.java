@@ -109,21 +109,6 @@ public class OpensyncCloudGatewayController {
 
 	private static final Logger LOG = LoggerFactory.getLogger(OpensyncCloudGatewayController.class);
 
-	@RequestMapping(value = "/connectedClients", method = RequestMethod.GET)
-	public List<String> getConnectedClients() {
-		List<String> ret = new ArrayList<String>(connectusOvsdbClient.getConnectedClientIds());
-		LOG.info("Returning connected clients {}", ret);
-		return ret;
-	}
-
-	@RequestMapping(value = "/changeRedirectorAddress", method = RequestMethod.POST)
-	public String changeRedirectorAddress(@RequestParam String apId, @RequestParam String newRedirectorAddress) {
-		LOG.info("Changing redirector address for AP {} to {}", apId, newRedirectorAddress);
-		String ret = connectusOvsdbClient.changeRedirectorAddress(apId, newRedirectorAddress);
-		LOG.info("Changed redirector address for AP {} to {}", apId, ret);
-		return ret;
-	}
-
 	@RequestMapping(value = "/command", method = RequestMethod.POST)
 	public CustomerEquipmentCommandResponse sendCommand(@RequestBody CEGWBaseCommand command) {
 		LOG.debug("sendCommand({})", command);
