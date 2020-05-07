@@ -29,18 +29,6 @@
         <version>${tip-wlan-cloud.release.version}</version>
       </dependency>
 
-<!--       <dependency> -->
-<!--         <artifactId>webtoken-auth-service</artifactId> -->
-<!--         <groupId>com.telecominfraproject.wlan</groupId> -->
-<!--         <version>${tip-wlan-cloud.release.version}</version> -->
-<!--       </dependency> -->
-    
-<!--       <dependency> -->
-<!--         <artifactId>portal-services</artifactId> -->
-<!--         <groupId>com.telecominfraproject.wlan</groupId> -->
-<!--         <version>${tip-wlan-cloud.release.version}</version> -->
-<!--       </dependency> -->
-      
       <dependency>
         <artifactId>customer-service-interface</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>

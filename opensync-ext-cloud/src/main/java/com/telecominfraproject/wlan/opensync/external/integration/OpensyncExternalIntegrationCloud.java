@@ -86,7 +86,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 	@PostConstruct
 	private void postCreate() {
 		LOG.info("Using Cloud integration");
-		cloudEquipmentRecordCache = cacheManagerShortLived.getCache("KDC_equipment_record_cache");
+		cloudEquipmentRecordCache = cacheManagerShortLived.getCache("equipment_record_cache");
 		opensyncNodeMap = Collections.synchronizedMap(new HashMap<String, OpensyncNode>());
 	}
 
