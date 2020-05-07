@@ -110,22 +110,22 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 	public void apConnected(String apId, ConnectNodeInfo connectNodeInfo) {
 		LOG.info("AP {} got connected to the gateway", apId);
-		Customer customer = null;
-		try {
-			customer = customerServiceInterface.get(autoProvisionedCustomerId);
-			LOG.debug("Got Customer {} for apId {}", customer.toPrettyString());
-		} catch (Exception e) {
-			LOG.error("Caught exception getting customer for Id {} for apId {}", autoProvisionedCustomerId, apId, e);
+
+		Customer customer = null; try { customer =
+				customerServiceInterface.get(autoProvisionedCustomerId);
+		LOG.debug("Got Customer {} for apId {}", customer.toPrettyString()); } catch
+		(Exception e) {
+			LOG.error("Caught exception getting customer for Id {} for apId {}",
+					autoProvisionedCustomerId, apId, e); }
+
+		Equipment ce = null; try { ce = getCustomerEquipment(apId);
+		LOG.debug("Got Equipment {} for apId {}", ce.toPrettyString()); } catch
+		(Exception e) {
+			LOG.error("Caught exception getting equipment for Id {} for apId {}",
+					autoProvisionedEquipmentId, apId, e);
+
 		}
 
-		Equipment ce = null;
-		try {
-			ce = getCustomerEquipment(apId);
-			LOG.debug("Got Equipment {} for apId {}", ce.toPrettyString());
-		} catch (Exception e) {
-			LOG.error("Caught exception getting equipment for Id {} for apId {}", autoProvisionedEquipmentId, apId, e);
-
-		}
 
 		try {
 			OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);

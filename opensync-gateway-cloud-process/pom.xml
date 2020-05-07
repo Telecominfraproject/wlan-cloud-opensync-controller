@@ -1,4 +1,6 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
 		<groupId>com.telecominfraproject.wlan</groupId>
@@ -15,18 +17,116 @@
 	</properties>
 
 	<dependencies>
-		<dependency>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<artifactId>opensync-gateway</artifactId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
+		<!-- <dependency> <groupId>com.telecominfraproject.wlan</groupId> <artifactId>opensync-gateway</artifactId> 
+			<version>${tip-wlan-cloud.release.version}</version> </dependency> -->
 		<dependency>
 			<groupId>com.telecominfraproject.wlan</groupId>
 			<artifactId>opensync-ext-cloud</artifactId>
 			<version>${tip-wlan-cloud.release.version}</version>
 		</dependency>
-		
-		
+		<dependency>
+			<artifactId>base-container</artifactId>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<version>${tip-wlan-cloud.release.version}</version>
+		</dependency>
+
+		<dependency>
+			<artifactId>webtoken-auth-service</artifactId>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<version>${tip-wlan-cloud.release.version}</version>
+		</dependency>
+
+		<dependency>
+			<artifactId>portal-services</artifactId>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<version>${tip-wlan-cloud.release.version}</version>
+		</dependency>
+
+		<dependency>
+			<artifactId>customer-service-remote</artifactId>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<version>${tip-wlan-cloud.release.version}</version>
+		</dependency>
+
+		<dependency>
+			<artifactId>location-service-remote</artifactId>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<version>${tip-wlan-cloud.release.version}</version>
+		</dependency>
+
+		<dependency>
+			<artifactId>equipment-service-remote</artifactId>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<version>${tip-wlan-cloud.release.version}</version>
+		</dependency>
+
+		<dependency>
+			<artifactId>profile-service-remote</artifactId>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<version>${tip-wlan-cloud.release.version}</version>
+		</dependency>
+
+		<dependency>
+			<artifactId>portal-user-service-remote</artifactId>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<version>${tip-wlan-cloud.release.version}</version>
+		</dependency>
+
+		<dependency>
+			<artifactId>service-metric-service-remote</artifactId>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<version>${tip-wlan-cloud.release.version}</version>
+		</dependency>
+
+		<dependency>
+			<artifactId>system-event-service-remote</artifactId>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<version>${tip-wlan-cloud.release.version}</version>
+		</dependency>
+
+		<dependency>
+			<artifactId>alarm-service-remote</artifactId>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<version>${tip-wlan-cloud.release.version}</version>
+		</dependency>
+
+		<dependency>
+			<artifactId>status-service-remote</artifactId>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<version>${tip-wlan-cloud.release.version}</version>
+		</dependency>
+
+		<dependency>
+			<artifactId>client-service-remote</artifactId>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<version>${tip-wlan-cloud.release.version}</version>
+		</dependency>
+
+		<dependency>
+			<artifactId>routing-service-remote</artifactId>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<version>${tip-wlan-cloud.release.version}</version>
+		</dependency>
+
+		<dependency>
+			<artifactId>firmware-service-remote</artifactId>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<version>${tip-wlan-cloud.release.version}</version>
+		</dependency>
+
+		<dependency>
+			<artifactId>manufacturer-service-remote</artifactId>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<version>${tip-wlan-cloud.release.version}</version>
+		</dependency>
+
+		<dependency>
+			<artifactId>cloud-event-dispatcher-remote</artifactId>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<version>${tip-wlan-cloud.release.version}</version>
+		</dependency>
+
+
 
 	</dependencies>
 
