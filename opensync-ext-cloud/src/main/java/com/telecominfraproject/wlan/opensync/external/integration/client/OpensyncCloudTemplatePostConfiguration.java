@@ -18,13 +18,13 @@ import com.telecominfraproject.wlan.core.model.json.BaseJsonModel;
  */
 @Configuration
 @ConditionalOnClass(RestTemplate.class)
-public class OpensyncCloudRestTemplatePostConfiguration {
+public class OpensyncCloudTemplatePostConfiguration {
 
     private static final Logger LOG = LoggerFactory
-            .getLogger(OpensyncCloudRestTemplatePostConfiguration.class);
+            .getLogger(OpensyncCloudTemplatePostConfiguration.class);
     
     
-    public OpensyncCloudRestTemplatePostConfiguration(@Autowired(required=false) AsyncRestTemplate asyncRestTemplate, @Autowired RestTemplate restTemplate) {
+    public OpensyncCloudTemplatePostConfiguration(@Autowired(required=false) AsyncRestTemplate asyncRestTemplate, @Autowired RestTemplate restTemplate) {
         registerModulesWithObjectMappers(restTemplate);
         if(asyncRestTemplate!=null) {
             registerModulesWithObjectMappers(asyncRestTemplate);

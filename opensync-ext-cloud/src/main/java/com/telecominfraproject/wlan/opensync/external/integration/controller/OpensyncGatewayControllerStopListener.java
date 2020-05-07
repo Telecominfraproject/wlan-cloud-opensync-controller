@@ -12,18 +12,18 @@ import org.springframework.context.event.ContextClosedEvent;
  *
  */
 public class OpensyncGatewayControllerStopListener implements ApplicationListener<ContextClosedEvent> {
-    OpensyncCloudGatewayController controller;
+	OpensyncCloudGatewayController controller;
 
-    private static final Logger LOG = LoggerFactory.getLogger(OpensyncGatewayControllerStopListener.class);
-    
-    public OpensyncGatewayControllerStopListener(OpensyncCloudGatewayController controller) {
-        this.controller = controller;
-    }
-    
-    @Override
-    public void onApplicationEvent(ContextClosedEvent event) {
-        LOG.debug("Processing ContextClosedEvent event");
-        controller.deregisterFromRoutingService();
-    }
+	private static final Logger LOG = LoggerFactory.getLogger(OpensyncGatewayControllerStopListener.class);
+
+	public OpensyncGatewayControllerStopListener(OpensyncCloudGatewayController controller) {
+		this.controller = controller;
+	}
+
+	@Override
+	public void onApplicationEvent(ContextClosedEvent event) {
+		LOG.debug("Processing ContextClosedEvent event");
+		controller.deregisterFromRoutingService();
+	}
 
 }

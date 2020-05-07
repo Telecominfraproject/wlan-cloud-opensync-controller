@@ -11,7 +11,7 @@
 	<description>Process definition for opensync gateway that uses cloud configuration</description>
 
 	<properties>
-		<start-class>com.telecominfraproject.wlan.opensync.integration.OpensyncGatewayCloudProcess</start-class>
+		<start-class>com.telecominfraproject.wlan.opensync.experiment.OpenSyncGatewayCloudProcess</start-class>
 	</properties>
 
 	<dependencies>
@@ -25,6 +25,7 @@
 			<artifactId>opensync-ext-cloud</artifactId>
 			<version>${tip-wlan-cloud.release.version}</version>
 		</dependency>
+		
 		
 
 	</dependencies>

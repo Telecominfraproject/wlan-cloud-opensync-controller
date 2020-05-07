@@ -1,10 +1,12 @@
 package com.telecominfraproject.wlan.opensync.external.integration;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 import javax.annotation.PostConstruct;
 
@@ -18,27 +20,22 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherInterface;
-import com.telecominfraproject.wlan.core.model.equipment.EquipmentType;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.customer.models.Customer;
 import com.telecominfraproject.wlan.customer.service.CustomerServiceInterface;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
 import com.telecominfraproject.wlan.equipment.models.Equipment;
-import com.telecominfraproject.wlan.equipment.models.EquipmentDetails;
 import com.telecominfraproject.wlan.location.service.LocationServiceInterface;
-import com.telecominfraproject.wlan.opensync.external.integration.controller.OpensyncCloudGatewayController;
+import com.telecominfraproject.wlan.opensync.experiment.OpenSyncConnectusController;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPInetState;
-import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioConfig;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioState;
-import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPSsidConfig;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAWLANNode;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
-import com.telecominfraproject.wlan.profile.models.ProfileDetails;
 import com.telecominfraproject.wlan.servicemetrics.models.ApClientMetrics;
 import com.telecominfraproject.wlan.servicemetrics.models.ClientMetrics;
 import com.telecominfraproject.wlan.servicemetrics.models.SingleMetricRecord;
@@ -66,45 +63,44 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 	private CloudEventDispatcherInterface equipmentMetricsCollectorInterface;
 	@Autowired
 	private EquipmentServiceInterface equipmentServiceInterface;
-
 	@Autowired
 	private ProfileServiceInterface profileServiceInterface;
-
 	@Autowired
-	private CacheManager cacheManagerShortLived;
+	private OpenSyncConnectusController gatewayController;
 
 	@Value("${connectus.ovsdb.autoProvisionedCustomerId:2}")
 	private int autoProvisionedCustomerId;
-	@Value("${connectus.ovsdb.autoProvisionedEquipmentId:0}")
+	@Value("${connectus.ovsdb.autoProvisionedEquipmentId:2}")
 	private int autoProvisionedEquipmentId;
 	@Value("${connectus.ovsdb.autoProvisionedLocationId:5}")
 	private int autoProvisionedLocationId;
-	@Value("${connectus.ovsdb.autoProvisioned24G:1}")
-	private int autoProvisioned24G;
-	@Value("${connectus.ovsdb.autoProvisioned5LG:44}")
-	private int autoProvisioned5LG;
-	@Value("${connectus.ovsdb.autoProvisioned5UG:108}")
-	private int autoProvisioned5UG;
-	@Value("${connectus.ovsdb.autoProvisionedSsid:Connectus-cloud")
-	private String autoProvisionedSsid;
 
-	private Map<String, OpensyncNode> opensyncNodeMap;
 	@Autowired
-	private OpensyncCloudGatewayController opensyncCloudGatewayController;
+	private CacheManager cacheManagerShortLived;
+	private Cache cloudEquipmentRecordCache;
+	private Map<String, OpensyncNode> opensyncNodeMap;
 
-	private Cache equipmentRecordCache;
+	@Value("${connectus.ovsdb.configFileName:/Users/mikehansen/git/wlan-cloud-workspace/wlan-cloud-opensync-controller/opensync-ext-cloud/src/main/resources/config_2_ssids.json}")
+	private String configFileName;
 
 	@PostConstruct
 	private void postCreate() {
-		LOG.info("Using cloud integration");
-		equipmentRecordCache = cacheManagerShortLived.getCache("opensync_equipment_record_cache");
+		LOG.info("Using Cloud integration");
+		cloudEquipmentRecordCache = cacheManagerShortLived.getCache("KDC_equipment_record_cache");
 		opensyncNodeMap = Collections.synchronizedMap(new HashMap<String, OpensyncNode>());
 	}
 
-	public Equipment getEquipment(Long equipmentId) {
+	public Equipment getCustomerEquipment(String apId) {
 		Equipment ce = null;
+
 		try {
-			ce = equipmentServiceInterface.getOrNull(equipmentId);
+			ce = cloudEquipmentRecordCache.get(apId, new Callable<Equipment>() {
+				@Override
+				public Equipment call() throws Exception {
+					// TODO: need to be able to get Equipment by AP Id
+					return equipmentServiceInterface.getOrNull(autoProvisionedEquipmentId);
+				}
+			});
 		} catch (Exception e) {
 			// do nothing
 		}
@@ -114,16 +110,30 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 	public void apConnected(String apId, ConnectNodeInfo connectNodeInfo) {
 		LOG.info("AP {} got connected to the gateway", apId);
+		Customer customer = null;
+		try {
+			customer = customerServiceInterface.get(autoProvisionedCustomerId);
+			LOG.debug("Got Customer {} for apId {}", customer.toPrettyString());
+		} catch (Exception e) {
+			LOG.error("Caught exception getting customer for Id {} for apId {}", autoProvisionedCustomerId, apId, e);
+		}
 
-		Customer customer = customerServiceInterface.get(autoProvisionedCustomerId);
+		Equipment ce = null;
+		try {
+			ce = getCustomerEquipment(apId);
+			LOG.debug("Got Equipment {} for apId {}", ce.toPrettyString());
+		} catch (Exception e) {
+			LOG.error("Caught exception getting equipment for Id {} for apId {}", autoProvisionedEquipmentId, apId, e);
 
-		Equipment customerEquipment = equipmentServiceInterface.get(autoProvisionedEquipmentId);
+		}
 
-		LOG.debug("Customer {} Equipment {}", customer.toPrettyString(), customerEquipment.toPrettyString());
-
-		OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
-		ovsdbSession.setEquipmentId(customerEquipment.getId());
-		ovsdbSession.setCustomerId(customerEquipment.getCustomerId());
+		try {
+			OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
+			ovsdbSession.setEquipmentId(2);
+			ovsdbSession.setCustomerId(2);
+		} catch (Exception e) {
+			LOG.error("Caught exception getting ovsdbSession for apId {}", apId, e);
+		}
 
 	}
 
@@ -150,60 +160,23 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 	}
 
 	public OpensyncAPConfig getApConfig(String apId) {
-		LOG.info("Retrieving config for AP {} ", apId);
+
+		// TODO: connect to Cloud for config
+		// for now, take values for initial config from file
+
+		LOG.info("Retrieving config for AP {} from file {}", apId, configFileName);
 		OpensyncAPConfig ret = null;
 
 		try {
-			OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
-			if (ovsdbSession == null) {
-				throw new IllegalStateException("AP is not connected " + apId);
-			}
-			long equipmentId = ovsdbSession.getEquipmentId();
-
-			RadioType rt;
-
-			ret = new OpensyncAPConfig();
-
-			// extract country, radio channels from resolvedEqCfg
-			String country = "CA";
-
-			int radioChannel24G = autoProvisioned24G;
-			int radioChannel5LG = autoProvisioned5LG;
-			int radioChannel5UG = autoProvisioned5UG;
-
-			OpensyncAPRadioConfig radioConfig = new OpensyncAPRadioConfig();
-			radioConfig.setCountry(country);
-			radioConfig.setRadioChannel24G(radioChannel24G);
-			radioConfig.setRadioChannel5LG(radioChannel5LG);
-			radioConfig.setRadioChannel5HG(108);
-
-			ret.setRadioConfig(radioConfig);
-
-			List<OpensyncAPSsidConfig> ssidConfigs = new ArrayList<>();
-			ret.setSsidConfigs(ssidConfigs);
-
-			OpensyncAPSsidConfig osSsidCfg = new OpensyncAPSsidConfig();
-			osSsidCfg.setSsid(autoProvisionedSsid);
-			osSsidCfg.setRadioType(com.telecominfraproject.wlan.core.model.equipment.RadioType.is5GHz);
-			osSsidCfg.setBroadcast(true);
-
-			osSsidCfg.setEncryption("WPA-PSK");
-			osSsidCfg.setMode("2");
-
-			ssidConfigs.add(osSsidCfg);
-
-			// configure the same ssid on the second radio
-			osSsidCfg = osSsidCfg.clone();
-			osSsidCfg.setRadioType(com.telecominfraproject.wlan.core.model.equipment.RadioType.is2dot4GHz);
-			ssidConfigs.add(osSsidCfg);
-
-		} catch (Exception e) {
-			LOG.error("Cannot read config for AP {}", apId, e);
+			ret = OpensyncAPConfig.fromFile(configFileName, OpensyncAPConfig.class);
+		} catch (IOException e) {
+			LOG.error("Cannot read config from {}", configFileName, e);
 		}
 
 		LOG.debug("Config content : {}", ret);
 
 		return ret;
+
 	}
 
 	/**
@@ -268,9 +241,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 	public void processMqttMessage(String topic, Report report) {
 		LOG.info("Received report on topic {} for ap {}", topic, report.getNodeID());
 		int customerId = extractCustomerIdFromTopic(topic);
-		if (customerId > 0) {
-			opensyncCloudGatewayController.updateActiveCustomer(customerId);
-		}
 
 		long equipmentId = extractEquipmentIdFromTopic(topic);
 		if (equipmentId <= 0 || customerId <= 0) {
@@ -396,9 +366,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 		LOG.info("Received report on topic {}", topic);
 		int customerId = extractCustomerIdFromTopic(topic);
-		if (customerId > 0) {
-			opensyncCloudGatewayController.updateActiveCustomer(customerId);
-		}
 
 		long equipmentId = extractEquipmentIdFromTopic(topic);
 		if (equipmentId <= 0 || customerId <= 0) {
@@ -422,9 +389,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 		LOG.info("Received report on topic {}", topic);
 		int customerId = extractCustomerIdFromTopic(topic);
-		if (customerId > 0) {
-			opensyncCloudGatewayController.updateActiveCustomer(customerId);
-		}
 
 		long equipmentId = extractEquipmentIdFromTopic(topic);
 		if (equipmentId <= 0 || customerId <= 0) {
@@ -502,14 +466,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 		int customerId = session.getCustomerId();
 		long equipmentId = session.getEquipmentId();
 
-		if (customerId > 0) {
-			opensyncCloudGatewayController.updateActiveCustomer(customerId);
-		} else {
-			LOG.debug("Cannot get customerId {} for session {}", customerId);
-			return;
-		}
-
-		if (equipmentId < 1) {
+		if (equipmentId < 0L) {
 			LOG.debug("Cannot get equipmentId {} for session {}", equipmentId);
 			return;
 		}
@@ -546,14 +503,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 		int customerId = session.getCustomerId();
 		long equipmentId = session.getEquipmentId();
 
-		if (customerId > 0) {
-			opensyncCloudGatewayController.updateActiveCustomer(customerId);
-		} else {
-			LOG.debug("Cannot get customerId {} for session {}", customerId);
-			return;
-		}
-
-		if (equipmentId < 1) {
+		if (equipmentId < 0L) {
 			LOG.debug("Cannot get equipmentId {} for session {}", equipmentId);
 			return;
 		}
@@ -591,14 +541,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 		int customerId = session.getCustomerId();
 		long equipmentId = session.getEquipmentId();
 
-		if (customerId > 0) {
-			opensyncCloudGatewayController.updateActiveCustomer(customerId);
-		} else {
-			LOG.debug("Cannot get customerId {} for session {}", customerId);
-			return;
-		}
-
-		if (equipmentId < 1) {
+		if (equipmentId < 0L) {
 			LOG.debug("Cannot get equipmentId {} for session {}", equipmentId);
 			return;
 		}
@@ -633,14 +576,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 		int customerId = session.getCustomerId();
 		long equipmentId = session.getEquipmentId();
 
-		if (customerId > 0) {
-			opensyncCloudGatewayController.updateActiveCustomer(customerId);
-		} else {
-			LOG.debug("Cannot get customerId {} for session {}", customerId);
-			return;
-		}
-
-		if (equipmentId < 1) {
+		if (equipmentId < 0L) {
 			LOG.debug("Cannot get equipmentId {} for session {}", equipmentId);
 			return;
 		}
@@ -668,17 +604,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 	@Override
 	public void wifiVIFStateDbTableDelete(List<OpensyncAPVIFState> vifStateTables, String apId) {
 		OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
-		int customerId = session.getCustomerId();
 		long equipmentId = session.getEquipmentId();
 
-		if (customerId > 0) {
-			opensyncCloudGatewayController.updateActiveCustomer(customerId);
-		} else {
-			LOG.debug("Cannot get customerId {} for session {}", customerId);
-			return;
-		}
-
-		if (equipmentId < 1) {
+		if (equipmentId < 0L) {
 			LOG.debug("Cannot get equipmentId {} for session {}", equipmentId);
 			return;
 		}
@@ -709,17 +637,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 	public void wifiAssociatedClientsDbTableDelete(String deletedClientMac, String apId) {
 
 		OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
-		int customerId = session.getCustomerId();
 		long equipmentId = session.getEquipmentId();
 
-		if (customerId > 0) {
-			opensyncCloudGatewayController.updateActiveCustomer(customerId);
-		} else {
-			LOG.debug("Cannot get customerId {} for session {}", customerId);
-			return;
-		}
-
-		if (equipmentId < 1) {
+		if (equipmentId < 0L) {
 			LOG.debug("Cannot get equipmentId {} for session {}", equipmentId);
 			return;
 		}

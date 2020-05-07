@@ -10,7 +10,7 @@
   "ssidConfigs" : [ {
     "model_type" : "OpensyncAPSsidConfig",
     "radioType" : "is2dot4GHz",
-    "ssid" : "Connectus-local",
+    "ssid" : "Connectus-cloud",
     "encryption" : "WPA-PSK",
     "key" : "12345678",
     "mode" : "2",
@@ -18,7 +18,7 @@
   }, {
     "model_type" : "OpensyncAPSsidConfig",
     "radioType" : "is5GHz",
-    "ssid" : "Connectus-local-5",
+    "ssid" : "Connectus-cloud",
     "encryption" : "WPA-PSK",
     "key" : "12345678",
     "mode" : "2",

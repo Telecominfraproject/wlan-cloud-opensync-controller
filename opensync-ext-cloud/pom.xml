@@ -20,243 +20,110 @@
 		</dependency>
 		<dependency>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<artifactId>opensync-ext-interface</artifactId>
+			<artifactId>opensync-gateway</artifactId>
 			<version>${tip-wlan-cloud.release.version}</version>
 		</dependency>
-		<dependency>
-			<artifactId>base-container</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-		<dependency>
-			<artifactId>base-client</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-		<!-- portal services -->
-		<dependency>
-			<artifactId>webtoken-auth-service</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
+		  <dependency>
+        <artifactId>base-container</artifactId>
+        <groupId>com.telecominfraproject.wlan</groupId>
+        <version>${tip-wlan-cloud.release.version}</version>
+      </dependency>
 
-		<dependency>
-			<artifactId>portal-services</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
+      <dependency>
+        <artifactId>webtoken-auth-service</artifactId>
+        <groupId>com.telecominfraproject.wlan</groupId>
+        <version>${tip-wlan-cloud.release.version}</version>
+      </dependency>
+    
+      <dependency>
+        <artifactId>portal-services</artifactId>
+        <groupId>com.telecominfraproject.wlan</groupId>
+        <version>${tip-wlan-cloud.release.version}</version>
+      </dependency>
+      
+      <dependency>
+        <artifactId>customer-service-remote</artifactId>
+        <groupId>com.telecominfraproject.wlan</groupId>
+        <version>${tip-wlan-cloud.release.version}</version>
+      </dependency>
 
-		<dependency>
-			<artifactId>customer-service-local</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
+      <dependency>
+        <artifactId>location-service-remote</artifactId>
+        <groupId>com.telecominfraproject.wlan</groupId>
+        <version>${tip-wlan-cloud.release.version}</version>
+      </dependency>      
 
-		<dependency>
-			<artifactId>location-service-local</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
+      <dependency>
+        <artifactId>equipment-service-remote</artifactId>
+        <groupId>com.telecominfraproject.wlan</groupId>
+        <version>${tip-wlan-cloud.release.version}</version>
+      </dependency>      
 
-		<dependency>
-			<artifactId>equipment-service-local</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
+      <dependency>
+        <artifactId>profile-service-remote</artifactId>
+        <groupId>com.telecominfraproject.wlan</groupId>
+        <version>${tip-wlan-cloud.release.version}</version>
+      </dependency>      
+      
+      <dependency>
+        <artifactId>portal-user-service-remote</artifactId>
+        <groupId>com.telecominfraproject.wlan</groupId>
+        <version>${tip-wlan-cloud.release.version}</version>
+      </dependency>      
 
-		<dependency>
-			<artifactId>profile-service-local</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
+      <dependency>
+        <artifactId>service-metric-service-remote</artifactId>
+        <groupId>com.telecominfraproject.wlan</groupId>
+        <version>${tip-wlan-cloud.release.version}</version>
+      </dependency>      
+      
+      <dependency>
+        <artifactId>system-event-service-remote</artifactId>
+        <groupId>com.telecominfraproject.wlan</groupId>
+        <version>${tip-wlan-cloud.release.version}</version>
+      </dependency>      
+      
+      <dependency>
+        <artifactId>alarm-service-remote</artifactId>
+        <groupId>com.telecominfraproject.wlan</groupId>
+        <version>${tip-wlan-cloud.release.version}</version>
+      </dependency>      
 
-		<!-- prov services -->
-		<dependency>
-			<artifactId>customer-service</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
+      <dependency>
+        <artifactId>status-service-remote</artifactId>
+        <groupId>com.telecominfraproject.wlan</groupId>
+        <version>${tip-wlan-cloud.release.version}</version>
+      </dependency>      
 
-		<dependency>
-			<!-- Use in-memory DS for now, later switch to RDBMS -->
-			<artifactId>customer-datastore-inmemory</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
+      <dependency>
+        <artifactId>client-service-remote</artifactId>
+        <groupId>com.telecominfraproject.wlan</groupId>
+        <version>${tip-wlan-cloud.release.version}</version>
+      </dependency>      
 
-		<dependency>
-			<artifactId>location-service</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
+      <dependency>
+        <artifactId>routing-service-remote</artifactId>
+        <groupId>com.telecominfraproject.wlan</groupId>
+        <version>${tip-wlan-cloud.release.version}</version>
+      </dependency>      
+ 
+       <dependency>
+        <artifactId>firmware-service-remote</artifactId>
+        <groupId>com.telecominfraproject.wlan</groupId>
+        <version>${tip-wlan-cloud.release.version}</version>
+      </dependency>      
 
-		<dependency>
-			<!-- Use in-memory DS for now, later switch to RDBMS -->
-			<artifactId>location-datastore-inmemory</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<artifactId>equipment-service</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<!-- Use in-memory DS for now, later switch to RDBMS -->
-			<artifactId>equipment-datastore-inmemory</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<artifactId>profile-service</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<!-- Use in-memory DS for now, later switch to RDBMS -->
-			<artifactId>profile-datastore-inmemory</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<artifactId>portal-user-service</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<!-- Use in-memory DS for now, later switch to RDBMS -->
-			<artifactId>portal-user-datastore-inmemory</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<artifactId>firmware-service</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<!-- Use in-memory DS for now, later switch to RDBMS -->
-			<artifactId>firmware-datastore-inmemory</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<artifactId>manufacturer-service</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<!-- Use in-memory DS for now, later switch to RDBMS -->
-			<artifactId>manufacturer-datastore-inmemory</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<artifactId>cloud-event-dispatcher-interface</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<artifactId>cloud-metrics</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<artifactId>single-process-streams</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<artifactId>service-metric-service</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<!-- Use in-memory DS for now, later switch to RDBMS -->
-			<artifactId>service-metric-datastore-inmemory</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<artifactId>system-event-service</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<!-- Use in-memory DS for now, later switch to RDBMS -->
-			<artifactId>system-event-datastore-inmemory</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<artifactId>alarm-service</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<!-- Use in-memory DS for now, later switch to RDBMS -->
-			<artifactId>alarm-datastore-inmemory</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<artifactId>status-service</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<!-- Use in-memory DS for now, later switch to RDBMS -->
-			<artifactId>status-datastore-inmemory</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<artifactId>client-service</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<!-- Use in-memory DS for now, later switch to RDBMS -->
-			<artifactId>client-datastore-inmemory</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<artifactId>routing-service</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
-		<dependency>
-			<!-- Use in-memory DS for now, later switch to RDBMS -->
-			<artifactId>routing-datastore-inmemory</artifactId>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
+      <dependency>
+        <artifactId>manufacturer-service-remote</artifactId>
+        <groupId>com.telecominfraproject.wlan</groupId>
+        <version>${tip-wlan-cloud.release.version}</version>
+      </dependency>      
+ 
+      <dependency>
+        <artifactId>cloud-event-dispatcher-remote</artifactId>
+        <groupId>com.telecominfraproject.wlan</groupId>
+        <version>${tip-wlan-cloud.release.version}</version>
+      </dependency>     
 
 	</dependencies>
 </project>

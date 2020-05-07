@@ -45,7 +45,7 @@ public class OpensyncCloudWebGenericConverter implements GenericConverter {
     public OpensyncCloudWebGenericConverter() {
     	LOG.info("Registering Object Converter for the KDC models");
         convertiblePairs = new HashSet<>();
-        convertiblePairs.add(new ConvertiblePair(String.class, com.telecominfraproject.wlan.core.model.json.BaseJsonModel.class));
+        convertiblePairs.add(new ConvertiblePair(String.class, BaseJsonModel.class));
         convertiblePairs.add(new ConvertiblePair(String.class, List.class));
         convertiblePairs.add(new ConvertiblePair(String.class, Set.class));
     }

@@ -1,11 +1,11 @@
-package com.telecominfraproject.wlan.opensync.integration;
+package com.telecominfraproject.wlan.opensync.experiment;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 
-@ComponentScan(basePackages = { "com.telecominfraproject.wlan" })
+@ComponentScan(basePackages={"com.telecominfraproject.wlan", "ai.connectus"})
 @EnableAutoConfiguration
 public class OpenSyncGatewayCloudProcess {
 
