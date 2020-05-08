@@ -47,17 +47,24 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
-import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration.SecureMode;
 import com.telecominfraproject.wlan.servicemetrics.models.ApClientMetrics;
+import com.telecominfraproject.wlan.servicemetrics.models.ApNodeMetrics;
+import com.telecominfraproject.wlan.servicemetrics.models.ApPerformance;
 import com.telecominfraproject.wlan.servicemetrics.models.ClientMetrics;
+import com.telecominfraproject.wlan.servicemetrics.models.EthernetLinkState;
+import com.telecominfraproject.wlan.servicemetrics.models.RadioUtilization;
 import com.telecominfraproject.wlan.servicemetrics.models.SingleMetricRecord;
 
 import sts.PlumeStats.Client;
 import sts.PlumeStats.ClientReport;
+import sts.PlumeStats.Device;
+import sts.PlumeStats.Device.RadioTemp;
 import sts.PlumeStats.RadioBandType;
 import sts.PlumeStats.Report;
+import sts.PlumeStats.Survey;
+import sts.PlumeStats.Survey.SurveySample;
 import traffic.NetworkMetadata.FlowReport;
 import wc.stats.IpDnsTelemetry.WCStatsReport;
 
@@ -385,6 +392,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 		List<SingleMetricRecord> metricRecordList = new ArrayList<>();
 
 		populateApClientMetrics(metricRecordList, report, customerId, equipmentId);
+		populateApNodeMetrics(metricRecordList, report, customerId, equipmentId);
 		// TODO: populateApNodeMetrics(metricRecordList, report, customerId,
 		// equipmentId, extractApIdFromTopic(topic));
 
@@ -392,6 +400,185 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			equipmentMetricsCollectorInterface.publishMetrics(metricRecordList);
 		}
 
+	}
+
+	private void populateApNodeMetrics(List<SingleMetricRecord> metricRecordList, Report report, int customerId,
+			long equipmentId) {
+		{
+	        LOG.debug("populateApNodeMetrics for Customer {} Equipment {}", customerId, equipmentId);
+			ApNodeMetrics apNodeMetrics = null;
+
+	        for (Device deviceReport : report.getDeviceList()) {
+
+	            SingleMetricRecord smr = new SingleMetricRecord(customerId, equipmentId);
+	            metricRecordList.add(smr);
+
+	            apNodeMetrics = new ApNodeMetrics();
+	            smr.setData(apNodeMetrics);
+	            ApPerformance apPerformance = new ApPerformance();
+	            apNodeMetrics.setApPerformance(apPerformance);
+
+	            smr.setCreatedTimestamp(deviceReport.getTimestampMs());
+	            // data.setChannelUtilization2G(channelUtilization2G);
+	            // data.setChannelUtilization5G(channelUtilization5G);
+
+	            if (deviceReport.getRadioTempCount() > 0) {
+	                int cpuTemperature = 0;
+	                int numSamples = 0;
+	                for (RadioTemp r : deviceReport.getRadioTempList()) {
+	                    if (r.hasValue()) {
+	                        cpuTemperature += r.getValue();
+	                        numSamples++;
+	                    }
+	                }
+
+	                if (numSamples > 0) {
+	                    apPerformance.setCpuTemperature(cpuTemperature / numSamples);
+	                }
+	            }
+
+	            if (deviceReport.hasCpuUtil() && deviceReport.getCpuUtil().hasCpuUtil()) {
+	                apPerformance
+	                        .setCpuUtilized(new byte[] { (byte) (deviceReport.getCpuUtil().getCpuUtil()), (byte) (0) });
+	            }
+
+	            apPerformance.setEthLinkState(EthernetLinkState.UP1000_FULL_DUPLEX);
+
+	            if (deviceReport.hasMemUtil() && deviceReport.getMemUtil().hasMemTotal()
+	                    && deviceReport.getMemUtil().hasMemUsed()) {
+	                apPerformance.setFreeMemory(
+	                        deviceReport.getMemUtil().getMemTotal() - deviceReport.getMemUtil().getMemUsed());
+	            }
+	            apPerformance.setUpTime((long) deviceReport.getUptime());
+	        }
+	        if (apNodeMetrics != null) {
+
+	            // Main Network dashboard shows Traffic and Capacity values that
+	            // are
+	            // calculated
+	            // from
+	            // ApNodeMetric properties getPeriodLengthSec, getRxBytes2G,
+	            // getTxBytes2G,
+	            // getRxBytes5G, getTxBytes5G
+
+	            // go over all the clients to aggregate per-client tx/rx stats -
+	            // we
+	            // want to do
+	            // this
+	            // only once per batch of ApNodeMetrics - so we do not repeat
+	            // values
+	            // over and
+	            // over again
+	            long rxBytes2g = 0;
+	            long txBytes2g = 0;
+
+	            long rxBytes5g = 0;
+	            long txBytes5g = 0;
+
+	            for (ClientReport clReport : report.getClientsList()) {
+	                for (Client cl : clReport.getClientListList()) {
+	                    if (clReport.getBand() == RadioBandType.BAND2G) {
+	                        if (cl.getStats().hasTxBytes()) {
+	                            txBytes2g += cl.getStats().getTxBytes();
+	                        }
+	                        if (cl.getStats().hasRxBytes()) {
+	                            rxBytes2g += cl.getStats().getRxBytes();
+	                        }
+	                    } else {
+	                        if (cl.getStats().hasTxBytes()) {
+	                            txBytes5g += cl.getStats().getTxBytes();
+	                        }
+	                        if (cl.getStats().hasRxBytes()) {
+	                            rxBytes5g += cl.getStats().getRxBytes();
+	                        }
+	                    }
+	                }
+	            }
+
+	            apNodeMetrics.setRxBytes2G(rxBytes2g);
+	            apNodeMetrics.setTxBytes2G(txBytes2g);
+	            apNodeMetrics.setRxBytes5G(rxBytes5g);
+	            apNodeMetrics.setTxBytes5G(txBytes5g);
+	            apNodeMetrics.setPeriodLengthSec(60);
+
+	            // Now try to populate metrics for calculation of radio capacity
+	            // see
+	            // com.telecominfraproject.wlan.metrics.streaming.spark.equipmentreport.CapacityDStreamsConfig.toAggregatedStats(int,
+	            // long, ApNodeMetric data)
+	            // result.stats2g =
+	            // toAggregatedRadioStats(data.getNoiseFloor2G(),data.getRadioUtilization2G());
+	            // result.stats5g =
+	            // toAggregatedRadioStats(data.getNoiseFloor5G(),data.getRadioUtilization5G());
+	            // RadioUtilization
+	            // private Integer assocClientTx;
+	            // private Integer unassocClientTx;
+	            // private Integer assocClientRx;
+	            // private Integer unassocClientRx;
+	            // private Integer nonWifi;
+	            // private Integer timestampSeconds;
+
+	            // TODO: temporary solution as this was causing Noise Floor to
+	            // disappear from Dashboard and Access Point rows
+	            apNodeMetrics.setNoiseFloor2G(Integer.valueOf(-98));
+	            apNodeMetrics.setNoiseFloor5G(Integer.valueOf(-98));
+
+	            apNodeMetrics.setRadioUtilization2G(new ArrayList<>());
+	            apNodeMetrics.setRadioUtilization5G(new ArrayList<>());
+
+	            // populate it from report.survey
+	            for (Survey survey : report.getSurveyList()) {
+	                // int oBSS = 0;
+	                // int iBSS = 0;
+	                // int totalBusy = 0;
+	                // int durationMs = 0;
+	                for (SurveySample surveySample : survey.getSurveyListList()) {
+	                    if (surveySample.getDurationMs() == 0) {
+	                        continue;
+	                    }
+
+	                    // iBSS += surveySample.getBusySelf() +
+	                    // surveySample.getBusyTx();
+	                    // oBSS += surveySample.getBusyRx();
+	                    // totalBusy += surveySample.getBusy();
+	                    // durationMs += surveySample.getDurationMs();
+
+	                    RadioUtilization radioUtil = new RadioUtilization();
+	                    radioUtil
+	                            .setTimestampSeconds((int) ((survey.getTimestampMs() + surveySample.getOffsetMs()) / 1000));
+	                    radioUtil.setAssocClientTx(100 * surveySample.getBusyTx() / surveySample.getDurationMs());
+	                    radioUtil.setAssocClientRx(100 * surveySample.getBusyRx() / surveySample.getDurationMs());
+	                    radioUtil.setNonWifi(
+	                            100 * (surveySample.getBusy() - surveySample.getBusyTx() - surveySample.getBusyRx())
+	                                    / surveySample.getDurationMs());
+	                    if (survey.getBand() == RadioBandType.BAND2G) {
+	                        apNodeMetrics.getRadioUtilization2G().add(radioUtil);
+	                    } else {
+	                        apNodeMetrics.getRadioUtilization5G().add(radioUtil);
+	                    }
+
+	                }
+
+	                // Double totalUtilization = 100D * totalBusy / durationMs;
+	                // LOG.trace("Total Utilization {}", totalUtilization);
+	                // Double totalWifiUtilization = 100D * (iBSS + oBSS) /
+	                // durationMs;
+	                // LOG.trace("Total Wifi Utilization {}", totalWifiUtilization);
+	                // LOG.trace("Total Non-Wifi Utilization {}", totalUtilization -
+	                // totalWifiUtilization);
+	                // if (survey.getBand() == RadioBandType.BAND2G) {
+	                // data.setChannelUtilization2G(totalUtilization.intValue());
+	                // } else {
+	                // data.setChannelUtilization5G(totalUtilization.intValue());
+	                // }
+	            }
+
+	        }
+			LOG.debug("ApNodeMetrics Report {}", apNodeMetrics.toPrettyString());
+
+	    }
+		
+
+		
 	}
 
 	private void populateApClientMetrics(List<SingleMetricRecord> metricRecordList, Report report, int customerId,
