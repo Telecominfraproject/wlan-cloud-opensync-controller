@@ -1,11 +1,11 @@
 package com.telecominfraproject.wlan.opensync.external.integration;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
 import javax.annotation.PostConstruct;
@@ -20,22 +20,36 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherInterface;
+import com.telecominfraproject.wlan.core.model.entity.CountryCode;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
+import com.telecominfraproject.wlan.core.model.pagination.ColumnAndSort;
+import com.telecominfraproject.wlan.core.model.pagination.PaginationContext;
+import com.telecominfraproject.wlan.core.model.pagination.PaginationResponse;
 import com.telecominfraproject.wlan.customer.models.Customer;
 import com.telecominfraproject.wlan.customer.service.CustomerServiceInterface;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
+import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
+import com.telecominfraproject.wlan.equipment.models.ElementRadioConfiguration;
 import com.telecominfraproject.wlan.equipment.models.Equipment;
+import com.telecominfraproject.wlan.equipment.models.StateSetting;
+import com.telecominfraproject.wlan.location.models.Location;
 import com.telecominfraproject.wlan.location.service.LocationServiceInterface;
 import com.telecominfraproject.wlan.opensync.experiment.OpenSyncConnectusController;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPInetState;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioConfig;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioState;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPSsidConfig;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAWLANNode;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
+import com.telecominfraproject.wlan.profile.models.ProfileType;
+import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
+import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
+import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration.SecureMode;
 import com.telecominfraproject.wlan.servicemetrics.models.ApClientMetrics;
 import com.telecominfraproject.wlan.servicemetrics.models.ClientMetrics;
 import com.telecominfraproject.wlan.servicemetrics.models.SingleMetricRecord;
@@ -111,21 +125,40 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 	public void apConnected(String apId, ConnectNodeInfo connectNodeInfo) {
 		LOG.info("AP {} got connected to the gateway", apId);
 
-		Customer customer = null; try { customer =
-				customerServiceInterface.get(autoProvisionedCustomerId);
-		LOG.debug("Got Customer {} for apId {}", customer.toPrettyString()); } catch
-		(Exception e) {
-			LOG.error("Caught exception getting customer for Id {} for apId {}",
-					autoProvisionedCustomerId, apId, e); }
+		Customer customer = null;
+		try {
+			customer = customerServiceInterface.get(autoProvisionedCustomerId);
+			LOG.debug("Got Customer {} for apId {}", customer.toPrettyString(), apId);
+		} catch (Exception e) {
+			LOG.error("Caught exception getting customer for Id {} for apId {}", autoProvisionedCustomerId, apId, e);
+		}
 
-		Equipment ce = null; try { ce = getCustomerEquipment(apId);
-		LOG.debug("Got Equipment {} for apId {}", ce.toPrettyString()); } catch
-		(Exception e) {
-			LOG.error("Caught exception getting equipment for Id {} for apId {}",
-					autoProvisionedEquipmentId, apId, e);
+		Equipment ce = null;
+		try {
+			ce = getCustomerEquipment(apId);
+			LOG.debug("Got Equipment {} for apId {}", ce.toPrettyString());
+			ce.setName(apId);
+
+			ce = equipmentServiceInterface.update(ce);
+			LOG.debug("Updated equipment {} for apId {}", ce.toPrettyString(), apId);
+
+		} catch (Exception e) {
+			LOG.error("Caught exception getting equipment for Id {} for apId {}", autoProvisionedEquipmentId, apId, e);
 
 		}
 
+		List<Location> locationList = locationServiceInterface.getAllForCustomer(ce.getCustomerId());
+		for (Location location : locationList) {
+			LOG.debug("Location {} for Customer {}", location.toPrettyString(), ce.getCustomerId());
+		}
+
+		PaginationResponse<com.telecominfraproject.wlan.profile.models.Profile> paginationResponse = profileServiceInterface
+				.getForCustomer(ce.getCustomerId(), new ArrayList<ColumnAndSort>(),
+						new PaginationContext<com.telecominfraproject.wlan.profile.models.Profile>(10));
+
+		for (com.telecominfraproject.wlan.profile.models.Profile profile : paginationResponse.getItems()) {
+			LOG.debug("Profile {} for Customer {}", profile.toPrettyString(), ce.getCustomerId());
+		}
 
 		try {
 			OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
@@ -160,23 +193,123 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 	}
 
 	public OpensyncAPConfig getApConfig(String apId) {
-
-		// TODO: connect to Cloud for config
-		// for now, take values for initial config from file
-
-		LOG.info("Retrieving config for AP {} from file {}", apId, configFileName);
+		LOG.info("Retrieving config for AP {} ", apId);
 		OpensyncAPConfig ret = null;
 
 		try {
-			ret = OpensyncAPConfig.fromFile(configFileName, OpensyncAPConfig.class);
-		} catch (IOException e) {
-			LOG.error("Cannot read config from {}", configFileName, e);
+
+			OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
+			if (ovsdbSession == null) {
+				throw new IllegalStateException("AP is not connected " + apId);
+			}
+			long equipmentId = ovsdbSession.getEquipmentId();
+			Equipment resolvedEqCfg = equipmentServiceInterface.get(equipmentId);
+
+			if (resolvedEqCfg == null) {
+				throw new IllegalStateException("Cannot retrieve configuration for " + apId);
+			}
+			ret = new OpensyncAPConfig();
+			Location eqLocation = locationServiceInterface.get(resolvedEqCfg.getLocationId());
+
+			// extract country, radio channels from resolvedEqCfg
+			String country = "CA";
+			CountryCode countryCode = Location.getCountryCode(eqLocation);
+			if (countryCode != null && countryCode != CountryCode.UNSUPPORTED) {
+				country = countryCode.toString().toUpperCase();
+			}
+
+			int radioChannel24G = 1;
+			int radioChannel5LG = 44;
+			int radioChannel5HG = 108;
+
+			ApElementConfiguration apElementConfiguration = (ApElementConfiguration) resolvedEqCfg.getDetails();
+
+			Map<RadioType, ElementRadioConfiguration> erc = apElementConfiguration.getRadioMap();
+			if (erc != null) {
+				ElementRadioConfiguration erc24 = erc.get(RadioType.is2dot4GHz);
+				ElementRadioConfiguration erc5gl = erc.get(RadioType.is5GHzL);
+				ElementRadioConfiguration erc5gh = erc.get(RadioType.is5GHzU);
+
+				if (erc24 != null) {
+					radioChannel24G = erc24.getChannelNumber();
+				}
+
+				if (erc5gl != null) {
+					radioChannel5LG = erc5gl.getChannelNumber();
+				}
+
+				if (erc5gh != null) {
+					radioChannel5HG = erc5gh.getChannelNumber();
+				}
+			}
+
+			OpensyncAPRadioConfig radioConfig = new OpensyncAPRadioConfig();
+			radioConfig.setCountry(country);
+			radioConfig.setRadioChannel24G(radioChannel24G);
+			radioConfig.setRadioChannel5LG(radioChannel5LG);
+			radioConfig.setRadioChannel5HG(radioChannel5HG);
+
+			ret.setRadioConfig(radioConfig);
+
+			// extract ssid parameters from resolvedEqCfg
+			List<OpensyncAPSsidConfig> ssidConfigs = new ArrayList<>();
+
+			com.telecominfraproject.wlan.profile.models.Profile apProfile = profileServiceInterface
+					.get(resolvedEqCfg.getProfileId());
+
+			Set<Long> childProfileIds = apProfile.getChildProfileIds();
+			for (Long id : childProfileIds) {
+				com.telecominfraproject.wlan.profile.models.Profile profile = profileServiceInterface.get(id);
+				if (profile.getProfileType().equals(ProfileType.ssid)) {
+					SsidConfiguration ssidCfg = (SsidConfiguration) profile.getDetails();
+
+					for (RadioType radioType : ssidCfg.getAppliedRadios()) {
+						OpensyncAPSsidConfig osSsidCfg = new OpensyncAPSsidConfig();
+
+						osSsidCfg.setSsid(profile.getName());
+						osSsidCfg.setRadioType(radioType);
+						osSsidCfg.setBroadcast(ssidCfg.getBroadcastSsid() == StateSetting.enabled);
+
+						if (ssidCfg.getSecureMode() == SecureMode.wpa2OnlyPSK
+								|| ssidCfg.getSecureMode() == SecureMode.wpa2PSK) {
+							osSsidCfg.setEncryption("WPA-PSK");
+							osSsidCfg.setMode("2");
+						} else if (ssidCfg.getSecureMode() == SecureMode.wpaPSK) {
+							osSsidCfg.setEncryption("WPA-PSK");
+							osSsidCfg.setMode("1");
+						} else {
+							LOG.warn("Unsupported encryption mode {} - will use WPA-PSK instead",
+									ssidCfg.getSecureMode());
+							osSsidCfg.setEncryption("WPA-PSK");
+							osSsidCfg.setMode("2");
+						}
+
+						if (ssidCfg.getKeyStr() == null) {
+							osSsidCfg.setKey("12345678");
+						} else {
+							osSsidCfg.setKey(ssidCfg.getKeyStr());
+						}
+
+						ssidConfigs.add(osSsidCfg);
+
+					}
+
+				}
+			}
+
+			ret.setSsidConfigs(ssidConfigs);
+
+			for (OpensyncAPSsidConfig osSsidCfg : ssidConfigs) {
+				LOG.debug("Mike OpensyncAPSsidConfig {}", osSsidCfg.toPrettyString());
+			}
+
+		} catch (Exception e) {
+			LOG.error("Cannot read config for AP {}", apId, e);
 		}
 
 		LOG.debug("Config content : {}", ret);
 
 		return ret;
-
 	}
 
 	/**
@@ -358,8 +491,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			} else {
 				apClientMetrics.setClientMetrics5g(clientMetrics.toArray(new ClientMetrics[0]));
 			}
+			LOG.debug("APClientMetrics Report {}", apClientMetrics.toPrettyString());
 
 		}
+
 	}
 
 	public void processMqttMessage(String topic, FlowReport flowReport) {
