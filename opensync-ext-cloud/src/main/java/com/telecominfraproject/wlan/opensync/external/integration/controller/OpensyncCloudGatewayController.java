@@ -1,7 +1,5 @@
 package com.telecominfraproject.wlan.opensync.external.integration.controller;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -22,7 +20,6 @@ import org.springframework.security.web.bind.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.telecominfraproject.wlan.core.model.service.ServiceInstanceInformation;
@@ -39,14 +36,10 @@ import com.telecominfraproject.wlan.opensync.external.integration.controller.com
 import com.telecominfraproject.wlan.opensync.external.integration.controller.command.CEGWStartDebugEngine;
 import com.telecominfraproject.wlan.opensync.external.integration.controller.command.CustomerEquipmentCommand;
 import com.telecominfraproject.wlan.opensync.external.integration.controller.command.CustomerEquipmentCommandResponse;
-import com.telecominfraproject.wlan.opensync.external.integration.controller.command.CustomerEquipmentGwRecord;
-import com.telecominfraproject.wlan.opensync.external.integration.controller.command.EquipmentRoutingRecord;
 import com.telecominfraproject.wlan.opensync.external.integration.controller.command.GatewayDefaults;
-import com.telecominfraproject.wlan.opensync.external.integration.controller.command.RoutingRegisterResponse;
-import com.telecominfraproject.wlan.opensync.external.integration.controller.command.ServiceDeploymentInfo;
 import com.telecominfraproject.wlan.routing.RoutingServiceInterface;
-import com.telecominfraproject.wlan.routing.models.Routing;
-import com.telecominfraproject.wlan.routing.models.RoutingDetails;
+import com.telecominfraproject.wlan.routing.models.EquipmentGatewayRecord;
+import com.telecominfraproject.wlan.routing.models.EquipmentRoutingRecord;
 import com.telecominfraproject.wlan.server.exceptions.ConfigurationException;
 
 /**
@@ -258,30 +251,20 @@ public class OpensyncCloudGatewayController {
 
 			if (eqRoutingSvc == null) {
 				throw new ConfigurationException(
-						"Unabled to register gateway with routing service: routing service interface not initialized");
+						"Unable to register gateway with routing service: routing service interface not initialized");
 			}
-			CustomerEquipmentGwRecord gwRecord = new CustomerEquipmentGwRecord();
-			gwRecord.setDeploymentId(getDeploymentId());
+			EquipmentGatewayRecord gwRecord = new EquipmentGatewayRecord();
 
 			// Internal facing service
-			gwRecord.setGatewayId(getGatewayName());
+			gwRecord.setHostname(getGatewayName());
 			gwRecord.setIpAddr(connectorProperties.getInternalIpAddress().getHostAddress());
 			gwRecord.setPort(connectorProperties.getInternalPort());
 
 			try {
 
-				Routing routing = new Routing();
-				routing.setCustomerId(2);
-				routing.setDetails(new RoutingDetails());
-				routing = eqRoutingSvc.create(routing);
-
-				CustomerEquipmentGwRecord result = new CustomerEquipmentGwRecord();
-				result.setGatewayId(getGatewayName());
-				result.setId(routing.getId());
-
-//                CustomerEquipmentGwRecord result = this.eqRoutingSvc.registerGateway(gwRecord);
+                EquipmentGatewayRecord result = this.eqRoutingSvc.registerGateway(gwRecord);
 				this.registeredGwId = result.getId();
-				LOG.info("Successfully registered (name={}, id={}) with Routing Service", result.getGatewayId(),
+				LOG.info("Successfully registered (name={}, id={}) with Routing Service", result.getHostname(),
 						registeredGwId);
 				registeredWithRoutingService = true;
 			} catch (RuntimeException e) {
@@ -331,7 +314,7 @@ public class OpensyncCloudGatewayController {
 	 * @param equipmentId
 	 * @return associationId
 	 */
-	public RoutingRegisterResponse registerCustomerEquipment(String equipmentName, Integer customerId,
+	public EquipmentRoutingRecord registerCustomerEquipment(String equipmentName, Integer customerId,
 			Long equipmentId) {
 		registerWithRoutingService();
 		if (!registeredWithRoutingService) {
@@ -342,15 +325,13 @@ public class OpensyncCloudGatewayController {
 		EquipmentRoutingRecord routingRecord = new EquipmentRoutingRecord();
 		routingRecord.setCustomerId(customerId);
 		routingRecord.setEquipmentId(equipmentId);
-		routingRecord.setGatewayRecordId(this.registeredGwId);
+		routingRecord.setGatewayId(this.registeredGwId);
 		try {
-
-			ServiceDeploymentInfo targetDeploymentInfo = new ServiceDeploymentInfo();
-			RoutingRegisterResponse result = new RoutingRegisterResponse(routingRecord, targetDeploymentInfo);
+			routingRecord  = eqRoutingSvc.create(routingRecord);
 
 			LOG.debug("Registered customer equipment (name={},id={}) with route id={}", equipmentName, equipmentId,
-					result.getRoutingRecord().getId());
-			return result;
+					routingRecord.getId());
+			return routingRecord;
 
 		} catch (Exception e) {
 			LOG.error("Failed to register customer equipement (name={},id={}): {}", equipmentName, equipmentId,

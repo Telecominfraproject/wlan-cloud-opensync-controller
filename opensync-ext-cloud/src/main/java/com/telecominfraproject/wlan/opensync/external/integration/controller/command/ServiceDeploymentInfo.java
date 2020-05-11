@@ -1,7 +1,7 @@
 package com.telecominfraproject.wlan.opensync.external.integration.controller.command;
 
 import com.telecominfraproject.wlan.core.model.json.BaseJsonModel;
-import com.telecominfraproject.wlan.core.model.service.CloudServiceType;
+import com.telecominfraproject.wlan.core.model.service.GatewayType;
 
 public class ServiceDeploymentInfo extends BaseJsonModel {
 	/**
@@ -17,7 +17,7 @@ public class ServiceDeploymentInfo extends BaseJsonModel {
     /**
      * Type of cloud service
      */
-    private CloudServiceType serviceType;
+    private GatewayType serviceType;
     /**
      * External host name
      */
@@ -42,7 +42,7 @@ public class ServiceDeploymentInfo extends BaseJsonModel {
      * @param serviceHostname
      * @param servicePort
      */
-    public ServiceDeploymentInfo(CloudServiceType serivceType, int deploymentId, String serviceHostname, int servicePort) {
+    public ServiceDeploymentInfo(GatewayType serivceType, int deploymentId, String serviceHostname, int servicePort) {
         this.serviceType = serivceType;
         this.deploymentId = deploymentId;
         this.serviceHostname = serviceHostname;
@@ -106,7 +106,7 @@ public class ServiceDeploymentInfo extends BaseJsonModel {
         return servicePort;
     }
 
-    public CloudServiceType getServiceType() {
+    public GatewayType getServiceType() {
         return serviceType;
     }
 
@@ -142,7 +142,7 @@ public class ServiceDeploymentInfo extends BaseJsonModel {
         this.servicePort = servicePort;
     }
 
-    public void setServiceType(CloudServiceType serviceType) {
+    public void setServiceType(GatewayType serviceType) {
         this.serviceType = serviceType;
     }
     
@@ -151,7 +151,7 @@ public class ServiceDeploymentInfo extends BaseJsonModel {
         if (super.hasUnsupportedValue()) {
             return true;
         }
-        if (CloudServiceType.isUnsupported(serviceType)) {
+        if (GatewayType.isUnsupported(serviceType)) {
             return true;
         }
         return false;

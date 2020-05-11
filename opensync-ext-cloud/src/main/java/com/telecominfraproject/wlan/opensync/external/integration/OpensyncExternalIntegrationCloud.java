@@ -16,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherInterface;
@@ -36,6 +35,7 @@ import com.telecominfraproject.wlan.equipment.models.StateSetting;
 import com.telecominfraproject.wlan.location.models.Location;
 import com.telecominfraproject.wlan.location.service.LocationServiceInterface;
 import com.telecominfraproject.wlan.opensync.experiment.OpenSyncConnectusController;
+import com.telecominfraproject.wlan.opensync.external.integration.controller.OpensyncCloudGatewayController;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPInetState;
@@ -46,9 +46,13 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAWLANNode;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
+import com.telecominfraproject.wlan.profile.models.Profile;
+import com.telecominfraproject.wlan.profile.models.ProfileContainer;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration.SecureMode;
+import com.telecominfraproject.wlan.routing.RoutingServiceInterface;
+import com.telecominfraproject.wlan.routing.models.EquipmentRoutingRecord;
 import com.telecominfraproject.wlan.servicemetrics.models.ApClientMetrics;
 import com.telecominfraproject.wlan.servicemetrics.models.ApNodeMetrics;
 import com.telecominfraproject.wlan.servicemetrics.models.ApPerformance;
@@ -68,7 +72,7 @@ import sts.PlumeStats.Survey.SurveySample;
 import traffic.NetworkMetadata.FlowReport;
 import wc.stats.IpDnsTelemetry.WCStatsReport;
 
-@Profile("opensync_cloud_config")
+@org.springframework.context.annotation.Profile("opensync_cloud_config")
 @Component
 public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegrationInterface {
 
@@ -85,14 +89,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 	@Autowired
 	private EquipmentServiceInterface equipmentServiceInterface;
 	@Autowired
+	private RoutingServiceInterface routingServiceInterface;
+	@Autowired
 	private ProfileServiceInterface profileServiceInterface;
 	@Autowired
-	private OpenSyncConnectusController gatewayController;
+	private OpensyncCloudGatewayController gatewayController;
 
 	@Value("${connectus.ovsdb.autoProvisionedCustomerId:2}")
 	private int autoProvisionedCustomerId;
-	@Value("${connectus.ovsdb.autoProvisionedEquipmentId:2}")
-	private int autoProvisionedEquipmentId;
 	@Value("${connectus.ovsdb.autoProvisionedLocationId:5}")
 	private int autoProvisionedLocationId;
 
@@ -118,8 +122,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			ce = cloudEquipmentRecordCache.get(apId, new Callable<Equipment>() {
 				@Override
 				public Equipment call() throws Exception {
-					// TODO: need to be able to get Equipment by AP Id
-					return equipmentServiceInterface.getOrNull(autoProvisionedEquipmentId);
+					return equipmentServiceInterface.getByInventoryIdOrNull(apId);
 				}
 			});
 		} catch (Exception e) {
@@ -145,12 +148,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			ce = getCustomerEquipment(apId);
 			LOG.debug("Got Equipment {} for apId {}", ce.toPrettyString());
 			ce.setName(apId);
-
+			
+			//TODO: dtop - this needs to be cleaned up - no need for empty update
+			
 			ce = equipmentServiceInterface.update(ce);
 			LOG.debug("Updated equipment {} for apId {}", ce.toPrettyString(), apId);
 
 		} catch (Exception e) {
-			LOG.error("Caught exception getting equipment for Id {} for apId {}", autoProvisionedEquipmentId, apId, e);
+			LOG.error("Caught exception getting equipment for Id {} for apId {}", apId, apId, e);
 
 		}
 
@@ -159,7 +164,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			LOG.debug("Location {} for Customer {}", location.toPrettyString(), ce.getCustomerId());
 		}
 
-		PaginationResponse<com.telecominfraproject.wlan.profile.models.Profile> paginationResponse = profileServiceInterface
+		//TODO: dtop - there's a better way:
+//		ProfileContainer profileContainer = new ProfileContainer(profileServiceInterface.getProfileWithChildren(ce.getProfileId()));
+//		List<Profile> ssidProfiles = profileContainer.getChildrenOfType(ce.getProfileId(), ProfileType.ssid);
+//		List<SsidConfiguration> ssidConfigs = new ArrayList<>();
+//		ssidProfiles.forEach(p -> ssidConfigs.add((SsidConfiguration)p.getDetails()));
+//		LOG.info("SSID configs: {}", ssidConfigs);
+
+		PaginationResponse<Profile> paginationResponse = profileServiceInterface
 				.getForCustomer(ce.getCustomerId(), new ArrayList<ColumnAndSort>(),
 						new PaginationContext<com.telecominfraproject.wlan.profile.models.Profile>(10));
 
@@ -167,10 +179,18 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			LOG.debug("Profile {} for Customer {}", profile.toPrettyString(), ce.getCustomerId());
 		}
 
+        // register equipment routing record
+        EquipmentRoutingRecord equipmentRoutingRecord = new EquipmentRoutingRecord();
+        equipmentRoutingRecord.setGatewayId(gatewayController.getRegisteredGwId());
+        equipmentRoutingRecord.setCustomerId(ce.getCustomerId());
+        equipmentRoutingRecord.setEquipmentId(ce.getId());
+        equipmentRoutingRecord = routingServiceInterface.create(equipmentRoutingRecord);
+
 		try {
 			OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
-			ovsdbSession.setEquipmentId(2);
-			ovsdbSession.setCustomerId(2);
+            ovsdbSession.setRoutingId(equipmentRoutingRecord.getId());
+			ovsdbSession.setEquipmentId(ce.getId());
+			ovsdbSession.setCustomerId(ce.getCustomerId());
 		} catch (Exception e) {
 			LOG.error("Caught exception getting ovsdbSession for apId {}", apId, e);
 		}
@@ -189,7 +209,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
 
 			if (ovsdbSession != null) {
-//				routingServiceInterface.delete(ovsdbSession.getRoutingId());
+				routingServiceInterface.delete(ovsdbSession.getRoutingId());
 			} else {
 				LOG.warn("Cannot find ap {} in inventory", apId);
 			}
