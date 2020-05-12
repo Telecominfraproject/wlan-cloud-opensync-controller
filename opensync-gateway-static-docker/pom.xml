@@ -58,7 +58,7 @@
 							</build>
 						</image>
                                                 <image>
-                                                        <name>opensync-gateway-static-and-mqtt:${project.version}</name>
+                                                        <name>opensync-gateway-and-mqtt:${project.version}</name>
                                                         <build>
                                                                 <filter>@</filter>
                                                                 <cleanup>try</cleanup>
