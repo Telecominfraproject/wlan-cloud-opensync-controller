@@ -22,9 +22,6 @@ import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherInt
 import com.telecominfraproject.wlan.core.model.entity.CountryCode;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
-import com.telecominfraproject.wlan.core.model.pagination.ColumnAndSort;
-import com.telecominfraproject.wlan.core.model.pagination.PaginationContext;
-import com.telecominfraproject.wlan.core.model.pagination.PaginationResponse;
 import com.telecominfraproject.wlan.customer.models.Customer;
 import com.telecominfraproject.wlan.customer.service.CustomerServiceInterface;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
@@ -34,7 +31,6 @@ import com.telecominfraproject.wlan.equipment.models.Equipment;
 import com.telecominfraproject.wlan.equipment.models.StateSetting;
 import com.telecominfraproject.wlan.location.models.Location;
 import com.telecominfraproject.wlan.location.service.LocationServiceInterface;
-import com.telecominfraproject.wlan.opensync.experiment.OpenSyncConnectusController;
 import com.telecominfraproject.wlan.opensync.external.integration.controller.OpensyncCloudGatewayController;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
@@ -46,8 +42,6 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAWLANNode;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
-import com.telecominfraproject.wlan.profile.models.Profile;
-import com.telecominfraproject.wlan.profile.models.ProfileContainer;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration.SecureMode;
@@ -147,36 +141,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 		try {
 			ce = getCustomerEquipment(apId);
 			LOG.debug("Got Equipment {} for apId {}", ce.toPrettyString());
-			ce.setName(apId);
-			
-			//TODO: dtop - this needs to be cleaned up - no need for empty update
-			
-			ce = equipmentServiceInterface.update(ce);
-			LOG.debug("Updated equipment {} for apId {}", ce.toPrettyString(), apId);
-
 		} catch (Exception e) {
 			LOG.error("Caught exception getting equipment for Id {} for apId {}", apId, apId, e);
-
 		}
 
 		List<Location> locationList = locationServiceInterface.getAllForCustomer(ce.getCustomerId());
 		for (Location location : locationList) {
 			LOG.debug("Location {} for Customer {}", location.toPrettyString(), ce.getCustomerId());
-		}
-
-		//TODO: dtop - there's a better way:
-//		ProfileContainer profileContainer = new ProfileContainer(profileServiceInterface.getProfileWithChildren(ce.getProfileId()));
-//		List<Profile> ssidProfiles = profileContainer.getChildrenOfType(ce.getProfileId(), ProfileType.ssid);
-//		List<SsidConfiguration> ssidConfigs = new ArrayList<>();
-//		ssidProfiles.forEach(p -> ssidConfigs.add((SsidConfiguration)p.getDetails()));
-//		LOG.info("SSID configs: {}", ssidConfigs);
-
-		PaginationResponse<Profile> paginationResponse = profileServiceInterface
-				.getForCustomer(ce.getCustomerId(), new ArrayList<ColumnAndSort>(),
-						new PaginationContext<com.telecominfraproject.wlan.profile.models.Profile>(10));
-
-		for (com.telecominfraproject.wlan.profile.models.Profile profile : paginationResponse.getItems()) {
-			LOG.debug("Profile {} for Customer {}", profile.toPrettyString(), ce.getCustomerId());
 		}
 
         // register equipment routing record
@@ -229,12 +200,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			if (ovsdbSession == null) {
 				throw new IllegalStateException("AP is not connected " + apId);
 			}
-			long equipmentId = ovsdbSession.getEquipmentId();
-			Equipment resolvedEqCfg = equipmentServiceInterface.get(equipmentId);
+			Equipment resolvedEqCfg = equipmentServiceInterface.getByInventoryIdOrNull(apId);
 
 			if (resolvedEqCfg == null) {
 				throw new IllegalStateException("Cannot retrieve configuration for " + apId);
 			}
+			
 			ret = new OpensyncAPConfig();
 			Location eqLocation = locationServiceInterface.get(resolvedEqCfg.getLocationId());
 
@@ -325,10 +296,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			}
 
 			ret.setSsidConfigs(ssidConfigs);
-
-			for (OpensyncAPSsidConfig osSsidCfg : ssidConfigs) {
-				LOG.debug("Mike OpensyncAPSsidConfig {}", osSsidCfg.toPrettyString());
-			}
 
 		} catch (Exception e) {
 			LOG.error("Cannot read config for AP {}", apId, e);
