@@ -22,7 +22,7 @@ OVSDB_PROPS+=" -Dconnectus.ovsdb.keyStore=/opt/tip-wlan/certs/server.pkcs12"
 OVSDB_PROPS+=" -Dconnectus.ovsdb.configFileName=/app/opensync/config_2_ssids.json"
 
 MQTT_PROPS=" "
-MQTT_PROPS+=" -Dconnectus.mqttBroker.address=opensync-wifi-controller-opensync-mqtt-broker"
+MQTT_PROPS+=" -Dconnectus.mqttBroker.address=tip-wlan-opensync-mqtt-broker"
 MQTT_PROPS+=" -Dconnectus.mqttBroker.listenPort=1883"
 
 LOGGING_PROPS=" -Dlogging.config=file:/app/opensync/logback.xml"
