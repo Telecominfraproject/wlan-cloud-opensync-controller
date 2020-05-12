@@ -967,6 +967,8 @@ public class OvsdbDao {
 
     public static final String homeAp24 = "home-ap-24";
     public static final String homeApL50 = "home-ap-l50";
+    public static final String homeApU50 = "home-ap-u50";
+
     public static final String brHome = "br-home";
     public static final String brWan = "br-wan";
 
@@ -995,8 +997,12 @@ public class OvsdbDao {
             provisionSingleBridgePortInterface(ovsdbClient, patchW2h, brWan, "patch", patchW2hOptions,
                     provisionedInterfaces, provisionedPorts, provisionedBridges);
 
+            provisionSingleBridgePortInterface(ovsdbClient, homeApU50, brHome, null, null, provisionedInterfaces,
+                    provisionedPorts, provisionedBridges);
+            
             provisionSingleBridgePortInterface(ovsdbClient, homeApL50, brHome, null, null, provisionedInterfaces,
                     provisionedPorts, provisionedBridges);
+            
             provisionSingleBridgePortInterface(ovsdbClient, homeAp24, brHome, null, null, provisionedInterfaces,
                     provisionedPorts, provisionedBridges);
 
@@ -1701,8 +1707,18 @@ public class OvsdbDao {
 
         for (OpensyncAPSsidConfig ssidCfg : ssidConfigs) {
             String bridge = brHome;
-            String ifName = (ssidCfg.getRadioType() == RadioType.is2dot4GHz) ? homeAp24 : homeApL50;
-            String radioIfName = (ssidCfg.getRadioType() == RadioType.is2dot4GHz) ? "wifi0" : "wifi1";
+            String ifName = null;
+            String radioIfName = null;
+            if (ssidCfg.getRadioType() == RadioType.is2dot4GHz) {
+            	ifName = homeAp24;
+            	radioIfName = "wifi0";
+            } else if (ssidCfg.getRadioType() == RadioType.is5GHzL) {
+            	ifName = homeApL50;
+            	radioIfName = "wifi1";
+            } else if (ssidCfg.getRadioType() == RadioType.is5GHzU) {
+            	ifName = homeApU50;
+            	radioIfName = "wifi2";
+            }
             String ssid = ssidCfg.getSsid();
             boolean ssidBroadcast = ssidCfg.isBroadcast();
             Map<String, String> security = new HashMap<>();
@@ -1801,6 +1817,11 @@ public class OvsdbDao {
         }
 
         ifName = homeApL50;
+        if (!provisionedWifiInetConfigs.containsKey(ifName)) {
+            configureWifiInet(ovsdbClient, provisionedWifiInetConfigs, ifName);
+        }
+        
+        ifName = homeApU50;
         if (!provisionedWifiInetConfigs.containsKey(ifName)) {
             configureWifiInet(ovsdbClient, provisionedWifiInetConfigs, ifName);
         }

@@ -237,7 +237,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
         OvsdbClient ovsdbClient = ovsdbSession.getOvsdbClient();
         OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
-
+        
         if (opensyncAPConfig != null) {
             ovsdbDao.removeAllSsids(ovsdbClient);
             ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig.getRadioConfig());

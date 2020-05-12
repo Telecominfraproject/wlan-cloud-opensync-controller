@@ -119,6 +119,9 @@ public class OpensyncCloudGatewayController {
 		}
 
 		switch (command.getCommandType()) {
+		
+		case ConfigChangeNotification:
+			return sendConfigChangeNotification(session, (CEGWConfigChangeNotification)command);
 
 		default:
 			LOG.warn("[{}] Failed to deliver command {}, unsupported command type", qrCode, command);
