@@ -36,7 +36,7 @@
 					<apiVersion>1.23</apiVersion>
 					<images>
 						<image>
-							<name>opensync-gateway:${project.version}</name>
+							<name>opensync-gateway-static:${project.version}</name>
 							<build>
 								<filter>@</filter>
 								<cleanup>try</cleanup>
@@ -58,7 +58,7 @@
 							</build>
 						</image>
                                                 <image>
-                                                        <name>opensync-gateway-and-mqtt:${project.version}</name>
+                                                        <name>opensync-gateway-static-and-mqtt:${project.version}</name>
                                                         <build>
                                                                 <filter>@</filter>
                                                                 <cleanup>try</cleanup>
