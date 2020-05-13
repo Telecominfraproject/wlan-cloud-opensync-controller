@@ -17,8 +17,8 @@
     "broadcast" : true
   }, {
     "model_type" : "OpensyncAPSsidConfig",
-    "radioType" : "is5GHz",
-    "ssid" : "Connectus-local-5",
+    "radioType" : "is5GHzL",
+    "ssid" : "Connectus-local-5l",
     "encryption" : "WPA-PSK",
     "key" : "12345678",
     "mode" : "2",
