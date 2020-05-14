@@ -18,27 +18,32 @@ import com.telecominfraproject.wlan.opensync.external.integration.ConnectusOvsdb
 @RestController
 public class OpenSyncConnectusController {
 
-    private static final Logger LOG = LoggerFactory.getLogger(OpenSyncConnectusController.class);
-    
-    @Autowired
-    ConnectusOvsdbClientInterface connectusOvsdbClient;
-            
-    @RequestMapping(value = "/connectedClients", method = RequestMethod.GET)
-    public List<String> getConnectedClients() 
-    {
-        List<String> ret = new ArrayList<String>(connectusOvsdbClient.getConnectedClientIds());
-        LOG.info("Returning connected clients {}", ret);
-        return ret;
-    }
+	private static final Logger LOG = LoggerFactory.getLogger(OpenSyncConnectusController.class);
 
-    @RequestMapping(value = "/changeRedirectorAddress", method = RequestMethod.POST)
-    public String changeRedirectorAddress(@RequestParam String apId, @RequestParam String newRedirectorAddress) 
-    {        
-        LOG.info("Changing redirector address for AP {} to {}", apId, newRedirectorAddress);
-        String ret = connectusOvsdbClient.changeRedirectorAddress(apId, newRedirectorAddress);
-        LOG.info("Changed redirector address for AP {} to {}", apId, ret);
-        return ret;
-    }
+	@Autowired
+	ConnectusOvsdbClientInterface connectusOvsdbClient;
 
-    
+	@RequestMapping(value = "/connectedClients", method = RequestMethod.GET)
+	public List<String> getConnectedClients() {
+		List<String> ret = new ArrayList<String>(connectusOvsdbClient.getConnectedClientIds());
+		LOG.info("Returning connected clients {}", ret);
+		return ret;
+	}
+
+	@RequestMapping(value = "/changeRedirectorAddress", method = RequestMethod.POST)
+	public String changeRedirectorAddress(@RequestParam String apId, @RequestParam String newRedirectorAddress) {
+		LOG.info("Changing redirector address for AP {} to {}", apId, newRedirectorAddress);
+		String ret = connectusOvsdbClient.changeRedirectorAddress(apId, newRedirectorAddress);
+		LOG.info("Changed redirector address for AP {} to {}", apId, ret);
+		return ret;
+	}
+
+	@RequestMapping(value = "/closeSession", method = RequestMethod.POST)
+	public String closeSession(@RequestParam String apId) {
+		LOG.info("Closing session for AP {} ", apId);
+		String ret = connectusOvsdbClient.closeSession(apId);
+		LOG.info("Closed session for AP {} ", apId);
+		return ret;
+	}
+
 }

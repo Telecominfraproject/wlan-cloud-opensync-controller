@@ -9,4 +9,6 @@ public interface ConnectusOvsdbClientInterface {
 	String changeRedirectorAddress(String apId, String newRedirectorAddress);
 
 	void processConfigChanged(String apId);
+	
+	String closeSession(String apId);
 }

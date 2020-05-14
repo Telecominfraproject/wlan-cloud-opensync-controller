@@ -139,19 +139,24 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 		Equipment ce = null;
 		try {
 			ce = getCustomerEquipment(apId);
-			LOG.debug("Got Equipment {} for apId {}", ce.toPrettyString());
 		} catch (Exception e) {
-			LOG.error("Caught exception getting equipment for Id {} for apId {}", apId, apId, e);
+			LOG.error("Caught exception getting equipment for Id {}", apId, e);
 		}
 
 		try {
+			
 			if (ce == null) {
+				
 				ce = new Equipment();
 				ce.setCustomerId(autoProvisionedCustomerId);
 				ce.setInventoryId(apId);
 				ce.setEquipmentType(EquipmentType.AP);
+				ce.setName(apId);
+				
 				ce.setSerial(connectNodeInfo.serialNumber);
-				ce.setDetails(ApElementConfiguration.createWithDefaults());
+				ApElementConfiguration apElementConfig = ApElementConfiguration.createWithDefaults();
+				apElementConfig.setDeviceName(apId);
+				ce.setDetails(apElementConfig);
 				ce.setLocationId(autoProvisionedLocationId);
 				ce.setProfileId(autoProvisionedProfileId);
 
@@ -196,6 +201,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			equipmentRoutingRecord.setCustomerId(ce.getCustomerId());
 			equipmentRoutingRecord.setEquipmentId(ce.getId());
 			equipmentRoutingRecord = routingServiceInterface.create(equipmentRoutingRecord);
+			
+		
+			gatewayController.registerCustomerEquipment(ce.getName(), ce.getCustomerId(), ce.getId());
 
 			OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
 			ovsdbSession.setRoutingId(equipmentRoutingRecord.getId());

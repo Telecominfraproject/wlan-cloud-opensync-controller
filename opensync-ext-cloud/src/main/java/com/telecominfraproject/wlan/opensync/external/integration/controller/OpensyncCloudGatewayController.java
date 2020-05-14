@@ -119,9 +119,17 @@ public class OpensyncCloudGatewayController {
 		}
 
 		switch (command.getCommandType()) {
-		
+
 		case ConfigChangeNotification:
-			return sendConfigChangeNotification(session, (CEGWConfigChangeNotification)command);
+			return sendConfigChangeNotification(session, (CEGWConfigChangeNotification) command);
+		case CloseSessionRequest:
+			return closeSession(session, (CEGWCloseSessionRequest) command);
+		case CheckRouting:
+			return checkEquipmentRouting(session, (CEGWRouteCheck) command);
+		case BlinkRequest:
+			return processBlinkRequest(session, (CEGWBlinkRequest) command);
+		case StartDebugEngine:
+			return processChangeRedirector(session, (CEGWStartDebugEngine) command);
 
 		default:
 			LOG.warn("[{}] Failed to deliver command {}, unsupported command type", qrCode, command);
@@ -265,7 +273,7 @@ public class OpensyncCloudGatewayController {
 
 			try {
 
-                EquipmentGatewayRecord result = this.eqRoutingSvc.registerGateway(gwRecord);
+				EquipmentGatewayRecord result = this.eqRoutingSvc.registerGateway(gwRecord);
 				this.registeredGwId = result.getId();
 				LOG.info("Successfully registered (name={}, id={}) with Routing Service", result.getHostname(),
 						registeredGwId);
@@ -330,7 +338,7 @@ public class OpensyncCloudGatewayController {
 		routingRecord.setEquipmentId(equipmentId);
 		routingRecord.setGatewayId(this.registeredGwId);
 		try {
-			routingRecord  = eqRoutingSvc.create(routingRecord);
+			routingRecord = eqRoutingSvc.create(routingRecord);
 
 			LOG.debug("Registered customer equipment (name={},id={}) with route id={}", equipmentName, equipmentId,
 					routingRecord.getId());

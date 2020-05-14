@@ -391,4 +391,18 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                 key);
 
     }
+
+	@Override
+	public String closeSession(String apId) {
+		OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
+		try {
+			session.getOvsdbClient().shutdown();
+		} catch (Exception e) {
+			LOG.error("Failed to close session to " + apId + " " + e.getLocalizedMessage());
+			return "Failed to close session to " + apId + " " + e.getLocalizedMessage();
+
+		}
+		LOG.debug("Closed session to " + apId);
+		return "Closed session to " + apId;
+	}
 }
