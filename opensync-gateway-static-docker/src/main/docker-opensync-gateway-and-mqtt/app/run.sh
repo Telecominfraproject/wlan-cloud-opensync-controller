@@ -83,7 +83,7 @@ cat > /app/httpClientConfig.json <<END_OF_FILE
 END_OF_FILE
 
 # Set environment for the opensync gateway process
-PROFILES=" -Dspring.profiles.include=mqtt_receiver,ovsdb_redirector,ovsdb_manager"
+PROFILES=" -Dspring.profiles.include=use_ssl_with_client_cert_and_basic_auth,client_certificate_and_basic_auth,rest-template-single-user-per-service-digest-auth,use_single_ds,opensync_static_config,mqtt_receiver,ovsdb_redirector,ovsdb_manager"
 
 SSL_PROPS=" "
 SSL_PROPS="$SSL_PROPS -Dssl.props=file:/app/ssl.properties"
