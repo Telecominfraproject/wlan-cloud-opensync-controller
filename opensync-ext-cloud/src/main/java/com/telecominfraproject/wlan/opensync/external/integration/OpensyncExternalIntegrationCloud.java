@@ -1,5 +1,7 @@
 package com.telecominfraproject.wlan.opensync.external.integration;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -43,6 +45,7 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAWLANNode;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
+import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
@@ -56,6 +59,20 @@ import com.telecominfraproject.wlan.servicemetrics.models.ClientMetrics;
 import com.telecominfraproject.wlan.servicemetrics.models.EthernetLinkState;
 import com.telecominfraproject.wlan.servicemetrics.models.RadioUtilization;
 import com.telecominfraproject.wlan.servicemetrics.models.SingleMetricRecord;
+import com.telecominfraproject.wlan.status.StatusServiceInterface;
+import com.telecominfraproject.wlan.status.equipment.models.EquipmentAdminStatusData;
+import com.telecominfraproject.wlan.status.equipment.models.EquipmentLANStatusData;
+import com.telecominfraproject.wlan.status.equipment.models.EquipmentProtocolState;
+import com.telecominfraproject.wlan.status.equipment.models.EquipmentProtocolStatusData;
+import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeState;
+import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeStatusData;
+import com.telecominfraproject.wlan.status.equipment.models.VLANStatusData;
+import com.telecominfraproject.wlan.status.models.Status;
+import com.telecominfraproject.wlan.status.models.StatusCode;
+import com.telecominfraproject.wlan.status.models.StatusDataType;
+import com.telecominfraproject.wlan.status.network.models.NetworkAdminStatusData;
+import com.telecominfraproject.wlan.status.network.models.NetworkAggregateStatusData;
+import com.telecominfraproject.wlan.status.network.models.UserDetails;
 
 import sts.PlumeStats.Client;
 import sts.PlumeStats.ClientReport;
@@ -88,6 +105,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 	private RoutingServiceInterface routingServiceInterface;
 	@Autowired
 	private ProfileServiceInterface profileServiceInterface;
+	@Autowired
+	private StatusServiceInterface statusServiceInterface;
+
 	@Autowired
 	private OpensyncCloudGatewayController gatewayController;
 
@@ -163,14 +183,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				ce = equipmentServiceInterface.create(ce);
 			}
 
-			com.telecominfraproject.wlan.profile.models.Profile apProfile = profileServiceInterface
+			Profile apProfile = profileServiceInterface
 					.getOrNull(ce.getProfileId());
 
 			if (apProfile == null) {
 
-				com.telecominfraproject.wlan.profile.models.Profile profileSsid = new com.telecominfraproject.wlan.profile.models.Profile();
+				Profile profileSsid = new Profile();
 				profileSsid.setCustomerId(ce.getCustomerId());
-				profileSsid.setProfileType(ProfileType.ssid);
 				profileSsid.setName(autoProvisionedSsid);
 				SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
 				Set<RadioType> appliedRadios = new HashSet<RadioType>();
@@ -181,20 +200,21 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				profileSsid.setDetails(ssidConfig);
 				profileSsid = profileServiceInterface.create(profileSsid);
 
-				apProfile = new com.telecominfraproject.wlan.profile.models.Profile();
+				apProfile = new Profile();
 				apProfile.setCustomerId(ce.getCustomerId());
 				apProfile.setName("autoprovisionedApProfile");
-				apProfile.setProfileType(ProfileType.equipment_ap);
 				apProfile.setDetails(ApNetworkConfiguration.createWithDefaults());
 				apProfile.getChildProfileIds().add(apProfile.getId());
 
 				apProfile = profileServiceInterface.create(apProfile);
 
+				//update AP only if the apProfile was missing
+				ce.setProfileId(apProfile.getId());
+				ce = equipmentServiceInterface.update(ce);
 			}
 
-			ce.setProfileId(apProfile.getId());
-			ce = equipmentServiceInterface.update(ce);
-
+			updateApStatus(ce, connectNodeInfo);
+			
 			// register equipment routing record
 			EquipmentRoutingRecord equipmentRoutingRecord = new EquipmentRoutingRecord();
 			equipmentRoutingRecord.setGatewayId(gatewayController.getRegisteredGwId());
@@ -216,6 +236,139 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+
+	}
+
+	private void updateApStatus(Equipment ce, ConnectNodeInfo connectNodeInfo) {
+
+		try {
+        	
+        	Status statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(), StatusDataType.EQUIPMENT_ADMIN);
+		    if (statusRecord == null) {
+	        	statusRecord = new Status();
+	            statusRecord.setCustomerId(ce.getCustomerId());
+	            statusRecord.setEquipmentId(ce.getId());
+	            
+	            EquipmentAdminStatusData statusData = new EquipmentAdminStatusData();
+	            statusRecord.setDetails(statusData);
+        	}
+
+		    ((EquipmentAdminStatusData) statusRecord.getDetails()).setStatusCode(StatusCode.normal);
+            // Update the equipment admin status
+            statusRecord = statusServiceInterface.update(statusRecord);
+
+		    // update LAN status - nothing to do here for now
+		    statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(), StatusDataType.LANINFO);
+		    if (statusRecord == null) {
+		    	statusRecord = new Status();
+		        statusRecord.setCustomerId(ce.getCustomerId());
+		        statusRecord.setEquipmentId(ce.getId());
+		
+		        EquipmentLANStatusData statusData = new EquipmentLANStatusData();
+		        statusRecord.setDetails(statusData);
+		    }
+		
+		    Map<Integer, VLANStatusData> vlanStatusDataMap = new HashMap<>();
+		    ((EquipmentLANStatusData) statusRecord.getDetails()).setVlanStatusDataMap(vlanStatusDataMap);
+		
+		    statusServiceInterface.update(statusRecord);
+		
+		    // update protocol status
+		    statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(), StatusDataType.PROTOCOL);		    
+		    if (statusRecord == null) {
+		    	statusRecord = new Status();
+		        statusRecord.setCustomerId(ce.getCustomerId());
+		        statusRecord.setEquipmentId(ce.getId());
+		
+		        EquipmentProtocolStatusData statusData = new EquipmentProtocolStatusData();
+		        statusRecord.setDetails(statusData);
+		    }
+		
+		    EquipmentProtocolStatusData protocolStatusData = ((EquipmentProtocolStatusData) statusRecord
+		            .getDetails());
+		    protocolStatusData.setPoweredOn(true);
+		    protocolStatusData.setCloudProtocolVersion("1100");
+		    protocolStatusData.setProtocolState(EquipmentProtocolState.ready);
+		    protocolStatusData.setBandPlan("FCC");
+		    protocolStatusData.setBaseMacAddress(MacAddress.valueOf(connectNodeInfo.macAddress));
+		    protocolStatusData.setCloudCfgDataVersion(42L);
+		    protocolStatusData.setReportedCfgDataVersion(42L);
+		    protocolStatusData.setCountryCode("CA");
+		    protocolStatusData.setReportedCC(CountryCode.ca);
+		    protocolStatusData.setReportedHwVersion(connectNodeInfo.platformVersion);
+		    protocolStatusData.setReportedSwVersion(connectNodeInfo.firmwareVersion);
+		    protocolStatusData.setReportedSwAltVersion(connectNodeInfo.firmwareVersion);
+		    try {
+				protocolStatusData.setReportedIpV4Addr(InetAddress.getByName(connectNodeInfo.ipV4Address));
+			} catch (UnknownHostException e) {
+				// do nothing here
+			}
+		    if (connectNodeInfo.macAddress != null && MacAddress.valueOf(connectNodeInfo.macAddress) != null) {
+		        protocolStatusData.setReportedMacAddr(MacAddress.valueOf(connectNodeInfo.macAddress));
+		    }
+		    protocolStatusData.setReportedSku(connectNodeInfo.skuNumber);
+		    protocolStatusData.setSerialNumber(connectNodeInfo.serialNumber);
+		    protocolStatusData.setSystemName(connectNodeInfo.model);
+		
+		    statusServiceInterface.update(statusRecord);
+		
+		    statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(), StatusDataType.FIRMWARE);		    
+		    if (statusRecord == null) {
+		    	statusRecord = new Status();
+		        statusRecord.setCustomerId(ce.getCustomerId());
+		        statusRecord.setEquipmentId(ce.getId());
+		        EquipmentUpgradeStatusData statusData = new EquipmentUpgradeStatusData();
+		        statusRecord.setDetails(statusData);
+		    }
+		    EquipmentUpgradeStatusData fwUpgradeStatusData = ((EquipmentUpgradeStatusData) statusRecord
+		            .getDetails());
+		    fwUpgradeStatusData.setActiveSwVersion(connectNodeInfo.firmwareVersion);
+		    fwUpgradeStatusData.setAlternateSwVersion(connectNodeInfo.firmwareVersion);
+		    fwUpgradeStatusData.setTargetSwVersion(connectNodeInfo.firmwareVersion);
+		    fwUpgradeStatusData.setUpgradeState(EquipmentUpgradeState.up_to_date);
+		    
+		    statusServiceInterface.update(statusRecord);
+		
+		    // TODO:
+		    // equipmentStatusInterface.updateNetworkAdminStatus(networkAdminStatusRecord);
+		    // dtop: this one populates traffic capacity and usage dial on the
+		    // main dashboard
+		    // from APDemoMetric properties getPeriodLengthSec, getRxBytes2G,
+		    // getTxBytes2G, getRxBytes5G, getTxBytes5G
+		    Status networkAdminStatusRec = statusServiceInterface.getOrNull(ce.getCustomerId(), 0, StatusDataType.NETWORK_ADMIN);		    
+		    if (networkAdminStatusRec == null) {
+		        networkAdminStatusRec = new Status();
+		        networkAdminStatusRec.setCustomerId(ce.getCustomerId());
+		        networkAdminStatusRec.setEquipmentId(0);
+		        NetworkAdminStatusData statusData = new NetworkAdminStatusData();
+		        networkAdminStatusRec.setDetails(statusData);
+		    }
+		    
+		    NetworkAdminStatusData netAdminStatusData = (NetworkAdminStatusData) networkAdminStatusRec.getDetails();
+		    netAdminStatusData.setDhcpStatus(StatusCode.normal);
+		    netAdminStatusData.setCloudLinkStatus(StatusCode.normal);
+		    netAdminStatusData.setDnsStatus(StatusCode.normal);
+		    networkAdminStatusRec.setDetails(netAdminStatusData);
+		    
+		    statusServiceInterface.update(networkAdminStatusRec);
+		
+		    Status networkAggStatusRec = statusServiceInterface.getOrNull(ce.getCustomerId(), 0, StatusDataType.NETWORK_AGGREGATE);
+		    if (networkAggStatusRec == null) {
+		        networkAggStatusRec = new Status();
+		        networkAggStatusRec.setCustomerId(ce.getCustomerId());
+		        NetworkAggregateStatusData naStatusData = new NetworkAggregateStatusData();
+		        networkAggStatusRec.setDetails(naStatusData);
+		    }
+		
+		    UserDetails userDetails = ((NetworkAggregateStatusData) networkAggStatusRec.getDetails()).getUserDetails();
+		    LOG.debug("UserDetails {}", userDetails.toPrettyString());
+		    
+		    statusServiceInterface.update(networkAggStatusRec);
+
+        } catch (Exception e) {
+            // do nothing
+        	LOG.debug("Exception in updateApStatus", e);
+        }
 
 	}
 
