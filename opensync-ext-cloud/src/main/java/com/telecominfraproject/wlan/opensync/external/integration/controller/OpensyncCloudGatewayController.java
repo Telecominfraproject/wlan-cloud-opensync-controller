@@ -301,7 +301,7 @@ public class OpensyncCloudGatewayController {
 	public void deregisterFromRoutingService() {
 		if (registeredWithRoutingService) {
 			try {
-				eqRoutingSvc.delete(registeredGwId);
+				eqRoutingSvc.deleteGateway(registeredGwId);
 				LOG.info("Deregistered Customer Equipment Gateway (name={},id={}) with Routing Service",
 						getGatewayName(), this.registeredGwId);
 			} catch (Exception e) {
