@@ -9,7 +9,10 @@ RUN mkdir -p /opt/tip-wlan/certs
 COPY maven/app.jar /app
 COPY app/opensync/logback.xml /app/opensync/logback.xml
 COPY app/run.sh /app
-COPY app/opensync/config_2_ssids.json /app/opensync/config_2_ssids.json
+COPY app/opensync/EquipmentExample.json /app/opensync/EquipmentExample.json
+COPY app/opensync/ProfileAPExample.json /app/opensync/ProfileAPExample.json
+COPY app/opensync/ProfileSsid.json /app/opensync/ProfileSsid.json
+COPY app/opensync/LocationBuildingExample.json /app/opensync/LocationBuildingExample.json
 
 RUN chmod +x /app/run.sh
 

@@ -1,0 +1,50 @@
+{
+  "model_type" : "Profile",
+  "id" : 2,
+  "customerId" : 2,
+  "profileType" : "equipment_ap",
+  "name" : "ApProfile",
+  "details" : {
+    "model_type" : "ApNetworkConfiguration",
+    "sampleDetailsStr" : null,
+    "networkConfigVersion" : "AP-1",
+    "equipmentType" : "AP",
+    "vlanNative" : true,
+    "vlan" : 0,
+    "ntpServer" : {
+      "model_type" : "AutoOrManualString",
+      "auto" : true,
+      "value" : "pool.ntp.org"
+    },
+    "syslogRelay" : null,
+    "rtlsSettings" : null,
+    "syntheticClientEnabled" : true,
+    "ledControlEnabled" : true,
+    "equipmentDiscovery" : false,
+    "radioMap" : {
+      "is5GHz" : {
+        "model_type" : "RadioProfileConfiguration",
+        "bestApEnabled" : true,
+        "bestAPSteerType" : "both"
+      },
+      "is2dot4GHz" : {
+        "model_type" : "RadioProfileConfiguration",
+        "bestApEnabled" : true,
+        "bestAPSteerType" : "both"
+      },
+      "is5GHzU" : {
+        "model_type" : "RadioProfileConfiguration",
+        "bestApEnabled" : true,
+        "bestAPSteerType" : "both"
+      },
+      "is5GHzL" : {
+        "model_type" : "RadioProfileConfiguration",
+        "bestApEnabled" : true,
+        "bestAPSteerType" : "both"
+      }
+    }
+  },
+  "createdTimestamp" : 1589567037365,
+  "lastModifiedTimestamp" : 1589567037365,
+  "childProfileIds" : [ 1 ]
+}

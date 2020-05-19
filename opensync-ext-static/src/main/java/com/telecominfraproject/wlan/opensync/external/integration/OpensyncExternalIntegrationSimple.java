@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import com.telecominfraproject.wlan.equipment.models.Equipment;
+import com.telecominfraproject.wlan.location.models.Location;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPInetState;
@@ -29,8 +31,17 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 
 	private static final Logger LOG = LoggerFactory.getLogger(OpensyncExternalIntegrationSimple.class);
 
-	@Value("${connectus.ovsdb.configFileName:/Users/dtop/Documents/TIP_WLAN_repos/opensync_wifi_controller/opensync_ext_static/src/main/resources/config_2_ssids.json}")
-	private String configFileName;
+	@Value("${connectus.ovsdb.customerEquipmentFileName:/Users/mikehansen/git/wlan-cloud-workspace/wlan-cloud-opensync-controller/opensync-ext-static/src/main/resources/EquipmentExample.json}")
+	private String customerEquipmentFileName;
+
+	@Value("${connectus.ovsdb.apProfileFileName:/Users/mikehansen/git/wlan-cloud-workspace/wlan-cloud-opensync-controller/opensync-ext-static/src/main/resources/ProfileAPExample.json}")
+	private String apProfileFileName;
+
+	@Value("${connectus.ovsdb.ssidProfileFileName:/Users/mikehansen/git/wlan-cloud-workspace/wlan-cloud-opensync-controller/opensync-ext-static/src/main/resources/ProfileSsid.json}")
+	private String ssidProfileFileName;
+	
+	@Value("${connectus.ovsdb.locationFileName:/Users/mikehansen/git/wlan-cloud-workspace/wlan-cloud-opensync-controller/opensync-ext-static/src/main/resources/LocationBuildingExample.json}")
+	private String locationFileName;
 
 	@PostConstruct
 	private void postCreate() {
@@ -48,13 +59,28 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 	}
 
 	public OpensyncAPConfig getApConfig(String apId) {
-		LOG.info("Retrieving config for AP {} from file {}", apId, configFileName);
+		LOG.info("Retrieving config for AP {}", apId);
 		OpensyncAPConfig ret = null;
 
 		try {
-			ret = OpensyncAPConfig.fromFile(configFileName, OpensyncAPConfig.class);
+
+			Equipment equipment = Equipment.fromFile(customerEquipmentFileName, Equipment.class);
+			equipment.setInventoryId(apId);
+			equipment.setName(apId);
+			
+			com.telecominfraproject.wlan.profile.models.Profile apProfile = com.telecominfraproject.wlan.profile.models.Profile.fromFile(apProfileFileName,  com.telecominfraproject.wlan.profile.models.Profile.class);
+			com.telecominfraproject.wlan.profile.models.Profile ssidProfile = com.telecominfraproject.wlan.profile.models.Profile.fromFile(ssidProfileFileName,  com.telecominfraproject.wlan.profile.models.Profile.class);
+
+			Location location = Location.fromFile(locationFileName, Location.class);
+			
+			ret = new OpensyncAPConfig();
+			ret.setCustomerEquipment(equipment);
+			ret.setApProfile(apProfile);
+			ret.setSsidProfile(ssidProfile);
+			ret.setEquipmentLocation(location);
+
 		} catch (IOException e) {
-			LOG.error("Cannot read config from {}", configFileName, e);
+			LOG.error("Cannot read config file", e);
 		}
 
 		LOG.debug("Config content : {}", ret);
@@ -63,7 +89,7 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 	}
 
 	public void processMqttMessage(String topic, Report report) {
-		LOG.info("Received PlumeStatsReport on topic {} for ap {}\n{}", topic, report.getNodeID(),report);
+		LOG.info("Received PlumeStatsReport on topic {} for ap {}\n{}", topic, report.getNodeID(), report);
 	}
 
 	public void processMqttMessage(String topic, FlowReport flowReport) {
@@ -106,16 +132,16 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 
 	}
 
-    @Override
-    public void wifiVIFStateDbTableDelete(List<OpensyncAPVIFState> vifStateTables, String apId) {
-        // TODO Auto-generated method stub
-        
-    }
+	@Override
+	public void wifiVIFStateDbTableDelete(List<OpensyncAPVIFState> vifStateTables, String apId) {
+		// TODO Auto-generated method stub
 
-    @Override
-    public void wifiAssociatedClientsDbTableDelete(String deletedClientMac, String apId) {
-        // TODO Auto-generated method stub
-        
-    }
+	}
+
+	@Override
+	public void wifiAssociatedClientsDbTableDelete(String deletedClientMac, String apId) {
+		// TODO Auto-generated method stub
+
+	}
 
 }

@@ -22,7 +22,11 @@ RUN mkdir -p /app/logs /app/opensync /app/config
 COPY maven/app.jar /app
 COPY app/opensync/logback.xml /app/opensync/logback.xml
 COPY app/run.sh /app
-COPY app/opensync/config_2_ssids.json /app/opensync/config_2_ssids.json
+COPY app/opensync/EquipmentExample.json /app/opensync/EquipmentExample.json
+COPY app/opensync/ProfileAPExample.json /app/opensync/ProfileAPExample.json
+COPY app/opensync/ProfileSsid.json /app/opensync/ProfileSsid.json
+COPY app/opensync/LocationBuildingExample.json /app/opensync/LocationBuildingExample.json
+
 VOLUME ["/app/logs", "/app/config"]
 
 RUN chmod +x /app/run.sh

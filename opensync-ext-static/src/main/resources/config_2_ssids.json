@@ -3,7 +3,7 @@
   "radioConfig" : {
     "model_type" : "OpensyncAPRadioConfig",
     "country" : "CA",
-    "radioChannel24G" : 1,
+    "radioChannel24G" : 6,
     "radioChannel5LG" : 44,
     "radioChannel5HG" : 108
   },

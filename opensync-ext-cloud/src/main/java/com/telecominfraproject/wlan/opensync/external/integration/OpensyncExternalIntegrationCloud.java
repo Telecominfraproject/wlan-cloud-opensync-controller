@@ -31,16 +31,13 @@ import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.ElementRadioConfiguration;
 import com.telecominfraproject.wlan.equipment.models.Equipment;
-import com.telecominfraproject.wlan.equipment.models.StateSetting;
 import com.telecominfraproject.wlan.location.models.Location;
 import com.telecominfraproject.wlan.location.service.LocationServiceInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.controller.OpensyncCloudGatewayController;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPInetState;
-import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioConfig;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioState;
-import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPSsidConfig;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAWLANNode;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
@@ -67,6 +64,8 @@ import com.telecominfraproject.wlan.status.equipment.models.EquipmentProtocolSta
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeState;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeStatusData;
 import com.telecominfraproject.wlan.status.equipment.models.VLANStatusData;
+import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSID;
+import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSIDs;
 import com.telecominfraproject.wlan.status.models.Status;
 import com.telecominfraproject.wlan.status.models.StatusCode;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
@@ -164,15 +163,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 		}
 
 		try {
-			
+
 			if (ce == null) {
-				
+
 				ce = new Equipment();
 				ce.setCustomerId(autoProvisionedCustomerId);
 				ce.setInventoryId(apId);
 				ce.setEquipmentType(EquipmentType.AP);
 				ce.setName(apId);
-				
+
 				ce.setSerial(connectNodeInfo.serialNumber);
 				ApElementConfiguration apElementConfig = ApElementConfiguration.createWithDefaults();
 				apElementConfig.setDeviceName(apId);
@@ -183,8 +182,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				ce = equipmentServiceInterface.create(ce);
 			}
 
-			Profile apProfile = profileServiceInterface
-					.getOrNull(ce.getProfileId());
+			Profile apProfile = profileServiceInterface.getOrNull(ce.getProfileId());
 
 			if (apProfile == null) {
 
@@ -208,21 +206,20 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 				apProfile = profileServiceInterface.create(apProfile);
 
-				//update AP only if the apProfile was missing
+				// update AP only if the apProfile was missing
 				ce.setProfileId(apProfile.getId());
 				ce = equipmentServiceInterface.update(ce);
 			}
 
 			updateApStatus(ce, connectNodeInfo);
-			
+
 			// register equipment routing record
 			EquipmentRoutingRecord equipmentRoutingRecord = new EquipmentRoutingRecord();
 			equipmentRoutingRecord.setGatewayId(gatewayController.getRegisteredGwId());
 			equipmentRoutingRecord.setCustomerId(ce.getCustomerId());
 			equipmentRoutingRecord.setEquipmentId(ce.getId());
 			equipmentRoutingRecord = routingServiceInterface.create(equipmentRoutingRecord);
-			
-		
+
 			gatewayController.registerCustomerEquipment(ce.getName(), ce.getCustomerId(), ce.getId());
 
 			OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
@@ -242,133 +239,136 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 	private void updateApStatus(Equipment ce, ConnectNodeInfo connectNodeInfo) {
 
 		try {
-        	
-        	Status statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(), StatusDataType.EQUIPMENT_ADMIN);
-		    if (statusRecord == null) {
-	        	statusRecord = new Status();
-	            statusRecord.setCustomerId(ce.getCustomerId());
-	            statusRecord.setEquipmentId(ce.getId());
-	            
-	            EquipmentAdminStatusData statusData = new EquipmentAdminStatusData();
-	            statusRecord.setDetails(statusData);
-        	}
 
-		    ((EquipmentAdminStatusData) statusRecord.getDetails()).setStatusCode(StatusCode.normal);
-            // Update the equipment admin status
-            statusRecord = statusServiceInterface.update(statusRecord);
+			Status statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(),
+					StatusDataType.EQUIPMENT_ADMIN);
+			if (statusRecord == null) {
+				statusRecord = new Status();
+				statusRecord.setCustomerId(ce.getCustomerId());
+				statusRecord.setEquipmentId(ce.getId());
 
-		    // update LAN status - nothing to do here for now
-		    statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(), StatusDataType.LANINFO);
-		    if (statusRecord == null) {
-		    	statusRecord = new Status();
-		        statusRecord.setCustomerId(ce.getCustomerId());
-		        statusRecord.setEquipmentId(ce.getId());
-		
-		        EquipmentLANStatusData statusData = new EquipmentLANStatusData();
-		        statusRecord.setDetails(statusData);
-		    }
-		
-		    Map<Integer, VLANStatusData> vlanStatusDataMap = new HashMap<>();
-		    ((EquipmentLANStatusData) statusRecord.getDetails()).setVlanStatusDataMap(vlanStatusDataMap);
-		
-		    statusServiceInterface.update(statusRecord);
-		
-		    // update protocol status
-		    statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(), StatusDataType.PROTOCOL);		    
-		    if (statusRecord == null) {
-		    	statusRecord = new Status();
-		        statusRecord.setCustomerId(ce.getCustomerId());
-		        statusRecord.setEquipmentId(ce.getId());
-		
-		        EquipmentProtocolStatusData statusData = new EquipmentProtocolStatusData();
-		        statusRecord.setDetails(statusData);
-		    }
-		
-		    EquipmentProtocolStatusData protocolStatusData = ((EquipmentProtocolStatusData) statusRecord
-		            .getDetails());
-		    protocolStatusData.setPoweredOn(true);
-		    protocolStatusData.setCloudProtocolVersion("1100");
-		    protocolStatusData.setProtocolState(EquipmentProtocolState.ready);
-		    protocolStatusData.setBandPlan("FCC");
-		    protocolStatusData.setBaseMacAddress(MacAddress.valueOf(connectNodeInfo.macAddress));
-		    protocolStatusData.setCloudCfgDataVersion(42L);
-		    protocolStatusData.setReportedCfgDataVersion(42L);
-		    protocolStatusData.setCountryCode("CA");
-		    protocolStatusData.setReportedCC(CountryCode.ca);
-		    protocolStatusData.setReportedHwVersion(connectNodeInfo.platformVersion);
-		    protocolStatusData.setReportedSwVersion(connectNodeInfo.firmwareVersion);
-		    protocolStatusData.setReportedSwAltVersion(connectNodeInfo.firmwareVersion);
-		    try {
+				EquipmentAdminStatusData statusData = new EquipmentAdminStatusData();
+				statusRecord.setDetails(statusData);
+			}
+
+			((EquipmentAdminStatusData) statusRecord.getDetails()).setStatusCode(StatusCode.normal);
+			// Update the equipment admin status
+			statusRecord = statusServiceInterface.update(statusRecord);
+
+			// update LAN status - nothing to do here for now
+			statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(), StatusDataType.LANINFO);
+			if (statusRecord == null) {
+				statusRecord = new Status();
+				statusRecord.setCustomerId(ce.getCustomerId());
+				statusRecord.setEquipmentId(ce.getId());
+
+				EquipmentLANStatusData statusData = new EquipmentLANStatusData();
+				statusRecord.setDetails(statusData);
+			}
+
+			Map<Integer, VLANStatusData> vlanStatusDataMap = new HashMap<>();
+			((EquipmentLANStatusData) statusRecord.getDetails()).setVlanStatusDataMap(vlanStatusDataMap);
+
+			statusServiceInterface.update(statusRecord);
+
+			// update protocol status
+			statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(), StatusDataType.PROTOCOL);
+			if (statusRecord == null) {
+				statusRecord = new Status();
+				statusRecord.setCustomerId(ce.getCustomerId());
+				statusRecord.setEquipmentId(ce.getId());
+
+				EquipmentProtocolStatusData statusData = new EquipmentProtocolStatusData();
+				statusRecord.setDetails(statusData);
+			}
+
+			EquipmentProtocolStatusData protocolStatusData = ((EquipmentProtocolStatusData) statusRecord.getDetails());
+			protocolStatusData.setPoweredOn(true);
+			protocolStatusData.setCloudProtocolVersion("1100");
+			protocolStatusData.setProtocolState(EquipmentProtocolState.ready);
+			protocolStatusData.setBandPlan("FCC");
+			protocolStatusData.setBaseMacAddress(MacAddress.valueOf(connectNodeInfo.macAddress));
+			protocolStatusData.setCloudCfgDataVersion(42L);
+			protocolStatusData.setReportedCfgDataVersion(42L);
+			protocolStatusData.setCountryCode("CA");
+			protocolStatusData.setReportedCC(CountryCode.ca);
+			protocolStatusData.setReportedHwVersion(connectNodeInfo.platformVersion);
+			protocolStatusData.setReportedSwVersion(connectNodeInfo.firmwareVersion);
+			protocolStatusData.setReportedSwAltVersion(connectNodeInfo.firmwareVersion);
+			try {
 				protocolStatusData.setReportedIpV4Addr(InetAddress.getByName(connectNodeInfo.ipV4Address));
 			} catch (UnknownHostException e) {
 				// do nothing here
 			}
-		    if (connectNodeInfo.macAddress != null && MacAddress.valueOf(connectNodeInfo.macAddress) != null) {
-		        protocolStatusData.setReportedMacAddr(MacAddress.valueOf(connectNodeInfo.macAddress));
-		    }
-		    protocolStatusData.setReportedSku(connectNodeInfo.skuNumber);
-		    protocolStatusData.setSerialNumber(connectNodeInfo.serialNumber);
-		    protocolStatusData.setSystemName(connectNodeInfo.model);
-		
-		    statusServiceInterface.update(statusRecord);
-		
-		    statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(), StatusDataType.FIRMWARE);		    
-		    if (statusRecord == null) {
-		    	statusRecord = new Status();
-		        statusRecord.setCustomerId(ce.getCustomerId());
-		        statusRecord.setEquipmentId(ce.getId());
-		        EquipmentUpgradeStatusData statusData = new EquipmentUpgradeStatusData();
-		        statusRecord.setDetails(statusData);
-		    }
-		    EquipmentUpgradeStatusData fwUpgradeStatusData = ((EquipmentUpgradeStatusData) statusRecord
-		            .getDetails());
-		    fwUpgradeStatusData.setActiveSwVersion(connectNodeInfo.firmwareVersion);
-		    fwUpgradeStatusData.setAlternateSwVersion(connectNodeInfo.firmwareVersion);
-		    fwUpgradeStatusData.setTargetSwVersion(connectNodeInfo.firmwareVersion);
-		    fwUpgradeStatusData.setUpgradeState(EquipmentUpgradeState.up_to_date);
-		    
-		    statusServiceInterface.update(statusRecord);
-		
-		    // TODO:
-		    // equipmentStatusInterface.updateNetworkAdminStatus(networkAdminStatusRecord);
-		    // dtop: this one populates traffic capacity and usage dial on the
-		    // main dashboard
-		    // from APDemoMetric properties getPeriodLengthSec, getRxBytes2G,
-		    // getTxBytes2G, getRxBytes5G, getTxBytes5G
-		    Status networkAdminStatusRec = statusServiceInterface.getOrNull(ce.getCustomerId(), 0, StatusDataType.NETWORK_ADMIN);		    
-		    if (networkAdminStatusRec == null) {
-		        networkAdminStatusRec = new Status();
-		        networkAdminStatusRec.setCustomerId(ce.getCustomerId());
-		        networkAdminStatusRec.setEquipmentId(0);
-		        NetworkAdminStatusData statusData = new NetworkAdminStatusData();
-		        networkAdminStatusRec.setDetails(statusData);
-		    }
-		    
-		    NetworkAdminStatusData netAdminStatusData = (NetworkAdminStatusData) networkAdminStatusRec.getDetails();
-		    netAdminStatusData.setDhcpStatus(StatusCode.normal);
-		    netAdminStatusData.setCloudLinkStatus(StatusCode.normal);
-		    netAdminStatusData.setDnsStatus(StatusCode.normal);
-		    networkAdminStatusRec.setDetails(netAdminStatusData);
-		    
-		    statusServiceInterface.update(networkAdminStatusRec);
-		
-		    Status networkAggStatusRec = statusServiceInterface.getOrNull(ce.getCustomerId(), 0, StatusDataType.NETWORK_AGGREGATE);
-		    if (networkAggStatusRec == null) {
-		        networkAggStatusRec = new Status();
-		        networkAggStatusRec.setCustomerId(ce.getCustomerId());
-		        NetworkAggregateStatusData naStatusData = new NetworkAggregateStatusData();
-		        networkAggStatusRec.setDetails(naStatusData);
-		    }
-		
-		    UserDetails userDetails = ((NetworkAggregateStatusData) networkAggStatusRec.getDetails()).getUserDetails();
-		    LOG.debug("UserDetails {}", userDetails.toPrettyString());
-		    
-		    statusServiceInterface.update(networkAggStatusRec);
+			if (connectNodeInfo.macAddress != null && MacAddress.valueOf(connectNodeInfo.macAddress) != null) {
+				protocolStatusData.setReportedMacAddr(MacAddress.valueOf(connectNodeInfo.macAddress));
+			}
+			protocolStatusData.setReportedSku(connectNodeInfo.skuNumber);
+			protocolStatusData.setSerialNumber(connectNodeInfo.serialNumber);
+			protocolStatusData.setSystemName(connectNodeInfo.model);
 
-        } catch (Exception e) {
-            // do nothing
-        	LOG.debug("Exception in updateApStatus", e);
-        }
+			statusServiceInterface.update(statusRecord);
+
+			statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(), StatusDataType.FIRMWARE);
+			if (statusRecord == null) {
+				statusRecord = new Status();
+				statusRecord.setCustomerId(ce.getCustomerId());
+				statusRecord.setEquipmentId(ce.getId());
+				EquipmentUpgradeStatusData statusData = new EquipmentUpgradeStatusData();
+				statusRecord.setDetails(statusData);
+			}
+			EquipmentUpgradeStatusData fwUpgradeStatusData = ((EquipmentUpgradeStatusData) statusRecord.getDetails());
+			fwUpgradeStatusData.setActiveSwVersion(connectNodeInfo.firmwareVersion);
+			fwUpgradeStatusData.setAlternateSwVersion(connectNodeInfo.firmwareVersion);
+			fwUpgradeStatusData.setTargetSwVersion(connectNodeInfo.firmwareVersion);
+			fwUpgradeStatusData.setUpgradeState(EquipmentUpgradeState.up_to_date);
+
+			statusServiceInterface.update(statusRecord);
+
+			// TODO:
+			// equipmentStatusInterface.updateNetworkAdminStatus(networkAdminStatusRecord);
+			// dtop: this one populates traffic capacity and usage dial on the
+			// main dashboard
+			// from APDemoMetric properties getPeriodLengthSec, getRxBytes2G,
+			// getTxBytes2G, getRxBytes5G, getTxBytes5G
+			Status networkAdminStatusRec = statusServiceInterface.getOrNull(ce.getCustomerId(), 0,
+					StatusDataType.NETWORK_ADMIN);
+			if (networkAdminStatusRec == null) {
+				networkAdminStatusRec = new Status();
+				networkAdminStatusRec.setCustomerId(ce.getCustomerId());
+				networkAdminStatusRec.setEquipmentId(ce.getId());
+				NetworkAdminStatusData statusData = new NetworkAdminStatusData();
+				networkAdminStatusRec.setDetails(statusData);
+			}
+
+			NetworkAdminStatusData netAdminStatusData = (NetworkAdminStatusData) networkAdminStatusRec.getDetails();
+			netAdminStatusData.setDhcpStatus(StatusCode.normal);
+			netAdminStatusData.setCloudLinkStatus(StatusCode.normal);
+			netAdminStatusData.setDnsStatus(StatusCode.normal);
+
+			networkAdminStatusRec.setDetails(netAdminStatusData);
+
+			statusServiceInterface.update(networkAdminStatusRec);
+
+			Status networkAggStatusRec = statusServiceInterface.getOrNull(ce.getCustomerId(), 0,
+					StatusDataType.NETWORK_AGGREGATE);
+			if (networkAggStatusRec == null) {
+				networkAggStatusRec = new Status();
+				networkAggStatusRec.setCustomerId(ce.getCustomerId());
+				NetworkAggregateStatusData naStatusData = new NetworkAggregateStatusData();
+				networkAggStatusRec.setDetails(naStatusData);
+			}
+
+			UserDetails userDetails = ((NetworkAggregateStatusData) networkAggStatusRec.getDetails()).getUserDetails();
+			if (userDetails != null)
+				LOG.debug("UserDetails {}", userDetails.toPrettyString());
+
+			statusServiceInterface.update(networkAggStatusRec);
+
+		} catch (Exception e) {
+			// do nothing
+			LOG.debug("Exception in updateApStatus", e);
+		}
 
 	}
 
@@ -413,7 +413,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 			ret = new OpensyncAPConfig();
 
+			ret.setCustomerEquipment(equipmentConfig);
+
 			Location eqLocation = locationServiceInterface.get(equipmentConfig.getLocationId());
+
+			ret.setEquipmentLocation(eqLocation);
 
 			// extract country, radio channels from resolvedEqCfg
 			String country = "CA";
@@ -449,68 +453,48 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 			}
 
-			LOG.debug("Channel erc24 {}", radioChannel24G);
-			LOG.debug("Channel erc5gl {}", radioChannel5LG);
-			LOG.debug("Channel erc5gh {}", radioChannel5HG);
-
-			OpensyncAPRadioConfig radioConfig = new OpensyncAPRadioConfig();
-			radioConfig.setCountry(country);
-			radioConfig.setRadioChannel24G(radioChannel24G);
-			radioConfig.setRadioChannel5LG(radioChannel5LG);
-			radioConfig.setRadioChannel5HG(radioChannel5HG);
-
-			ret.setRadioConfig(radioConfig);
-
-			// extract ssid parameters from resolvedEqCfg
-			List<OpensyncAPSsidConfig> ssidConfigs = new ArrayList<>();
-
 			com.telecominfraproject.wlan.profile.models.Profile apProfile = profileServiceInterface
 					.getOrNull(equipmentConfig.getProfileId());
 
+			ret.setApProfile(apProfile);
+
 			if (apProfile != null) {
 				Set<Long> childProfileIds = apProfile.getChildProfileIds();
-				
+
 				for (Long id : childProfileIds) {
 					com.telecominfraproject.wlan.profile.models.Profile profile = profileServiceInterface.get(id);
 					if (profile.getProfileType().equals(ProfileType.ssid)) {
+
 						SsidConfiguration ssidCfg = (SsidConfiguration) profile.getDetails();
+						ssidCfg.setSsid(profile.getName());
 
 						for (RadioType radioType : ssidCfg.getAppliedRadios()) {
-							OpensyncAPSsidConfig osSsidCfg = new OpensyncAPSsidConfig();
-
-							osSsidCfg.setSsid(profile.getName());
-							osSsidCfg.setRadioType(radioType);
-							osSsidCfg.setBroadcast(ssidCfg.getBroadcastSsid() == StateSetting.enabled);
-
 							if (ssidCfg.getSecureMode() == SecureMode.wpa2OnlyPSK
 									|| ssidCfg.getSecureMode() == SecureMode.wpa2PSK) {
-								osSsidCfg.setEncryption("WPA-PSK");
-								osSsidCfg.setMode("2");
+
+								ssidCfg.setSecureMode(SecureMode.wpa2PSK);
 							} else if (ssidCfg.getSecureMode() == SecureMode.wpaPSK) {
-								osSsidCfg.setEncryption("WPA-PSK");
-								osSsidCfg.setMode("1");
+
+								ssidCfg.setSecureMode(SecureMode.wpaPSK);
+
 							} else {
 								LOG.warn("Unsupported encryption mode {} - will use WPA-PSK instead",
 										ssidCfg.getSecureMode());
-								osSsidCfg.setEncryption("WPA-PSK");
-								osSsidCfg.setMode("2");
+
+								ssidCfg.setSecureMode(SecureMode.wpa2PSK);
 							}
 
 							if (ssidCfg.getKeyStr() == null) {
-								osSsidCfg.setKey("12345678");
-							} else {
-								osSsidCfg.setKey(ssidCfg.getKeyStr());
+								ssidCfg.setKeyStr("12345678");
 							}
 
-							ssidConfigs.add(osSsidCfg);
-
 						}
+						profile.setDetails(ssidCfg);
+						ret.setSsidProfile(profile);
 
 					}
 				}
 			}
-
-			ret.setSsidConfigs(ssidConfigs);
 
 		} catch (Exception e) {
 			LOG.error("Cannot read config for AP {}", apId, e);
@@ -933,32 +917,99 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 	public void wifiVIFStateDbTableUpdate(List<OpensyncAPVIFState> vifStateTables, String apId) {
 		if (vifStateTables == null || vifStateTables.isEmpty() || apId == null)
 			return;
+
+		Equipment ce = getCustomerEquipment(apId);
+		if (ce == null) {
+			LOG.debug("Cannot get equipmentId {} for apId {}", apId);
+			return;
+		}
+
+		int customerId = ce.getCustomerId();
+		long equipmentId = ce.getId();
+
 		OpensyncNode osNode = null;
 
 		synchronized (opensyncNodeMap) {
 
 			if (opensyncNodeMap.containsKey(apId)) {
+
+				Status activeBssids = statusServiceInterface.getOrNull(customerId, equipmentId,
+						StatusDataType.ACTIVE_BSSIDS);
+				if (activeBssids == null) {
+					activeBssids = new Status();
+					activeBssids.setCustomerId(customerId);
+					activeBssids.setEquipmentId(equipmentId);
+					activeBssids.setStatusDataType(StatusDataType.ACTIVE_BSSIDS);
+					activeBssids.setDetails(new ActiveBSSIDs());
+					statusServiceInterface.update(activeBssids);
+				}
+				ActiveBSSIDs bssids = (ActiveBSSIDs) activeBssids.getDetails();
+				List<ActiveBSSID> bssidList = bssids.getActiveBSSIDs();
+
 				osNode = opensyncNodeMap.get(apId);
 				for (OpensyncAPVIFState vifState : vifStateTables) {
-					if (vifState.isEnabled())
+					if (vifState.isEnabled()) {
 						osNode.updateVifState(vifState);
+						String ssid = vifState.getSsid(); // ssid
+						if (ssid != null) {
+							int channel = vifState.getChannel(); // channel for this ssid
+							int numDevicesConnected = vifState.getAssociatedClients().size();
+							if (channel > 0) {
+								OpensyncAPRadioState radioState = osNode.getRadioForChannel(channel);
+								if (radioState != null) {
+									String bssidAsMacString = radioState.getMac();
+									RadioType radioType = null;
+									if (osNode.getRadioForChannel(channel).getFreqBand().equals("2.4G"))
+										radioType = RadioType.is2dot4GHz;
+									else if (osNode.getRadioForChannel(channel).getFreqBand().equals("5GL"))
+										radioType = RadioType.is5GHzL;
+									else if (osNode.getRadioForChannel(channel).getFreqBand().equals("5GU"))
+										radioType = RadioType.is5GHzU;
+									else if (osNode.getRadioForChannel(channel).getFreqBand().equals("5G"))
+										radioType = RadioType.is5GHz;
+
+									if (bssidAsMacString != null && bssidAsMacString != "" && radioType != null) {
+
+										boolean found = false;
+										for (ActiveBSSID activeBssid : bssidList) {
+											if (activeBssid.getBssid().equals(bssidAsMacString)
+													&& activeBssid.getRadioType().equals(radioType)) {
+												found = true;
+											}
+										}
+										if (!found) {
+											ActiveBSSID newBssid = new ActiveBSSID();
+											newBssid.setBssid(bssidAsMacString);
+											newBssid.setSsid(ssid);
+											newBssid.setRadioType(radioType);
+											newBssid.setNumDevicesConnected(numDevicesConnected);
+											bssidList.add(newBssid);
+											bssids.setActiveBSSIDs(bssidList);
+											activeBssids.setDetails(bssids);
+											statusServiceInterface.update(activeBssids);
+
+										}
+									}
+								}
+							}
+						}
+					}
 				}
 				opensyncNodeMap.put(apId, osNode);
 				// LOG.debug("Updated VIF States for AP to NodeMap {}",
 				// opensyncNodeMap.get(apId).toPrettyString());
 			} else {
-				OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
 
-				if (session != null) {
-					int customerId = session.getCustomerId();
-					long equipmentId = session.getEquipmentId();
-					osNode = new OpensyncNode(apId, null, customerId, equipmentId);
-					for (OpensyncAPVIFState vifState : vifStateTables) {
-						if (vifState.isEnabled())
-							osNode.updateVifState(vifState);
-					}
-					opensyncNodeMap.put(apId, osNode);
+				// Do not add Status updates here as this is the only object in this map, and
+				// therefore it will not contain the required peer entities to do the status
+				// updates. These will be handled in subsequent table status updates.
+
+				osNode = new OpensyncNode(apId, null, customerId, equipmentId);
+				for (OpensyncAPVIFState vifState : vifStateTables) {
+					if (vifState.isEnabled())
+						osNode.updateVifState(vifState);
 				}
+				opensyncNodeMap.put(apId, osNode);
 			}
 
 			osNode = opensyncNodeMap.get(apId);
@@ -1111,13 +1162,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 	@Override
 	public void wifiVIFStateDbTableDelete(List<OpensyncAPVIFState> vifStateTables, String apId) {
-		OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
-		long equipmentId = session.getEquipmentId();
 
-		if (equipmentId < 0L) {
-			LOG.debug("Cannot get equipmentId {} for session {}", equipmentId);
+		Equipment ce = getCustomerEquipment(apId);
+		if (ce == null) {
+			LOG.debug("Cannot get equipmentId {} for apId {}", apId);
 			return;
 		}
+
+		int customerId = ce.getCustomerId();
+		long equipmentId = ce.getId();
 
 		synchronized (opensyncNodeMap) {
 

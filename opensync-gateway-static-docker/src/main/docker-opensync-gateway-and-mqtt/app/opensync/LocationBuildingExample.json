@@ -1,0 +1,67 @@
+{
+  "model_type" : "Location",
+  "id" : 7,
+  "parentId" : 2,
+  "locationType" : "BUILDING",
+  "customerId" : 2,
+  "name" : "Building 2",
+  "details" : {
+    "model_type" : "LocationDetails",
+    "countryCode" : "usa",
+    "maintenanceWindow" : null,
+    "rrmEnabled" : true,
+    "dailyRebalancingDetails" : {
+      "SUNDAY" : {
+        "model_type" : "LocationActivityDetails",
+        "busyTime" : "13:30",
+        "quietTime" : "3:30",
+        "timezone" : "US/Eastern",
+        "lastBusySnapshot" : 0
+      },
+      "MONDAY" : {
+        "model_type" : "LocationActivityDetails",
+        "busyTime" : "13:30",
+        "quietTime" : "3:30",
+        "timezone" : "US/Eastern",
+        "lastBusySnapshot" : 0
+      },
+      "TUESDAY" : {
+        "model_type" : "LocationActivityDetails",
+        "busyTime" : "13:30",
+        "quietTime" : "3:30",
+        "timezone" : "US/Eastern",
+        "lastBusySnapshot" : 0
+      },
+      "WEDNESDAY" : {
+        "model_type" : "LocationActivityDetails",
+        "busyTime" : "13:30",
+        "quietTime" : "3:30",
+        "timezone" : "US/Eastern",
+        "lastBusySnapshot" : 0
+      },
+      "THURSDAY" : {
+        "model_type" : "LocationActivityDetails",
+        "busyTime" : "13:30",
+        "quietTime" : "3:30",
+        "timezone" : "US/Eastern",
+        "lastBusySnapshot" : 0
+      },
+      "FRIDAY" : {
+        "model_type" : "LocationActivityDetails",
+        "busyTime" : "13:30",
+        "quietTime" : "3:30",
+        "timezone" : "US/Eastern",
+        "lastBusySnapshot" : 0
+      },
+      "SATURDAY" : {
+        "model_type" : "LocationActivityDetails",
+        "busyTime" : "13:30",
+        "quietTime" : "3:30",
+        "timezone" : "US/Eastern",
+        "lastBusySnapshot" : 0
+      }
+    }
+  },
+  "createdTimestamp" : 1589567347442,
+  "lastModifiedTimestamp" : 1589567347442
+}
