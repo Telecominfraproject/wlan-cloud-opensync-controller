@@ -1,6 +1,7 @@
 package com.telecominfraproject.wlan.opensync.external.integration;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.annotation.PostConstruct;
@@ -39,7 +40,7 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 
 	@Value("${connectus.ovsdb.ssidProfileFileName:/Users/mikehansen/git/wlan-cloud-workspace/wlan-cloud-opensync-controller/opensync-ext-static/src/main/resources/ProfileSsid.json}")
 	private String ssidProfileFileName;
-	
+
 	@Value("${connectus.ovsdb.locationFileName:/Users/mikehansen/git/wlan-cloud-workspace/wlan-cloud-opensync-controller/opensync-ext-static/src/main/resources/LocationBuildingExample.json}")
 	private String locationFileName;
 
@@ -67,16 +68,20 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 			Equipment equipment = Equipment.fromFile(customerEquipmentFileName, Equipment.class);
 			equipment.setInventoryId(apId);
 			equipment.setName(apId);
-			
-			com.telecominfraproject.wlan.profile.models.Profile apProfile = com.telecominfraproject.wlan.profile.models.Profile.fromFile(apProfileFileName,  com.telecominfraproject.wlan.profile.models.Profile.class);
-			com.telecominfraproject.wlan.profile.models.Profile ssidProfile = com.telecominfraproject.wlan.profile.models.Profile.fromFile(ssidProfileFileName,  com.telecominfraproject.wlan.profile.models.Profile.class);
+
+			com.telecominfraproject.wlan.profile.models.Profile apProfile = com.telecominfraproject.wlan.profile.models.Profile
+					.fromFile(apProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
+			com.telecominfraproject.wlan.profile.models.Profile ssidProfile = com.telecominfraproject.wlan.profile.models.Profile
+					.fromFile(ssidProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
 
 			Location location = Location.fromFile(locationFileName, Location.class);
-			
+
 			ret = new OpensyncAPConfig();
 			ret.setCustomerEquipment(equipment);
 			ret.setApProfile(apProfile);
-			ret.setSsidProfile(ssidProfile);
+			List<com.telecominfraproject.wlan.profile.models.Profile> ssidProfiles = new ArrayList<com.telecominfraproject.wlan.profile.models.Profile>();
+			ssidProfiles.add(ssidProfile);
+			ret.setSsidProfile(ssidProfiles);
 			ret.setEquipmentLocation(location);
 
 		} catch (IOException e) {

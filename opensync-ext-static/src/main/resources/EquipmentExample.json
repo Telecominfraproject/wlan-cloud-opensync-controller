@@ -119,8 +119,8 @@
       "is5GHzU" : {
         "model_type" : "ElementRadioConfiguration",
         "radioType" : "is5GHzU",
-        "channelNumber" : 108,
-        "manualChannelNumber" : 108,
+        "channelNumber" : 149,
+        "manualChannelNumber" : 149,
         "backupChannelNumber" : 116,
         "autoChannelSelection" : true,
         "channelBandwidth" : "is80MHz",
@@ -156,7 +156,7 @@
         "bestAPSteerType" : "both",
         "deauthAttackDetection" : null,
         "allowedChannelsPowerLevels" : [ ],
-        "activeChannel" : 108
+        "activeChannel" : 149
       }
     },
     "advancedRadioMap" : {

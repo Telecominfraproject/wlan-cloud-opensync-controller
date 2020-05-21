@@ -114,9 +114,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 	private int autoProvisionedCustomerId;
 	@Value("${connectus.ovsdb.autoProvisionedLocationId:8}")
 	private int autoProvisionedLocationId;
-	@Value("${connectus.ovsdb.autoProvisionedProfileId:2}")
+	@Value("${connectus.ovsdb.autoProvisionedProfileId:1}")
 	private int autoProvisionedProfileId;
-	@Value("${connectus.ovsdb.autoProvisionedSsid:Connectus-cloud}")
+	@Value("${connectus.ovsdb.autoProvisionedSsid:autoProvisionedSsid}")
 	private String autoProvisionedSsid;
 
 	@Autowired
@@ -184,27 +184,50 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 			Profile apProfile = profileServiceInterface.getOrNull(ce.getProfileId());
 
-			if (apProfile == null) {
-
-				Profile profileSsid = new Profile();
-				profileSsid.setCustomerId(ce.getCustomerId());
-				profileSsid.setName(autoProvisionedSsid);
-				SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
-				Set<RadioType> appliedRadios = new HashSet<RadioType>();
-				appliedRadios.add(RadioType.is2dot4GHz);
-				appliedRadios.add(RadioType.is5GHzL);
-				appliedRadios.add(RadioType.is5GHzU);
-				ssidConfig.setAppliedRadios(appliedRadios);
-				profileSsid.setDetails(ssidConfig);
-				profileSsid = profileServiceInterface.create(profileSsid);
-
+			if (apProfile == null || !apProfile.getProfileType().equals(ProfileType.equipment_ap)) {
 				apProfile = new Profile();
 				apProfile.setCustomerId(ce.getCustomerId());
 				apProfile.setName("autoprovisionedApProfile");
 				apProfile.setDetails(ApNetworkConfiguration.createWithDefaults());
-				apProfile.getChildProfileIds().add(apProfile.getId());
-
 				apProfile = profileServiceInterface.create(apProfile);
+
+				Profile profileSsid2do4GHz = new Profile();
+				profileSsid2do4GHz.setCustomerId(ce.getCustomerId());
+				profileSsid2do4GHz.setName("autoProvisionedSsid");
+				SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
+				Set<RadioType> appliedRadios = new HashSet<RadioType>();
+				appliedRadios.add(RadioType.is2dot4GHz);
+				ssidConfig.setAppliedRadios(appliedRadios);
+				profileSsid2do4GHz.setDetails(ssidConfig);
+				profileSsid2do4GHz = profileServiceInterface.create(profileSsid2do4GHz);
+
+				Profile profileSsid5GHzL = new Profile();
+				profileSsid5GHzL.setCustomerId(ce.getCustomerId());
+				profileSsid5GHzL.setName("autoProvisionedSsid-5l");
+				ssidConfig = SsidConfiguration.createWithDefaults();
+				appliedRadios = new HashSet<RadioType>();
+				appliedRadios.add(RadioType.is5GHzL);
+				ssidConfig.setAppliedRadios(appliedRadios);
+				profileSsid5GHzL.setDetails(ssidConfig);
+				profileSsid5GHzL = profileServiceInterface.create(profileSsid5GHzL);
+
+				Profile profileSsid5GHzU = new Profile();
+				profileSsid5GHzU.setCustomerId(ce.getCustomerId());
+				profileSsid5GHzU.setName("autoProvisionedSsid-5u");
+				ssidConfig = SsidConfiguration.createWithDefaults();
+				appliedRadios = new HashSet<RadioType>();
+				appliedRadios.add(RadioType.is5GHzU);
+				ssidConfig.setAppliedRadios(appliedRadios);
+				profileSsid5GHzU.setDetails(ssidConfig);
+				profileSsid5GHzU = profileServiceInterface.create(profileSsid5GHzU);
+
+				Set<Long> childProfileIds = new HashSet<Long>();
+				childProfileIds.add(profileSsid2do4GHz.getId());
+				childProfileIds.add(profileSsid5GHzL.getId());
+				childProfileIds.add(profileSsid5GHzU.getId());
+				apProfile.setChildProfileIds(childProfileIds);
+
+				apProfile = profileServiceInterface.update(apProfile);
 
 				// update AP only if the apProfile was missing
 				ce.setProfileId(apProfile.getId());
@@ -459,8 +482,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			ret.setApProfile(apProfile);
 
 			if (apProfile != null) {
-				Set<Long> childProfileIds = apProfile.getChildProfileIds();
+				List<com.telecominfraproject.wlan.profile.models.Profile> ssidProfiles = new ArrayList<com.telecominfraproject.wlan.profile.models.Profile>();
 
+				Set<Long> childProfileIds = apProfile.getChildProfileIds();
 				for (Long id : childProfileIds) {
 					com.telecominfraproject.wlan.profile.models.Profile profile = profileServiceInterface.get(id);
 					if (profile.getProfileType().equals(ProfileType.ssid)) {
@@ -490,10 +514,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 						}
 						profile.setDetails(ssidCfg);
-						ret.setSsidProfile(profile);
+						ssidProfiles.add(profile);
 
 					}
 				}
+				ret.setSsidProfile(ssidProfiles);
+
+				ret.getSsidProfile().stream().forEach(p -> LOG.debug("SSID Profile {}", p.toPrettyString()));
+
 			}
 
 		} catch (Exception e) {

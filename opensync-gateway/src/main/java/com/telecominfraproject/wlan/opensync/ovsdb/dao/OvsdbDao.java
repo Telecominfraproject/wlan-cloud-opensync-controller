@@ -18,10 +18,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import com.telecominfraproject.wlan.core.model.equipment.ChannelBandwidth;
-import com.telecominfraproject.wlan.core.model.equipment.DeploymentType;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
-import com.telecominfraproject.wlan.equipment.models.DeviceMode;
 import com.telecominfraproject.wlan.equipment.models.ElementRadioConfiguration;
 import com.telecominfraproject.wlan.equipment.models.RadioConfiguration;
 import com.telecominfraproject.wlan.equipment.models.StateSetting;
@@ -39,6 +37,7 @@ import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiInetConfigInfo
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiRadioConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiStatsConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiVifConfigInfo;
+import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.vmware.ovsdb.exception.OvsdbClientException;
 import com.vmware.ovsdb.protocol.methods.RowUpdate;
@@ -976,6 +975,7 @@ public class OvsdbDao {
 
 	public static final String brHome = "br-home";
 	public static final String brWan = "br-wan";
+	public static final String brLan = "br-lan";
 
 	public static final String patchW2h = "patch-w2h";
 	public static final String patchH2w = "patch-h2w";
@@ -1101,7 +1101,7 @@ public class OvsdbDao {
 
 		ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) opensyncAPConfig
 				.getCustomerEquipment().getDetails());
-		
+
 		for (RadioType radioType : apElementConfiguration.getRadioMap().keySet()) {
 			Map<String, String> hwConfig = new HashMap<>();
 
@@ -1129,6 +1129,9 @@ public class OvsdbDao {
 
 			RadioConfiguration radioConfig = apElementConfiguration.getAdvancedRadioMap().get(radioType);
 			int beaconInterval = radioConfig.getBeaconInterval();
+			int txPower = 0;
+			if (elementRadioConfig.getEirpTxPower().isAuto())
+				txPower = elementRadioConfig.getEirpTxPower().getValue();
 			String configName = null;
 			switch (radioType) {
 			case is2dot4GHz:
@@ -1162,7 +1165,7 @@ public class OvsdbDao {
 			if (configName != null) {
 				try {
 					configureWifiRadios(ovsdbClient, configName, provisionedWifiRadios, channel, hwConfig, country,
-							beaconInterval, ht_mode);
+							beaconInterval, ht_mode, txPower);
 				} catch (OvsdbClientException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -1626,7 +1629,7 @@ public class OvsdbDao {
 
 	public void configureWifiRadios(OvsdbClient ovsdbClient, String configName,
 			Map<String, WifiRadioConfigInfo> provisionedWifiRadios, int channel, Map<String, String> hwConfig,
-			String country, int beaconInterval, String ht_mode)
+			String country, int beaconInterval, String ht_mode, int txPower)
 			throws OvsdbClientException, TimeoutException, ExecutionException, InterruptedException {
 
 		WifiRadioConfigInfo existingConfig = provisionedWifiRadios.get(configName);
@@ -1649,7 +1652,7 @@ public class OvsdbDao {
 		updateColumns.put("hw_config", hwConfigMap);
 		updateColumns.put("bcn_int", new Atom<Integer>(beaconInterval));
 		updateColumns.put("ht_mode", new Atom<>(ht_mode));
-
+		updateColumns.put("tx_power", new Atom<Integer>(txPower));
 		Row row = new Row(updateColumns);
 		operations.add(new Update(wifiRadioConfigDbTable, conditions, row));
 
@@ -1659,7 +1662,7 @@ public class OvsdbDao {
 		LOG.debug("Provisioned channel {} for {}", channel, configName);
 
 		for (OperationResult res : result) {
-			LOG.debug("Op Result {}", res);
+			LOG.debug("MJH Op Result {}", res);
 		}
 	}
 
@@ -1759,51 +1762,52 @@ public class OvsdbDao {
 		Map<String, WifiRadioConfigInfo> provisionedWifiRadioConfigs = getProvisionedWifiRadioConfigs(ovsdbClient);
 		LOG.debug("Existing WifiVifConfigs: {}", provisionedWifiVifConfigs.keySet());
 
-		SsidConfiguration ssidConfig = (SsidConfiguration) opensyncApConfig.getSsidProfile().getDetails();
+		for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
+			
+			SsidConfiguration ssidConfig = (SsidConfiguration) ssidProfile.getDetails();
+			for (RadioType radioType : ssidConfig.getAppliedRadios()) {
+				boolean ssidBroadcast = ssidConfig.getBroadcastSsid() == StateSetting.enabled;
+				Map<String, String> security = new HashMap<>();
 
-		for (RadioType radioType : ssidConfig.getAppliedRadios()) {
+				security.put("encryption", ssidConfig.getSecureMode().name());
+				security.put("key", ssidConfig.getKeyStr());
+				security.put("mode", Long.toString(ssidConfig.getSecureMode().getId()));
+				String bridge = brHome;
 
-			boolean ssidBroadcast = ssidConfig.getBroadcastSsid() == StateSetting.enabled;
-			Map<String, String> security = new HashMap<>();
+				String ifName = null;
+				String radioIfName = null;
+				int vifRadioIdx = -1;
 
-			security.put("encryption", ssidConfig.getSecureMode().name());
-			security.put("key", ssidConfig.getKeyStr());
-			security.put("mode", Long.toString(ssidConfig.getSecureMode().getId()));
-			String bridge = brHome;
-
-			String ifName = null;
-			String radioIfName = null;
-			int vifRadioIdx = -1;
-
-			if (radioType == RadioType.is2dot4GHz) {
-				ifName = homeAp24;
-				radioIfName = "wifi0";
-				vifRadioIdx = 0;
-			} else if (radioType == RadioType.is5GHzL) {
-				ifName = homeApL50;
-				radioIfName = "wifi1";
-				vifRadioIdx = 1;
-			} else if (radioType == RadioType.is5GHzU) {
-				ifName = homeApU50;
-				radioIfName = "wifi2";
-				vifRadioIdx = 2;
-			}
-
-			if (vifRadioIdx == -1) {
-				LOG.debug("Cannot determine vif radio idx radioType {} skipping", radioType);
-				continue;
-			}
-
-			if (!provisionedWifiVifConfigs.containsKey(ifName + "_" + ssidConfig.getSsid())) {
-				try {
-					configureSingleSsid(ovsdbClient, bridge, ifName, ssidConfig.getSsid(), ssidBroadcast, security,
-							provisionedWifiRadioConfigs, radioIfName, ssidConfig.getVlanId(), vifRadioIdx);
-				} catch (IllegalStateException e) {
-					// could not provision this SSID, but still can go on
-					LOG.warn("could not provision SSID {} on {}", ssidConfig.getSsid(), radioIfName);
+				if (radioType == RadioType.is2dot4GHz) {
+					ifName = homeAp24;
+					radioIfName = "wifi0";
+					vifRadioIdx = 1;
+				} else if (radioType == RadioType.is5GHzL) {
+					ifName = homeApL50;
+					radioIfName = "wifi1";
+					vifRadioIdx = 2;
+				} else if (radioType == RadioType.is5GHzU) {
+					ifName = homeApU50;
+					radioIfName = "wifi2";
+					vifRadioIdx = 3;
 				}
-			}
 
+				if (vifRadioIdx == -1) {
+					LOG.debug("Cannot determine vif radio idx radioType {} skipping", radioType);
+					continue;
+				}
+
+				if (!provisionedWifiVifConfigs.containsKey(ifName + "_" + ssidConfig.getSsid())) {
+					try {
+						configureSingleSsid(ovsdbClient, bridge, ifName, ssidConfig.getSsid(), ssidBroadcast, security,
+								provisionedWifiRadioConfigs, radioIfName, ssidConfig.getVlanId(), vifRadioIdx);
+					} catch (IllegalStateException e) {
+						// could not provision this SSID, but still can go on
+						LOG.warn("could not provision SSID {} on {}", ssidConfig.getSsid(), radioIfName);
+					}
+				}
+
+			}
 		}
 
 	}
@@ -1894,9 +1898,9 @@ public class OvsdbDao {
 			configureWifiInet(ovsdbClient, provisionedWifiInetConfigs, ifName);
 		}
 
-		if (!provisionedWifiInetConfigs.containsKey(brHome) || !provisionedWifiInetConfigs.get(brHome).network) {
+		if (!provisionedWifiInetConfigs.containsKey(brLan) || !provisionedWifiInetConfigs.get(brLan).network) {
 			// set network flag on brHome in wifiInetConfig table
-			configureWifiInetSetNetwork(ovsdbClient, brHome);
+			configureWifiInetSetNetwork(ovsdbClient, brLan);
 		}
 	}
 
