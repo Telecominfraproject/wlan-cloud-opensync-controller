@@ -2,7 +2,7 @@
   "model_type" : "Equipment",
   "id" : 50,
   "customerId" : 2,
-  "profileId" : 2,
+  "profileId" : null,
   "locationId" : 8,
   "equipmentType" : "AP",
   "inventoryId" : "ap-50",
@@ -100,8 +100,8 @@
         },
         "eirpTxPower" : {
           "model_type" : "AutoOrManualValue",
-          "auto" : true,
-          "value" : 18
+          "auto" : false,
+          "value" : 10
         },
         "bestApEnabled" : null,
         "neighbouringListApConfig" : {
@@ -203,7 +203,7 @@
       "is5GHzU" : {
         "model_type" : "RadioConfiguration",
         "radioType" : "is5GHzU",
-        "radioAdminState" : "enabled",
+        "radioAdminState" : "disabled",
         "fragmentationThresholdBytes" : 2346,
         "rtsCtsThreshold" : 65535,
         "autoChannelSelection" : "disabled",

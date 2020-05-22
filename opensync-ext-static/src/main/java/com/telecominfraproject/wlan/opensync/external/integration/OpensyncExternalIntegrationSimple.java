@@ -71,16 +71,20 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 
 			com.telecominfraproject.wlan.profile.models.Profile apProfile = com.telecominfraproject.wlan.profile.models.Profile
 					.fromFile(apProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
-			com.telecominfraproject.wlan.profile.models.Profile ssidProfile = com.telecominfraproject.wlan.profile.models.Profile
-					.fromFile(ssidProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
+			List<com.telecominfraproject.wlan.profile.models.Profile> ssidProfiles = com.telecominfraproject.wlan.profile.models.Profile
+					.listFromFile(ssidProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
+
+			ssidProfiles.stream().forEach(p -> apProfile.getChildProfileIds().add(p.getId()));
+
+			equipment.setProfileId(apProfile.getId());
 
 			Location location = Location.fromFile(locationFileName, Location.class);
+
+			equipment.setLocationId(location.getId());
 
 			ret = new OpensyncAPConfig();
 			ret.setCustomerEquipment(equipment);
 			ret.setApProfile(apProfile);
-			List<com.telecominfraproject.wlan.profile.models.Profile> ssidProfiles = new ArrayList<com.telecominfraproject.wlan.profile.models.Profile>();
-			ssidProfiles.add(ssidProfile);
 			ret.setSsidProfile(ssidProfiles);
 			ret.setEquipmentLocation(location);
 

@@ -1658,7 +1658,7 @@ public class OvsdbDao {
 		if (txPower > 0)
 			updateColumns.put("tx_power", new Atom<Integer>(txPower));
 		else
-			updateColumns.put("tx_power", new Atom<Integer>(1));
+			updateColumns.put("tx_power", new com.vmware.ovsdb.protocol.operation.notation.Set());
 
 		Row row = new Row(updateColumns);
 		operations.add(new Update(wifiRadioConfigDbTable, conditions, row));
@@ -1669,7 +1669,7 @@ public class OvsdbDao {
 		LOG.debug("Provisioned channel {} for {}", channel, configName);
 
 		for (OperationResult res : result) {
-			LOG.debug("MJH Op Result {}", res);
+			LOG.debug("Op Result {}", res);
 		}
 	}
 
@@ -1693,7 +1693,8 @@ public class OvsdbDao {
 			updateColumns.put("ssid", new Atom<>(ssid));
 			updateColumns.put("ssid_broadcast", new Atom<>(ssidBroadcast ? "enabled" : "disabled"));
 			updateColumns.put("uapsd_enable", new Atom<>(true));
-			updateColumns.put("vif_radio_idx", new Atom<>(vifRadioIdx));
+			updateColumns.put("vif_radio_idx", new Atom<Integer>(vifRadioIdx));
+
 			updateColumns.put("vlan_id", new Atom<>(vlanId));
 
 			@SuppressWarnings("unchecked")
@@ -1766,24 +1767,35 @@ public class OvsdbDao {
 
 	public void configureSsids(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
 
-		Map<String, WifiVifConfigInfo> provisionedWifiVifConfigs = getProvisionedWifiVifConfigs(ovsdbClient);
-		Map<String, WifiRadioConfigInfo> provisionedWifiRadioConfigs = getProvisionedWifiRadioConfigs(ovsdbClient);
-		LOG.debug("Existing WifiVifConfigs: {}", provisionedWifiVifConfigs.keySet());
-		
-		 boolean rrmEnabled = false;
-         if (opensyncApConfig.getEquipmentLocation() != null &&
-                         opensyncApConfig.getEquipmentLocation().getDetails() != null) {
-                 rrmEnabled = opensyncApConfig.getEquipmentLocation().getDetails().isRrmEnabled();
-         }
+		boolean rrmEnabled = false;
+		if (opensyncApConfig.getEquipmentLocation() != null
+				&& opensyncApConfig.getEquipmentLocation().getDetails() != null) {
+			rrmEnabled = opensyncApConfig.getEquipmentLocation().getDetails().isRrmEnabled();
+		}
 
 		for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
 
+			Map<String, WifiVifConfigInfo> provisionedWifiVifConfigs = getProvisionedWifiVifConfigs(ovsdbClient);
+			LOG.debug("Existing WifiVifConfigs: {}", provisionedWifiVifConfigs.keySet());
+
 			SsidConfiguration ssidConfig = (SsidConfiguration) ssidProfile.getDetails();
+
 			for (RadioType radioType : ssidConfig.getAppliedRadios()) {
+
+				Map<String, WifiRadioConfigInfo> provisionedWifiRadioConfigs = getProvisionedWifiRadioConfigs(
+						ovsdbClient);
+
 				boolean ssidBroadcast = ssidConfig.getBroadcastSsid() == StateSetting.enabled;
 				Map<String, String> security = new HashMap<>();
+				String ssidSecurityMode = ssidConfig.getSecureMode().name();
+				String opensyncSecurityMode = "OPEN";
 
-				security.put("encryption", ssidConfig.getSecureMode().name());
+				if (ssidSecurityMode.equalsIgnoreCase("wpaPSK") || ssidSecurityMode.equalsIgnoreCase("wpa2PSK"))
+					opensyncSecurityMode = "WPA-PSK";
+				else if (ssidSecurityMode.equalsIgnoreCase("wep"))
+					opensyncSecurityMode = "WEP";
+
+				security.put("encryption", opensyncSecurityMode);
 				security.put("key", ssidConfig.getKeyStr());
 				security.put("mode", Long.toString(ssidConfig.getSecureMode().getId()));
 				String bridge = brHome;
