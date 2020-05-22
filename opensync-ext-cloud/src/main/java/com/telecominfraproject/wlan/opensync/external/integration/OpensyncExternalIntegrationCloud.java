@@ -21,11 +21,18 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
 
+import com.telecominfraproject.wlan.client.ClientServiceInterface;
+import com.telecominfraproject.wlan.client.info.models.ClientInfoDetails;
+import com.telecominfraproject.wlan.client.session.models.ClientDhcpDetails;
+import com.telecominfraproject.wlan.client.session.models.ClientSession;
+import com.telecominfraproject.wlan.client.session.models.ClientSessionDetails;
+import com.telecominfraproject.wlan.client.session.models.ClientSessionMetricDetails;
 import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherInterface;
 import com.telecominfraproject.wlan.core.model.entity.CountryCode;
 import com.telecominfraproject.wlan.core.model.equipment.EquipmentType;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
+import com.telecominfraproject.wlan.core.model.equipment.SecurityType;
 import com.telecominfraproject.wlan.customer.service.CustomerServiceInterface;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
@@ -52,10 +59,12 @@ import com.telecominfraproject.wlan.routing.models.EquipmentRoutingRecord;
 import com.telecominfraproject.wlan.servicemetrics.models.ApClientMetrics;
 import com.telecominfraproject.wlan.servicemetrics.models.ApNodeMetrics;
 import com.telecominfraproject.wlan.servicemetrics.models.ApPerformance;
+import com.telecominfraproject.wlan.servicemetrics.models.ApSsidMetrics;
 import com.telecominfraproject.wlan.servicemetrics.models.ClientMetrics;
 import com.telecominfraproject.wlan.servicemetrics.models.EthernetLinkState;
 import com.telecominfraproject.wlan.servicemetrics.models.RadioUtilization;
 import com.telecominfraproject.wlan.servicemetrics.models.SingleMetricRecord;
+import com.telecominfraproject.wlan.servicemetrics.models.SsidStatistics;
 import com.telecominfraproject.wlan.status.StatusServiceInterface;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentAdminStatusData;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentLANStatusData;
@@ -106,6 +115,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 	private ProfileServiceInterface profileServiceInterface;
 	@Autowired
 	private StatusServiceInterface statusServiceInterface;
+	
+	@Autowired
+	private ClientServiceInterface clientServiceInterface;
 
 	@Autowired
 	private OpensyncCloudGatewayController gatewayController;
@@ -609,6 +621,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 		populateApNodeMetrics(metricRecordList, report, customerId, equipmentId);
 		// TODO: populateApNodeMetrics(metricRecordList, report, customerId,
 		// equipmentId, extractApIdFromTopic(topic));
+		
+		try {
+			populateApSsidMetrics(metricRecordList, report, customerId, equipmentId, extractApIdFromTopic(topic));
+		} catch (Exception e) {
+			LOG.error("Exception when processing populateApSsidMetrics", e);
+		}
+
 
 		if (!metricRecordList.isEmpty()) {
 			equipmentMetricsCollectorInterface.publishMetrics(metricRecordList);
@@ -896,6 +915,287 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 	}
 
+    private void populateApSsidMetrics(List<SingleMetricRecord> metricRecordList, Report report, int customerId,
+            long equipmentId, String apId) {
+
+        if (report.getClientsCount() == 0) {
+            LOG.debug("No clients reported, will not populate ApSsidMetrics report");
+            return;
+        } else {
+            LOG.debug("populateApSsidMetrics for Customer {} Equipment {} AP {}", customerId, equipmentId, apId);
+        }
+
+        // Need Radios to get BSSID value
+        OpensyncAPRadioState radio2g = null;
+        OpensyncAPRadioState radio5g = null;
+        OpensyncAPVIFState vif2g = null;
+        OpensyncAPVIFState vif5g = null;
+
+        synchronized (opensyncNodeMap) {
+            OpensyncNode node = opensyncNodeMap.get(apId);
+            if (node == null) {
+                LOG.debug("No AP Data present for AP SSID report");
+                return;
+            }
+            radio2g = node.getRadioForBand(RadioType.is2dot4GHz.toString());
+            radio5g = node.getRadioForBand(RadioType.is5GHz.toString());
+
+            if (radio2g == null || radio5g == null) {
+                LOG.debug("No Radio Data present for AP SSID report");
+                return;
+            }
+
+            vif2g = node.getVIFForChannel(radio2g.getChannel());
+            vif5g = node.getVIFForChannel(radio5g.getChannel());
+
+            if (vif2g == null || vif5g == null) {
+                LOG.debug("No Wifi SSID Data present for AP SSID report");
+                return;
+            }
+        }
+
+        SingleMetricRecord smr = new SingleMetricRecord(customerId, equipmentId);
+        ApSsidMetrics apSsidMetrics = new ApSsidMetrics();
+        List<SsidStatistics> ssidStatsList2pt4GHz = new ArrayList<>();
+        List<SsidStatistics> ssidStatsList5GHz = new ArrayList<>();
+        apSsidMetrics.getSsidStats().put(RadioType.is2dot4GHz, ssidStatsList2pt4GHz);
+        apSsidMetrics.getSsidStats().put(RadioType.is5GHz, ssidStatsList5GHz);
+        smr.setData(apSsidMetrics);
+        metricRecordList.add(smr);
+
+        for (ClientReport clientReport : report.getClientsList()) {
+
+            int channel = clientReport.getChannel();
+
+            if (channel != radio5g.getChannel() && channel != radio2g.getChannel()) {
+                LOG.debug("Client channel {} not present on 5g {} or 2g {} radio", channel, radio5g.getChannel(),
+                        radio2g.getChannel());
+                continue; // we will discard this report
+            }
+
+            // Always report the AP radio for that SSID if we are sending a
+            // report
+            // The '0' values will be overwritten, if applicable, from the
+            // aggregated client information
+            String encryption = null;
+            SsidStatistics ssidStat = new SsidStatistics();
+            if (clientReport.getBand() == RadioBandType.BAND2G) {
+                ssidStat.setBssid(new MacAddress(radio2g.getMac()));
+                ssidStat.setSsid(vif2g.getSsid());
+                ssidStat.setNumClient(vif2g.getAssociatedClients().size());
+                encryption = vif2g.getSecurity().get("encryption");
+            } else {
+                ssidStat.setBssid(new MacAddress(radio5g.getMac()));
+                ssidStat.setSsid(vif5g.getSsid());
+                ssidStat.setNumClient(vif5g.getAssociatedClients().size());
+                encryption = vif5g.getSecurity().get("encryption");
+
+            }
+
+            SecurityType securityType = SecurityType.UNSUPPORTED;
+            if (encryption != null) {
+                if (encryption.endsWith("PSK")) {
+                    securityType = securityType.PSK;
+                } else if (encryption.equals("RADIUS")) {
+                    securityType = securityType.RADIUS;
+                } else if (encryption.equals("OPEN")) {
+                    securityType = securityType.OPEN;
+                }
+            }
+
+            long txBytes = 0;
+            long rxBytes = 0;
+            int txErrors = 0;
+            int rxRetries = 0;
+            int lastRssi = 0;
+
+            for (Client client : clientReport.getClientListList()) {
+
+                if (client.hasSsid() && client.hasStats()) {
+
+                    if (!client.getSsid().equals(vif2g.getSsid()) && !client.getSsid().equals(vif5g.getSsid())) {
+                        LOG.debug("Client SSID {} does not match SSIDs on Radio 2G {} or Radio 5G {} ",
+                                client.getSsid(), vif2g.getSsid(), vif5g.getSsid());
+                        continue;
+                    }
+
+                    txBytes += client.getStats().getTxBytes();
+                    rxBytes += client.getStats().getRxBytes();
+                    txErrors += client.getStats().getTxErrors();
+                    rxRetries += client.getStats().getRxRetries();
+                    lastRssi = client.getStats().getRssi();
+                    try {
+                        handleClientSessionUpdate(customerId, equipmentId, apId, clientReport.getChannel(),
+                                clientReport.getBand(), clientReport.getTimestampMs(), client, securityType);
+                    } catch (Exception e) {
+                        LOG.debug("Unabled to update client {} session {}", client, e);
+                    }
+                }
+
+            }
+
+            ssidStat.setRxLastRssi(-1 * lastRssi);
+            ssidStat.setRxBytes(rxBytes);
+            ssidStat.setNumTxBytesSucc(txBytes - txErrors);
+            ssidStat.setNumRxRetry(rxRetries);
+
+            if (clientReport.getBand() == RadioBandType.BAND2G) {
+                ssidStatsList2pt4GHz.add(ssidStat);
+            } else {
+                ssidStatsList5GHz.add(ssidStat);
+            }
+        }
+
+        if (apSsidMetrics.getSsidStatsCount(RadioType.is2dot4GHz) == 0) {
+            SsidStatistics ssidStat = new SsidStatistics();
+            ssidStat.setBssid(new MacAddress(radio2g.getMac()));
+            ssidStat.setSsid(vif2g.getSsid());
+            ssidStat.setNumClient(vif2g.getAssociatedClients().size());
+            ssidStatsList2pt4GHz.add(ssidStat);
+
+        }
+        if (apSsidMetrics.getSsidStatsCount(RadioType.is5GHz) == 0) {
+            SsidStatistics ssidStat = new SsidStatistics();
+            ssidStat.setBssid(new MacAddress(radio5g.getMac()));
+            ssidStat.setSsid(vif5g.getSsid());
+            ssidStat.setNumClient(vif5g.getAssociatedClients().size());
+            ssidStatsList5GHz.add(ssidStat);
+        }
+
+        LOG.debug("Created ApSsidMetrics Report {}", apSsidMetrics.toPrettyString());
+
+    }
+
+    private void handleClientSessionUpdate(int customerId, long equipmentId, String apId, int channel,
+            RadioBandType band, long timestamp, Client client, SecurityType securityType) {
+
+        boolean found = false;
+        List<com.telecominfraproject.wlan.client.models.Client> clientRecords = clientServiceInterface.get(customerId, Collections.singleton(new MacAddress(client.getMacAddress())));
+        if (!clientRecords.isEmpty()) {
+        	com.telecominfraproject.wlan.client.models.Client record = clientRecords.get(0);        	
+            LOG.debug("Found Client {}", record.toPrettyString());
+            found = true;
+        }
+        
+        if (!found) {
+        	com.telecominfraproject.wlan.client.models.Client clientRecord = new com.telecominfraproject.wlan.client.models.Client();
+            clientRecord.setCustomerId(customerId);            
+            clientRecord.setMacAddress(new MacAddress(client.getMacAddress()));
+            clientRecord.setCreatedTimestamp(timestamp);
+
+            ClientInfoDetails cid = new ClientInfoDetails();
+            cid.setHostName(clientRecord.getMacAddress().getAddressAsString());
+            cid.setApFingerprint(apId);
+            clientRecord.setDetails(cid);
+
+            try {
+                LOG.debug("Created Client {}",
+                        clientServiceInterface.create(clientRecord).toPrettyString());
+            } catch (Exception e) {
+                LOG.error("Unabled to create client for {}", client.getMacAddress(), e);
+            }
+        }
+
+        try {
+
+            ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId, new MacAddress(client.getMacAddress()));
+            if (clientSession == null) {
+                LOG.debug("No session found for Client {}, creating new one.", client.getMacAddress());
+                clientSession = new ClientSession();
+                clientSession.setMacAddress(new MacAddress(client.getMacAddress()));
+                clientSession.setCustomerId(customerId);
+                clientSession.setEquipmentId(equipmentId);
+                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+                clientSession.setDetails(clientSessionDetails);
+                
+                RadioType radioType = band == RadioBandType.BAND2G ? RadioType.is2dot4GHz : RadioType.is5GHz;
+                clientSessionDetails.setRadioType(radioType);
+                clientSessionDetails.setSessionId(clientSession.getMacAddress().getAddressAsLong());
+                clientSessionDetails.setSsid(client.getSsid());
+                clientSessionDetails.setAssociationStatus(0);
+                clientSessionDetails.setAssocTimestamp(timestamp - client.getConnectOffsetMs());
+                clientSessionDetails.setAuthTimestamp(timestamp - client.getConnectOffsetMs());
+                clientSessionDetails.setFirstDataRcvdTimestamp(timestamp);
+                clientSessionDetails.setFirstDataSentTimestamp(timestamp);
+                clientSessionDetails.setLastRxTimestamp(timestamp);
+                clientSessionDetails.setHostname(clientSession.getMacAddress().toOuiString());
+                clientSessionDetails.setSessionId(clientSession.getMacAddress().getAddressAsLong());
+                clientSessionDetails.setSecurityType(securityType);
+                ClientDhcpDetails dhcpDetails = new ClientDhcpDetails(clientSessionDetails.getSessionId());
+                clientSessionDetails.setDhcpDetails(dhcpDetails);
+                ClientSessionMetricDetails metricDetails = new ClientSessionMetricDetails();
+                metricDetails.setRssi(client.getStats().getRssi());
+                metricDetails.setRxBytes(client.getStats().getRxBytes());
+                metricDetails.setTxBytes(client.getStats().getTxBytes());
+                metricDetails.setTotalTxPackets(client.getStats().getTxFrames());
+                metricDetails.setTotalRxPackets(client.getStats().getRxFrames());
+                metricDetails.setTxDataFrames(
+                        (int) ((int) client.getStats().getTxFrames() - client.getStats().getTxRetries()));
+                metricDetails.setRxDataFrames(
+                        (int) ((int) client.getStats().getRxFrames() - client.getStats().getRxRetries()));
+                metricDetails.setRxMbps((float) client.getStats().getRxRate());
+                metricDetails.setTxMbps((float) client.getStats().getTxRate());
+                clientSessionDetails.setMetricDetails(metricDetails);
+            } else {
+            	ClientSessionDetails clientSessionDetails = clientSession.getDetails();
+                clientSessionDetails.setAssociationStatus(0);
+                if (clientSessionDetails.getDhcpDetails() == null) {
+                    ClientDhcpDetails dhcpDetails = new ClientDhcpDetails(clientSessionDetails.getSessionId());
+                    clientSessionDetails.setDhcpDetails(dhcpDetails);
+                }
+
+                clientSessionDetails.setSecurityType(securityType);
+                clientSessionDetails.setAssocTimestamp(timestamp - client.getConnectOffsetMs());
+                clientSessionDetails.setAuthTimestamp(timestamp - client.getConnectOffsetMs());
+                clientSessionDetails.setFirstDataRcvdTimestamp(timestamp);
+                clientSessionDetails.setFirstDataSentTimestamp(timestamp);
+                clientSessionDetails.setLastRxTimestamp(timestamp);
+                clientSessionDetails.setIsReassociation(true);
+                clientSession.setCustomerId(customerId);
+                clientSession.setEquipmentId(equipmentId);
+                clientSessionDetails.setSessionId(clientSession.getMacAddress().getAddressAsLong());
+                ClientSessionMetricDetails metricDetails = clientSessionDetails.getMetricDetails();
+
+                if (client.hasStats()) {
+                    if (metricDetails == null) {
+
+                        LOG.debug("No metric details for client {} session {}, creating",
+                                clientSession.getMacAddress(), clientSessionDetails.getSessionId());
+                        metricDetails = new ClientSessionMetricDetails();
+                    }
+                    metricDetails.setRssi(client.getStats().getRssi());
+                    metricDetails.setRxBytes(client.getStats().getRxBytes());
+                    metricDetails.setTxBytes(client.getStats().getTxBytes());
+                    metricDetails.setTotalTxPackets(client.getStats().getTxFrames());
+                    metricDetails.setTotalRxPackets(client.getStats().getRxFrames());
+                    metricDetails.setTxDataFrames(
+                            (int) ((int) client.getStats().getTxFrames() - client.getStats().getTxRetries()));
+                    metricDetails.setRxDataFrames(
+                            (int) ((int) client.getStats().getRxFrames() - client.getStats().getRxRetries()));
+                    metricDetails.setRxMbps((float) client.getStats().getRxRate());
+                    metricDetails.setTxMbps((float) client.getStats().getTxRate());
+
+                    metricDetails.setLastRxTimestamp(timestamp);
+                    metricDetails.setLastTxTimestamp(timestamp);
+
+                }
+                clientSessionDetails.setMetricDetails(metricDetails);
+                LOG.debug("Association State {}", clientSessionDetails.getAssociationState());
+
+            }
+
+            //TODO: We support bulk updates for sessions, which is more efficient way of updating many sessions at once.
+            //Need to rewrite this to make use of bulk operation.
+            ClientSession session = clientServiceInterface.updateSession(clientSession);
+
+            if (session != null)
+                LOG.debug("CreatedOrUpdated clientSession {}", session.toPrettyString());
+
+        } catch (Exception e) {
+            LOG.error("Error while attempting to create ClientSession and Info", e);
+        }
+    }
+    
 	public void processMqttMessage(String topic, FlowReport flowReport) {
 
 		LOG.info("Received report on topic {}", topic);
