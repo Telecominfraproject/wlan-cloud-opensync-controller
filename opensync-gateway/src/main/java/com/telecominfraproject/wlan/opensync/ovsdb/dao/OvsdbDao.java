@@ -1129,8 +1129,10 @@ public class OvsdbDao {
 
 			RadioConfiguration radioConfig = apElementConfiguration.getAdvancedRadioMap().get(radioType);
 			int beaconInterval = radioConfig.getBeaconInterval();
+			boolean enabled = radioConfig.getRadioAdminState().equals(StateSetting.enabled);
+
 			int txPower = 0;
-			if (elementRadioConfig.getEirpTxPower().isAuto())
+			if (!elementRadioConfig.getEirpTxPower().isAuto())
 				txPower = elementRadioConfig.getEirpTxPower().getValue();
 			String configName = null;
 			switch (radioType) {
@@ -1165,7 +1167,7 @@ public class OvsdbDao {
 			if (configName != null) {
 				try {
 					configureWifiRadios(ovsdbClient, configName, provisionedWifiRadios, channel, hwConfig, country,
-							beaconInterval, ht_mode, txPower);
+							beaconInterval, enabled, ht_mode, txPower);
 				} catch (OvsdbClientException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -1629,7 +1631,7 @@ public class OvsdbDao {
 
 	public void configureWifiRadios(OvsdbClient ovsdbClient, String configName,
 			Map<String, WifiRadioConfigInfo> provisionedWifiRadios, int channel, Map<String, String> hwConfig,
-			String country, int beaconInterval, String ht_mode, int txPower)
+			String country, int beaconInterval, boolean enabled, String ht_mode, int txPower)
 			throws OvsdbClientException, TimeoutException, ExecutionException, InterruptedException {
 
 		WifiRadioConfigInfo existingConfig = provisionedWifiRadios.get(configName);
@@ -1651,8 +1653,13 @@ public class OvsdbDao {
 				.of(hwConfig);
 		updateColumns.put("hw_config", hwConfigMap);
 		updateColumns.put("bcn_int", new Atom<Integer>(beaconInterval));
+		updateColumns.put("enabled", new Atom<Boolean>(enabled));
 		updateColumns.put("ht_mode", new Atom<>(ht_mode));
-		updateColumns.put("tx_power", new Atom<Integer>(txPower));
+		if (txPower > 0)
+			updateColumns.put("tx_power", new Atom<Integer>(txPower));
+		else
+			updateColumns.put("tx_power", new Atom<Integer>(1));
+
 		Row row = new Row(updateColumns);
 		operations.add(new Update(wifiRadioConfigDbTable, conditions, row));
 
@@ -1669,19 +1676,19 @@ public class OvsdbDao {
 	public void configureSingleSsid(OvsdbClient ovsdbClient, String bridge, String ifName, String ssid,
 			boolean ssidBroadcast, Map<String, String> security,
 			Map<String, WifiRadioConfigInfo> provisionedWifiRadioConfigs, String radioIfName, int vlanId,
-			int vifRadioIdx) {
+			int vifRadioIdx, boolean rrmEnabled, boolean enabled) {
 		List<Operation> operations = new ArrayList<>();
 		Map<String, Value> updateColumns = new HashMap<>();
 
 		try {
 			updateColumns.put("bridge", new Atom<>(bridge));
 			updateColumns.put("btm", new Atom<>(1));
-			updateColumns.put("enabled", new Atom<>(true));
+			updateColumns.put("enabled", new Atom<>(enabled));
 			updateColumns.put("ft_psk", new Atom<>(0));
 			updateColumns.put("group_rekey", new Atom<>(86400));
 			updateColumns.put("if_name", new Atom<>(ifName));
 			updateColumns.put("mode", new Atom<>("ap"));
-			updateColumns.put("rrm", new Atom<>(1));
+			updateColumns.put("rrm", new Atom<>(rrmEnabled ? 1 : 0));
 			updateColumns.put("ssid", new Atom<>(ssid));
 			updateColumns.put("ssid_broadcast", new Atom<>(ssidBroadcast ? "enabled" : "disabled"));
 			updateColumns.put("uapsd_enable", new Atom<>(true));
@@ -1762,8 +1769,14 @@ public class OvsdbDao {
 		Map<String, WifiRadioConfigInfo> provisionedWifiRadioConfigs = getProvisionedWifiRadioConfigs(ovsdbClient);
 		LOG.debug("Existing WifiVifConfigs: {}", provisionedWifiVifConfigs.keySet());
 
+		boolean rrmEnabled = false;
+		if (opensyncApConfig.getEquipmentLocation() != null
+				&& opensyncApConfig.getEquipmentLocation().getDetails() != null) {
+			rrmEnabled = opensyncApConfig.getEquipmentLocation().getDetails().isRrmEnabled();
+		}
+
 		for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
-			
+
 			SsidConfiguration ssidConfig = (SsidConfiguration) ssidProfile.getDetails();
 			for (RadioType radioType : ssidConfig.getAppliedRadios()) {
 				boolean ssidBroadcast = ssidConfig.getBroadcastSsid() == StateSetting.enabled;
@@ -1773,6 +1786,7 @@ public class OvsdbDao {
 				security.put("key", ssidConfig.getKeyStr());
 				security.put("mode", Long.toString(ssidConfig.getSecureMode().getId()));
 				String bridge = brHome;
+				boolean enabled = ssidConfig.getSsidAdminState().equals(StateSetting.enabled);
 
 				String ifName = null;
 				String radioIfName = null;
@@ -1800,7 +1814,8 @@ public class OvsdbDao {
 				if (!provisionedWifiVifConfigs.containsKey(ifName + "_" + ssidConfig.getSsid())) {
 					try {
 						configureSingleSsid(ovsdbClient, bridge, ifName, ssidConfig.getSsid(), ssidBroadcast, security,
-								provisionedWifiRadioConfigs, radioIfName, ssidConfig.getVlanId(), vifRadioIdx);
+								provisionedWifiRadioConfigs, radioIfName, ssidConfig.getVlanId(), vifRadioIdx,
+								rrmEnabled, enabled);
 					} catch (IllegalStateException e) {
 						// could not provision this SSID, but still can go on
 						LOG.warn("could not provision SSID {} on {}", ssidConfig.getSsid(), radioIfName);
