@@ -1669,7 +1669,7 @@ public class OvsdbDao {
 	public void configureSingleSsid(OvsdbClient ovsdbClient, String bridge, String ifName, String ssid,
 			boolean ssidBroadcast, Map<String, String> security,
 			Map<String, WifiRadioConfigInfo> provisionedWifiRadioConfigs, String radioIfName, int vlanId,
-			int vifRadioIdx) {
+			int vifRadioIdx, boolean rrmEnabled) {
 		List<Operation> operations = new ArrayList<>();
 		Map<String, Value> updateColumns = new HashMap<>();
 
@@ -1681,7 +1681,7 @@ public class OvsdbDao {
 			updateColumns.put("group_rekey", new Atom<>(86400));
 			updateColumns.put("if_name", new Atom<>(ifName));
 			updateColumns.put("mode", new Atom<>("ap"));
-			updateColumns.put("rrm", new Atom<>(1));
+			updateColumns.put("rrm", new Atom<>(rrmEnabled ? 1 : 0));
 			updateColumns.put("ssid", new Atom<>(ssid));
 			updateColumns.put("ssid_broadcast", new Atom<>(ssidBroadcast ? "enabled" : "disabled"));
 			updateColumns.put("uapsd_enable", new Atom<>(true));
@@ -1761,6 +1761,12 @@ public class OvsdbDao {
 		Map<String, WifiVifConfigInfo> provisionedWifiVifConfigs = getProvisionedWifiVifConfigs(ovsdbClient);
 		Map<String, WifiRadioConfigInfo> provisionedWifiRadioConfigs = getProvisionedWifiRadioConfigs(ovsdbClient);
 		LOG.debug("Existing WifiVifConfigs: {}", provisionedWifiVifConfigs.keySet());
+		
+		 boolean rrmEnabled = false;
+         if (opensyncApConfig.getEquipmentLocation() != null &&
+                         opensyncApConfig.getEquipmentLocation().getDetails() != null) {
+                 rrmEnabled = opensyncApConfig.getEquipmentLocation().getDetails().isRrmEnabled();
+         }
 
 		for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
 			
@@ -1800,7 +1806,7 @@ public class OvsdbDao {
 				if (!provisionedWifiVifConfigs.containsKey(ifName + "_" + ssidConfig.getSsid())) {
 					try {
 						configureSingleSsid(ovsdbClient, bridge, ifName, ssidConfig.getSsid(), ssidBroadcast, security,
-								provisionedWifiRadioConfigs, radioIfName, ssidConfig.getVlanId(), vifRadioIdx);
+								provisionedWifiRadioConfigs, radioIfName, ssidConfig.getVlanId(), vifRadioIdx, rrmEnabled);
 					} catch (IllegalStateException e) {
 						// could not provision this SSID, but still can go on
 						LOG.warn("could not provision SSID {} on {}", ssidConfig.getSsid(), radioIfName);
