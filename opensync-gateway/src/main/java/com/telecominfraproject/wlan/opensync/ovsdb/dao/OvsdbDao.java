@@ -1677,6 +1677,7 @@ public class OvsdbDao {
 			boolean ssidBroadcast, Map<String, String> security,
 			Map<String, WifiRadioConfigInfo> provisionedWifiRadioConfigs, String radioIfName, int vlanId,
 			int vifRadioIdx, boolean rrmEnabled, boolean enabled) {
+
 		List<Operation> operations = new ArrayList<>();
 		Map<String, Value> updateColumns = new HashMap<>();
 
@@ -1768,12 +1769,12 @@ public class OvsdbDao {
 		Map<String, WifiVifConfigInfo> provisionedWifiVifConfigs = getProvisionedWifiVifConfigs(ovsdbClient);
 		Map<String, WifiRadioConfigInfo> provisionedWifiRadioConfigs = getProvisionedWifiRadioConfigs(ovsdbClient);
 		LOG.debug("Existing WifiVifConfigs: {}", provisionedWifiVifConfigs.keySet());
-
-		boolean rrmEnabled = false;
-		if (opensyncApConfig.getEquipmentLocation() != null
-				&& opensyncApConfig.getEquipmentLocation().getDetails() != null) {
-			rrmEnabled = opensyncApConfig.getEquipmentLocation().getDetails().isRrmEnabled();
-		}
+		
+		 boolean rrmEnabled = false;
+         if (opensyncApConfig.getEquipmentLocation() != null &&
+                         opensyncApConfig.getEquipmentLocation().getDetails() != null) {
+                 rrmEnabled = opensyncApConfig.getEquipmentLocation().getDetails().isRrmEnabled();
+         }
 
 		for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
 
