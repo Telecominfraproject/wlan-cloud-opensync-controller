@@ -69,13 +69,13 @@ public class OpensyncNode extends BaseJsonModel {
 
         LOG.trace("Received Radio {}", radioState.toPrettyString());
 
-        if (radioState.getMac() == null || radioState.getIfName() == null || radioState.getFreqBand() == null)
+        if (radioState.getIfName() == null || radioState.getFreqBand() == null)
             return; // not ready
         if (radioStates.isEmpty()) {
             radioStates.add(radioState);
         } else {
             for (OpensyncAPRadioState radio : radioStates) {
-                if (radioState.getMac().equals(radio.getMac()) && radio.getFreqBand().equals(radioState.getFreqBand())
+                if (radio.getFreqBand().equals(radioState.getFreqBand())
                         && radioState.getIfName().equals(radio.getIfName())) {
                     int index = radioStates.indexOf(radio);
                     radioStates.remove(index);

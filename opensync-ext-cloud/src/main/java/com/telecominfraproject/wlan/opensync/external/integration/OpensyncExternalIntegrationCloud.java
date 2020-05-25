@@ -986,10 +986,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				return;
 			}
 
-			vif2g = node.getVIFForChannel(radio2g.getChannel());
-			vif5GHz = node.getVIFForChannel(radio5GHz.getChannel());
-			vif5GHzL = node.getVIFForChannel(radio5GHzL.getChannel());
-			vif5GHzU = node.getVIFForChannel(radio5GHzU.getChannel());
+			if (radio2g != null)
+				vif2g = node.getVIFForChannel(radio2g.getChannel());
+			if (radio5GHz != null)
+				vif5GHz = node.getVIFForChannel(radio5GHz.getChannel());
+			if (radio5GHzL != null)
+				vif5GHzL = node.getVIFForChannel(radio5GHzL.getChannel());
+			if (radio5GHzU != null)
+				vif5GHzU = node.getVIFForChannel(radio5GHzU.getChannel());
 
 			if (vif2g == null && vif5GHzL == null && vif5GHzU == null && vif5GHz == null) {
 				LOG.debug("No Wifi SSID Data present for AP SSID report");
@@ -1022,56 +1026,20 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			// report
 			// The '0' values will be overwritten, if applicable, from the
 			// aggregated client information
-			String encryption = null;
+			// TODO: security/encryption disabled until client session updates re-enabled
+//			String encryption = null;
 			SsidStatistics ssidStat = new SsidStatistics();
-			if (clientReport.getBand() == RadioBandType.BAND2G) {
-				if (radio2g.getMac() != null)
-					ssidStat.setBssid(new MacAddress(radio2g.getMac()));
-				else {
-					LOG.debug("No mac address for radio {}, cannot set Bssid in ApSsidMetrics report.", clientReport);
-				}
-				ssidStat.setSsid(vif2g.getSsid());
-				ssidStat.setNumClient(vif2g.getAssociatedClients().size());
-				encryption = vif2g.getSecurity().get("encryption");
-			} else if (clientReport.getBand() == RadioBandType.BAND5G) {
-				if (radio5GHz.getMac() != null)
-					ssidStat.setBssid(new MacAddress(radio5GHz.getMac()));
-				else {
-					LOG.debug("No mac address for radio {}, cannot set Bssid in ApSsidMetrics report.", clientReport);
-				}
-				ssidStat.setSsid(vif5GHz.getSsid());
-				ssidStat.setNumClient(vif5GHz.getAssociatedClients().size());
-				encryption = vif5GHz.getSecurity().get("encryption");
-			} else if (clientReport.getBand() == RadioBandType.BAND5GL) {
-				if (radio5GHzL.getMac() != null)
-					ssidStat.setBssid(new MacAddress(radio5GHzL.getMac()));
-				else {
-					LOG.debug("No mac address for radio {}, cannot set Bssid in ApSsidMetrics report.", clientReport);
-				}
-				ssidStat.setSsid(vif5GHzL.getSsid());
-				ssidStat.setNumClient(vif5GHzL.getAssociatedClients().size());
-				encryption = vif5GHzL.getSecurity().get("encryption");
-			} else if (clientReport.getBand() == RadioBandType.BAND5GU) {
-				if (radio5GHzU.getMac() != null)
-					ssidStat.setBssid(new MacAddress(radio5GHzU.getMac()));
-				else {
-					LOG.debug("No mac address for radio {}, cannot set Bssid in ApSsidMetrics report.", clientReport);
-				}
-				ssidStat.setSsid(vif5GHzU.getSsid());
-				ssidStat.setNumClient(vif5GHzU.getAssociatedClients().size());
-				encryption = vif5GHzU.getSecurity().get("encryption");
-			}
 
-			SecurityType securityType = SecurityType.UNSUPPORTED;
-			if (encryption != null) {
-				if (encryption.endsWith("PSK")) {
-					securityType = SecurityType.PSK;
-				} else if (encryption.equals("RADIUS")) {
-					securityType = SecurityType.RADIUS;
-				} else if (encryption.equals("OPEN")) {
-					securityType = SecurityType.OPEN;
-				}
-			}
+//			SecurityType securityType = SecurityType.UNSUPPORTED;
+//			if (encryption != null) {
+//				if (encryption.endsWith("PSK")) {
+//					securityType = SecurityType.PSK;
+//				} else if (encryption.equals("RADIUS")) {
+//					securityType = SecurityType.RADIUS;
+//				} else if (encryption.equals("OPEN")) {
+//					securityType = SecurityType.OPEN;
+//				}
+//			}
 
 			long txBytes = 0L;
 			long rxBytes = 0L;
@@ -1088,12 +1056,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 					txErrors += client.getStats().getTxErrors();
 					rxRetries += client.getStats().getRxRetries();
 					lastRssi = client.getStats().getRssi();
-					try {
-						handleClientSessionUpdate(customerId, equipmentId, apId, clientReport.getChannel(),
-								clientReport.getBand(), clientReport.getTimestampMs(), client, securityType);
-					} catch (Exception e) {
-						LOG.debug("Unabled to update client {} session {}", client, e);
-					}
+					// TODO: Disabled, enable when AP starts to send MAC/BSSID
+//					try {
+//						handleClientSessionUpdate(customerId, equipmentId, apId, clientReport.getChannel(),
+//								clientReport.getBand(), clientReport.getTimestampMs(), client, securityType);
+//					} catch (Exception e) {
+//						LOG.debug("Unabled to update client {} session {}", client, e);
+//					}
 				}
 
 			}
@@ -1103,13 +1072,38 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			ssidStat.setNumTxBytesSucc(txBytes - txErrors);
 			ssidStat.setNumRxRetry(rxRetries);
 
+			// TODO: disable BSSID/MAC setting until reported by radio
 			if (clientReport.getBand() == RadioBandType.BAND2G) {
+				if (radio2g != null && vif2g != null) {
+//					ssidStat.setBssid(new MacAddress(radio2g.getMac()));
+					ssidStat.setSsid(vif2g.getSsid());
+					ssidStat.setNumClient(vif2g.getAssociatedClients().size());
+//					encryption = vif2g.getSecurity().get("encryption");
+				}
 				ssidStatsList2pt4GHz.add(ssidStat);
 			} else if (clientReport.getBand() == RadioBandType.BAND5G) {
+				if (radio5GHz != null && vif5GHz != null) {
+//					ssidStat.setBssid(new MacAddress(radio5GHz.getMac()));
+					ssidStat.setSsid(vif5GHz.getSsid());
+					ssidStat.setNumClient(vif5GHz.getAssociatedClients().size());
+//					encryption = vif5GHz.getSecurity().get("encryption");
+				}
 				ssidStatsList5GHz.add(ssidStat);
 			} else if (clientReport.getBand() == RadioBandType.BAND5GL) {
+				if (radio5GHzL != null && vif5GHzL != null) {
+//					ssidStat.setBssid(new MacAddress(radio5GHzL.getMac()));
+					ssidStat.setSsid(vif5GHzL.getSsid());
+					ssidStat.setNumClient(vif5GHzL.getAssociatedClients().size());
+//					encryption = vif5GHzL.getSecurity().get("encryption");
+				}
 				ssidStatsList5GHzL.add(ssidStat);
 			} else if (clientReport.getBand() == RadioBandType.BAND5GU) {
+				if (radio5GHzU != null && vif5GHzU != null) {
+//					ssidStat.setBssid(new MacAddress(radio5GHzU.getMac()));
+					ssidStat.setSsid(vif5GHzU.getSsid());
+					ssidStat.setNumClient(vif5GHzU.getAssociatedClients().size());
+//					encryption = vif5GHzU.getSecurity().get("encryption");
+				}
 				ssidStatsList5GHzU.add(ssidStat);
 
 			}
