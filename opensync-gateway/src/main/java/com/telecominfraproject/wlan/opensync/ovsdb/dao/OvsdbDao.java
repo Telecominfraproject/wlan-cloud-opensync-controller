@@ -1686,7 +1686,7 @@ public class OvsdbDao {
 	public void configureSingleSsid(OvsdbClient ovsdbClient, String bridge, String ifName, String ssid,
 			boolean ssidBroadcast, Map<String, String> security,
 			Map<String, WifiRadioConfigInfo> provisionedWifiRadioConfigs, String radioIfName, int vlanId,
-			int vifRadioIdx, boolean rrmEnabled, String minHwMode, boolean enabled, int keyRefresh) {
+			int vifRadioIdx, boolean rrmEnabled, String minHwMode, boolean enabled, int keyRefresh, boolean uapsdEnabled) {
 
 		List<Operation> operations = new ArrayList<>();
 		Map<String, Value> updateColumns = new HashMap<>();
@@ -1707,6 +1707,7 @@ public class OvsdbDao {
 			updateColumns.put("min_hw_mode", new Atom<>(minHwMode));
 			updateColumns.put("vlan_id", new Atom<Integer>(vlanId));
 			updateColumns.put("group_rekey", new Atom<Integer>(keyRefresh));
+			updateColumns.put("uapsd_enable", new Atom<Boolean>(uapsdEnabled));
 
 			@SuppressWarnings("unchecked")
 			com.vmware.ovsdb.protocol.operation.notation.Map<String, String> securityMap = com.vmware.ovsdb.protocol.operation.notation.Map
@@ -1799,6 +1800,7 @@ public class OvsdbDao {
 			for (RadioType radioType : ssidConfig.getAppliedRadios()) {
 				
 				int keyRefresh = ssidConfig.getKeyRefresh();
+				
 
 				Map<String, WifiRadioConfigInfo> provisionedWifiRadioConfigs = getProvisionedWifiRadioConfigs(
 						ovsdbClient);
@@ -1810,6 +1812,9 @@ public class OvsdbDao {
 
 				RadioMode radioMode = ((ApElementConfiguration) opensyncApConfig.getCustomerEquipment().getDetails())
 						.getAdvancedRadioMap().get(radioType).getRadioMode();
+				
+				boolean uapsdEnabled = (((ApElementConfiguration) opensyncApConfig.getCustomerEquipment().getDetails())
+						.getAdvancedRadioMap().get(radioType).getUapsdState() == StateSetting.enabled);
 
 				String minHwMode = "11n"; // min_hw_mode is 11ac, wifi 5, we can also take ++ (11ax) but 2.4GHz only
 											// Wifi4 --
@@ -1856,7 +1861,7 @@ public class OvsdbDao {
 					try {
 						configureSingleSsid(ovsdbClient, bridge, ifName, ssidConfig.getSsid(), ssidBroadcast, security,
 								provisionedWifiRadioConfigs, radioIfName, ssidConfig.getVlanId(), vifRadioIdx,
-								rrmEnabled, minHwMode, enabled, keyRefresh);
+								rrmEnabled, minHwMode, enabled, keyRefresh, uapsdEnabled);
 						
 					} catch (IllegalStateException e) {
 						// could not provision this SSID, but still can go on
