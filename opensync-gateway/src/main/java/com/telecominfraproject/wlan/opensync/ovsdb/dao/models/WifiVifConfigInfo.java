@@ -22,6 +22,7 @@ public class WifiVifConfigInfo implements Cloneable{
     public Map<String,String> security;
             
     public Uuid uuid;
+    public int vlanId;
     
     @Override
     public WifiVifConfigInfo clone() {
@@ -40,9 +41,9 @@ public class WifiVifConfigInfo implements Cloneable{
     @Override
     public String toString() {
         return String.format(
-                "WifiVifConfigInfo [bridge=%s, btm=%s, enabled=%s, ftPsk=%s, groupRekey=%s, ifName=%s, mode=%s, rrm=%s, ssid=%s, ssidBroadcast=%s, uapsdEnable=%s, vifRadioIdx=%s, security=%s, uuid=%s]",
+                "WifiVifConfigInfo [bridge=%s, btm=%s, enabled=%s, ftPsk=%s, groupRekey=%s, ifName=%s, mode=%s, rrm=%s, ssid=%s, ssidBroadcast=%s, uapsdEnable=%s, vifRadioIdx=%s, security=%s, uuid=%s, vlanId=%s]",
                 bridge, btm, enabled, ftPsk, groupRekey, ifName, mode, rrm, ssid, ssidBroadcast, uapsdEnable,
-                vifRadioIdx, security, uuid);
+                vifRadioIdx, security, uuid,vlanId);
     }
     
 }

@@ -22,6 +22,7 @@ import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.ElementRadioConfiguration;
 import com.telecominfraproject.wlan.equipment.models.RadioConfiguration;
+import com.telecominfraproject.wlan.equipment.models.RadioMode;
 import com.telecominfraproject.wlan.equipment.models.StateSetting;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
@@ -645,6 +646,7 @@ public class OvsdbDao {
 		columns.add("uapsd_enable");
 		columns.add("vif_radio_idx");
 		columns.add("security");
+		columns.add("vlan_id");
 
 		try {
 			LOG.debug("Retrieving WifiVifConfig:");
@@ -675,6 +677,10 @@ public class OvsdbDao {
 				wifiVifConfigInfo.vifRadioIdx = row.getIntegerColumn("vif_radio_idx").intValue();
 				wifiVifConfigInfo.security = row.getMapColumn("security");
 
+				if (row.getColumns().get("vlan_id") != null && row.getColumns().get("vlan_id").getClass()
+						.equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+					wifiVifConfigInfo.vlanId = (row.getIntegerColumn("vlan_id").intValue());
+				}
 				ret.put(wifiVifConfigInfo.ifName + '_' + wifiVifConfigInfo.ssid, wifiVifConfigInfo);
 			}
 
@@ -701,6 +707,7 @@ public class OvsdbDao {
 		columns.add("if_type");
 		columns.add("ip_assign_scheme");
 		columns.add("network");
+		columns.add("vlan_id");
 
 		try {
 			LOG.debug("Retrieving WifiInetConfig:");
@@ -725,7 +732,10 @@ public class OvsdbDao {
 				wifiInetConfigInfo.ifType = row.getStringColumn("if_type");
 				wifiInetConfigInfo.ipAssignScheme = row.getStringColumn("ip_assign_scheme");
 				wifiInetConfigInfo.network = row.getBooleanColumn("network");
-
+				if (row.getColumns().get("vlan_id") != null && row.getColumns().get("vlan_id").getClass()
+						.equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+					wifiInetConfigInfo.vlanId = (row.getIntegerColumn("vlan_id").intValue());
+				}
 				ret.put(wifiInetConfigInfo.ifName, wifiInetConfigInfo);
 			}
 
@@ -1676,7 +1686,7 @@ public class OvsdbDao {
 	public void configureSingleSsid(OvsdbClient ovsdbClient, String bridge, String ifName, String ssid,
 			boolean ssidBroadcast, Map<String, String> security,
 			Map<String, WifiRadioConfigInfo> provisionedWifiRadioConfigs, String radioIfName, int vlanId,
-			int vifRadioIdx, boolean rrmEnabled, boolean enabled) {
+			int vifRadioIdx, boolean rrmEnabled, String minHwMode, boolean enabled) {
 
 		List<Operation> operations = new ArrayList<>();
 		Map<String, Value> updateColumns = new HashMap<>();
@@ -1694,8 +1704,9 @@ public class OvsdbDao {
 			updateColumns.put("ssid_broadcast", new Atom<>(ssidBroadcast ? "enabled" : "disabled"));
 			updateColumns.put("uapsd_enable", new Atom<>(true));
 			updateColumns.put("vif_radio_idx", new Atom<Integer>(vifRadioIdx));
+			updateColumns.put("min_hw_mode", new Atom<>(minHwMode));
 
-			updateColumns.put("vlan_id", new Atom<>(vlanId));
+			updateColumns.put("vlan_id", new Atom<Integer>(vlanId));
 
 			@SuppressWarnings("unchecked")
 			com.vmware.ovsdb.protocol.operation.notation.Map<String, String> securityMap = com.vmware.ovsdb.protocol.operation.notation.Map
@@ -1756,6 +1767,11 @@ public class OvsdbDao {
 					LOG.debug("Op Result {}", res);
 				}
 			}
+			Map<String, WifiInetConfigInfo> inetConfigs = getProvisionedWifiInetConfigs(ovsdbClient);
+			if (inetConfigs.containsKey(ifName))
+				updateWifiInetConfig(ovsdbClient, vlanId, ifName, enabled);
+			else
+				insertWifiInetConfigForVif(ovsdbClient, vlanId, ifName, enabled);
 
 			LOG.info("Provisioned SSID {} on interface {} / {}", ssid, ifName, radioIfName);
 
@@ -1789,6 +1805,16 @@ public class OvsdbDao {
 				Map<String, String> security = new HashMap<>();
 				String ssidSecurityMode = ssidConfig.getSecureMode().name();
 				String opensyncSecurityMode = "OPEN";
+
+				RadioMode radioMode = ((ApElementConfiguration) opensyncApConfig.getCustomerEquipment().getDetails())
+						.getAdvancedRadioMap().get(radioType).getRadioMode();
+
+				String minHwMode = "11n"; // min_hw_mode is 11ac, wifi 5, we can also take ++ (11ax) but 2.4GHz only
+											// Wifi4 --
+				if (!radioType.equals(RadioType.is2dot4GHz))
+					minHwMode = "11ac";
+				if (!radioType.equals(RadioType.is2dot4GHz) && radioMode.equals(RadioMode.modeX))
+					minHwMode = "11x";
 
 				if (ssidSecurityMode.equalsIgnoreCase("wpaPSK") || ssidSecurityMode.equalsIgnoreCase("wpa2PSK"))
 					opensyncSecurityMode = "WPA-PSK";
@@ -1828,7 +1854,8 @@ public class OvsdbDao {
 					try {
 						configureSingleSsid(ovsdbClient, bridge, ifName, ssidConfig.getSsid(), ssidBroadcast, security,
 								provisionedWifiRadioConfigs, radioIfName, ssidConfig.getVlanId(), vifRadioIdx,
-								rrmEnabled, enabled);
+								rrmEnabled, minHwMode, enabled);
+						
 					} catch (IllegalStateException e) {
 						// could not provision this SSID, but still can go on
 						LOG.warn("could not provision SSID {} on {}", ssidConfig.getSsid(), radioIfName);
@@ -1836,6 +1863,82 @@ public class OvsdbDao {
 				}
 
 			}
+		}
+
+	}
+
+	private void insertWifiInetConfigForVif(OvsdbClient ovsdbClient, int vlanId, String ifName, boolean enabled) {
+
+		List<Operation> operations = new ArrayList<>();
+		Map<String, Value> updateColumns = new HashMap<>();
+	
+		try {
+			/// usr/plume/tools/ovsh i Wifi_Inet_Config NAT:=false enabled:=true
+			/// if_name:=home-ap-24 if_type:=vif ip_assign_scheme:=none
+			/// network:=true
+
+			updateColumns.put("NAT", new Atom<>(false));
+			updateColumns.put("enabled", new Atom<Boolean>(enabled));
+			updateColumns.put("if_name", new Atom<String>(ifName));
+			updateColumns.put("if_type", new Atom<>("vif"));
+			updateColumns.put("ip_assign_scheme", new Atom<>("none"));
+			updateColumns.put("network", new Atom<>(true));
+			updateColumns.put("vlan_id", new Atom<Integer>(vlanId));
+
+			Row row = new Row(updateColumns);
+			operations.add(new Insert(wifiInetConfigDbTable, row));
+		
+			CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+			OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+			LOG.debug("Provisioned WifiInetConfig {}", ifName);
+
+			for (OperationResult res : result) {
+				LOG.debug("Op Result {}", res);
+			}
+
+		} catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+			LOG.error("Error in configureWifiInet", e);
+			throw new RuntimeException(e);
+		}
+
+	}
+	
+	private void updateWifiInetConfig(OvsdbClient ovsdbClient, int vlanId, String ifName, boolean enabled
+			) {
+
+		List<Operation> operations = new ArrayList<>();
+		Map<String, Value> updateColumns = new HashMap<>();
+		List<Condition> conditions = new ArrayList<>();
+		conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(ifName)));
+
+		try {
+			/// usr/plume/tools/ovsh i Wifi_Inet_Config NAT:=false enabled:=true
+			/// if_name:=home-ap-24 if_type:=vif ip_assign_scheme:=none
+			/// network:=true
+
+			updateColumns.put("NAT", new Atom<>(false));
+			updateColumns.put("enabled", new Atom<Boolean>(enabled));
+			updateColumns.put("if_type", new Atom<>("vif"));
+			updateColumns.put("ip_assign_scheme", new Atom<>("none"));
+			updateColumns.put("network", new Atom<>(true));
+			updateColumns.put("vlan_id", new Atom<Integer>(vlanId));
+
+			Row row = new Row(updateColumns);
+			operations.add(new Update(wifiInetConfigDbTable, conditions, row));
+
+			CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+			OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+			LOG.debug("Provisioned WifiInetConfig {}", ifName);
+
+			for (OperationResult res : result) {
+				LOG.debug("Op Result {}", res);
+			}
+
+		} catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+			LOG.error("Error in configureWifiInet", e);
+			throw new RuntimeException(e);
 		}
 
 	}
