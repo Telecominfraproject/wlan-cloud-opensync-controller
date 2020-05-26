@@ -1686,7 +1686,7 @@ public class OvsdbDao {
 	public void configureSingleSsid(OvsdbClient ovsdbClient, String bridge, String ifName, String ssid,
 			boolean ssidBroadcast, Map<String, String> security,
 			Map<String, WifiRadioConfigInfo> provisionedWifiRadioConfigs, String radioIfName, int vlanId,
-			int vifRadioIdx, boolean rrmEnabled, String minHwMode, boolean enabled) {
+			int vifRadioIdx, boolean rrmEnabled, String minHwMode, boolean enabled, int keyRefresh) {
 
 		List<Operation> operations = new ArrayList<>();
 		Map<String, Value> updateColumns = new HashMap<>();
@@ -1705,8 +1705,8 @@ public class OvsdbDao {
 			updateColumns.put("uapsd_enable", new Atom<>(true));
 			updateColumns.put("vif_radio_idx", new Atom<Integer>(vifRadioIdx));
 			updateColumns.put("min_hw_mode", new Atom<>(minHwMode));
-
 			updateColumns.put("vlan_id", new Atom<Integer>(vlanId));
+			updateColumns.put("group_rekey", new Atom<Integer>(keyRefresh));
 
 			@SuppressWarnings("unchecked")
 			com.vmware.ovsdb.protocol.operation.notation.Map<String, String> securityMap = com.vmware.ovsdb.protocol.operation.notation.Map
@@ -1797,6 +1797,8 @@ public class OvsdbDao {
 			SsidConfiguration ssidConfig = (SsidConfiguration) ssidProfile.getDetails();
 
 			for (RadioType radioType : ssidConfig.getAppliedRadios()) {
+				
+				int keyRefresh = ssidConfig.getKeyRefresh();
 
 				Map<String, WifiRadioConfigInfo> provisionedWifiRadioConfigs = getProvisionedWifiRadioConfigs(
 						ovsdbClient);
@@ -1854,7 +1856,7 @@ public class OvsdbDao {
 					try {
 						configureSingleSsid(ovsdbClient, bridge, ifName, ssidConfig.getSsid(), ssidBroadcast, security,
 								provisionedWifiRadioConfigs, radioIfName, ssidConfig.getVlanId(), vifRadioIdx,
-								rrmEnabled, minHwMode, enabled);
+								rrmEnabled, minHwMode, enabled, keyRefresh);
 						
 					} catch (IllegalStateException e) {
 						// could not provision this SSID, but still can go on
