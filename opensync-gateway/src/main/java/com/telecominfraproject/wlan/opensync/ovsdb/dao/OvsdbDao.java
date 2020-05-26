@@ -1686,7 +1686,7 @@ public class OvsdbDao {
 	public void configureSingleSsid(OvsdbClient ovsdbClient, String bridge, String ifName, String ssid,
 			boolean ssidBroadcast, Map<String, String> security,
 			Map<String, WifiRadioConfigInfo> provisionedWifiRadioConfigs, String radioIfName, int vlanId,
-			int vifRadioIdx, boolean rrmEnabled, String minHwMode, boolean enabled, int keyRefresh, boolean uapsdEnabled) {
+			int vifRadioIdx, boolean rrmEnabled, String minHwMode, boolean enabled, int keyRefresh, boolean uapsdEnabled, boolean apBridge) {
 
 		List<Operation> operations = new ArrayList<>();
 		Map<String, Value> updateColumns = new HashMap<>();
@@ -1696,7 +1696,6 @@ public class OvsdbDao {
 			updateColumns.put("btm", new Atom<>(1));
 			updateColumns.put("enabled", new Atom<>(enabled));
 			updateColumns.put("ft_psk", new Atom<>(0));
-			updateColumns.put("group_rekey", new Atom<>(86400));
 			updateColumns.put("if_name", new Atom<>(ifName));
 			updateColumns.put("mode", new Atom<>("ap"));
 			updateColumns.put("rrm", new Atom<>(rrmEnabled ? 1 : 0));
@@ -1708,6 +1707,7 @@ public class OvsdbDao {
 			updateColumns.put("vlan_id", new Atom<Integer>(vlanId));
 			updateColumns.put("group_rekey", new Atom<Integer>(keyRefresh));
 			updateColumns.put("uapsd_enable", new Atom<Boolean>(uapsdEnabled));
+			updateColumns.put("ap_bridge", new Atom<Boolean>(apBridge));
 
 			@SuppressWarnings("unchecked")
 			com.vmware.ovsdb.protocol.operation.notation.Map<String, String> securityMap = com.vmware.ovsdb.protocol.operation.notation.Map
@@ -1815,6 +1815,9 @@ public class OvsdbDao {
 				
 				boolean uapsdEnabled = (((ApElementConfiguration) opensyncApConfig.getCustomerEquipment().getDetails())
 						.getAdvancedRadioMap().get(radioType).getUapsdState() == StateSetting.enabled);
+				
+				boolean apBridge = (((ApElementConfiguration) opensyncApConfig.getCustomerEquipment().getDetails())
+						.getAdvancedRadioMap().get(radioType).getStationIsolation() == StateSetting.enabled);  //stationIsolation
 
 				String minHwMode = "11n"; // min_hw_mode is 11ac, wifi 5, we can also take ++ (11ax) but 2.4GHz only
 											// Wifi4 --
@@ -1861,7 +1864,7 @@ public class OvsdbDao {
 					try {
 						configureSingleSsid(ovsdbClient, bridge, ifName, ssidConfig.getSsid(), ssidBroadcast, security,
 								provisionedWifiRadioConfigs, radioIfName, ssidConfig.getVlanId(), vifRadioIdx,
-								rrmEnabled, minHwMode, enabled, keyRefresh, uapsdEnabled);
+								rrmEnabled, minHwMode, enabled, keyRefresh, uapsdEnabled, apBridge);
 						
 					} catch (IllegalStateException e) {
 						// could not provision this SSID, but still can go on
