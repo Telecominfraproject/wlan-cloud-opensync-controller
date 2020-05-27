@@ -1810,14 +1810,14 @@ public class OvsdbDao {
 				String ssidSecurityMode = ssidConfig.getSecureMode().name();
 				String opensyncSecurityMode = "OPEN";
 
-				RadioMode radioMode = ((ApElementConfiguration) opensyncApConfig.getCustomerEquipment().getDetails())
-						.getAdvancedRadioMap().get(radioType).getRadioMode();
+				RadioConfiguration radioConfiguration =  ((ApElementConfiguration) opensyncApConfig.getCustomerEquipment().getDetails())
+						.getAdvancedRadioMap().get(radioType);
+				if (radioConfiguration == null) continue; // don't have a radio of this kind in the map
+				RadioMode radioMode = radioConfiguration.getRadioMode();
 				
-				boolean uapsdEnabled = (((ApElementConfiguration) opensyncApConfig.getCustomerEquipment().getDetails())
-						.getAdvancedRadioMap().get(radioType).getUapsdState() == StateSetting.enabled);
+				boolean uapsdEnabled = (radioConfiguration.getUapsdState() == StateSetting.enabled);
 				
-				boolean apBridge = (((ApElementConfiguration) opensyncApConfig.getCustomerEquipment().getDetails())
-						.getAdvancedRadioMap().get(radioType).getStationIsolation() == StateSetting.enabled);  //stationIsolation
+				boolean apBridge = (radioConfiguration.getStationIsolation() == StateSetting.enabled);  //stationIsolation
 
 				String minHwMode = "11n"; // min_hw_mode is 11ac, wifi 5, we can also take ++ (11ax) but 2.4GHz only
 											// Wifi4 --

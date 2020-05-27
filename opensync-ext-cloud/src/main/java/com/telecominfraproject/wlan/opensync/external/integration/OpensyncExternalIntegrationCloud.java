@@ -540,7 +540,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			LOG.error("Cannot read config for AP {}", apId, e);
 		}
 
-		LOG.debug("Config content : {}", ret);
+		LOG.debug("Config content : Equipment {}", ret.getCustomerEquipment().toPrettyString());
+		LOG.debug("Config content : APProfile {}", ret.getApProfile().toPrettyString());
+		
+		ret.getSsidProfile().stream().forEach(ssid -> LOG.debug("Config content : SSIDProfile {}", ssid.toPrettyString()));
+		LOG.debug("Config content : Location {}", ret.getEquipmentLocation().toPrettyString());
+
 
 		return ret;
 	}

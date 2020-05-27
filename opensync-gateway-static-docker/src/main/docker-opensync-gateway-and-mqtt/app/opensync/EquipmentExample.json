@@ -1,12 +1,12 @@
 {
   "model_type" : "Equipment",
-  "id" : 50,
+  "id" : 51,
   "customerId" : 2,
-  "profileId" : null,
+  "profileId" : 3,
   "locationId" : 8,
   "equipmentType" : "AP",
-  "inventoryId" : "ap-50",
-  "name" : "AP 50",
+  "inventoryId" : "Test_Client_21P10C68818122",
+  "name" : "Test_Client_21P10C68818122",
   "details" : {
     "model_type" : "ApElementConfiguration",
     "sampleDetailsStr" : null,
@@ -21,7 +21,7 @@
     "staticDnsIp1" : null,
     "staticDnsIp2" : null,
     "peerInfoList" : [ ],
-    "deviceName" : "Default Device Name",
+    "deviceName" : "Test_Client_21P10C68818122",
     "locationData" : null,
     "locallyConfiguredMgmtVlan" : 0,
     "locallyConfigured" : false,
@@ -100,8 +100,8 @@
         },
         "eirpTxPower" : {
           "model_type" : "AutoOrManualValue",
-          "auto" : false,
-          "value" : 10
+          "auto" : true,
+          "value" : 18
         },
         "bestApEnabled" : null,
         "neighbouringListApConfig" : {
@@ -121,7 +121,7 @@
         "radioType" : "is5GHzU",
         "channelNumber" : 149,
         "manualChannelNumber" : 149,
-        "backupChannelNumber" : 116,
+        "backupChannelNumber" : 154,
         "autoChannelSelection" : true,
         "channelBandwidth" : "is80MHz",
         "bannedChannels" : [ ],
@@ -203,7 +203,7 @@
       "is5GHzU" : {
         "model_type" : "RadioConfiguration",
         "radioType" : "is5GHzU",
-        "radioAdminState" : "disabled",
+        "radioAdminState" : "enabled",
         "fragmentationThresholdBytes" : 2346,
         "rtsCtsThreshold" : 65535,
         "autoChannelSelection" : "disabled",
@@ -284,7 +284,7 @@
   },
   "latitude" : null,
   "longitude" : null,
-  "serial" : "serial-ap-50",
-  "createdTimestamp" : 1589915837067,
-  "lastModifiedTimestamp" : 1589915837067
+  "serial" : "21P10C68818122",
+  "createdTimestamp" : 1590607072871,
+  "lastModifiedTimestamp" : 1590607073116
 }

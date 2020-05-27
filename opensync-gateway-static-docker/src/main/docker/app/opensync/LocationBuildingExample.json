@@ -1,13 +1,13 @@
 {
   "model_type" : "Location",
-  "id" : 7,
-  "parentId" : 2,
-  "locationType" : "BUILDING",
+  "id" : 8,
+  "parentId" : 0,
+  "locationType" : "SITE",
   "customerId" : 2,
-  "name" : "Building 2",
+  "name" : "Ottawa",
   "details" : {
     "model_type" : "LocationDetails",
-    "countryCode" : "usa",
+    "countryCode" : "ca",
     "maintenanceWindow" : null,
     "rrmEnabled" : true,
     "dailyRebalancingDetails" : {
@@ -62,6 +62,6 @@
       }
     }
   },
-  "createdTimestamp" : 1589567347442,
-  "lastModifiedTimestamp" : 1589567347442
+  "createdTimestamp" : 1590607043540,
+  "lastModifiedTimestamp" : 1590607043540
 }

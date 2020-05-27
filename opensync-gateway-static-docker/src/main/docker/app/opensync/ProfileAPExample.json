@@ -1,12 +1,11 @@
 {
   "model_type" : "Profile",
-  "id" : 2,
+  "id" : 3,
   "customerId" : 2,
   "profileType" : "equipment_ap",
-  "name" : "ApProfile",
+  "name" : "autoprovisionedApProfile",
   "details" : {
     "model_type" : "ApNetworkConfiguration",
-    "sampleDetailsStr" : null,
     "networkConfigVersion" : "AP-1",
     "equipmentType" : "AP",
     "vlanNative" : true,
@@ -42,9 +41,10 @@
         "bestApEnabled" : true,
         "bestAPSteerType" : "both"
       }
-    }
+    },
+    "profileType" : "equipment_ap"
   },
-  "createdTimestamp" : 1589567037365,
-  "lastModifiedTimestamp" : 1589567037365,
-  "childProfileIds" : [ ]
+  "createdTimestamp" : 1590607072994,
+  "lastModifiedTimestamp" : 1590607073083,
+  "childProfileIds" : [ 4, 5, 6 ]
 }
