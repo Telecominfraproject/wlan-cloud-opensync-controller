@@ -13,6 +13,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.checkerframework.checker.units.qual.K;
+import org.elasticsearch.common.recycler.Recycler.V;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -21,6 +23,9 @@ import com.telecominfraproject.wlan.core.model.equipment.ChannelBandwidth;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.ElementRadioConfiguration;
+import com.telecominfraproject.wlan.equipment.models.GettingDNS;
+import com.telecominfraproject.wlan.equipment.models.GettingIP;
+import com.telecominfraproject.wlan.equipment.models.NetworkForwardMode;
 import com.telecominfraproject.wlan.equipment.models.RadioConfiguration;
 import com.telecominfraproject.wlan.equipment.models.RadioMode;
 import com.telecominfraproject.wlan.equipment.models.StateSetting;
@@ -1686,7 +1691,8 @@ public class OvsdbDao {
 	public void configureSingleSsid(OvsdbClient ovsdbClient, String bridge, String ifName, String ssid,
 			boolean ssidBroadcast, Map<String, String> security,
 			Map<String, WifiRadioConfigInfo> provisionedWifiRadioConfigs, String radioIfName, int vlanId,
-			int vifRadioIdx, boolean rrmEnabled, String minHwMode, boolean enabled, int keyRefresh, boolean uapsdEnabled, boolean apBridge) {
+			int vifRadioIdx, boolean rrmEnabled, String minHwMode, boolean enabled, int keyRefresh,
+			boolean uapsdEnabled, boolean apBridge, NetworkForwardMode networkForwardMode, String gateway, String inet, Map<String, String> dns, String ipAssignScheme) {
 
 		List<Operation> operations = new ArrayList<>();
 		Map<String, Value> updateColumns = new HashMap<>();
@@ -1770,9 +1776,13 @@ public class OvsdbDao {
 			}
 			Map<String, WifiInetConfigInfo> inetConfigs = getProvisionedWifiInetConfigs(ovsdbClient);
 			if (inetConfigs.containsKey(ifName))
-				updateWifiInetConfig(ovsdbClient, vlanId, ifName, enabled);
+				updateWifiInetConfig(ovsdbClient, vlanId, ifName, enabled,
+						(networkForwardMode == NetworkForwardMode.NAT), "vif", gateway, inet, dns,ipAssignScheme);
 			else
-				insertWifiInetConfigForVif(ovsdbClient, vlanId, ifName, enabled);
+				// do nothing for now
+				LOG.debug("No corresponding WifiInetConfig for this Interface");
+			// TODO: should wait for the default config to take place
+			// insertWifiInetConfigForVif(ovsdbClient, vlanId, ifName, enabled);
 
 			LOG.info("Provisioned SSID {} on interface {} / {}", ssid, ifName, radioIfName);
 
@@ -1796,11 +1806,11 @@ public class OvsdbDao {
 			LOG.debug("Existing WifiVifConfigs: {}", provisionedWifiVifConfigs.keySet());
 
 			SsidConfiguration ssidConfig = (SsidConfiguration) ssidProfile.getDetails();
-
+			ApElementConfiguration apElementConfig = ((ApElementConfiguration) opensyncApConfig.getCustomerEquipment()
+					.getDetails());
 			for (RadioType radioType : ssidConfig.getAppliedRadios()) {
-				
+
 				int keyRefresh = ssidConfig.getKeyRefresh();
-				
 
 				Map<String, WifiRadioConfigInfo> provisionedWifiRadioConfigs = getProvisionedWifiRadioConfigs(
 						ovsdbClient);
@@ -1810,14 +1820,32 @@ public class OvsdbDao {
 				String ssidSecurityMode = ssidConfig.getSecureMode().name();
 				String opensyncSecurityMode = "OPEN";
 
-				RadioConfiguration radioConfiguration =  ((ApElementConfiguration) opensyncApConfig.getCustomerEquipment().getDetails())
-						.getAdvancedRadioMap().get(radioType);
-				if (radioConfiguration == null) continue; // don't have a radio of this kind in the map
+				String ipAssignScheme = "none";
+				// the following 5 attributes only applicable to static config, else they are
+				// ignored
+				String gateway = null;
+				String inet = null;
+				Map<String,String> dns = null;
+				if (apElementConfig.getStaticIP() != null) {
+					ipAssignScheme = "static";
+					inet = apElementConfig.getStaticIP().getHostAddress();
+					gateway = apElementConfig.getStaticIpGw().getHostAddress();
+					dns = new HashMap<String,String>();
+					dns.put(apElementConfig.getStaticDnsIp1().getHostName(), apElementConfig.getStaticDnsIp1().getHostAddress());
+					dns.put(apElementConfig.getStaticDnsIp2().getHostName(), apElementConfig.getStaticDnsIp2().getHostAddress());			
+				} else if (apElementConfig.getGettingIP().equals(GettingIP.dhcp)
+						|| apElementConfig.getGettingDNS().equals(GettingDNS.dhcp)) {
+					ipAssignScheme = "dhcp";
+				}
+
+				RadioConfiguration radioConfiguration = apElementConfig.getAdvancedRadioMap().get(radioType);
+				if (radioConfiguration == null)
+					continue; // don't have a radio of this kind in the map
 				RadioMode radioMode = radioConfiguration.getRadioMode();
-				
+
 				boolean uapsdEnabled = (radioConfiguration.getUapsdState() == StateSetting.enabled);
-				
-				boolean apBridge = (radioConfiguration.getStationIsolation() == StateSetting.enabled);  //stationIsolation
+
+				boolean apBridge = (radioConfiguration.getStationIsolation() == StateSetting.enabled); // stationIsolation
 
 				String minHwMode = "11n"; // min_hw_mode is 11ac, wifi 5, we can also take ++ (11ax) but 2.4GHz only
 											// Wifi4 --
@@ -1864,8 +1892,9 @@ public class OvsdbDao {
 					try {
 						configureSingleSsid(ovsdbClient, bridge, ifName, ssidConfig.getSsid(), ssidBroadcast, security,
 								provisionedWifiRadioConfigs, radioIfName, ssidConfig.getVlanId(), vifRadioIdx,
-								rrmEnabled, minHwMode, enabled, keyRefresh, uapsdEnabled, apBridge);
-						
+								rrmEnabled, minHwMode, enabled, keyRefresh, uapsdEnabled, apBridge,
+								ssidConfig.getForwardMode(), gateway, inet, dns, ipAssignScheme);
+
 					} catch (IllegalStateException e) {
 						// could not provision this SSID, but still can go on
 						LOG.warn("could not provision SSID {} on {}", ssidConfig.getSsid(), radioIfName);
@@ -1881,7 +1910,7 @@ public class OvsdbDao {
 
 		List<Operation> operations = new ArrayList<>();
 		Map<String, Value> updateColumns = new HashMap<>();
-	
+
 		try {
 			/// usr/plume/tools/ovsh i Wifi_Inet_Config NAT:=false enabled:=true
 			/// if_name:=home-ap-24 if_type:=vif ip_assign_scheme:=none
@@ -1897,7 +1926,7 @@ public class OvsdbDao {
 
 			Row row = new Row(updateColumns);
 			operations.add(new Insert(wifiInetConfigDbTable, row));
-		
+
 			CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
 			OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
@@ -1913,9 +1942,9 @@ public class OvsdbDao {
 		}
 
 	}
-	
-	private void updateWifiInetConfig(OvsdbClient ovsdbClient, int vlanId, String ifName, boolean enabled
-			) {
+
+	private void updateWifiInetConfig(OvsdbClient ovsdbClient, int vlanId, String ifName, boolean enabled,
+			boolean isNAT, String ifType, String gateway, String inet, Map<String, String> dns, String ipAssignScheme) {
 
 		List<Operation> operations = new ArrayList<>();
 		Map<String, Value> updateColumns = new HashMap<>();
@@ -1926,13 +1955,35 @@ public class OvsdbDao {
 			/// usr/plume/tools/ovsh i Wifi_Inet_Config NAT:=false enabled:=true
 			/// if_name:=home-ap-24 if_type:=vif ip_assign_scheme:=none
 			/// network:=true
-
-			updateColumns.put("NAT", new Atom<>(false));
+//			dhcpd
+			updateColumns.put("if_type", new Atom<String>(ifType));
 			updateColumns.put("enabled", new Atom<Boolean>(enabled));
-			updateColumns.put("if_type", new Atom<>("vif"));
-			updateColumns.put("ip_assign_scheme", new Atom<>("none"));
+			updateColumns.put("NAT", new Atom<Boolean>(isNAT));
+
+//			mtu // specified in interface, should take that value when implemented
+			updateColumns.put("mtu", new Atom<>(1500));
 			updateColumns.put("network", new Atom<>(true));
-			updateColumns.put("vlan_id", new Atom<Integer>(vlanId));
+			
+			updateColumns.put("ip_assign_scheme", new Atom<>(ipAssignScheme));
+
+			if (ipAssignScheme.equals("static")) {
+				updateColumns.put("dns", com.vmware.ovsdb.protocol.operation.notation.Map.of(dns));
+				updateColumns.put("inet_addr", new Atom<String>(inet));
+				updateColumns.put("gateway", new Atom<String>(gateway));
+//				netmask
+//				broadcast
+			}
+			if (ipAssignScheme.equals("dhcp")) {
+				updateColumns.put("dhcp_sniff", new Atom<Boolean>(true));
+			} else {
+				updateColumns.put("dhcp_sniff", new Atom<Boolean>(false));
+			}
+			
+			if (ifType.equals("vlan")) {
+				updateColumns.put("vlan_id",new Atom<Integer>(vlanId));
+			} else {
+				updateColumns.put("vlan_id",new com.vmware.ovsdb.protocol.operation.notation.Set());
+			}
 
 			Row row = new Row(updateColumns);
 			operations.add(new Update(wifiInetConfigDbTable, conditions, row));
