@@ -56,15 +56,14 @@ import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration.SecureMode;
 import com.telecominfraproject.wlan.routing.RoutingServiceInterface;
 import com.telecominfraproject.wlan.routing.models.EquipmentRoutingRecord;
-import com.telecominfraproject.wlan.servicemetrics.models.ApClientMetrics;
-import com.telecominfraproject.wlan.servicemetrics.models.ApNodeMetrics;
-import com.telecominfraproject.wlan.servicemetrics.models.ApPerformance;
-import com.telecominfraproject.wlan.servicemetrics.models.ApSsidMetrics;
-import com.telecominfraproject.wlan.servicemetrics.models.ClientMetrics;
-import com.telecominfraproject.wlan.servicemetrics.models.EthernetLinkState;
-import com.telecominfraproject.wlan.servicemetrics.models.RadioUtilization;
-import com.telecominfraproject.wlan.servicemetrics.models.SingleMetricRecord;
-import com.telecominfraproject.wlan.servicemetrics.models.SsidStatistics;
+import com.telecominfraproject.wlan.servicemetric.apnode.models.ApNodeMetrics;
+import com.telecominfraproject.wlan.servicemetric.apnode.models.ApPerformance;
+import com.telecominfraproject.wlan.servicemetric.apnode.models.EthernetLinkState;
+import com.telecominfraproject.wlan.servicemetric.apnode.models.RadioUtilization;
+import com.telecominfraproject.wlan.servicemetric.apssid.models.ApSsidMetrics;
+import com.telecominfraproject.wlan.servicemetric.apssid.models.SsidStatistics;
+import com.telecominfraproject.wlan.servicemetric.client.models.ClientMetrics;
+import com.telecominfraproject.wlan.servicemetric.models.ServiceMetric;
 import com.telecominfraproject.wlan.status.StatusServiceInterface;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentAdminStatusData;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentLANStatusData;
@@ -620,7 +619,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			return;
 		}
 
-		List<SingleMetricRecord> metricRecordList = new ArrayList<>();
+		List<ServiceMetric> metricRecordList = new ArrayList<>();
 
 		populateApClientMetrics(metricRecordList, report, customerId, equipmentId);
 		populateApNodeMetrics(metricRecordList, report, customerId, equipmentId);
@@ -639,7 +638,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 	}
 
-	private void populateApNodeMetrics(List<SingleMetricRecord> metricRecordList, Report report, int customerId,
+	private void populateApNodeMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId,
 			long equipmentId) {
 		{
 			LOG.debug("populateApNodeMetrics for Customer {} Equipment {}", customerId, equipmentId);
@@ -647,11 +646,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 			for (Device deviceReport : report.getDeviceList()) {
 
-				SingleMetricRecord smr = new SingleMetricRecord(customerId, equipmentId);
+				ServiceMetric smr = new ServiceMetric(customerId, equipmentId);
 				metricRecordList.add(smr);
 
 				apNodeMetrics = new ApNodeMetrics();
-				smr.setData(apNodeMetrics);
+				smr.setDetails(apNodeMetrics);
 				ApPerformance apPerformance = new ApPerformance();
 				apNodeMetrics.setApPerformance(apPerformance);
 
@@ -732,10 +731,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 					}
 				}
 
-				apNodeMetrics.setRxBytes2G(rxBytes2g);
-				apNodeMetrics.setTxBytes2G(txBytes2g);
-				apNodeMetrics.setRxBytes5G(rxBytes5g);
-				apNodeMetrics.setTxBytes5G(txBytes5g);
+				apNodeMetrics.setRxBytes(RadioType.is2dot4GHz, rxBytes2g);
+				apNodeMetrics.setTxBytes(RadioType.is2dot4GHz, txBytes2g);
+				apNodeMetrics.setRxBytes(RadioType.is5GHz, rxBytes5g);
+				apNodeMetrics.setTxBytes(RadioType.is5GHz, txBytes5g);
 				apNodeMetrics.setPeriodLengthSec(60);
 
 				// Now try to populate metrics for calculation of radio capacity
@@ -756,11 +755,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 				// TODO: temporary solution as this was causing Noise Floor to
 				// disappear from Dashboard and Access Point rows
-				apNodeMetrics.setNoiseFloor2G(Integer.valueOf(-98));
-				apNodeMetrics.setNoiseFloor5G(Integer.valueOf(-98));
+				apNodeMetrics.setNoiseFloor(RadioType.is2dot4GHz, Integer.valueOf(-98));
+				apNodeMetrics.setNoiseFloor(RadioType.is5GHz, Integer.valueOf(-98));
 
-				apNodeMetrics.setRadioUtilization2G(new ArrayList<>());
-				apNodeMetrics.setRadioUtilization5G(new ArrayList<>());
+				apNodeMetrics.setRadioUtilization(RadioType.is2dot4GHz, new ArrayList<>());
+				apNodeMetrics.setRadioUtilization(RadioType.is5GHz, new ArrayList<>());
 
 				// populate it from report.survey
 				for (Survey survey : report.getSurveyList()) {
@@ -788,9 +787,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 								100 * (surveySample.getBusy() - surveySample.getBusyTx() - surveySample.getBusyRx())
 										/ surveySample.getDurationMs());
 						if (survey.getBand() == RadioBandType.BAND2G) {
-							apNodeMetrics.getRadioUtilization2G().add(radioUtil);
+							apNodeMetrics.getRadioUtilization(RadioType.is2dot4GHz).add(radioUtil);
 						} else {
-							apNodeMetrics.getRadioUtilization5G().add(radioUtil);
+							apNodeMetrics.getRadioUtilization(RadioType.is5GHz).add(radioUtil);
 						}
 
 					}
@@ -816,32 +815,33 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 	}
 
-	private void populateApClientMetrics(List<SingleMetricRecord> metricRecordList, Report report, int customerId,
+	private void populateApClientMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId,
 			long equipmentId) {
 		LOG.debug("populateApClientMetrics for Customer {} Equipment {}", customerId, equipmentId);
 
 		for (ClientReport clReport : report.getClientsList()) {
-			SingleMetricRecord smr = new SingleMetricRecord(customerId, equipmentId);
-			metricRecordList.add(smr);
-
-			ApClientMetrics apClientMetrics = new ApClientMetrics();
-			smr.setData(apClientMetrics);
-			smr.setCreatedTimestamp(clReport.getTimestampMs());
-
-			smr.setCustomerId(customerId);
-			smr.setEquipmentId(equipmentId);
-
-			Integer periodLengthSec = 60; // matches what's configured by
-											// OvsdbDao.configureStats(OvsdbClient)
-			apClientMetrics.setPeriodLengthSec(periodLengthSec);
-
-			List<ClientMetrics> clientMetrics = new ArrayList<>();
 
 			for (Client cl : clReport.getClientListList()) {
 
+				if (cl.getMacAddress() == null) {
+					LOG.debug(
+							"No mac address for Client {}, cannot set device mac address for client in ClientMetrics.",
+							cl);
+					continue;
+				}
+
+				ServiceMetric smr = new ServiceMetric(customerId, equipmentId, new MacAddress(cl.getMacAddress()));
+				metricRecordList.add(smr);
+
+				smr.setCreatedTimestamp(clReport.getTimestampMs());
+
 				// clReport.getChannel();
 				ClientMetrics cMetrics = new ClientMetrics();
-				clientMetrics.add(cMetrics);
+				smr.setDetails(cMetrics);
+
+				Integer periodLengthSec = 60; // matches what's configured by
+				// OvsdbDao.configureStats(OvsdbClient)
+				cMetrics.setPeriodLengthSec(periodLengthSec);
 
 				RadioType radioType = RadioType.UNSUPPORTED;
 				switch (clReport.getBand()) {
@@ -859,13 +859,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 					break;
 				}
 				cMetrics.setRadioType(radioType);
-				if (cl.getMacAddress() != null)
-					cMetrics.setDeviceMacAddress(new MacAddress(cl.getMacAddress()));
-				else {
-					LOG.debug(
-							"No mac address for Client {}, cannot set device mac address for client in ApClientMetrics report.",
-							cl);
-				}
 
 				if (cl.hasStats()) {
 					if (cl.getStats().hasRssi()) {
@@ -874,13 +867,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 					// we'll report each device as having a single (very long)
 					// session
-					if (cl.getMacAddress() != null)
-						cMetrics.setSessionId(cMetrics.getDeviceMacAddress().getAddressAsLong());
-					else {
-						LOG.debug(
-								"No mac address for Client {}, cannot set session id based on mac address for client in ApClientMetrics report.",
-								cl);
-					}
+					cMetrics.setSessionId(smr.getClientMac());
+					
 					// populate Rx stats
 					if (cl.getStats().hasRxBytes()) {
 						cMetrics.setRxBytes(cl.getStats().getRxBytes());
@@ -931,30 +919,16 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 					}
 
 				}
-			}
 
-			switch (clReport.getBand()) {
-			case BAND2G:
-				apClientMetrics.setClientMetrics2g(clientMetrics.toArray(new ClientMetrics[0]));
-				break;
-			case BAND5G:
-				apClientMetrics.setClientMetrics5g(clientMetrics.toArray(new ClientMetrics[0]));
-				break;
-			case BAND5GL:
-				apClientMetrics.setClientMetrics5g(clientMetrics.toArray(new ClientMetrics[0]));
-				break;
-			case BAND5GU:
-				apClientMetrics.setClientMetrics5g(clientMetrics.toArray(new ClientMetrics[0]));
-				break;
-			}
+				LOG.debug("APClientMetrics Report {}", cMetrics.toPrettyString());
 
-			LOG.debug("APClientMetrics Report {}", apClientMetrics.toPrettyString());
+			}
 
 		}
 
 	}
 
-	private void populateApSsidMetrics(List<SingleMetricRecord> metricRecordList, Report report, int customerId,
+	private void populateApSsidMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId,
 			long equipmentId, String apId) {
 
 		if (report.getClientsCount() == 0) {
@@ -1006,7 +980,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			}
 		}
 
-		SingleMetricRecord smr = new SingleMetricRecord(customerId, equipmentId);
+		ServiceMetric smr = new ServiceMetric(customerId, equipmentId);
 		ApSsidMetrics apSsidMetrics = new ApSsidMetrics();
 		List<SsidStatistics> ssidStatsList2pt4GHz = new ArrayList<>();
 		List<SsidStatistics> ssidStatsList5GHzL = new ArrayList<>();
@@ -1022,7 +996,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 		if (vif5GHzU != null)
 			apSsidMetrics.getSsidStats().put(RadioType.is5GHzU, ssidStatsList5GHzU);
 
-		smr.setData(apSsidMetrics);
+		smr.setDetails(apSsidMetrics);
 		metricRecordList.add(smr);
 
 		for (ClientReport clientReport : report.getClientsList()) {
