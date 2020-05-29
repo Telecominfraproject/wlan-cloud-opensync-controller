@@ -44,12 +44,15 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 	@Value("${connectus.ovsdb.locationFileName:/Users/mikehansen/git/wlan-cloud-workspace/wlan-cloud-opensync-controller/opensync-ext-static/src/main/resources/LocationBuildingExample.json}")
 	private String locationFileName;
 
+	private String serialNumber = "";
+
 	@PostConstruct
 	private void postCreate() {
 		LOG.info("Using Static integration");
 	}
 
 	public void apConnected(String apId, ConnectNodeInfo connectNodeInfo) {
+		serialNumber = connectNodeInfo.serialNumber;
 		LOG.info("AP {} got connected to the gateway", apId);
 		LOG.info("ConnectNodeInfo {}", connectNodeInfo);
 
@@ -68,7 +71,9 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 			Equipment equipment = Equipment.fromFile(customerEquipmentFileName, Equipment.class);
 			equipment.setInventoryId(apId);
 			equipment.setName(apId);
-
+			
+			equipment.setSerial(serialNumber);
+			
 			com.telecominfraproject.wlan.profile.models.Profile apProfile = com.telecominfraproject.wlan.profile.models.Profile
 					.fromFile(apProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
 			List<com.telecominfraproject.wlan.profile.models.Profile> ssidProfiles = com.telecominfraproject.wlan.profile.models.Profile
