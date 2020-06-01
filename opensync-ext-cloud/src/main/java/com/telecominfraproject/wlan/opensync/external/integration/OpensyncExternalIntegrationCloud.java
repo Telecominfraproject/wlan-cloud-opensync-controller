@@ -33,6 +33,7 @@ import com.telecominfraproject.wlan.core.model.equipment.EquipmentType;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.core.model.equipment.SecurityType;
+import com.telecominfraproject.wlan.customer.models.Customer;
 import com.telecominfraproject.wlan.customer.service.CustomerServiceInterface;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
@@ -243,6 +244,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				// update AP only if the apProfile was missing
 				ce.setProfileId(apProfile.getId());
 				ce = equipmentServiceInterface.update(ce);
+			}
+
+			Customer customer = customerServiceInterface.getOrNull(ce.getCustomerId());
+			if (customer == null) {
+				customer = new Customer();
+				customer.setId(autoProvisionedCustomerId);
+				customerServiceInterface.create(customer);
+				ce.setCustomerId(customer.getId());
+				equipmentServiceInterface.update(ce);
 			}
 
 			updateApStatus(ce, connectNodeInfo);
@@ -541,10 +551,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 		LOG.debug("Config content : Equipment {}", ret.getCustomerEquipment().toPrettyString());
 		LOG.debug("Config content : APProfile {}", ret.getApProfile().toPrettyString());
-		
-		ret.getSsidProfile().stream().forEach(ssid -> LOG.debug("Config content : SSIDProfile {}", ssid.toPrettyString()));
-		LOG.debug("Config content : Location {}", ret.getEquipmentLocation().toPrettyString());
 
+		ret.getSsidProfile().stream()
+				.forEach(ssid -> LOG.debug("Config content : SSIDProfile {}", ssid.toPrettyString()));
+		LOG.debug("Config content : Location {}", ret.getEquipmentLocation().toPrettyString());
 
 		return ret;
 	}
@@ -868,7 +878,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 					// we'll report each device as having a single (very long)
 					// session
 					cMetrics.setSessionId(smr.getClientMac());
-					
+
 					// populate Rx stats
 					if (cl.getStats().hasRxBytes()) {
 						cMetrics.setRxBytes(cl.getStats().getRxBytes());
@@ -1437,7 +1447,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 		if (radioStateTables == null || radioStateTables.isEmpty() || apId == null)
 			return;
-
+		
 		// add to RadioStates States Map
 		OpensyncNode osNode = null;
 		synchronized (opensyncNodeMap) {
@@ -1447,6 +1457,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				for (OpensyncAPRadioState radioState : radioStateTables) {
 					if (radioState.isEnabled())
 						osNode.updateRadioState(radioState);
+					LOG.debug("RadioState {}", radioState.toPrettyString());
 				}
 				opensyncNodeMap.put(apId, osNode);
 			} else {
@@ -1454,6 +1465,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				for (OpensyncAPRadioState radioState : radioStateTables) {
 					if (radioState.isEnabled())
 						osNode.updateRadioState(radioState);
+					LOG.debug("RadioState {}", radioState.toPrettyString());
+
 				}
 				opensyncNodeMap.put(apId, osNode);
 

@@ -23,6 +23,8 @@ public class WifiVifConfigInfo implements Cloneable{
             
     public Uuid uuid;
     public int vlanId;
+	public Boolean apBridge;
+	public String minHwMode;
     
     @Override
     public WifiVifConfigInfo clone() {
@@ -41,8 +43,8 @@ public class WifiVifConfigInfo implements Cloneable{
     @Override
     public String toString() {
         return String.format(
-                "WifiVifConfigInfo [bridge=%s, btm=%s, enabled=%s, ftPsk=%s, groupRekey=%s, ifName=%s, mode=%s, rrm=%s, ssid=%s, ssidBroadcast=%s, uapsdEnable=%s, vifRadioIdx=%s, security=%s, uuid=%s, vlanId=%s]",
-                bridge, btm, enabled, ftPsk, groupRekey, ifName, mode, rrm, ssid, ssidBroadcast, uapsdEnable,
+                "WifiVifConfigInfo [bridge=%s, ap_bridge=%s, btm=%s, enabled=%s, ftPsk=%s, groupRekey=%s, ifName=%s, minHwMode=%s, mode=%s, rrm=%s, ssid=%s, ssidBroadcast=%s, uapsdEnable=%s, vifRadioIdx=%s, security=%s, uuid=%s, vlanId=%s]",
+                bridge, apBridge, btm, enabled, ftPsk, groupRekey, ifName, minHwMode, mode, rrm, ssid, ssidBroadcast, uapsdEnable,
                 vifRadioIdx, security, uuid,vlanId);
     }
     

@@ -3,9 +3,8 @@
  */
 package com.telecominfraproject.wlan.opensync.external.integration.models;
 
-import java.util.List;
 import java.util.Map;
-import java.util.UUID;
+import java.util.Set;
 
 import com.telecominfraproject.wlan.core.model.json.BaseJsonModel;
 import com.vmware.ovsdb.protocol.operation.notation.Uuid;
@@ -25,7 +24,7 @@ public class OpensyncAPRadioState extends BaseJsonModel {
     public String mac;
     public int bcnInt;
     public int thermalTxChainmask;
-    public int[] allowedChannels;
+    public Set<Integer> allowedChannels;
     public int thermalShutdown;
     public int channelSync;
     public int hwType;
@@ -104,11 +103,11 @@ public class OpensyncAPRadioState extends BaseJsonModel {
         this.thermalTxChainmask = thermalTxChainmask;
     }
 
-    public int[] getAllowedChannels() {
+    public Set<Integer> getAllowedChannels() {
         return allowedChannels;
     }
 
-    public void setAllowedChannels(int[] allowedChannels) {
+    public void setAllowedChannels(Set<Integer> allowedChannels) {
         this.allowedChannels = allowedChannels;
     }
 

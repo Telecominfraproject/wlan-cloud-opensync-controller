@@ -23,6 +23,11 @@
 			<version>${tip-wlan-cloud.release.version}</version>
 		</dependency>
 		<dependency>
+			<artifactId>customer-models</artifactId>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<version>${tip-wlan-cloud.release.version}</version>
+		</dependency>
+		<dependency>
 			<artifactId>equipment-models</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
 			<version>${tip-wlan-cloud.release.version}</version>

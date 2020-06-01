@@ -24,6 +24,8 @@ public class WifiRadioConfigInfo implements Cloneable {
 	public String ifName;
 	public Uuid uuid;
 
+	public String hwType;
+
 	@Override
 	public WifiRadioConfigInfo clone() {
 		try {
@@ -44,8 +46,8 @@ public class WifiRadioConfigInfo implements Cloneable {
 	@Override
 	public String toString() {
 		return String.format(
-				"WifiRadioConfigInfo [vifConfigUuids=%s, freqBand=%s, channel=%s, txPower=%s, channelMode=%s, enabled=%s, htMode=%s, hwConfig=%s, country=%s, bcn_int=%s, ifName=%s, uuid=%s]",
-				vifConfigUuids, freqBand, channel, txPower, channelMode, enabled, htMode, hwConfig, country,
+				"WifiRadioConfigInfo [vifConfigUuids=%s, freqBand=%s, channel=%s, txPower=%s, channelMode=%s, enabled=%s, htMode=%s, hwConfig=%s, hwType=%s, country=%s, bcn_int=%s, ifName=%s, uuid=%s]",
+				vifConfigUuids, freqBand, channel, txPower, channelMode, enabled, htMode, hwConfig, hwType,country,
 				beaconInterval, ifName, uuid);
 	}
 

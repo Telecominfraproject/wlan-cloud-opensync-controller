@@ -13,6 +13,10 @@ public class WifiInetConfigInfo implements Cloneable{
                     
     public Uuid uuid;
 	public int vlanId;
+	public String broadcast;
+	public String inetAddr;
+	public int mtu;
+	public String netmask;
     
     @Override
     public WifiInetConfigInfo clone() {
@@ -27,8 +31,8 @@ public class WifiInetConfigInfo implements Cloneable{
     @Override
     public String toString() {
         return String.format(
-                "WifiInetConfigInfo [nat=%s, enabled=%s, ifName=%s, ifType=%s, ipAssignScheme=%s, network=%s, uuid=%s, vlanId=%s]",
-                nat, enabled, ifName, ifType, ipAssignScheme, network, uuid, vlanId);
+                "WifiInetConfigInfo [nat=%s, broadcast=%s, enabled=%s, ifName=%s, ifType=%s, ipAssignScheme=%s, network=%s, uuid=%s, inetAddr=%s, mtu=%s, netmask=%s, vlanId=%s]",
+                nat, broadcast, enabled, ifName, ifType, ipAssignScheme, network, uuid,inetAddr, mtu, netmask, vlanId);
     }
     
 }
