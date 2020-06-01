@@ -23,6 +23,14 @@ OVSDB_PROPS+=" -Dconnectus.ovsdb.customerEquipmentFileName=$OVSDB_EQUIPMENT_CONF
 OVSDB_PROPS+=" -Dconnectus.ovsdb.apProfileFileName=$OVSDB_APPROFILE_CONFIG_FILE"
 OVSDB_PROPS+=" -Dconnectus.ovsdb.ssidProfileFileName=$OVSDB_SSIDPROFILE_CONFIG_FILE"
 OVSDB_PROPS+=" -Dconnectus.ovsdb.locationFileName=$OVSDB_LOCATION_CONFIG_FILE"
+OVSDB_PROPS+="-Dconnectus.ovsdb.wifi-iface.default_radio0=$OVSDB_IF_DEFAULT_RADIO_0"
+OVSDB_PROPS+="-Dconnectus.ovsdb.wifi-iface.default_radio1=$OVSDB_IF_DEFAULT_RADIO_1"
+OVSDB_PROPS+="-Dconnectus.ovsdb.wifi-iface.default_radio2=$OVSDB_IF_DEFAULT_RADIO_2"
+OVSDB_PROPS+="-Dconnectus.ovsdb.wifi-device.radio0=$OVSDB_DEVICE_RADIO_0"
+OVSDB_PROPS+="-Dconnectus.ovsdb.wifi-device.radio1=$OVSDB_DEVICE_RADIO_1"
+OVSDB_PROPS+="-Dconnectus.ovsdb.wifi-device.radio2=$OVSDB_DEVICE_RADIO_2"
+
+echo OVSDB_PROPS $OVSDB_PROPS
 
 MQTT_PROPS=" "
 MQTT_PROPS+=" -Dconnectus.mqttBroker.address=tip-wlan-opensync-mqtt-broker"

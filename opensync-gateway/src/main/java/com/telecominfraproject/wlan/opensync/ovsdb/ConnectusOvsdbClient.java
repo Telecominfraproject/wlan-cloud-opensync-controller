@@ -52,7 +52,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
 	@org.springframework.beans.factory.annotation.Value("${connectus.manager.collectionIntervalSec.deviceStats:10}")
 	private long collectionIntervalSecDeviceStats;
-
+	
 	@Autowired
 	private SslContext sslContext;
 
@@ -98,6 +98,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 					String key = clientCn + "_" + connectNodeInfo.serialNumber;
 					ConnectusOvsdbClient.this.ovsdbSessionMapInterface.newSession(key, ovsdbClient);
 					extIntegrationInterface.apConnected(key, connectNodeInfo);
+					monitorOvsdbStateTables(ovsdbClient, key);
 
 					// push configuration to AP
 					connectNodeInfo = processConnectRequest(ovsdbClient, clientCn, connectNodeInfo);
@@ -106,7 +107,6 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 					LOG.info("ovsdbClient connectedClients = {}",
 							ConnectusOvsdbClient.this.ovsdbSessionMapInterface.getNumSessions());
 
-					monitorOvsdbStateTables(ovsdbClient, key);
 
 				} catch (Exception e) {
 					LOG.error("ovsdbClient error", e);
@@ -191,7 +191,12 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 			ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
 		}
 
-		ovsdbDao.provisionBridgePortInterface(ovsdbClient);
+		try {
+			ovsdbDao.provisionBridgePortInterface(ovsdbClient);
+		} catch (Exception e) {
+			// TODO: for some AP configurations this 'may' not be necessary.
+			LOG.warn("Could not provision Bridge->Port->Interface mapping.", e);
+		}
 
 		ovsdbDao.removeAllSsids(ovsdbClient);
 
@@ -200,7 +205,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 			ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
 		}
 
-		ovsdbDao.configureWifiInet(ovsdbClient);
+//		ovsdbDao.configureWifiInet(ovsdbClient);
 
 		LOG.debug("Client connect Done");
 		return connectNodeInfo;

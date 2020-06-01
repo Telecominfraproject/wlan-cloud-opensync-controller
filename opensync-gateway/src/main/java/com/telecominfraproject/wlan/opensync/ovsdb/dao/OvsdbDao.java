@@ -13,8 +13,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.checkerframework.checker.units.qual.K;
-import org.elasticsearch.common.recycler.Recycler.V;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -83,6 +81,20 @@ public class OvsdbDao {
 
 	@org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.timeoutSec:30}")
 	private int ovsdbTimeoutSec;
+
+	@org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_radio1:home-ap-24}")
+	public String ifName2pt4GHz;
+	@org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_radio2:home-ap-l50}")
+	public String ifName5GHzL;
+	@org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_radio0:home-ap-u50}")
+	public String ifName5GHzU;
+
+	@org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-device.radio0:wifi2}")
+	public String radioName5GHzU;
+	@org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-device.radio2:wifi1}")
+	public String radioName5GHzL;
+	@org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-device.radio1:wifi0}")
+	public String radioName2pt4GHz;
 
 	public static final String ovsdbName = "Open_vSwitch";
 	public static final String awlanNodeDbTable = "AWLAN_Node";
@@ -679,7 +691,7 @@ public class OvsdbDao {
 				wifiVifConfigInfo.ssid = row.getStringColumn("ssid");
 				wifiVifConfigInfo.ssidBroadcast = row.getStringColumn("ssid_broadcast");
 				wifiVifConfigInfo.uapsdEnable = row.getBooleanColumn("uapsd_enable");
-				wifiVifConfigInfo.vifRadioIdx = row.getIntegerColumn("vif_radio_idx").intValue();
+//				wifiVifConfigInfo.vifRadioIdx = row.getIntegerColumn("vif_radio_idx").intValue();
 				wifiVifConfigInfo.security = row.getMapColumn("security");
 
 				if (row.getColumns().get("vlan_id") != null && row.getColumns().get("vlan_id").getClass()
@@ -821,6 +833,8 @@ public class OvsdbDao {
 			Map<String, BridgeInfo> provisionedBridges)
 			throws OvsdbClientException, TimeoutException, ExecutionException, InterruptedException {
 
+		
+		LOG.debug("InterfaceName {} BridgeName {} InterfaceType {}", interfaceName, bridgeName, interfaceType);
 		if (!provisionedInterfaces.containsKey(interfaceName)) {
 			// Create this interface and link it to the port and the bridge
 			List<Operation> operations = new ArrayList<>();
@@ -984,9 +998,9 @@ public class OvsdbDao {
 		}
 	}
 
-	public static final String homeAp24 = "home-ap-24";
-	public static final String homeApL50 = "home-ap-l50";
-	public static final String homeApU50 = "home-ap-u50";
+//	public static final String homeAp24 = "home-ap-24";
+//	public static final String homeApL50 = "home-ap-l50";
+//	public static final String homeApU50 = "home-ap-u50";
 
 	public static final String brHome = "br-home";
 	public static final String brWan = "br-wan";
@@ -1017,13 +1031,11 @@ public class OvsdbDao {
 			provisionSingleBridgePortInterface(ovsdbClient, patchW2h, brWan, "patch", patchW2hOptions,
 					provisionedInterfaces, provisionedPorts, provisionedBridges);
 
-			provisionSingleBridgePortInterface(ovsdbClient, homeApU50, brHome, null, null, provisionedInterfaces,
+			provisionSingleBridgePortInterface(ovsdbClient, ifName5GHzU, brHome, "vif", null, provisionedInterfaces,
 					provisionedPorts, provisionedBridges);
-
-			provisionSingleBridgePortInterface(ovsdbClient, homeApL50, brHome, null, null, provisionedInterfaces,
+			provisionSingleBridgePortInterface(ovsdbClient, ifName5GHzL, brHome, "vif", null, provisionedInterfaces,
 					provisionedPorts, provisionedBridges);
-
-			provisionSingleBridgePortInterface(ovsdbClient, homeAp24, brHome, null, null, provisionedInterfaces,
+			provisionSingleBridgePortInterface(ovsdbClient, ifName2pt4GHz, brHome, "vif", null, provisionedInterfaces,
 					provisionedPorts, provisionedBridges);
 
 		} catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
@@ -1152,27 +1164,34 @@ public class OvsdbDao {
 			String configName = null;
 			switch (radioType) {
 			case is2dot4GHz:
-				configName = "wifi0";
+				configName = radioName2pt4GHz;
 				break;
 			case is5GHz:
+				// 802.11h dfs (Dynamic Frequency Selection) aka military and weather radar avoidance protocol 
+				// Must not be disabled (by law) 
+				// NA for 2.4GHz
 				hwConfig.put("dfs_enable", "1");
 				hwConfig.put("dfs_ignorecac", "0");
 				hwConfig.put("dfs_usenol", "1");
-				configName = "wifi1";
+				configName = radioName5GHzU;
 				break;
-
 			case is5GHzL:
+				// 802.11h dfs (Dynamic Frequency Selection) aka military and weather radar avoidance protocol 
+				// Must not be disabled (by law) 
+				// NA for 2.4GHz
 				hwConfig.put("dfs_enable", "1");
 				hwConfig.put("dfs_ignorecac", "0");
 				hwConfig.put("dfs_usenol", "1");
-				configName = "wifi1";
+				configName = radioName5GHzL;
 				break;
-
 			case is5GHzU:
+				// 802.11h dfs (Dynamic Frequency Selection) aka military and weather radar avoidance protocol 
+				// Must not be disabled (by law) 
+				// NA for 2.4GHz
 				hwConfig.put("dfs_enable", "1");
 				hwConfig.put("dfs_ignorecac", "0");
 				hwConfig.put("dfs_usenol", "1");
-				configName = "wifi2";
+				configName = radioName5GHzU;
 				break;
 			default: // don't know this interface
 				continue;
@@ -1691,8 +1710,9 @@ public class OvsdbDao {
 	public void configureSingleSsid(OvsdbClient ovsdbClient, String bridge, String ifName, String ssid,
 			boolean ssidBroadcast, Map<String, String> security,
 			Map<String, WifiRadioConfigInfo> provisionedWifiRadioConfigs, String radioIfName, int vlanId,
-			int vifRadioIdx, boolean rrmEnabled, String minHwMode, boolean enabled, int keyRefresh,
-			boolean uapsdEnabled, boolean apBridge, NetworkForwardMode networkForwardMode, String gateway, String inet, Map<String, String> dns, String ipAssignScheme) {
+			boolean rrmEnabled, String minHwMode, boolean enabled, int keyRefresh, boolean uapsdEnabled,
+			boolean apBridge, NetworkForwardMode networkForwardMode, String gateway, String inet,
+			Map<String, String> dns, String ipAssignScheme) {
 
 		List<Operation> operations = new ArrayList<>();
 		Map<String, Value> updateColumns = new HashMap<>();
@@ -1708,7 +1728,7 @@ public class OvsdbDao {
 			updateColumns.put("ssid", new Atom<>(ssid));
 			updateColumns.put("ssid_broadcast", new Atom<>(ssidBroadcast ? "enabled" : "disabled"));
 			updateColumns.put("uapsd_enable", new Atom<>(true));
-			updateColumns.put("vif_radio_idx", new Atom<Integer>(vifRadioIdx));
+//			updateColumns.put("vif_radio_idx", new Atom<Integer>(vifRadioIdx));
 			updateColumns.put("min_hw_mode", new Atom<>(minHwMode));
 			updateColumns.put("vlan_id", new Atom<Integer>(vlanId));
 			updateColumns.put("group_rekey", new Atom<Integer>(keyRefresh));
@@ -1729,6 +1749,7 @@ public class OvsdbDao {
 			LOG.debug("Provisioned SSID {} on {}", ssid, ifName);
 
 			Uuid vifConfigUuid = null;
+			String vifIfName = null;
 			for (OperationResult res : result) {
 				LOG.debug("Op Result {}", res);
 				if (res instanceof InsertResult) {
@@ -1777,12 +1798,15 @@ public class OvsdbDao {
 			Map<String, WifiInetConfigInfo> inetConfigs = getProvisionedWifiInetConfigs(ovsdbClient);
 			if (inetConfigs.containsKey(ifName))
 				updateWifiInetConfig(ovsdbClient, vlanId, ifName, enabled,
-						(networkForwardMode == NetworkForwardMode.NAT), "vif", gateway, inet, dns,ipAssignScheme);
+						(networkForwardMode == NetworkForwardMode.NAT), "vif", gateway, inet, dns, ipAssignScheme,
+						vifConfigUuid);
 			else
 				// do nothing for now
 				LOG.debug("No corresponding WifiInetConfig for this Interface");
 			// TODO: should wait for the default config to take place
-			// insertWifiInetConfigForVif(ovsdbClient, vlanId, ifName, enabled);
+			insertWifiInetConfigForVif(ovsdbClient, vlanId, ifName, enabled,
+					(networkForwardMode == NetworkForwardMode.NAT), "vif", gateway, inet, dns, ipAssignScheme,
+					vifConfigUuid);
 
 			LOG.info("Provisioned SSID {} on interface {} / {}", ssid, ifName, radioIfName);
 
@@ -1825,14 +1849,16 @@ public class OvsdbDao {
 				// ignored
 				String gateway = null;
 				String inet = null;
-				Map<String,String> dns = null;
+				Map<String, String> dns = null;
 				if (apElementConfig.getStaticIP() != null) {
 					ipAssignScheme = "static";
 					inet = apElementConfig.getStaticIP().getHostAddress();
 					gateway = apElementConfig.getStaticIpGw().getHostAddress();
-					dns = new HashMap<String,String>();
-					dns.put(apElementConfig.getStaticDnsIp1().getHostName(), apElementConfig.getStaticDnsIp1().getHostAddress());
-					dns.put(apElementConfig.getStaticDnsIp2().getHostName(), apElementConfig.getStaticDnsIp2().getHostAddress());			
+					dns = new HashMap<String, String>();
+					dns.put(apElementConfig.getStaticDnsIp1().getHostName(),
+							apElementConfig.getStaticDnsIp1().getHostAddress());
+					dns.put(apElementConfig.getStaticDnsIp2().getHostName(),
+							apElementConfig.getStaticDnsIp2().getHostAddress());
 				} else if (apElementConfig.getGettingIP().equals(GettingIP.dhcp)
 						|| apElementConfig.getGettingDNS().equals(GettingDNS.dhcp)) {
 					ipAssignScheme = "dhcp";
@@ -1867,33 +1893,33 @@ public class OvsdbDao {
 
 				String ifName = null;
 				String radioIfName = null;
-				int vifRadioIdx = -1;
+//				int vifRadioIdx = -1;
 
 				if (radioType == RadioType.is2dot4GHz) {
-					ifName = homeAp24;
-					radioIfName = "wifi0";
-					vifRadioIdx = 1;
+					ifName = ifName2pt4GHz;
+					radioIfName = radioName2pt4GHz;
+//					vifRadioIdx = 1;
 				} else if (radioType == RadioType.is5GHzL) {
-					ifName = homeApL50;
-					radioIfName = "wifi1";
-					vifRadioIdx = 2;
+					ifName = ifName5GHzL;
+					radioIfName = radioName5GHzL;
+//					vifRadioIdx = 2;
 				} else if (radioType == RadioType.is5GHzU) {
-					ifName = homeApU50;
-					radioIfName = "wifi2";
-					vifRadioIdx = 3;
+					ifName = ifName5GHzU;
+					radioIfName = radioName5GHzU;
+//					vifRadioIdx = 3;
 				}
 
-				if (vifRadioIdx == -1) {
-					LOG.debug("Cannot determine vif radio idx radioType {} skipping", radioType);
-					continue;
-				}
+//				if (vifRadioIdx == -1) {
+//					LOG.debug("Cannot determine vif radio idx radioType {} skipping", radioType);
+//					continue;
+//				}
 
 				if (!provisionedWifiVifConfigs.containsKey(ifName + "_" + ssidConfig.getSsid())) {
 					try {
 						configureSingleSsid(ovsdbClient, bridge, ifName, ssidConfig.getSsid(), ssidBroadcast, security,
-								provisionedWifiRadioConfigs, radioIfName, ssidConfig.getVlanId(), vifRadioIdx,
-								rrmEnabled, minHwMode, enabled, keyRefresh, uapsdEnabled, apBridge,
-								ssidConfig.getForwardMode(), gateway, inet, dns, ipAssignScheme);
+								provisionedWifiRadioConfigs, radioIfName, ssidConfig.getVlanId(), rrmEnabled, minHwMode,
+								enabled, keyRefresh, uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet,
+								dns, ipAssignScheme);
 
 					} catch (IllegalStateException e) {
 						// could not provision this SSID, but still can go on
@@ -1906,26 +1932,53 @@ public class OvsdbDao {
 
 	}
 
-	private void insertWifiInetConfigForVif(OvsdbClient ovsdbClient, int vlanId, String ifName, boolean enabled) {
+	private void updateWifiInetConfig(OvsdbClient ovsdbClient, int vlanId, String ifName, boolean enabled,
+			boolean isNAT, String ifType, String gateway, String inet, Map<String, String> dns, String ipAssignScheme,
+			Uuid vifConfigUuid) {
 
 		List<Operation> operations = new ArrayList<>();
 		Map<String, Value> updateColumns = new HashMap<>();
+		List<Condition> conditions = new ArrayList<>();
+		conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(ifName)));
 
 		try {
 			/// usr/plume/tools/ovsh i Wifi_Inet_Config NAT:=false enabled:=true
 			/// if_name:=home-ap-24 if_type:=vif ip_assign_scheme:=none
 			/// network:=true
-
-			updateColumns.put("NAT", new Atom<>(false));
-			updateColumns.put("enabled", new Atom<Boolean>(enabled));
+//			dhcpd
 			updateColumns.put("if_name", new Atom<String>(ifName));
-			updateColumns.put("if_type", new Atom<>("vif"));
-			updateColumns.put("ip_assign_scheme", new Atom<>("none"));
+			updateColumns.put("if_type", new Atom<String>(ifType));
+			updateColumns.put("if_uuid", new Atom<String>(vifConfigUuid.toString()));
+			updateColumns.put("enabled", new Atom<Boolean>(enabled));
+			updateColumns.put("NAT", new Atom<Boolean>(isNAT));
+
+//			mtu // specified in interface, should take that value when implemented
+			updateColumns.put("mtu", new Atom<>(1500));
 			updateColumns.put("network", new Atom<>(true));
-			updateColumns.put("vlan_id", new Atom<Integer>(vlanId));
+
+			updateColumns.put("ip_assign_scheme", new Atom<>(ipAssignScheme));
+
+			if (ipAssignScheme.equals("static")) {
+				updateColumns.put("dns", com.vmware.ovsdb.protocol.operation.notation.Map.of(dns));
+				updateColumns.put("inet_addr", new Atom<String>(inet));
+				updateColumns.put("gateway", new Atom<String>(gateway));
+//				netmask
+//				broadcast
+			}
+			if (ipAssignScheme.equals("dhcp")) {
+				updateColumns.put("dhcp_sniff", new Atom<Boolean>(true));
+			} else {
+				updateColumns.put("dhcp_sniff", new Atom<Boolean>(false));
+			}
+
+			if (ifType.equals("vlan")) {
+				updateColumns.put("vlan_id", new Atom<Integer>(vlanId));
+			} else {
+				updateColumns.put("vlan_id", new com.vmware.ovsdb.protocol.operation.notation.Set());
+			}
 
 			Row row = new Row(updateColumns);
-			operations.add(new Insert(wifiInetConfigDbTable, row));
+			operations.add(new Update(wifiInetConfigDbTable, conditions, row));
 
 			CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
 			OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
@@ -1943,27 +1996,28 @@ public class OvsdbDao {
 
 	}
 
-	private void updateWifiInetConfig(OvsdbClient ovsdbClient, int vlanId, String ifName, boolean enabled,
-			boolean isNAT, String ifType, String gateway, String inet, Map<String, String> dns, String ipAssignScheme) {
+	private void insertWifiInetConfigForVif(OvsdbClient ovsdbClient, int vlanId, String ifName, boolean enabled,
+			boolean isNAT, String ifType, String gateway, String inet, Map<String, String> dns, String ipAssignScheme,
+			Uuid vifConfigUuid) {
 
 		List<Operation> operations = new ArrayList<>();
 		Map<String, Value> updateColumns = new HashMap<>();
-		List<Condition> conditions = new ArrayList<>();
-		conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(ifName)));
 
 		try {
 			/// usr/plume/tools/ovsh i Wifi_Inet_Config NAT:=false enabled:=true
 			/// if_name:=home-ap-24 if_type:=vif ip_assign_scheme:=none
 			/// network:=true
 //			dhcpd
+			updateColumns.put("if_name", new Atom<String>(ifName));
 			updateColumns.put("if_type", new Atom<String>(ifType));
+			updateColumns.put("if_uuid", new Atom<String>(vifConfigUuid.toString()));
 			updateColumns.put("enabled", new Atom<Boolean>(enabled));
 			updateColumns.put("NAT", new Atom<Boolean>(isNAT));
 
 //			mtu // specified in interface, should take that value when implemented
 			updateColumns.put("mtu", new Atom<>(1500));
 			updateColumns.put("network", new Atom<>(true));
-			
+
 			updateColumns.put("ip_assign_scheme", new Atom<>(ipAssignScheme));
 
 			if (ipAssignScheme.equals("static")) {
@@ -1978,15 +2032,15 @@ public class OvsdbDao {
 			} else {
 				updateColumns.put("dhcp_sniff", new Atom<Boolean>(false));
 			}
-			
+
 			if (ifType.equals("vlan")) {
-				updateColumns.put("vlan_id",new Atom<Integer>(vlanId));
+				updateColumns.put("vlan_id", new Atom<Integer>(vlanId));
 			} else {
-				updateColumns.put("vlan_id",new com.vmware.ovsdb.protocol.operation.notation.Set());
+				updateColumns.put("vlan_id", new com.vmware.ovsdb.protocol.operation.notation.Set());
 			}
 
 			Row row = new Row(updateColumns);
-			operations.add(new Update(wifiInetConfigDbTable, conditions, row));
+			operations.add(new Insert(wifiInetConfigDbTable, row));
 
 			CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
 			OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
@@ -2075,17 +2129,17 @@ public class OvsdbDao {
 		Map<String, WifiInetConfigInfo> provisionedWifiInetConfigs = getProvisionedWifiInetConfigs(ovsdbClient);
 		LOG.debug("Existing WifiInetConfigs: {}", provisionedWifiInetConfigs.keySet());
 
-		String ifName = homeAp24;
+		String ifName = ifName2pt4GHz;
 		if (!provisionedWifiInetConfigs.containsKey(ifName)) {
 			configureWifiInet(ovsdbClient, provisionedWifiInetConfigs, ifName);
 		}
 
-		ifName = homeApL50;
+		ifName = ifName5GHzL;
 		if (!provisionedWifiInetConfigs.containsKey(ifName)) {
 			configureWifiInet(ovsdbClient, provisionedWifiInetConfigs, ifName);
 		}
 
-		ifName = homeApU50;
+		ifName = ifName5GHzU;
 		if (!provisionedWifiInetConfigs.containsKey(ifName)) {
 			configureWifiInet(ovsdbClient, provisionedWifiInetConfigs, ifName);
 		}
@@ -2098,8 +2152,6 @@ public class OvsdbDao {
 
 	public void configureStats(OvsdbClient ovsdbClient) {
 
-		Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs = getProvisionedWifiStatsConfigs(ovsdbClient);
-
 		try {
 			List<Operation> operations = new ArrayList<>();
 			Map<String, Value> updateColumns = new HashMap<>();
@@ -2111,15 +2163,15 @@ public class OvsdbDao {
 			com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer> thresholds = com.vmware.ovsdb.protocol.operation.notation.Map
 					.of(thresholdMap);
 
-			provisionWifiStatsConfigDevice(provisionedWifiStatsConfigs, operations, updateColumns);
+			provisionWifiStatsConfigDevice(getProvisionedWifiStatsConfigs(ovsdbClient), operations, updateColumns);
 
-			provisionWifiStatsConfigSurvey(provisionedWifiStatsConfigs, operations, thresholds);
+			provisionWifiStatsConfigSurvey(getProvisionedWifiStatsConfigs(ovsdbClient), operations, thresholds);
 
-			provisionWifiStatsConfigNeighbor(provisionedWifiStatsConfigs, operations);
+			provisionWifiStatsConfigNeighbor(getProvisionedWifiStatsConfigs(ovsdbClient), operations);
 
-			provisionWifiStatsConfigClient(provisionedWifiStatsConfigs, operations);
+			provisionWifiStatsConfigClient(getProvisionedWifiStatsConfigs(ovsdbClient), operations);
 
-			provisionWifiStatsRssi(provisionedWifiStatsConfigs, operations);
+			provisionWifiStatsRssi(getProvisionedWifiStatsConfigs(ovsdbClient), operations);
 
 			if (!operations.isEmpty()) {
 				CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
