@@ -157,7 +157,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				}
 			});
 		} catch (Exception e) {
-			// do nothing
+			LOG.error("Could not get customer equipment for {}", apId, e);
 		}
 
 		return ce;
@@ -1436,42 +1436,62 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 	@Override
 	public void wifiRadioStatusDbTableUpdate(List<OpensyncAPRadioState> radioStateTables, String apId) {
 
-		OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
-		int customerId = session.getCustomerId();
-		long equipmentId = session.getEquipmentId();
-
-		if (equipmentId < 0L) {
-			LOG.debug("Cannot get equipmentId {} for session {}", equipmentId);
-			return;
-		}
-
 		if (radioStateTables == null || radioStateTables.isEmpty() || apId == null)
 			return;
-		
-		// add to RadioStates States Map
-		OpensyncNode osNode = null;
-		synchronized (opensyncNodeMap) {
 
-			if (opensyncNodeMap.containsKey(apId)) {
-				osNode = opensyncNodeMap.get(apId);
-				for (OpensyncAPRadioState radioState : radioStateTables) {
-					if (radioState.isEnabled())
-						osNode.updateRadioState(radioState);
-					LOG.debug("RadioState {}", radioState.toPrettyString());
-				}
-				opensyncNodeMap.put(apId, osNode);
-			} else {
-				osNode = new OpensyncNode(apId, null, customerId, equipmentId);
-				for (OpensyncAPRadioState radioState : radioStateTables) {
-					if (radioState.isEnabled())
-						osNode.updateRadioState(radioState);
-					LOG.debug("RadioState {}", radioState.toPrettyString());
+		Equipment ce = getCustomerEquipment(apId);
 
-				}
-				opensyncNodeMap.put(apId, osNode);
-
-			}
+		if (ce == null) {
+			LOG.debug("No equipment present for {}", apId);
+			return;
 		}
+
+		for (OpensyncAPRadioState radioState : radioStateTables) {
+
+			ApElementConfiguration apElementConfig = ((ApElementConfiguration) ce.getDetails());
+
+			ElementRadioConfiguration elementRadioConfiguration = null;
+			RadioType radioType = RadioType.UNSUPPORTED;
+			switch (radioState.getFreqBand()) {
+			case "2.4G":
+				elementRadioConfiguration = apElementConfig.getRadioMap().get(RadioType.is2dot4GHz);
+				radioType = RadioType.is2dot4GHz;
+				break;
+			case "5G":
+				elementRadioConfiguration = apElementConfig.getRadioMap().get(RadioType.is5GHz);
+				radioType = RadioType.is5GHz;
+
+				break;
+			case "5GL":
+				elementRadioConfiguration = apElementConfig.getRadioMap().get(RadioType.is5GHzL);
+				radioType = RadioType.is5GHzL;
+
+				break;
+			case "5GU":
+				elementRadioConfiguration = apElementConfig.getRadioMap().get(RadioType.is5GHzU);
+				radioType = RadioType.is5GHzU;
+				break;
+			default:
+				break;
+			}
+
+			if (radioType.equals(RadioType.UNSUPPORTED)) {
+				LOG.debug("Could not get radio configuration for AP {}", apId);
+				return;
+			}
+//TODO: once the AP is sending us actual allowed channels, we can remove the empty check as it may be valid
+			if (radioState.getAllowedChannels() != null && !radioState.getAllowedChannels().isEmpty()) {
+				elementRadioConfiguration.setAllowedChannels(new ArrayList<Integer>(radioState.getAllowedChannels()));
+				apElementConfig.getRadioMap().put(radioType, elementRadioConfiguration);
+				ce.setDetails(apElementConfig);
+				ce = equipmentServiceInterface.update(ce);
+				apElementConfig = ((ApElementConfiguration) ce.getDetails());
+				LOG.debug("Updated Allowed Channels for Radio {} to {}", radioState.getFreqBand(),
+						apElementConfig.getRadioMap().get(radioType).getAllowedChannels());
+			}
+
+		}
+
 	}
 
 	@Override
