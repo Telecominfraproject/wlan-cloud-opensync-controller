@@ -82,6 +82,9 @@ public class OvsdbDao {
 	@org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.timeoutSec:30}")
 	private int ovsdbTimeoutSec;
 
+	@org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_bridge:br-home}")
+	public String bridgeNameVifInterfaces;
+	
 	@org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_radio1:home-ap-24}")
 	public String ifName2pt4GHz;
 	@org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_radio2:home-ap-l50}")
@@ -1040,7 +1043,6 @@ public class OvsdbDao {
 //	public static final String homeApL50 = "home-ap-l50";
 //	public static final String homeApU50 = "home-ap-u50";
 
-	public static final String brHome = "br-home";
 	public static final String brWan = "br-wan";
 	public static final String brLan = "br-lan";
 
@@ -1064,16 +1066,16 @@ public class OvsdbDao {
 			Map<String, String> patchW2hOptions = new HashMap<>();
 			patchH2wOptions.put("peer", "patch-h2w");
 
-			provisionSingleBridgePortInterface(ovsdbClient, patchH2w, brHome, "patch", patchH2wOptions,
+			provisionSingleBridgePortInterface(ovsdbClient, patchH2w, bridgeNameVifInterfaces, "patch", patchH2wOptions,
 					provisionedInterfaces, provisionedPorts, provisionedBridges);
 			provisionSingleBridgePortInterface(ovsdbClient, patchW2h, brWan, "patch", patchW2hOptions,
 					provisionedInterfaces, provisionedPorts, provisionedBridges);
 
-			provisionSingleBridgePortInterface(ovsdbClient, ifName5GHzU, brHome, "vif", null, provisionedInterfaces,
+			provisionSingleBridgePortInterface(ovsdbClient, ifName5GHzU, bridgeNameVifInterfaces, "vif", null, provisionedInterfaces,
 					provisionedPorts, provisionedBridges);
-			provisionSingleBridgePortInterface(ovsdbClient, ifName5GHzL, brHome, "vif", null, provisionedInterfaces,
+			provisionSingleBridgePortInterface(ovsdbClient, ifName5GHzL, bridgeNameVifInterfaces, "vif", null, provisionedInterfaces,
 					provisionedPorts, provisionedBridges);
-			provisionSingleBridgePortInterface(ovsdbClient, ifName2pt4GHz, brHome, "vif", null, provisionedInterfaces,
+			provisionSingleBridgePortInterface(ovsdbClient, ifName2pt4GHz, bridgeNameVifInterfaces, "vif", null, provisionedInterfaces,
 					provisionedPorts, provisionedBridges);
 
 		} catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
@@ -1933,39 +1935,33 @@ public class OvsdbDao {
 					opensyncSecurityMode = "WPA-PSK";
 				else if (ssidSecurityMode.equalsIgnoreCase("wep"))
 					opensyncSecurityMode = "WEP";
-
+				
 				security.put("encryption", opensyncSecurityMode);
-				security.put("key", ssidConfig.getKeyStr());
-				security.put("mode", Long.toString(ssidConfig.getSecureMode().getId()));
-				String bridge = brHome;
+				// key and mode is N/A for OPEN security
+				if (!opensyncSecurityMode.equals("OPEN")) {
+					security.put("key", ssidConfig.getKeyStr());
+					security.put("mode", Long.toString(ssidConfig.getSecureMode().getId()));
+				}
+				
 				boolean enabled = ssidConfig.getSsidAdminState().equals(StateSetting.enabled);
 
 				String ifName = null;
 				String radioIfName = null;
-//				int vifRadioIdx = -1;
 
 				if (radioType == RadioType.is2dot4GHz) {
 					ifName = ifName2pt4GHz;
 					radioIfName = radioName2pt4GHz;
-//					vifRadioIdx = 1;
 				} else if (radioType == RadioType.is5GHzL) {
 					ifName = ifName5GHzL;
 					radioIfName = radioName5GHzL;
-//					vifRadioIdx = 2;
 				} else if (radioType == RadioType.is5GHzU) {
 					ifName = ifName5GHzU;
 					radioIfName = radioName5GHzU;
-//					vifRadioIdx = 3;
 				}
-
-//				if (vifRadioIdx == -1) {
-//					LOG.debug("Cannot determine vif radio idx radioType {} skipping", radioType);
-//					continue;
-//				}
 
 				if (!provisionedWifiVifConfigs.containsKey(ifName + "_" + ssidConfig.getSsid())) {
 					try {
-						configureSingleSsid(ovsdbClient, bridge, ifName, ssidConfig.getSsid(), ssidBroadcast, security,
+						configureSingleSsid(ovsdbClient, bridgeNameVifInterfaces, ifName, ssidConfig.getSsid(), ssidBroadcast, security,
 								provisionedWifiRadioConfigs, radioIfName, ssidConfig.getVlanId(), rrmEnabled, minHwMode,
 								enabled, keyRefresh, uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet,
 								dns, ipAssignScheme);
