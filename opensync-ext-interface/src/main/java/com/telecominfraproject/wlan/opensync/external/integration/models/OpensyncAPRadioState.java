@@ -6,6 +6,7 @@ package com.telecominfraproject.wlan.opensync.external.integration.models;
 import java.util.Map;
 import java.util.Set;
 
+import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.core.model.json.BaseJsonModel;
 import com.vmware.ovsdb.protocol.operation.notation.Uuid;
 
@@ -41,7 +42,7 @@ public class OpensyncAPRadioState extends BaseJsonModel {
     public Map<String, String> channels;
     public int thermalUpgradeTemp;
     public Map<String, String> hwParams;
-    public String freqBand;
+    public RadioType freqBand;
     public int thermalIntegration;
     public String channelMode;
     public Uuid _uuid;
@@ -239,11 +240,11 @@ public class OpensyncAPRadioState extends BaseJsonModel {
         this.hwParams = hwParams;
     }
 
-    public String getFreqBand() {
+    public RadioType getFreqBand() {
         return freqBand;
     }
 
-    public void setFreqBand(String freqBand) {
+    public void setFreqBand(RadioType freqBand) {
         this.freqBand = freqBand;
     }
 
