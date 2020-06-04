@@ -133,6 +133,7 @@ public class OvsdbDao {
             columns.add("model");
             columns.add("firmware_version");
             columns.add("platform_version");
+            columns.add("revision");
 
             operations.add(new Select(awlanNodeDbTable, conditions, columns));
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
@@ -157,6 +158,8 @@ public class OvsdbDao {
 
             ret.platformVersion = row != null ? row.getStringColumn("platform_version") : null;
             ret.firmwareVersion = row != null ? row.getStringColumn("firmware_version") : null;
+
+            ret.revision = row != null ? row.getStringColumn("revision") : null;
 
             ret.skuNumber = getSingleValueFromSet(row, "sku_number");
             ret.serialNumber = getSingleValueFromSet(row, "serial_number");
@@ -872,6 +875,7 @@ public class OvsdbDao {
                 else {
                     ret.put(wifiStatsConfigInfo.radioType + "_" + wifiStatsConfigInfo.statsType + "_"
                             + wifiStatsConfigInfo.surveyType, wifiStatsConfigInfo);
+
                 }
             }
 
@@ -2291,7 +2295,7 @@ public class OvsdbDao {
             com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer> thresholds = com.vmware.ovsdb.protocol.operation.notation.Map
                     .of(thresholdMap);
 
-            provisionWifiStatsConfigDevice(getProvisionedWifiStatsConfigs(ovsdbClient), operations, updateColumns);
+//            provisionWifiStatsConfigDevice(getProvisionedWifiStatsConfigs(ovsdbClient), operations, updateColumns);
 
             provisionWifiStatsConfigSurvey(getProvisionedWifiStatsConfigs(ovsdbClient), operations, thresholds);
 
@@ -2591,38 +2595,19 @@ public class OvsdbDao {
 
     }
 
-    private void provisionWifiStatsConfigDevice(Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs,
-            List<Operation> operations, Map<String, Value> updateColumns) {
-        Row row;
-        if (!provisionedWifiStatsConfigs.containsKey("2.4G_device")) {
-            updateColumns.put("radio_type", new Atom<>("2.4G"));
-            updateColumns.put("reporting_interval", new Atom<>(900));
-            updateColumns.put("sampling_interval", new Atom<>(0));
-            updateColumns.put("stats_type", new Atom<>("device"));
-            row = new Row(updateColumns);
-            operations.add(new Insert(wifiStatsConfigDbTable, row));
-        }
-
-        if (!provisionedWifiStatsConfigs.containsKey("5GL_device")) {
-            // updateColumns.put("channel_list", channels );
-            updateColumns.put("radio_type", new Atom<>("5GL"));
-            updateColumns.put("reporting_interval", new Atom<>(900));
-            updateColumns.put("sampling_interval", new Atom<>(0));
-            updateColumns.put("stats_type", new Atom<>("device"));
-            row = new Row(updateColumns);
-            operations.add(new Insert(wifiStatsConfigDbTable, row));
-        }
-
-        if (!provisionedWifiStatsConfigs.containsKey("5GU_device")) {
-            // updateColumns.put("channel_list", channels );
-            updateColumns.put("radio_type", new Atom<>("5GU"));
-            updateColumns.put("reporting_interval", new Atom<>(900));
-            updateColumns.put("sampling_interval", new Atom<>(0));
-            updateColumns.put("stats_type", new Atom<>("device"));
-            row = new Row(updateColumns);
-            operations.add(new Insert(wifiStatsConfigDbTable, row));
-        }
-    }
+//    private void provisionWifiStatsConfigDevice(Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs,
+//            List<Operation> operations, Map<String, Value> updateColumns) {
+//        Row row;
+//        if (!provisionedWifiStatsConfigs.containsKey("2.4G_device")) {
+//            updateColumns.put("radio_type", new Atom<>("2.4G"));
+//            updateColumns.put("reporting_interval", new Atom<>(900));
+//            updateColumns.put("sampling_interval", new Atom<>(0));
+//            updateColumns.put("stats_type", new Atom<>("device"));
+//            row = new Row(updateColumns);
+//            operations.add(new Insert(wifiStatsConfigDbTable, row));
+//        }
+//
+//    }
 
     private void provisionWifiStatsConfigClient(Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs,
             List<Operation> operations) {

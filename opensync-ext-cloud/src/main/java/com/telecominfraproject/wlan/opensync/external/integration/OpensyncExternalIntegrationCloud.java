@@ -20,10 +20,10 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
 
+import com.telecominfraproject.wlan.alarm.AlarmServiceInterface;
 import com.telecominfraproject.wlan.client.ClientServiceInterface;
 import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherInterface;
 import com.telecominfraproject.wlan.core.model.entity.CountryCode;
-import com.telecominfraproject.wlan.core.model.equipment.AutoOrManualValue;
 import com.telecominfraproject.wlan.core.model.equipment.EquipmentType;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
@@ -45,6 +45,7 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
 import com.telecominfraproject.wlan.profile.models.Profile;
+import com.telecominfraproject.wlan.profile.models.ProfileContainer;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
@@ -70,7 +71,6 @@ import com.telecominfraproject.wlan.status.models.StatusCode;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
 import com.telecominfraproject.wlan.status.network.models.NetworkAdminStatusData;
 import com.telecominfraproject.wlan.status.network.models.NetworkAggregateStatusData;
-import com.telecominfraproject.wlan.status.network.models.UserDetails;
 
 import sts.PlumeStats.Client;
 import sts.PlumeStats.ClientReport;
@@ -90,6 +90,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     private static final Logger LOG = LoggerFactory.getLogger(OpensyncExternalIntegrationCloud.class);
 
     @Autowired
+    private AlarmServiceInterface alarmServiceInterface;
+    @Autowired
     private CustomerServiceInterface customerServiceInterface;
     @Autowired
     private LocationServiceInterface locationServiceInterface;
@@ -105,14 +107,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     private ProfileServiceInterface profileServiceInterface;
     @Autowired
     private StatusServiceInterface statusServiceInterface;
-
     @Autowired
     private ClientServiceInterface clientServiceInterface;
 
     @Autowired
     private OpensyncCloudGatewayController gatewayController;
 
-    @Value("${connectus.ovsdb.autoProvisionedCustomerId:2}")
+    @Value("${connectus.ovsdb.autoProvisionedCustomerId:1970}")
     private int autoProvisionedCustomerId;
     @Value("${connectus.ovsdb.autoProvisionedLocationId:8}")
     private int autoProvisionedLocationId;
@@ -163,81 +164,88 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         try {
 
             if (ce == null) {
-
                 ce = new Equipment();
-                ce.setCustomerId(autoProvisionedCustomerId);
                 ce.setEquipmentType(EquipmentType.AP);
                 ce.setInventoryId(apId);
-                ce.setLocationId(autoProvisionedLocationId);
-
-                ce.setProfileId(autoProvisionedProfileId);
-                ce.setName(apId);
                 ce.setSerial(connectNodeInfo.serialNumber);
                 ce.setDetails(ApElementConfiguration.createWithDefaults());
-
                 ce = equipmentServiceInterface.create(ce);
-                //
-                // ce = new Equipment();
-                // ce.setCustomerId(autoProvisionedCustomerId);
-                // ce.setInventoryId(apId);
-                // ce.setEquipmentType(EquipmentType.AP);
-                // ce.setName(apId);
-                //
-                // ce.setSerial(connectNodeInfo.serialNumber);
-                // ApElementConfiguration apElementConfig =
-                // ApElementConfiguration.createWithDefaults();
-                // apElementConfig.setDeviceName(apId);
-                // ce.setDetails(apElementConfig);
-                // ce.setLocationId(autoProvisionedLocationId);
-                // ce.setProfileId(autoProvisionedProfileId);
 
-                // ce = equipmentServiceInterface.create(ce);
-            }
+                ce.setCustomerId(autoProvisionedCustomerId);
+                ce.setName(apId);
+                ce.setLocationId(autoProvisionedLocationId);
+                ApElementConfiguration apElementConfig = (ApElementConfiguration) ce.getDetails();
+                apElementConfig.setEquipmentModel(connectNodeInfo.model);
+                apElementConfig.getAdvancedRadioMap().get(RadioType.is2dot4GHz)
+                        .setAutoChannelSelection(StateSetting.disabled);
+                apElementConfig.getAdvancedRadioMap().get(RadioType.is5GHzL)
+                        .setAutoChannelSelection(StateSetting.disabled);
+                apElementConfig.getAdvancedRadioMap().get(RadioType.is5GHzU)
+                        .setAutoChannelSelection(StateSetting.disabled);
 
-            Profile apProfile = profileServiceInterface.getOrNull(ce.getProfileId());
+                apElementConfig.getRadioMap().get(RadioType.is2dot4GHz).setAutoChannelSelection(false);
+                apElementConfig.getRadioMap().get(RadioType.is5GHzL).setAutoChannelSelection(false);
+                apElementConfig.getRadioMap().get(RadioType.is5GHzU).setAutoChannelSelection(false);
 
-            if (apProfile == null || !apProfile.getProfileType().equals(ProfileType.equipment_ap)) {
-                apProfile = new Profile();
+                ce.setDetails(apElementConfig);
+                ce = equipmentServiceInterface.update(ce);
+
+                Profile apProfile = new Profile();
                 apProfile.setCustomerId(ce.getCustomerId());
-                apProfile.setName("autoprovisionedApProfile");
+                apProfile.setName("DefaultApProfile");
                 apProfile.setDetails(ApNetworkConfiguration.createWithDefaults());
                 apProfile = profileServiceInterface.create(apProfile);
 
                 Profile ssidProfile = new Profile();
                 ssidProfile.setCustomerId(ce.getCustomerId());
-                ssidProfile.setName(autoProvisionedSsid);
+                ssidProfile.setName("DefaultSsid");
                 SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
+                ssidConfig.setSecureMode(SecureMode.wpa2PSK);
+                ssidConfig.setKeyStr("12345678");
                 Set<RadioType> appliedRadios = new HashSet<>();
-                appliedRadios.addAll(((ApElementConfiguration) ce.getDetails()).getRadioMap().keySet());
+                appliedRadios.add(RadioType.is2dot4GHz);
                 ssidConfig.setAppliedRadios(appliedRadios);
                 ssidProfile.setDetails(ssidConfig);
                 ssidProfile = profileServiceInterface.create(ssidProfile);
 
+                Profile ssidProfile5g = new Profile();
+                ssidProfile5g.setCustomerId(ce.getCustomerId());
+                ssidProfile5g.setName("DefaultSsid-5");
+                SsidConfiguration ssidConfig5g = SsidConfiguration.createWithDefaults();
+                ssidConfig5g.setSecureMode(SecureMode.wpa2PSK);
+                ssidConfig5g.setKeyStr("12345678");
+                Set<RadioType> appliedRadios5g = new HashSet<>();
+                appliedRadios5g.add(RadioType.is5GHzL);
+                appliedRadios5g.add(RadioType.is5GHzU);
+                ssidConfig5g.setAppliedRadios(appliedRadios5g);
+                ssidProfile5g.setDetails(ssidConfig5g);
+                ssidProfile5g = profileServiceInterface.create(ssidProfile5g);
+
                 Set<Long> childProfileIds = new HashSet<>();
                 childProfileIds.add(ssidProfile.getId());
+                childProfileIds.add(ssidProfile5g.getId());
 
                 apProfile.setChildProfileIds(childProfileIds);
 
                 apProfile = profileServiceInterface.update(apProfile);
-
-                // update AP only if the apProfile was missing
                 ce.setProfileId(apProfile.getId());
+
                 ce = equipmentServiceInterface.update(ce);
-            }
 
-            Customer customer = customerServiceInterface.getOrNull(ce.getCustomerId());
-            if (customer == null) {
-                customer = new Customer();
-                customer.setId(autoProvisionedCustomerId);
-                customerServiceInterface.create(customer);
-                ce.setCustomerId(customer.getId());
-                equipmentServiceInterface.update(ce);
+                Customer customer = customerServiceInterface.getOrNull(ce.getCustomerId());
+                if (customer == null) {
+                    customer = new Customer();
+                    customer.setId(autoProvisionedCustomerId);
+                    customerServiceInterface.create(customer);
+                    ce.setCustomerId(customer.getId());
+                    equipmentServiceInterface.update(ce);
+                }
             }
-
-            updateApStatus(ce, connectNodeInfo);
 
             EquipmentRoutingRecord equipmentRoutingRecord = gatewayController.registerCustomerEquipment(ce.getName(),
                     ce.getCustomerId(), ce.getId());
+
+            updateApStatus(ce, connectNodeInfo);
 
             OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
             ovsdbSession.setRoutingId(equipmentRoutingRecord.getId());
@@ -266,7 +274,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 statusRecord = new Status();
                 statusRecord.setCustomerId(ce.getCustomerId());
                 statusRecord.setEquipmentId(ce.getId());
-
                 EquipmentAdminStatusData statusData = new EquipmentAdminStatusData();
                 statusRecord.setDetails(statusData);
             }
@@ -353,7 +360,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             // main dashboard
             // from APDemoMetric properties getPeriodLengthSec, getRxBytes2G,
             // getTxBytes2G, getRxBytes5G, getTxBytes5G
-            Status networkAdminStatusRec = statusServiceInterface.getOrNull(ce.getCustomerId(), 0,
+            Status networkAdminStatusRec = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(),
                     StatusDataType.NETWORK_ADMIN);
             if (networkAdminStatusRec == null) {
                 networkAdminStatusRec = new Status();
@@ -372,22 +379,20 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             statusServiceInterface.update(networkAdminStatusRec);
 
-            Status networkAggStatusRec = statusServiceInterface.getOrNull(ce.getCustomerId(), 0,
+            Status networkAggStatusRec = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(),
                     StatusDataType.NETWORK_AGGREGATE);
             if (networkAggStatusRec == null) {
                 networkAggStatusRec = new Status();
                 networkAggStatusRec.setCustomerId(ce.getCustomerId());
+                networkAggStatusRec.setEquipmentId(ce.getId());
                 NetworkAggregateStatusData naStatusData = new NetworkAggregateStatusData();
                 networkAggStatusRec.setDetails(naStatusData);
             }
-
-            networkAggStatusRec.setEquipmentId(ce.getId());
 
             statusServiceInterface.update(networkAggStatusRec);
 
         }
         catch (Exception e) {
-            // do nothing
             LOG.debug("Exception in updateApStatus", e);
         }
 
@@ -397,14 +402,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     public void apDisconnected(String apId) {
         LOG.info("AP {} got disconnected from the gateway", apId);
         try {
-            // removed the 'in-memory' cached node
-            // synchronized (opensyncNodeMap) {
-            // if (opensyncNodeMap.containsKey(apId)) {
-            // opensyncNodeMap.remove(apId);
-            // LOG.info("AP {} and table state data removed from memory cache",
-            // apId);
-            // }
-            // }
 
             OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
 
@@ -455,71 +452,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             ret.setEquipmentLocation(eqLocation);
 
-            // CountryCode countryCode = Location.getCountryCode(eqLocation);
-            // if (countryCode != null && countryCode !=
-            // CountryCode.UNSUPPORTED) {
-            // countryCode.toString().toUpperCase();
-            // }
-            //
-            // ApElementConfiguration apElementConfiguration =
-            // (ApElementConfiguration) equipmentConfig.getDetails();
+            ProfileContainer profileContainer = new ProfileContainer(
+                    profileServiceInterface.getProfileWithChildren(equipmentConfig.getProfileId()));
 
-            // Map<RadioType, ElementRadioConfiguration> erc =
-            // apElementConfiguration.getRadioMap();
-            // if (erc != null) {
-            //
-            // ElementRadioConfiguration erc24 = erc.get(RadioType.is2dot4GHz);
-            // ElementRadioConfiguration erc5gl = erc.get(RadioType.is5GHzL);
-            // ElementRadioConfiguration erc5gh = erc.get(RadioType.is5GHzU);
-            //
-            // if (erc24 != null) {
-            // erc24.getChannelNumber();
-            // }
-            //
-            // if (erc5gl != null) {
-            // erc5gl.getChannelNumber();
-            // }
-            //
-            // if (erc5gh != null) {
-            // erc5gh.getChannelNumber();
-            // }
-            //
-            // }
+            ret.setApProfile(profileContainer.getOrNull(equipmentConfig.getProfileId()));
 
-            com.telecominfraproject.wlan.profile.models.Profile apProfile = profileServiceInterface
-                    .getOrNull(equipmentConfig.getProfileId());
+            ret.setSsidProfile(profileContainer.getChildrenOfType(equipmentConfig.getProfileId(), ProfileType.ssid));
 
-            ret.setApProfile(apProfile);
-
-            if (apProfile != null) {
-                List<com.telecominfraproject.wlan.profile.models.Profile> ssidProfiles = new ArrayList<>();
-
-                Set<Long> childProfileIds = apProfile.getChildProfileIds();
-                for (Long id : childProfileIds) {
-                    com.telecominfraproject.wlan.profile.models.Profile profile = profileServiceInterface.get(id);
-                    if (profile.getProfileType().equals(ProfileType.ssid)) {
-
-                        SsidConfiguration ssidConfig = ((SsidConfiguration) profile.getDetails());
-                        ssidConfig.setSsid(autoProvisionedSsid);
-                        if (ssidConfig.getSecureMode().equals(SecureMode.open)) {
-                            ssidConfig.setSecureMode(SecureMode.wpa2PSK);
-                            ssidConfig.setKeyStr("12345678");
-                        }
-                        profile.setDetails(ssidConfig);
-                        profile = profileServiceInterface.update(profile);
-
-                        ssidProfiles.add(profile);
-
-                    }
-                }
-                ret.setSsidProfile(ssidProfiles);
-
-            }
-
-            LOG.debug("Config content : Equipment {}", ret.getCustomerEquipment());
-            LOG.debug("Config content : APProfile {}", ret.getApProfile());
-            ret.getSsidProfile().stream().forEach(ssid -> LOG.debug("Config content : SSIDProfile {}", ssid));
-            LOG.debug("Config content : Location {}", ret.getEquipmentLocation());
+            LOG.debug("ApConfig {}", ret.toString());
 
         }
         catch (Exception e) {
@@ -794,7 +734,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 }
 
             }
-            LOG.debug("ApNodeMetrics Report {}", apNodeMetrics);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("ApNodeMetrics Report {}", apNodeMetrics.toPrettyString());
+            }
 
         }
 
@@ -905,7 +847,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 }
 
-                LOG.debug("APClientMetrics Report {}", cMetrics);
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("ApClientMetrics Report {}", cMetrics.toPrettyString());
+                }
 
             }
 
@@ -996,7 +940,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
-        // TODO: update Equipment and Profiles related to VIF_State table update
+        for (OpensyncAPVIFState vifState : vifStateTables) {
+            // TODO: implement me
+        }
 
     }
 
@@ -1016,49 +962,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
+        statusServiceInterface.get(ce.getCustomerId(), ce.getId()).stream().forEach(s -> LOG.debug("Status {}", s));
+
         for (OpensyncAPRadioState radioState : radioStateTables) {
 
-            if (radioState.getFreqBand().equals(RadioType.UNSUPPORTED)) {
-                LOG.debug("Could not get radio configuration for AP {}", apId);
-                continue;
-            }
-
-            if (radioState.getAllowedChannels() != null && !radioState.getAllowedChannels().isEmpty()) {
-                ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
-                apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                        .setAllowedChannels(new ArrayList<>(radioState.getAllowedChannels()));
-                ce.setDetails(apElementConfiguration);
-                ce = equipmentServiceInterface.update(ce);
-                LOG.debug("Updated AllowedChannels from Wifi_Radio_State table change {}", ce);
-
-            }
-
-            if (radioState.getTxPower() > 0) {
-                ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
-                apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                        .setEirpTxPower(AutoOrManualValue.createManualInstance(radioState.getTxPower()));
-                ce.setDetails(apElementConfiguration);
-                ce = equipmentServiceInterface.update(ce);
-                LOG.debug("Updated TxPower from Wifi_Radio_State table change {}", ce);
-
-            }
-
-            StateSetting state = StateSetting.disabled;
-            if (radioState.isEnabled()) {
-                state = StateSetting.enabled;
-            }
-            ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
-            if (!apElementConfiguration.getAdvancedRadioMap().get(radioState.getFreqBand()).getRadioAdminState()
-                    .equals(state)) {
-                // only update if changed
-                apElementConfiguration.getAdvancedRadioMap().get(radioState.getFreqBand()).setRadioAdminState(state);
-                ce.setDetails(apElementConfiguration);
-                ce = equipmentServiceInterface.update(ce);
-
-                LOG.debug("Updated RadioAdminState from Wifi_Radio_State table change {}", ce);
-
-            }
-
+            // TODO: implement me
         }
 
     }
@@ -1082,8 +990,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
-        // TODO: update Config/Status for Network from Wifi_Inet_State where
-        // applicable
+        for (OpensyncAPInetState inetState : inetStateTables) {
+            // TODO: implement me
+        }
 
     }
 
