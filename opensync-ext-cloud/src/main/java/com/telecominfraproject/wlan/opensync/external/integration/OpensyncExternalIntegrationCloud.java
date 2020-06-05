@@ -24,6 +24,7 @@ import com.telecominfraproject.wlan.alarm.AlarmServiceInterface;
 import com.telecominfraproject.wlan.client.ClientServiceInterface;
 import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherInterface;
 import com.telecominfraproject.wlan.core.model.entity.CountryCode;
+import com.telecominfraproject.wlan.core.model.equipment.AutoOrManualValue;
 import com.telecominfraproject.wlan.core.model.equipment.EquipmentType;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
@@ -962,11 +963,48 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
-        statusServiceInterface.get(ce.getCustomerId(), ce.getId()).stream().forEach(s -> LOG.debug("Status {}", s));
-
         for (OpensyncAPRadioState radioState : radioStateTables) {
 
-            // TODO: implement me
+            if (radioState.getFreqBand().equals(RadioType.UNSUPPORTED)) {
+                LOG.debug("Could not get radio configuration for AP {}", apId);
+                continue;
+            }
+
+            if (radioState.getAllowedChannels() != null && !radioState.getAllowedChannels().isEmpty()) {
+                ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
+                apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
+                        .setAllowedChannels(new ArrayList<>(radioState.getAllowedChannels()));
+                ce.setDetails(apElementConfiguration);
+                ce = equipmentServiceInterface.update(ce);
+                LOG.debug("Updated AllowedChannels from Wifi_Radio_State table change {}", ce);
+
+            }
+
+            if (radioState.getTxPower() > 0) {
+                ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
+                apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
+                        .setEirpTxPower(AutoOrManualValue.createManualInstance(radioState.getTxPower()));
+                ce.setDetails(apElementConfiguration);
+                ce = equipmentServiceInterface.update(ce);
+                LOG.debug("Updated TxPower from Wifi_Radio_State table change {}", ce);
+
+            }
+
+            StateSetting state = StateSetting.disabled;
+            if (radioState.isEnabled()) {
+                state = StateSetting.enabled;
+            }
+            ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
+            if (!apElementConfiguration.getAdvancedRadioMap().get(radioState.getFreqBand()).getRadioAdminState()
+                    .equals(state)) {
+                // only update if changed
+                apElementConfiguration.getAdvancedRadioMap().get(radioState.getFreqBand()).setRadioAdminState(state);
+                ce.setDetails(apElementConfiguration);
+                ce = equipmentServiceInterface.update(ce);
+
+                LOG.debug("Updated RadioAdminState from Wifi_Radio_State table change {}", ce);
+
+            }
         }
 
     }
