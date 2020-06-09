@@ -15,7 +15,7 @@
           "RadiusProfileOttawa": [
             {
               "model_type": "RadiusServer",
-              "ipAddress": "Mikes-MacBook-Pro.local",
+              "ipAddress": "localhost",
               "secret": "testing123",
               "authPort": 1812,
               "timeout": null
