@@ -41,6 +41,9 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 	@Value("${connectus.ovsdb.ssidProfileFileName:/Users/mikehansen/git/wlan-cloud-workspace/wlan-cloud-opensync-controller/opensync-ext-static/src/main/resources/ProfileSsid.json}")
 	private String ssidProfileFileName;
 
+	@Value("${connectus.ovsdb.radiusProfileFileName:/Users/mikehansen/git/wlan-cloud-workspace/wlan-cloud-opensync-controller/opensync-ext-static/src/main/resources/ProfileRadius.json}")
+	private String radiusProfileFileName;
+	
 	@Value("${connectus.ovsdb.locationFileName:/Users/mikehansen/git/wlan-cloud-workspace/wlan-cloud-opensync-controller/opensync-ext-static/src/main/resources/LocationBuildingExample.json}")
 	private String locationFileName;
 
@@ -76,11 +79,15 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 			
 			com.telecominfraproject.wlan.profile.models.Profile apProfile = com.telecominfraproject.wlan.profile.models.Profile
 					.fromFile(apProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
+			
 			List<com.telecominfraproject.wlan.profile.models.Profile> ssidProfiles = com.telecominfraproject.wlan.profile.models.Profile
 					.listFromFile(ssidProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
 
 			ssidProfiles.stream().forEach(p -> apProfile.getChildProfileIds().add(p.getId()));
 
+			List<com.telecominfraproject.wlan.profile.models.Profile> radiusProfiles = com.telecominfraproject.wlan.profile.models.Profile
+					.listFromFile(radiusProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
+			
 			equipment.setProfileId(apProfile.getId());
 
 			Location location = Location.fromFile(locationFileName, Location.class);
@@ -91,6 +98,7 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 			ret.setCustomerEquipment(equipment);
 			ret.setApProfile(apProfile);
 			ret.setSsidProfile(ssidProfiles);
+			ret.setRadiusProfiles(radiusProfiles);
 			ret.setEquipmentLocation(location);
 
 		} catch (IOException e) {

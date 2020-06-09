@@ -186,15 +186,6 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
         String apId = clientCn + "_" + connectNodeInfo.serialNumber;
         OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
 
-        ovsdbDao.configureStats(ovsdbClient);
-
-        // Check if device stats is configured in Wifi_Stats_Config table,
-        // provision it
-        // if needed
-        if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
-            ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
-        }
-
         try {
             ovsdbDao.provisionBridgePortInterface(ovsdbClient);
         }
@@ -208,6 +199,15 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
         if (opensyncAPConfig != null) {
             ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
+        }
+        
+        ovsdbDao.configureStats(ovsdbClient);
+
+        // Check if device stats is configured in Wifi_Stats_Config table,
+        // provision it
+        // if needed
+        if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
+            ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
         }
 
         // ovsdbDao.configureWifiInet(ovsdbClient);
