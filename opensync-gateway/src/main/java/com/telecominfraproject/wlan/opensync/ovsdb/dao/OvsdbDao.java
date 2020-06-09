@@ -1976,11 +1976,13 @@ public class OvsdbDao {
 					minHwMode = "11x";
 				}
 
-				if (ssidSecurityMode.equals("wpaPSK") || ssidSecurityMode.equals("wpa2PSK")) {
+				if (ssidSecurityMode.equals("wpaPSK") || ssidSecurityMode.equals("wpa2PSK")
+						|| ssidSecurityMode.equals("wpa2OnlyPSK")) {
 					opensyncSecurityMode = "WPA-PSK";
 				} else if (ssidSecurityMode.equals("wep")) {
 					opensyncSecurityMode = "WEP";
-				} else if (ssidSecurityMode.equals("wpaEAP")) {
+				} else if (ssidSecurityMode.equals("wpaEAP") || ssidSecurityMode.equals("wpa2EAP")
+						|| ssidSecurityMode.equals("wpa2OnlyEAP")) {
 					opensyncSecurityMode = "WPA-EAP";
 
 				}
@@ -1988,37 +1990,25 @@ public class OvsdbDao {
 				security.put("encryption", opensyncSecurityMode);
 				// key and mode is N/A for OPEN security
 				if (!opensyncSecurityMode.equals("OPEN")) {
-					if (ssidSecurityMode.equals("wpa2PSK") || ssidSecurityMode.equals("wpa2OnlyPSK")) {
+					if (ssidSecurityMode.equals("wpa2PSK")) {
+						security.put("key", ssidConfig.getKeyStr());
+						security.put("mode", "mixed");
+					} else if (ssidSecurityMode.equals("wpa2OnlyPSK")) {
 						security.put("key", ssidConfig.getKeyStr());
 						security.put("mode", "2");
-					} else if (opensyncSecurityMode.equals("WPA-EAP")) {
+					} else if (ssidSecurityMode.equals("wpaPSK")) {
+						security.put("key", ssidConfig.getKeyStr());
+						security.put("mode", "1");
+					} else if (ssidSecurityMode.equals("wpa2OnlyEAP")) {
 						security.put("mode", "2");
-						// Has Radius ?
-						List<Profile> radiusServiceList = new ArrayList<Profile>();
-						radiusServiceList = opensyncApConfig.getRadiusProfiles().stream()
-								.filter(p -> p.getName().equals((ssidConfig.getRadiusServiceName())))
-								.collect(Collectors.toList());
-						if (!radiusServiceList.isEmpty()) {
-							Profile profileRadius = radiusServiceList.get(0);
-							String region = opensyncApConfig.getEquipmentLocation().getName();
-							List<RadiusServer> radiusServerList = new ArrayList<RadiusServer>();
-							RadiusProfile radiusProfileDetails = ((RadiusProfile) profileRadius.getDetails());
-							LOG.debug("Radius Profile Details {}", radiusProfileDetails.toPrettyString());
-							RadiusServiceRegion radiusServiceRegion = radiusProfileDetails.findServiceRegion(region);
-							LOG.debug("Radius Service Region {}", radiusServiceRegion.toPrettyString());
-
-							radiusServerList = radiusServiceRegion
-									.findServerConfiguration(ssidConfig.getRadiusServiceName());
-							if (!radiusServerList.isEmpty()) {
-
-								RadiusServer rServer = radiusServerList.get(0);
-								security.put("radius_server_ip", rServer.getIpAddress().getHostAddress());
-								security.put("radius_server_port", String.valueOf(rServer.getAuthPort()));
-								security.put("radius_server_secret", rServer.getSecret());
-
-							}
-						}
-					} else {
+						getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
+					} else if (ssidSecurityMode.equals("wpa2EAP")) {
+						security.put("mode", "mixed");
+						getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
+					} else if (ssidSecurityMode.equals("wpaEAP")) {
+						security.put("mode", "1");
+						getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
+					} else if (ssidSecurityMode.equals("wep")) {
 						security.put("key", ssidConfig.getKeyStr());
 						security.put("mode", "1");
 					}
@@ -2056,6 +2046,27 @@ public class OvsdbDao {
 			}
 		}
 
+	}
+
+	private void getRadiusConfiguration(OpensyncAPConfig opensyncApConfig, SsidConfiguration ssidConfig,
+			Map<String, String> security) {
+		List<Profile> radiusServiceList = new ArrayList<Profile>();
+		radiusServiceList = opensyncApConfig.getRadiusProfiles().stream()
+				.filter(p -> p.getName().equals((ssidConfig.getRadiusServiceName()))).collect(Collectors.toList());
+		if (!radiusServiceList.isEmpty()) {
+			Profile profileRadius = radiusServiceList.get(0);
+			String region = opensyncApConfig.getEquipmentLocation().getName();
+			List<RadiusServer> radiusServerList = new ArrayList<RadiusServer>();
+			RadiusProfile radiusProfileDetails = ((RadiusProfile) profileRadius.getDetails());
+			RadiusServiceRegion radiusServiceRegion = radiusProfileDetails.findServiceRegion(region);
+			radiusServerList = radiusServiceRegion.findServerConfiguration(ssidConfig.getRadiusServiceName());
+			if (!radiusServerList.isEmpty()) {
+				RadiusServer rServer = radiusServerList.get(0);
+				security.put("radius_server_ip", rServer.getIpAddress().getHostAddress());
+				security.put("radius_server_port", String.valueOf(rServer.getAuthPort()));
+				security.put("radius_server_secret", rServer.getSecret());
+			}
+		}
 	}
 
 	private void updateWifiInetConfig(OvsdbClient ovsdbClient, int vlanId, String ifName, boolean enabled,
