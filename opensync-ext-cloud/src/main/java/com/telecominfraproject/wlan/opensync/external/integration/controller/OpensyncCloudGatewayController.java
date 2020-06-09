@@ -1,5 +1,9 @@
 package com.telecominfraproject.wlan.opensync.external.integration.controller;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -24,19 +28,19 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.telecominfraproject.wlan.core.model.service.ServiceInstanceInformation;
 import com.telecominfraproject.wlan.core.server.container.ConnectorProperties;
+import com.telecominfraproject.wlan.equipmentgateway.models.CEGWBaseCommand;
+import com.telecominfraproject.wlan.equipmentgateway.models.CEGWBlinkRequest;
+import com.telecominfraproject.wlan.equipmentgateway.models.CEGWCloseSessionRequest;
+import com.telecominfraproject.wlan.equipmentgateway.models.CEGWCommandResultCode;
+import com.telecominfraproject.wlan.equipmentgateway.models.CEGWConfigChangeNotification;
+import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRouteCheck;
+import com.telecominfraproject.wlan.equipmentgateway.models.CEGWStartDebugEngine;
+import com.telecominfraproject.wlan.equipmentgateway.models.EquipmentCommand;
+import com.telecominfraproject.wlan.equipmentgateway.models.EquipmentCommandResponse;
+import com.telecominfraproject.wlan.equipmentgateway.models.GatewayDefaults;
 import com.telecominfraproject.wlan.opensync.external.integration.ConnectusOvsdbClientInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSession;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSessionMapInterface;
-import com.telecominfraproject.wlan.opensync.external.integration.controller.command.CEGWBaseCommand;
-import com.telecominfraproject.wlan.opensync.external.integration.controller.command.CEGWBlinkRequest;
-import com.telecominfraproject.wlan.opensync.external.integration.controller.command.CEGWCloseSessionRequest;
-import com.telecominfraproject.wlan.opensync.external.integration.controller.command.CEGWCommandResultCode;
-import com.telecominfraproject.wlan.opensync.external.integration.controller.command.CEGWConfigChangeNotification;
-import com.telecominfraproject.wlan.opensync.external.integration.controller.command.CEGWRouteCheck;
-import com.telecominfraproject.wlan.opensync.external.integration.controller.command.CEGWStartDebugEngine;
-import com.telecominfraproject.wlan.opensync.external.integration.controller.command.CustomerEquipmentCommand;
-import com.telecominfraproject.wlan.opensync.external.integration.controller.command.CustomerEquipmentCommandResponse;
-import com.telecominfraproject.wlan.opensync.external.integration.controller.command.GatewayDefaults;
 import com.telecominfraproject.wlan.routing.RoutingServiceInterface;
 import com.telecominfraproject.wlan.routing.models.EquipmentGatewayRecord;
 import com.telecominfraproject.wlan.routing.models.EquipmentRoutingRecord;
@@ -52,6 +56,11 @@ import com.telecominfraproject.wlan.server.exceptions.ConfigurationException;
 @RestController
 @EnableScheduling
 public class OpensyncCloudGatewayController {
+
+	
+    public static class ListOfEquipmentCommandResponses extends ArrayList<EquipmentCommandResponse> {
+        private static final long serialVersionUID = 3070319062835500930L;
+    }
 
 	@Autowired
 	RoutingServiceInterface eqRoutingSvc;
@@ -71,6 +80,8 @@ public class OpensyncCloudGatewayController {
 	private boolean registeredWithRoutingService = false;
 
 	private long registeredGwId = -1;
+	
+	private EquipmentGatewayRecord registeredGateway;
 
 	/**
 	 * Lock used to protected {@link #activeCustomerLock}
@@ -102,40 +113,60 @@ public class OpensyncCloudGatewayController {
 
 	private static final Logger LOG = LoggerFactory.getLogger(OpensyncCloudGatewayController.class);
 
-	@RequestMapping(value = "/command", method = RequestMethod.POST)
-	public CustomerEquipmentCommandResponse sendCommand(@RequestBody CEGWBaseCommand command) {
-		LOG.debug("sendCommand({})", command);
-		String qrCode = command.getEquipmentQRCode();
-		if (com.telecominfraproject.wlan.core.model.json.BaseJsonModel.hasUnsupportedValue(command)) {
-			LOG.error("[{}] Failed to deliver command {}, command contains unsupported value", qrCode, command);
-			return new CustomerEquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand.ordinal(),
-					"Unsupported value in command for " + qrCode);
+	@RequestMapping(value = "/commands", method = RequestMethod.POST)
+	public ListOfEquipmentCommandResponses sendCommands(@RequestBody List<CEGWBaseCommand> commands) {
+		ListOfEquipmentCommandResponses ret = new ListOfEquipmentCommandResponses(); 
+		if(commands == null) {
+			return ret;
 		}
-		OvsdbSession session = ovsdbSessionMapInterface.getSession(qrCode);
-		if (session == null) {
-			LOG.warn("[{}] Failed to deliver command {}, websocket session not found", qrCode, command);
-			return new CustomerEquipmentCommandResponse(CEGWCommandResultCode.NoRouteToCE.ordinal(),
-					"No session found for " + qrCode);
-		}
+		
+		commands.forEach(command -> {
+			LOG.debug("sendCommands - processing {}", command);
 
-		switch (command.getCommandType()) {
+			String inventoryId = command.getInventoryId();
 
-		case ConfigChangeNotification:
-			return sendConfigChangeNotification(session, (CEGWConfigChangeNotification) command);
-		case CloseSessionRequest:
-			return closeSession(session, (CEGWCloseSessionRequest) command);
-		case CheckRouting:
-			return checkEquipmentRouting(session, (CEGWRouteCheck) command);
-		case BlinkRequest:
-			return processBlinkRequest(session, (CEGWBlinkRequest) command);
-		case StartDebugEngine:
-			return processChangeRedirector(session, (CEGWStartDebugEngine) command);
-
-		default:
-			LOG.warn("[{}] Failed to deliver command {}, unsupported command type", qrCode, command);
-			return new CustomerEquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand.ordinal(),
-					"Invalid command type (" + command.getCommandType() + ") for equipment (" + qrCode + ")");
-		}
+			if (com.telecominfraproject.wlan.core.model.json.BaseJsonModel.hasUnsupportedValue(command)) {
+				LOG.error("[{}] Failed to deliver command {}, command contains unsupported value", inventoryId, command);
+				ret.add( new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
+						"Unsupported value in command for " + inventoryId, command, registeredGateway.getHostname(), registeredGateway.getPort()) );
+				return;
+			}
+			OvsdbSession session = ovsdbSessionMapInterface.getSession(inventoryId);
+			if (session == null) {
+				LOG.warn("[{}] Failed to deliver command {}, websocket session not found", inventoryId, command);
+				ret.add( new EquipmentCommandResponse(CEGWCommandResultCode.NoRouteToCE,
+						"No session found for " + inventoryId, command, registeredGateway.getHostname(), registeredGateway.getPort()) );
+				return;
+			}
+	
+			switch (command.getCommandType()) {
+	
+			case ConfigChangeNotification:
+				ret.add( sendConfigChangeNotification(session, (CEGWConfigChangeNotification) command) );
+				break;
+			case CloseSessionRequest:
+				ret.add( closeSession(session, (CEGWCloseSessionRequest) command) );
+				break;
+			case CheckRouting:
+				ret.add( checkEquipmentRouting(session, (CEGWRouteCheck) command) );
+				break;
+			case BlinkRequest:
+				ret.add( processBlinkRequest(session, (CEGWBlinkRequest) command) );
+				break;
+			case StartDebugEngine:
+				ret.add ( processChangeRedirector(session, (CEGWStartDebugEngine) command) );
+				break;
+	
+			default:
+				LOG.warn("[{}] Failed to deliver command {}, unsupported command type", inventoryId, command);
+				ret.add ( new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
+						"Invalid command type (" + command.getCommandType() + ") for equipment (" + inventoryId + ")", 
+						command, registeredGateway.getHostname(), registeredGateway.getPort()) );
+			}
+		
+		});
+		
+		return ret;
 	}
 
 	@RequestMapping(value = "/defaults", method = RequestMethod.GET)
@@ -151,38 +182,42 @@ public class OpensyncCloudGatewayController {
 	 * @param protocolVersion
 	 * @return NoRouteToCE if route Id does not match or Success
 	 */
-	private CustomerEquipmentCommandResponse checkEquipmentRouting(OvsdbSession session, CEGWRouteCheck command) {
+	private EquipmentCommandResponse checkEquipmentRouting(OvsdbSession session, CEGWRouteCheck command) {
 		if (null != command.getRoutingId()) {
 			if (!command.getRoutingId().equals(session.getRoutingId())) {
 
 				LOG.info("[C:{} E:{} R:{}] Stale routing entry ({}) detected", session.getCustomerId(),
-						command.getEquipmentQRCode(), session.getRoutingId(), command.getRoutingId());
+						command.getInventoryId(), session.getRoutingId(), command.getRoutingId());
 
-				return new CustomerEquipmentCommandResponse(CEGWCommandResultCode.NoRouteToCE.ordinal(),
-						"Inactive Route Identifer");
+				return new EquipmentCommandResponse(CEGWCommandResultCode.NoRouteToCE,
+						"Inactive Route Identifer", command, 
+						registeredGateway.getHostname(), registeredGateway.getPort());
 			}
 		}
-		return new CustomerEquipmentCommandResponse(CEGWCommandResultCode.Success.ordinal(), "Route active");
+		return new EquipmentCommandResponse(CEGWCommandResultCode.Success, "Route active", 
+				command, registeredGateway.getHostname(), registeredGateway.getPort());
 	}
 
-	private CustomerEquipmentCommandResponse sendConfigChangeNotification(OvsdbSession session,
+	private EquipmentCommandResponse sendConfigChangeNotification(OvsdbSession session,
 			CEGWConfigChangeNotification command) {
 
-		return sendMessage(session, command.getEquipmentQRCode(), command);
+		return sendMessage(session, command.getInventoryId(), command);
 	}
 
-	private CustomerEquipmentCommandResponse closeSession(OvsdbSession session, CEGWCloseSessionRequest command) {
+	private EquipmentCommandResponse closeSession(OvsdbSession session, CEGWCloseSessionRequest command) {
 		try {
 			session.getOvsdbClient().shutdown();
 		} catch (Exception e) {
-			LOG.error("[{}] Failed to close session on CE: {}", command.getEquipmentQRCode(), e.getLocalizedMessage());
-			return new CustomerEquipmentCommandResponse(CEGWCommandResultCode.FailedToSend.ordinal(),
-					"Failed to send command " + command.getCommandType() + " to " + command.getEquipmentQRCode() + ": "
-							+ e.getMessage());
+			LOG.error("[{}] Failed to close session on CE: {}", command.getInventoryId(), e.getLocalizedMessage());
+			return new EquipmentCommandResponse(CEGWCommandResultCode.FailedToSend,
+					"Failed to send command " + command.getCommandType() + " to " + command.getInventoryId() + ": "
+							+ e.getMessage(), command, 
+							registeredGateway.getHostname(), registeredGateway.getPort());
 		}
-		LOG.debug("[{}] Closed session to CE", command.getEquipmentQRCode());
-		return new CustomerEquipmentCommandResponse(CEGWCommandResultCode.Success.ordinal(),
-				"Closed session to " + command.getEquipmentQRCode());
+		LOG.debug("[{}] Closed session to CE", command.getInventoryId());
+		return new EquipmentCommandResponse(CEGWCommandResultCode.Success,
+				"Closed session to " + command.getInventoryId(), command, 
+				registeredGateway.getHostname(), registeredGateway.getPort());
 
 	}
 
@@ -190,44 +225,45 @@ public class OpensyncCloudGatewayController {
 	 * Deliver a message in payload to the CE
 	 * 
 	 * @param session
-	 * @param qrCode
+	 * @param inventoryId
 	 * @param command
 	 * @param request
 	 * @return
 	 */
-	private CustomerEquipmentCommandResponse sendMessage(OvsdbSession session, String qrCode,
-			CustomerEquipmentCommand command) {
+	private EquipmentCommandResponse sendMessage(OvsdbSession session, String inventoryId,
+			EquipmentCommand command) {
 
-		LOG.debug("Received command {} for {}", command.getCommandType(), qrCode);
-		CustomerEquipmentCommandResponse response = new CustomerEquipmentCommandResponse(
-				CEGWCommandResultCode.Success.ordinal(),
-				"Received Command " + command.getCommandType() + " for " + qrCode);
+		LOG.debug("Received command {} for {}", command.getCommandType(), inventoryId);
+		EquipmentCommandResponse response = new EquipmentCommandResponse(
+				CEGWCommandResultCode.Success,
+				"Received Command " + command.getCommandType() + " for " + inventoryId, command, 
+				registeredGateway.getHostname(), registeredGateway.getPort());
 
 		if (command instanceof CEGWConfigChangeNotification) {
-			connectusOvsdbClient.processConfigChanged(qrCode);
+			connectusOvsdbClient.processConfigChanged(inventoryId);
 		} else if (command instanceof CEGWStartDebugEngine) {
 			// dtop: we will be using CEGWStartDebugEngine command to deliver request to
 			// change redirector
 			// TODO: after the demo introduce a specialized command for this!
 			String newRedirectorAddress = ((CEGWStartDebugEngine) command).getGatewayHostname();
-			connectusOvsdbClient.changeRedirectorAddress(qrCode, newRedirectorAddress);
+			connectusOvsdbClient.changeRedirectorAddress(inventoryId, newRedirectorAddress);
 		}
 
 		return response;
 	}
 
-	private CustomerEquipmentCommandResponse processChangeRedirector(OvsdbSession session,
+	private EquipmentCommandResponse processChangeRedirector(OvsdbSession session,
 			CEGWStartDebugEngine command) {
-		return sendMessage(session, command.getEquipmentQRCode(), command);
+		return sendMessage(session, command.getInventoryId(), command);
 	}
 
-	private CustomerEquipmentCommandResponse processBlinkRequest(OvsdbSession session, CEGWBlinkRequest command) {
+	private EquipmentCommandResponse processBlinkRequest(OvsdbSession session, CEGWBlinkRequest command) {
 
-		return sendMessage(session, command.getEquipmentQRCode(), command);
+		return sendMessage(session, command.getInventoryId(), command);
 	}
 
 	@RequestMapping(value = "/commandWithUser", method = RequestMethod.POST)
-	public CustomerEquipmentCommandResponse sendCommandWithAuthUser(@RequestBody CustomerEquipmentCommand command,
+	public EquipmentCommandResponse sendCommandWithAuthUser(@RequestBody EquipmentCommand command,
 			@AuthenticationPrincipal Object requestUser, HttpServletRequest httpServletRequest) {
 
 		// use these properties to get address and port where request has
@@ -248,7 +284,7 @@ public class OpensyncCloudGatewayController {
 		// This is a test method to show how to get access to the auth user
 		// object for a given request
 
-		return sendCommand(command);
+		return sendCommands(Arrays.asList(command)).get(0);
 	}
 
 	/**
@@ -275,6 +311,7 @@ public class OpensyncCloudGatewayController {
 
 				EquipmentGatewayRecord result = this.eqRoutingSvc.registerGateway(gwRecord);
 				this.registeredGwId = result.getId();
+				this.registeredGateway = result;
 				LOG.info("Successfully registered (name={}, id={}) with Routing Service", result.getHostname(),
 						registeredGwId);
 				registeredWithRoutingService = true;
@@ -304,6 +341,8 @@ public class OpensyncCloudGatewayController {
 				eqRoutingSvc.deleteGateway(registeredGwId);
 				LOG.info("Deregistered Customer Equipment Gateway (name={},id={}) with Routing Service",
 						getGatewayName(), this.registeredGwId);
+				this.registeredGwId = -1;
+				this.registeredGateway = null;
 			} catch (Exception e) {
 				// failed
 				LOG.error("Failed to deregister Customer Equipment Gateway (name={},id={}) with Routing Service: {}",
