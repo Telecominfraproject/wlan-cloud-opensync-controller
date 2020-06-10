@@ -120,7 +120,7 @@ public class OpensyncCloudGatewayController {
 			return ret;
 		}
 		
-		commands.forEach(command -> {
+		commands.stream().forEach(command -> {
 			LOG.debug("sendCommands - processing {}", command);
 
 			String inventoryId = command.getInventoryId();
