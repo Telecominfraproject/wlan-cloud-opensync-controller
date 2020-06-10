@@ -2343,7 +2343,7 @@ public class OvsdbDao {
 				rowColumns.put("reporting_interval", new Atom<>(30));
 				rowColumns.put("sampling_interval", new Atom<>(3));
 				rowColumns.put("stats_type", new Atom<>("rssi"));
-				rowColumns.put("survey_interval_ms", new Atom<>(30));
+				rowColumns.put("survey_interval_ms", new Atom<>(65));
 				rowColumns.put("report_type", new Atom<>("raw"));
 //				rowColumns.put("survey_type", new Atom<>("on-chan"));
 
@@ -2447,11 +2447,11 @@ public class OvsdbDao {
 			updateColumns = new HashMap<>();
 			updateColumns.put("channel_list", channels2g);
 			updateColumns.put("radio_type", new Atom<>("2.4G"));
-			updateColumns.put("reporting_interval", new Atom<>(1800));
+			updateColumns.put("reporting_interval", new Atom<>(600));
 			updateColumns.put("report_type", new Atom<>("raw"));
 			updateColumns.put("sampling_interval", new Atom<>(60));
 			updateColumns.put("stats_type", new Atom<>("neighbor"));
-			updateColumns.put("survey_interval_ms", new Atom<>(30));
+			updateColumns.put("survey_interval_ms", new Atom<>(65));
 			updateColumns.put("survey_type", new Atom<>("off-chan"));
 			row = new Row(updateColumns);
 			operations.add(new Insert(wifiStatsConfigDbTable, row));
@@ -2463,11 +2463,11 @@ public class OvsdbDao {
 			updateColumns = new HashMap<>();
 			updateColumns.put("channel_list", channels5gl);
 			updateColumns.put("radio_type", new Atom<>("5GL"));
-			updateColumns.put("reporting_interval", new Atom<>(1800));
+			updateColumns.put("reporting_interval", new Atom<>(600));
 			updateColumns.put("report_type", new Atom<>("raw"));
 			updateColumns.put("sampling_interval", new Atom<>(45));
 			updateColumns.put("stats_type", new Atom<>("neighbor"));
-			updateColumns.put("survey_interval_ms", new Atom<>(30));
+			updateColumns.put("survey_interval_ms", new Atom<>(65));
 			updateColumns.put("survey_type", new Atom<>("off-chan"));
 			row = new Row(updateColumns);
 			operations.add(new Insert(wifiStatsConfigDbTable, row));
@@ -2479,11 +2479,11 @@ public class OvsdbDao {
 			updateColumns = new HashMap<>();
 			updateColumns.put("channel_list", channels5gu);
 			updateColumns.put("radio_type", new Atom<>("5GU"));
-			updateColumns.put("reporting_interval", new Atom<>(1800));
+			updateColumns.put("reporting_interval", new Atom<>(600));
 			updateColumns.put("report_type", new Atom<>("raw"));
 			updateColumns.put("sampling_interval", new Atom<>(36));
 			updateColumns.put("stats_type", new Atom<>("neighbor"));
-			updateColumns.put("survey_interval_ms", new Atom<>(30));
+			updateColumns.put("survey_interval_ms", new Atom<>(65));
 			updateColumns.put("survey_type", new Atom<>("off-chan"));
 			row = new Row(updateColumns);
 			operations.add(new Insert(wifiStatsConfigDbTable, row));
@@ -2502,7 +2502,7 @@ public class OvsdbDao {
 				rowColumns.put("report_type", new Atom<>("raw"));
 				rowColumns.put("sampling_interval", new Atom<>(6));
 				rowColumns.put("stats_type", new Atom<>("neighbor"));
-				rowColumns.put("survey_interval_ms", new Atom<>(30));
+				rowColumns.put("survey_interval_ms", new Atom<>(65));
 				rowColumns.put("survey_type", new Atom<>("on-chan"));
 
 				Row updateRow = new Row(rowColumns);
@@ -2556,7 +2556,7 @@ public class OvsdbDao {
 				rowColumns.put("report_type", new Atom<>("raw"));
 				rowColumns.put("sampling_interval", new Atom<>(6));
 				rowColumns.put("stats_type", new Atom<>("survey"));
-				rowColumns.put("survey_interval_ms", new Atom<>(30));
+				rowColumns.put("survey_interval_ms", new Atom<>(65));
 				rowColumns.put("survey_type", new Atom<>("on-chan"));
 
 				Row updateRow = new Row(rowColumns);
@@ -2570,11 +2570,11 @@ public class OvsdbDao {
 			updateColumns = new HashMap<>();
 			updateColumns.put("channel_list", channels2g);
 			updateColumns.put("radio_type", new Atom<>("2.4G"));
-			updateColumns.put("reporting_interval", new Atom<>(1800));
+			updateColumns.put("reporting_interval", new Atom<>(600));
 			updateColumns.put("report_type", new Atom<>("raw"));
 			updateColumns.put("sampling_interval", new Atom<>(60));
 			updateColumns.put("stats_type", new Atom<>("survey"));
-			updateColumns.put("survey_interval_ms", new Atom<>(30));
+			updateColumns.put("survey_interval_ms", new Atom<>(65));
 			updateColumns.put("survey_type", new Atom<>("off-chan"));
 			updateColumns.put("threshold", thresholds);
 			row = new Row(updateColumns);
@@ -2587,11 +2587,11 @@ public class OvsdbDao {
 			updateColumns = new HashMap<>();
 			updateColumns.put("channel_list", channels5gl);
 			updateColumns.put("radio_type", new Atom<>("5GL"));
-			updateColumns.put("reporting_interval", new Atom<>(1800));
+			updateColumns.put("reporting_interval", new Atom<>(600));
 			updateColumns.put("report_type", new Atom<>("raw"));
 			updateColumns.put("sampling_interval", new Atom<>(45));
 			updateColumns.put("stats_type", new Atom<>("survey"));
-			updateColumns.put("survey_interval_ms", new Atom<>(30));
+			updateColumns.put("survey_interval_ms", new Atom<>(65));
 			updateColumns.put("survey_type", new Atom<>("off-chan"));
 			updateColumns.put("threshold", thresholds);
 			row = new Row(updateColumns);
@@ -2604,11 +2604,11 @@ public class OvsdbDao {
 			updateColumns = new HashMap<>();
 			updateColumns.put("channel_list", channels5gu);
 			updateColumns.put("radio_type", new Atom<>("5GU"));
-			updateColumns.put("reporting_interval", new Atom<>(1800));
+			updateColumns.put("reporting_interval", new Atom<>(600));
 			updateColumns.put("report_type", new Atom<>("raw"));
 			updateColumns.put("sampling_interval", new Atom<>(30));
 			updateColumns.put("stats_type", new Atom<>("survey"));
-			updateColumns.put("survey_interval_ms", new Atom<>(30));
+			updateColumns.put("survey_interval_ms", new Atom<>(65));
 			updateColumns.put("survey_type", new Atom<>("off-chan"));
 			updateColumns.put("threshold", thresholds);
 			row = new Row(updateColumns);
@@ -2633,7 +2633,7 @@ public class OvsdbDao {
 				rowColumns.put("report_type", new Atom<>("raw"));
 				rowColumns.put("sampling_interval", new Atom<>(6));
 				rowColumns.put("stats_type", new Atom<>("client"));
-				rowColumns.put("survey_interval_ms", new Atom<>(30));
+				rowColumns.put("survey_interval_ms", new Atom<>(65));
 //				rowColumns.put("survey_type", new Atom<>("on-chan"));
 
 				Row updateRow = new Row(rowColumns);
