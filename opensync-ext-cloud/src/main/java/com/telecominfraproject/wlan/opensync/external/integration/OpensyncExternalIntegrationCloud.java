@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
 
@@ -26,8 +25,11 @@ import com.telecominfraproject.wlan.client.ClientServiceInterface;
 import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherInterface;
 import com.telecominfraproject.wlan.core.model.entity.CountryCode;
 import com.telecominfraproject.wlan.core.model.equipment.AutoOrManualValue;
+import com.telecominfraproject.wlan.core.model.equipment.DetectedAuthMode;
 import com.telecominfraproject.wlan.core.model.equipment.EquipmentType;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
+import com.telecominfraproject.wlan.core.model.equipment.NeighborScanPacketType;
+import com.telecominfraproject.wlan.core.model.equipment.NetworkType;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.customer.models.Customer;
 import com.telecominfraproject.wlan.customer.service.CustomerServiceInterface;
@@ -60,6 +62,8 @@ import com.telecominfraproject.wlan.servicemetric.apnode.models.EthernetLinkStat
 import com.telecominfraproject.wlan.servicemetric.apnode.models.RadioUtilization;
 import com.telecominfraproject.wlan.servicemetric.client.models.ClientMetrics;
 import com.telecominfraproject.wlan.servicemetric.models.ServiceMetric;
+import com.telecominfraproject.wlan.servicemetric.neighbourscan.models.NeighbourReport;
+import com.telecominfraproject.wlan.servicemetric.neighbourscan.models.NeighbourScanReports;
 import com.telecominfraproject.wlan.status.StatusServiceInterface;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentAdminStatusData;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentLANStatusData;
@@ -78,6 +82,8 @@ import sts.PlumeStats.Client;
 import sts.PlumeStats.ClientReport;
 import sts.PlumeStats.Device;
 import sts.PlumeStats.Device.RadioTemp;
+import sts.PlumeStats.Neighbor;
+import sts.PlumeStats.Neighbor.NeighborBss;
 import sts.PlumeStats.RadioBandType;
 import sts.PlumeStats.Report;
 import sts.PlumeStats.Survey;
@@ -127,17 +133,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 	@Autowired
 	private CacheManager cacheManagerShortLived;
 	private Cache cloudEquipmentRecordCache;
-	// private Map<String, OpensyncNode> opensyncNodeMap;
-
-	// @Value("${connectus.ovsdb.configFileName:/Users/mikehansen/git/wlan-cloud-workspace/wlan-cloud-opensync-controller/opensync-ext-cloud/src/main/resources/config_2_ssids.json}")
-	// private String configFileName;
 
 	@PostConstruct
 	private void postCreate() {
 		LOG.info("Using Cloud integration");
 		cloudEquipmentRecordCache = cacheManagerShortLived.getCache("equipment_record_cache");
-		// opensyncNodeMap = Collections.synchronizedMap(new HashMap<String,
-		// OpensyncNode>());
 	}
 
 	public Equipment getCustomerEquipment(String apId) {
@@ -546,6 +546,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 		populateApClientMetrics(metricRecordList, report, customerId, equipmentId);
 		populateApNodeMetrics(metricRecordList, report, customerId, equipmentId);
+		populateNeighbourScanReports(metricRecordList, report, customerId, equipmentId);
 
 		try {
 			populateApSsidMetrics(metricRecordList, report, customerId, equipmentId, extractApIdFromTopic(topic));
@@ -732,9 +733,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				}
 
 			}
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("ApNodeMetrics Report {}", apNodeMetrics.toPrettyString());
-			}
+
+			LOG.info("ApNodeMetrics Report {}", apNodeMetrics);
 
 		}
 
@@ -853,6 +853,66 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 		}
 
+	}
+
+	private void populateNeighbourScanReports(List<ServiceMetric> metricRecordList, Report report, int customerId,
+			long equipmentId) {
+		LOG.debug("populateNeighbourScanReports for Customer {} Equipment {}", customerId, equipmentId);
+
+		for (Neighbor neighbor : report.getNeighborsList()) {
+
+			ServiceMetric smr = new ServiceMetric(customerId, equipmentId);
+			metricRecordList.add(smr);
+			NeighbourScanReports neighbourScanReports = new NeighbourScanReports();
+			smr.setDetails(neighbourScanReports);
+
+			smr.setCreatedTimestamp(neighbor.getTimestampMs());
+
+			List<NeighbourReport> neighbourReports = new ArrayList<>();
+			neighbourScanReports.setNeighbourReports(neighbourReports);
+
+			for (NeighborBss nBss : neighbor.getBssListList()) {
+				NeighbourReport nr = new NeighbourReport();
+				neighbourReports.add(nr);
+
+				if (neighbor.getBand() == RadioBandType.BAND2G) {
+					nr.setAcMode(false);
+					nr.setbMode(false);
+					nr.setnMode(true);
+					nr.setRadioType(RadioType.is2dot4GHz);
+				} else if (neighbor.getBand() == RadioBandType.BAND5G) {
+					nr.setAcMode(true);
+					nr.setbMode(false);
+					nr.setnMode(false);
+					nr.setRadioType(RadioType.is5GHz);
+				} else if (neighbor.getBand() == RadioBandType.BAND5GL) {
+					nr.setAcMode(true);
+					nr.setbMode(false);
+					nr.setnMode(false);
+					nr.setRadioType(RadioType.is5GHzL);
+				} else if (neighbor.getBand() == RadioBandType.BAND5GU) {
+					nr.setAcMode(true);
+					nr.setbMode(false);
+					nr.setnMode(false);
+					nr.setRadioType(RadioType.is5GHzU);
+				}
+
+				nr.setChannel(nBss.getChannel());
+				nr.setMacAddress(new MacAddress(nBss.getBssid()));
+				nr.setNetworkType(NetworkType.AP);
+				nr.setPacketType(NeighborScanPacketType.BEACON);
+				nr.setPrivacy((nBss.getSsid() == null || nBss.getSsid().isEmpty()) ? true : false);
+				// nr.setRate(rate);
+				nr.setRssi(nBss.getRssi());
+				// nr.setScanTimeInSeconds(scanTimeInSeconds);
+				nr.setSecureMode(DetectedAuthMode.WPA);
+				// nr.setSignal(signal);
+				nr.setSsid(nBss.getSsid());
+			}
+
+			LOG.debug("populateNeighbourScanReports created report {} from stats {}", neighbourScanReports, neighbor);
+
+		}
 	}
 
 	private void populateApSsidMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId,

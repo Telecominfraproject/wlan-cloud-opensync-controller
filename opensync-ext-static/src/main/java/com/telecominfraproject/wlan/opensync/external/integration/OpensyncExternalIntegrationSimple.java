@@ -1,7 +1,6 @@
 package com.telecominfraproject.wlan.opensync.external.integration;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 import javax.annotation.PostConstruct;
@@ -32,19 +31,19 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 
 	private static final Logger LOG = LoggerFactory.getLogger(OpensyncExternalIntegrationSimple.class);
 
-	@Value("${connectus.ovsdb.customerEquipmentFileName:/Users/mikehansen/git/wlan-cloud-workspace/wlan-cloud-opensync-controller/opensync-ext-static/src/main/resources/EquipmentExample.json}")
+	@Value("${connectus.ovsdb.customerEquipmentFileName:/app/config/EquipmentExample.json}")
 	private String customerEquipmentFileName;
 
-	@Value("${connectus.ovsdb.apProfileFileName:/Users/mikehansen/git/wlan-cloud-workspace/wlan-cloud-opensync-controller/opensync-ext-static/src/main/resources/ProfileAPExample.json}")
+	@Value("${connectus.ovsdb.apProfileFileName:/app/config/ProfileAPExample.json}")
 	private String apProfileFileName;
 
-	@Value("${connectus.ovsdb.ssidProfileFileName:/Users/mikehansen/git/wlan-cloud-workspace/wlan-cloud-opensync-controller/opensync-ext-static/src/main/resources/ProfileSsid.json}")
+	@Value("${connectus.ovsdb.ssidProfileFileName:/app/config/ProfileSsid.json}")
 	private String ssidProfileFileName;
 
-	@Value("${connectus.ovsdb.radiusProfileFileName:/Users/mikehansen/git/wlan-cloud-workspace/wlan-cloud-opensync-controller/opensync-ext-static/src/main/resources/ProfileRadius.json}")
+	@Value("${connectus.ovsdb.radiusProfileFileName:/app/config/ProfileRadius.json}")
 	private String radiusProfileFileName;
-	
-	@Value("${connectus.ovsdb.locationFileName:/Users/mikehansen/git/wlan-cloud-workspace/wlan-cloud-opensync-controller/opensync-ext-static/src/main/resources/LocationBuildingExample.json}")
+
+	@Value("${connectus.ovsdb.locationFileName:/app/config/LocationBuildingExample.json}")
 	private String locationFileName;
 
 	private String serialNumber = "";
@@ -74,12 +73,12 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 			Equipment equipment = Equipment.fromFile(customerEquipmentFileName, Equipment.class);
 			equipment.setInventoryId(apId);
 			equipment.setName(apId);
-			
+
 			equipment.setSerial(serialNumber);
-			
+
 			com.telecominfraproject.wlan.profile.models.Profile apProfile = com.telecominfraproject.wlan.profile.models.Profile
 					.fromFile(apProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
-			
+
 			List<com.telecominfraproject.wlan.profile.models.Profile> ssidProfiles = com.telecominfraproject.wlan.profile.models.Profile
 					.listFromFile(ssidProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
 
@@ -87,7 +86,7 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 
 			List<com.telecominfraproject.wlan.profile.models.Profile> radiusProfiles = com.telecominfraproject.wlan.profile.models.Profile
 					.listFromFile(radiusProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
-			
+
 			equipment.setProfileId(apProfile.getId());
 
 			Location location = Location.fromFile(locationFileName, Location.class);
@@ -125,44 +124,43 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 
 	@Override
 	public void wifiVIFStateDbTableUpdate(List<OpensyncAPVIFState> vifStateTables, String apId) {
-		// TODO Auto-generated method stub
-
+		LOG.info("Received table state update {} for ap {}", vifStateTables, apId);
 	}
 
 	@Override
 	public void wifiRadioStatusDbTableUpdate(List<OpensyncAPRadioState> radioStateTable, String apId) {
-		// TODO Auto-generated method stub
+		LOG.info("Received table state update {} for ap {}", radioStateTable, apId);
 
 	}
 
 	@Override
 	public void wifiInetStateDbTableUpdate(List<OpensyncAPInetState> inetStateTable, String apId) {
-		// TODO Auto-generated method stub
+		LOG.info("Received table state update {} for ap {}", inetStateTable, apId);
 
 	}
 
 	@Override
 	public void wifiAssociatedClientsDbTableUpdate(List<OpensyncWifiAssociatedClients> wifiAssociatedClients,
 			String apId) {
-		// TODO Auto-generated method stub
+		LOG.info("Received table state update {} for ap {}", wifiAssociatedClients, apId);
 
 	}
 
 	@Override
 	public void awlanNodeDbTableUpdate(OpensyncAWLANNode opensyncAPState, String apId) {
-		// TODO Auto-generated method stub
+		LOG.info("Received table state update {} for ap {}", opensyncAPState, apId);
 
 	}
 
 	@Override
 	public void wifiVIFStateDbTableDelete(List<OpensyncAPVIFState> vifStateTables, String apId) {
-		// TODO Auto-generated method stub
+		LOG.info("Received table delete {} for ap {}", vifStateTables, apId);
 
 	}
 
 	@Override
 	public void wifiAssociatedClientsDbTableDelete(String deletedClientMac, String apId) {
-		// TODO Auto-generated method stub
+		LOG.info("Received Wifi_Associated_Clients row delete {} for ap {}", deletedClientMac, apId);
 
 	}
 
