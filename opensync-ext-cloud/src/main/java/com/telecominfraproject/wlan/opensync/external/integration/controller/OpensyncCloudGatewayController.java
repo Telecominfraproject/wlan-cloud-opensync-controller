@@ -133,7 +133,7 @@ public class OpensyncCloudGatewayController {
 			}
 			OvsdbSession session = ovsdbSessionMapInterface.getSession(inventoryId);
 			if (session == null) {
-				LOG.warn("[{}] Failed to deliver command {}, websocket session not found", inventoryId, command);
+				LOG.warn("[{}] Failed to deliver command {}, equipment session not found", inventoryId, command);
 				ret.add( new EquipmentCommandResponse(CEGWCommandResultCode.NoRouteToCE,
 						"No session found for " + inventoryId, command, registeredGateway.getHostname(), registeredGateway.getPort()) );
 				return;
@@ -302,10 +302,10 @@ public class OpensyncCloudGatewayController {
 			}
 			EquipmentGatewayRecord gwRecord = new EquipmentGatewayRecord();
 
-			// Internal facing service
+			// external facing service, protected by the client certificate auth
 			gwRecord.setHostname(getGatewayName());
-			gwRecord.setIpAddr(connectorProperties.getInternalIpAddress().getHostAddress());
-			gwRecord.setPort(connectorProperties.getInternalPort());
+			gwRecord.setIpAddr(connectorProperties.getExternalIpAddress().getHostAddress());
+			gwRecord.setPort(connectorProperties.getExternalPort());
 
 			try {
 
@@ -424,12 +424,12 @@ public class OpensyncCloudGatewayController {
 	}
 
 	/**
-	 * Use connection internal hostname as the gateway name
+	 * Use connection external hostname as the gateway name
 	 * 
 	 * @return
 	 */
 	private String getGatewayName() {
-		return connectorProperties.getInternalHostName();
+		return connectorProperties.getExternalHostName();
 	}
 
 	/**
