@@ -38,6 +38,7 @@ import com.telecominfraproject.wlan.core.model.equipment.NetworkType;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.customer.models.Customer;
 import com.telecominfraproject.wlan.customer.service.CustomerServiceInterface;
+import com.telecominfraproject.wlan.datastore.exceptions.DsConcurrentModificationException;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.Equipment;
@@ -67,6 +68,8 @@ import com.telecominfraproject.wlan.servicemetric.apnode.models.EthernetLinkStat
 import com.telecominfraproject.wlan.servicemetric.apnode.models.RadioUtilization;
 import com.telecominfraproject.wlan.servicemetric.apssid.models.ApSsidMetrics;
 import com.telecominfraproject.wlan.servicemetric.apssid.models.SsidStatistics;
+import com.telecominfraproject.wlan.servicemetric.channelinfo.models.ChannelInfo;
+import com.telecominfraproject.wlan.servicemetric.channelinfo.models.ChannelInfoReports;
 import com.telecominfraproject.wlan.servicemetric.client.models.ClientMetrics;
 import com.telecominfraproject.wlan.servicemetric.models.ServiceMetric;
 import com.telecominfraproject.wlan.servicemetric.neighbourscan.models.NeighbourReport;
@@ -95,6 +98,7 @@ import sts.PlumeStats.RadioBandType;
 import sts.PlumeStats.Report;
 import sts.PlumeStats.Survey;
 import sts.PlumeStats.Survey.SurveySample;
+import sts.PlumeStats.SurveyType;
 import traffic.NetworkMetadata.FlowReport;
 import wc.stats.IpDnsTelemetry.WCStatsReport;
 
@@ -549,13 +553,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			return;
 		}
 
+		gatewayController.updateActiveCustomer(customerId);
+
 		List<ServiceMetric> metricRecordList = new ArrayList<>();
 
 		populateApClientMetrics(metricRecordList, report, customerId, equipmentId);
 		populateApNodeMetrics(metricRecordList, report, customerId, equipmentId);
 		populateNeighbourScanReports(metricRecordList, report, customerId, equipmentId);
-
 		try {
+			populateChannelInfoReports(metricRecordList, report, customerId, equipmentId);
 			populateApSsidMetrics(metricRecordList, report, customerId, equipmentId, extractApIdFromTopic(topic));
 		} catch (Exception e) {
 			LOG.error("Exception when processing populateApSsidMetrics", e);
@@ -592,7 +598,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 					int numSamples = 0;
 					for (RadioTemp r : deviceReport.getRadioTempList()) {
 						if (r.hasValue()) {
-							LOG.debug("RadioBand {} RadioTemp {}", r.getBand(), r.getValue());
 							cpuTemperature += r.getValue();
 							numSamples++;
 						}
@@ -600,7 +605,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 					if (numSamples > 0) {
 						apPerformance.setCpuTemperature(cpuTemperature / numSamples);
-					} 
+					}
 				}
 
 				if (deviceReport.hasCpuUtil() && deviceReport.getCpuUtil().hasCpuUtil()) {
@@ -1093,6 +1098,122 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 	}
 
+	private void populateChannelInfoReports(List<ServiceMetric> metricRecordList, Report report, int customerId,
+			long equipmentId) {
+
+		LOG.debug("populateChannelInfoReports for Customer {} Equipment {}", customerId, equipmentId);
+		ServiceMetric smr = new ServiceMetric();
+		smr.setCustomerId(customerId);
+		smr.setEquipmentId(equipmentId);
+
+		ChannelInfoReports channelInfoReports = new ChannelInfoReports();
+
+		smr.setDetails(channelInfoReports);
+		metricRecordList.add(smr);
+
+		for (Survey survey : report.getSurveyList()) {
+
+			smr.setCreatedTimestamp(survey.getTimestampMs());
+			// message SurveySample {
+			// required uint32 channel = 1;
+			// optional uint32 duration_ms = 2;
+			// optional uint32 total_count = 3;
+			// optional uint32 sample_count = 4;
+			// optional uint32 busy = 5; /* Busy = Rx + Tx + Interference */
+			// optional uint32 busy_tx = 6; /* Tx */
+			// optional uint32 busy_rx = 7; /* Rx = Rx_obss + Rx_errr (self and
+			// obss errors) */
+			// optional uint32 busy_self = 8; /* Rx_self (derived from succesful
+			// Rx frames)*/
+			// optional uint32 offset_ms = 9;
+			// optional uint32 busy_ext = 10; /* 40MHz extention channel busy */
+			// }
+
+			RadioType radioType = null;
+			if (survey.getBand() == RadioBandType.BAND2G) {
+				radioType = RadioType.is2dot4GHz;
+			} else if (survey.getBand() == RadioBandType.BAND5G) {
+				radioType = RadioType.is5GHz;
+			} else if (survey.getBand() == RadioBandType.BAND5GL) {
+				radioType = RadioType.is5GHzL;
+			} else if (survey.getBand() == RadioBandType.BAND5GU) {
+				radioType = RadioType.is5GHzU;
+			}
+
+			if (survey.getSurveyType().equals(SurveyType.OFF_CHANNEL)
+					|| survey.getSurveyType().equals(SurveyType.FULL)) {
+
+				// in this case, we have multiple channels (potentially) and will make
+				// ChannelInfo entries per surveyed channel
+				Map<Integer, List<SurveySample>> sampleByChannelMap = new HashMap<Integer, List<SurveySample>>();
+
+				survey.getSurveyListList().stream().forEach(s -> {
+					List<SurveySample> surveySampleList;
+					if (sampleByChannelMap.get(s.getChannel()) == null) {
+						surveySampleList = new ArrayList<SurveySample>();
+					} else {
+						surveySampleList = sampleByChannelMap.get(s.getChannel());
+					}
+					surveySampleList.add(s);
+					sampleByChannelMap.put(s.getChannel(), surveySampleList);
+				});
+
+				for (List<SurveySample> surveySampleList : sampleByChannelMap.values()) {
+					ChannelInfo channelInfo = createChannelInfo(equipmentId, radioType, surveySampleList);
+
+					List<ChannelInfo> channelInfoList = channelInfoReports.getRadioInfo(radioType);
+					if (channelInfoList == null) {
+						channelInfoList = new ArrayList<ChannelInfo>();
+					}
+					channelInfoList.add(channelInfo);
+					channelInfoReports.getChannelInformationReportsPerRadio().put(radioType, channelInfoList);
+				}
+
+			} else {
+
+				List<SurveySample> surveySampleList = survey.getSurveyListList();
+
+				ChannelInfo channelInfo = createChannelInfo(equipmentId, radioType, surveySampleList);
+
+				List<ChannelInfo> channelInfoList = channelInfoReports.getRadioInfo(radioType);
+				if (channelInfoList == null) {
+					channelInfoList = new ArrayList<ChannelInfo>();
+				}
+				channelInfoList.add(channelInfo);
+				channelInfoReports.getChannelInformationReportsPerRadio().put(radioType, channelInfoList);
+			}
+
+		}
+		LOG.debug("ChannelInfoReports {}", channelInfoReports);
+
+	}
+
+	private ChannelInfo createChannelInfo(long equipmentId, RadioType radioType, List<SurveySample> surveySampleList) {
+		int busyTx = 0; /* Tx */
+		int busySelf = 0; /* Rx_self (derived from succesful Rx frames) */
+		int busy = 0; /* Busy = Rx + Tx + Interference */
+		ChannelInfo channelInfo = new ChannelInfo();
+
+		for (SurveySample sample : surveySampleList) {
+
+			busyTx += sample.getBusyTx();
+			busySelf += sample.getBusySelf();
+			busy += sample.getBusy();
+			channelInfo.setChanNumber(sample.getChannel());
+		}
+
+		int iBSS = busyTx + busySelf;
+
+		int totalWifi = busy - iBSS;
+
+		channelInfo.setTotalUtilization(busy);
+		channelInfo.setWifiUtilization(totalWifi);
+		channelInfo.setBandwidth(((ApElementConfiguration) equipmentServiceInterface.get(equipmentId).getDetails())
+				.getRadioMap().get(radioType).getChannelBandwidth());
+		channelInfo.setNoiseFloor(Integer.valueOf(-84)); // TODO: when this becomes available add
+		return channelInfo;
+	}
+
 	@Override
 	public void processMqttMessage(String topic, FlowReport flowReport) {
 
@@ -1182,6 +1303,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				LOG.debug("wifiRadioStatusDbTableUpdate::Cannot get Equipment for AP {}", apId);
 				return;
 			}
+			
+			gatewayController.updateActiveCustomer(ce.getCustomerId());
+
+			ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
 
 			if (radioState.getFreqBand().equals(RadioType.UNSUPPORTED)) {
 				LOG.debug("Could not get radio configuration for AP {}", apId);
@@ -1189,26 +1314,18 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			}
 
 			if (radioState.getAllowedChannels() != null && !radioState.getAllowedChannels().isEmpty()) {
-				ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
-				ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
-
+				apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
 				apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
 						.setAllowedChannels(new ArrayList<>(radioState.getAllowedChannels()));
-				ce.setDetails(apElementConfiguration);
-				equipmentServiceInterface.update(ce);
+
 				LOG.debug("Updated AllowedChannels from Wifi_Radio_State table change for AP {}", apId);
 
 			}
 
 			if (radioState.getTxPower() > 0) {
-				ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
-				ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
-
+				apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
 				apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
 						.setEirpTxPower(AutoOrManualValue.createManualInstance(radioState.getTxPower()));
-				ce.setDetails(apElementConfiguration);
-
-				equipmentServiceInterface.update(ce);
 
 				LOG.debug("Updated TxPower from Wifi_Radio_State table change for AP {}", apId);
 			}
@@ -1217,18 +1334,24 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			if (radioState.isEnabled()) {
 				state = StateSetting.enabled;
 			}
-			ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
-			ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
 
 			if (!apElementConfiguration.getAdvancedRadioMap().get(radioState.getFreqBand()).getRadioAdminState()
 					.equals(state)) {
 				// only update if changed
 				apElementConfiguration.getAdvancedRadioMap().get(radioState.getFreqBand()).setRadioAdminState(state);
 
-				equipmentServiceInterface.update(ce);
-
 				LOG.debug("Updated RadioAdminState from Wifi_Radio_State table change for AP {}", apId);
 
+			}
+
+			ce.setDetails(apElementConfiguration);
+			try {
+				equipmentServiceInterface.update(ce);
+			} catch (DsConcurrentModificationException e) {
+				LOG.debug("Equipment reference changed, update instance and retry.", e.getMessage());
+				ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
+				ce.setDetails(apElementConfiguration);
+				ce = equipmentServiceInterface.update(ce);
 			}
 
 		}
