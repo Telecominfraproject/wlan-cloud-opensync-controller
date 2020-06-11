@@ -592,6 +592,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 					int numSamples = 0;
 					for (RadioTemp r : deviceReport.getRadioTempList()) {
 						if (r.hasValue()) {
+							LOG.debug("RadioBand {} RadioTemp {}", r.getBand(), r.getValue());
 							cpuTemperature += r.getValue();
 							numSamples++;
 						}
@@ -599,7 +600,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 					if (numSamples > 0) {
 						apPerformance.setCpuTemperature(cpuTemperature / numSamples);
-					}
+					} 
 				}
 
 				if (deviceReport.hasCpuUtil() && deviceReport.getCpuUtil().hasCpuUtil()) {
@@ -994,6 +995,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			metricDetails.setTxMbps((float) client.getStats().getTxRate());
 			clientSession.getDetails().setMetricDetails(metricDetails);
 
+			clientSession = clientServiceInterface.updateSession(clientSession);
 			if (clientSession != null)
 				LOG.debug("CreatedOrUpdated clientSession {}", clientSession);
 
@@ -1175,7 +1177,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 		}
 
 		for (OpensyncAPRadioState radioState : radioStateTables) {
-
 			Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
 			if (ce == null) {
 				LOG.debug("wifiRadioStatusDbTableUpdate::Cannot get Equipment for AP {}", apId);
@@ -1186,39 +1187,50 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				LOG.debug("Could not get radio configuration for AP {}", apId);
 				continue;
 			}
-			ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
 
 			if (radioState.getAllowedChannels() != null && !radioState.getAllowedChannels().isEmpty()) {
+				ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
+				ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
 
 				apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
 						.setAllowedChannels(new ArrayList<>(radioState.getAllowedChannels()));
 				ce.setDetails(apElementConfiguration);
-				ce = equipmentServiceInterface.update(ce);
-				LOG.debug("Updated AllowedChannels from Wifi_Radio_State table change {}", ce);
+				equipmentServiceInterface.update(ce);
+				LOG.debug("Updated AllowedChannels from Wifi_Radio_State table change for AP {}", apId);
 
 			}
 
 			if (radioState.getTxPower() > 0) {
+				ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
+				ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
+
 				apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
 						.setEirpTxPower(AutoOrManualValue.createManualInstance(radioState.getTxPower()));
-				LOG.debug("Updated TxPower from Wifi_Radio_State table change {}", ce);
+				ce.setDetails(apElementConfiguration);
+
+				equipmentServiceInterface.update(ce);
+
+				LOG.debug("Updated TxPower from Wifi_Radio_State table change for AP {}", apId);
 			}
 
 			StateSetting state = StateSetting.disabled;
 			if (radioState.isEnabled()) {
 				state = StateSetting.enabled;
 			}
+			ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
+			ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
+
 			if (!apElementConfiguration.getAdvancedRadioMap().get(radioState.getFreqBand()).getRadioAdminState()
 					.equals(state)) {
 				// only update if changed
 				apElementConfiguration.getAdvancedRadioMap().get(radioState.getFreqBand()).setRadioAdminState(state);
 
-				LOG.debug("Updated RadioAdminState from Wifi_Radio_State table change {}", ce);
+				equipmentServiceInterface.update(ce);
+
+				LOG.debug("Updated RadioAdminState from Wifi_Radio_State table change for AP {}", apId);
 
 			}
 
-			ce.setDetails(apElementConfiguration);
-			equipmentServiceInterface.update(ce);
 		}
 
 	}
