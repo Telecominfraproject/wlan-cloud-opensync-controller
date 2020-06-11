@@ -920,7 +920,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 		}
 	}
 
-	private void handleClientSessionUpdate(int customerId, long equipmentId, String apId, int channel,
+	private void handleClientSessionUpdate(int customerId, long equipmentId, String apId,  long locationId, int channel,
 			RadioBandType band, long timestamp, sts.PlumeStats.Client client) {
 
 		com.telecominfraproject.wlan.client.models.Client clientInstance = clientServiceInterface.getOrNull(customerId,
@@ -944,6 +944,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				clientSession = new ClientSession();
 				clientSession.setCustomerId(customerId);
 				clientSession.setEquipmentId(equipmentId);
+				clientSession.setLocationId(locationId);
 				clientSession.setMacAddress(new MacAddress(client.getMacAddress()));
 				clientSession.setDetails(new ClientSessionDetails());
 
@@ -1009,6 +1010,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 		ServiceMetric smr = new ServiceMetric(customerId, equipmentId);
 		ApSsidMetrics apSsidMetrics = new ApSsidMetrics();
 
+		//we need to populate location Id on the client sessions, that's why we're getting equipment object in here (from the cache)
+		Equipment equipment = getCustomerEquipment(apId);
+		long locationId = (equipment != null) ? equipment.getLocationId() : 0 ;
+		 
 		smr.setDetails(apSsidMetrics);
 		LOG.debug("ApSsidMetrics Keys {}: ", apSsidMetrics.getSsidStats().keySet());
 		metricRecordList.add(smr);
@@ -1036,7 +1041,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 					rxRetries += client.getStats().getRxRetries();
 					lastRssi = client.getStats().getRssi();
 					try {
-						handleClientSessionUpdate(customerId, equipmentId, apId, clientReport.getChannel(),
+						handleClientSessionUpdate(customerId, equipmentId, apId, locationId, clientReport.getChannel(),
 								clientReport.getBand(), clientReport.getTimestampMs(), client);
 					} catch (Exception e) {
 						LOG.debug("Unabled to update client {} session {}", client, e);
