@@ -174,7 +174,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
         listener.startListeningWithSsl(ovsdbListenPort, sslContext, connectionCallback).join();
 
-        LOG.debug("manager waiting for connection on port {}...", ovsdbListenPort);
+        LOG.info("manager waiting for connection on port {}...", ovsdbListenPort);
     }
 
     private ConnectNodeInfo processConnectRequest(OvsdbClient ovsdbClient, String clientCn,

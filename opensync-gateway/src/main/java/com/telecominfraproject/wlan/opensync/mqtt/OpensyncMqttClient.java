@@ -64,9 +64,33 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
             @Value("${connectus.mqttBroker.user:admin}")
             String username,
             @Value("${connectus.mqttBroker.password:admin}")
-            String password            
+            String password,
+            @Value("${mqtt.javax.net.ssl.keyStore:/opt/tip-wlan/certs/client_keystore.jks}")
+            String jdkKeyStoreLocation,
+            @Value("${mqtt.javax.net.ssl.keyStorePassword:mypassword}")
+            String jdkKeyStorePassword,            
+            @Value("${mqtt.javax.net.ssl.trustStore:/opt/tip-wlan/certs/truststore.jks}")
+            String jdkTrustStoreLocation,
+            @Value("${mqtt.javax.net.ssl.trustStorePassword:mypassword}")           
+            String jdkTrustStorePassword
             ){
         
+    	if(System.getProperty("javax.net.ssl.keyStore") == null) {
+    		System.setProperty("javax.net.ssl.keyStore", jdkKeyStoreLocation);
+    	}
+
+    	if(System.getProperty("javax.net.ssl.keyStorePassword") == null) {
+    		System.setProperty("javax.net.ssl.keyStorePassword", jdkKeyStorePassword);
+    	}
+
+    	if(System.getProperty("javax.net.ssl.trustStore") == null) {
+    		System.setProperty("javax.net.ssl.trustStore", jdkTrustStoreLocation);
+    	}
+
+    	if(System.getProperty("javax.net.ssl.trustStorePassword") == null) {
+    		System.setProperty("javax.net.ssl.trustStorePassword", jdkTrustStorePassword);
+    	}
+
         Runnable mqttClientRunnable = () -> {
             while(keepReconnecting) {
                 BlockingConnection connection = null;

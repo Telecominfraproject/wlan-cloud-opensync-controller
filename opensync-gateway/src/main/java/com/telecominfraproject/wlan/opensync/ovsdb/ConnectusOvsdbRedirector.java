@@ -79,7 +79,7 @@ public class ConnectusOvsdbRedirector {
 
         listener.startListeningWithSsl(ovsdbRedirectorListenPort, sslContext, connectionCallback).join();
         
-        LOG.debug("redirector waiting for connection on port {} ...", ovsdbRedirectorListenPort);
+        LOG.info("redirector waiting for connection on port {} ...", ovsdbRedirectorListenPort);
 
     }
 
