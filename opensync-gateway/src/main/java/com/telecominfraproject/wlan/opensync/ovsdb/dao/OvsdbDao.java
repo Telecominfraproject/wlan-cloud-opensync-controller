@@ -1780,7 +1780,7 @@ public class OvsdbDao {
 		updateColumns.put("hw_config", hwConfigMap);
 		updateColumns.put("bcn_int", new Atom<>(beaconInterval));
 		updateColumns.put("enabled", new Atom<>(enabled));
-		updateColumns.put("ht_mode", new Atom<>(ht_mode));
+//		updateColumns.put("ht_mode", new Atom<>(ht_mode));
 		if (txPower > 0) {
 			updateColumns.put("tx_power", new Atom<>(txPower));
 		} else {
@@ -1803,8 +1803,8 @@ public class OvsdbDao {
 	public void configureSingleSsid(OvsdbClient ovsdbClient, String bridge, String ifName, String ssid,
 			boolean ssidBroadcast, Map<String, String> security,
 			Map<String, WifiRadioConfigInfo> provisionedWifiRadioConfigs, String radioIfName, int vlanId,
-			boolean rrmEnabled, String minHwMode, boolean enabled, int keyRefresh, boolean uapsdEnabled,
-			boolean apBridge, NetworkForwardMode networkForwardMode, String gateway, String inet,
+			boolean rrmEnabled, boolean enable80211r, String minHwMode, boolean enabled, int keyRefresh,
+			boolean uapsdEnabled, boolean apBridge, NetworkForwardMode networkForwardMode, String gateway, String inet,
 			Map<String, String> dns, String ipAssignScheme) {
 
 		List<Operation> operations = new ArrayList<>();
@@ -1814,7 +1814,12 @@ public class OvsdbDao {
 			updateColumns.put("bridge", new Atom<String>(bridge));
 			updateColumns.put("btm", new Atom<>(1));
 			updateColumns.put("enabled", new Atom<>(enabled));
-			updateColumns.put("ft_psk", new Atom<>(0));
+			if (enable80211r) {
+				updateColumns.put("ft_psk", new Atom<>(1));
+				updateColumns.put("ft_mobility_domain", new Atom<>(17911));
+			} else {
+				updateColumns.put("ft_psk", new Atom<>(0));
+			}
 			updateColumns.put("if_name", new Atom<>(ifName));
 			updateColumns.put("mode", new Atom<>("ap"));
 			updateColumns.put("rrm", new Atom<>(rrmEnabled ? 1 : 0));
@@ -1966,6 +1971,8 @@ public class OvsdbDao {
 
 				boolean apBridge = radioConfiguration.getStationIsolation() == StateSetting.enabled; // stationIsolation
 
+				boolean enable80211r = ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211r();
+
 				String minHwMode = "11n"; // min_hw_mode is 11ac, wifi 5, we can
 											// also take ++ (11ax) but 2.4GHz only
 											// Wifi4 --
@@ -2034,8 +2041,9 @@ public class OvsdbDao {
 					try {
 						configureSingleSsid(ovsdbClient, bridgeNameVifInterfaces, ifName, ssidConfig.getSsid(),
 								ssidBroadcast, security, provisionedWifiRadioConfigs, radioIfName,
-								ssidConfig.getVlanId(), rrmEnabled, minHwMode, enabled, keyRefresh, uapsdEnabled,
-								apBridge, ssidConfig.getForwardMode(), gateway, inet, dns, ipAssignScheme);
+								ssidConfig.getVlanId(), rrmEnabled, enable80211r, minHwMode, enabled, keyRefresh,
+								uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet, dns,
+								ipAssignScheme);
 
 					} catch (IllegalStateException e) {
 						// could not provision this SSID, but still can go on

@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
 
 import com.telecominfraproject.wlan.alarm.AlarmServiceInterface;
 import com.telecominfraproject.wlan.client.ClientServiceInterface;
-import com.telecominfraproject.wlan.client.models.ClientDetails;
+import com.telecominfraproject.wlan.client.info.models.ClientInfoDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientDhcpDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientSession;
 import com.telecominfraproject.wlan.client.session.models.ClientSessionDetails;
@@ -71,6 +71,7 @@ import com.telecominfraproject.wlan.servicemetric.apssid.models.SsidStatistics;
 import com.telecominfraproject.wlan.servicemetric.channelinfo.models.ChannelInfo;
 import com.telecominfraproject.wlan.servicemetric.channelinfo.models.ChannelInfoReports;
 import com.telecominfraproject.wlan.servicemetric.client.models.ClientMetrics;
+import com.telecominfraproject.wlan.servicemetric.models.McsStats;
 import com.telecominfraproject.wlan.servicemetric.models.ServiceMetric;
 import com.telecominfraproject.wlan.servicemetric.neighbourscan.models.NeighbourReport;
 import com.telecominfraproject.wlan.servicemetric.neighbourscan.models.NeighbourScanReports;
@@ -215,8 +216,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				ssidConfig.setSsid("DefaultSsid-2g");
 				ssidConfig.setSecureMode(SecureMode.wpa2PSK);
 				ssidConfig.setKeyStr("12345678");
+
 				Set<RadioType> appliedRadios = new HashSet<>();
 				appliedRadios.add(RadioType.is2dot4GHz);
+				ssidConfig.getRadioBasedConfigs().get(RadioType.is2dot4GHz).setEnable80211r(true);
+
 				ssidConfig.setAppliedRadios(appliedRadios);
 				ssidProfile.setDetails(ssidConfig);
 				ssidProfile = profileServiceInterface.create(ssidProfile);
@@ -232,6 +236,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				appliedRadios5g.add(RadioType.is5GHzL);
 				appliedRadios5g.add(RadioType.is5GHzU);
 				ssidConfig5g.setAppliedRadios(appliedRadios5g);
+				ssidConfig5g.getRadioBasedConfigs().get(RadioType.is5GHzL).setEnable80211r(true);
+				ssidConfig5g.getRadioBasedConfigs().get(RadioType.is5GHzU).setEnable80211r(true);
+
 				ssidProfile5g.setDetails(ssidConfig5g);
 				ssidProfile5g = profileServiceInterface.create(ssidProfile5g);
 
@@ -873,7 +880,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 	private void populateNeighbourScanReports(List<ServiceMetric> metricRecordList, Report report, int customerId,
 			long equipmentId) {
 		LOG.debug("populateNeighbourScanReports for Customer {} Equipment {}", customerId, equipmentId);
-		LOG.debug("Opensync Stats for Neighbors {}", report.getNeighborsList());
+//		LOG.debug("Opensync Stats for Neighbors {}", report.getNeighborsList());
 
 		for (Neighbor neighbor : report.getNeighborsList()) {
 
@@ -926,16 +933,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				nr.setSsid(nBss.getSsid());
 			}
 
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("populateNeighbourScanReports created report {} from stats {}", neighbourScanReports,
-						neighbor);
-			}
+			LOG.debug("populateNeighbourScanReports created report {} from stats {}", neighbourScanReports, neighbor);
 
 		}
 	}
 
 	private void handleClientSessionUpdate(int customerId, long equipmentId, String apId, long locationId, int channel,
-			RadioBandType band, long timestamp, sts.OpensyncStats.Client client) {
+			RadioBandType band, long timestamp, sts.OpensyncStats.Client client, String nodeId) {
 
 		com.telecominfraproject.wlan.client.models.Client clientInstance = clientServiceInterface.getOrNull(customerId,
 				new MacAddress(client.getMacAddress()));
@@ -943,11 +947,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			clientInstance = new com.telecominfraproject.wlan.client.models.Client();
 			clientInstance.setCustomerId(customerId);
 			clientInstance.setMacAddress(new MacAddress(client.getMacAddress()));
-			clientInstance.setDetails(new ClientDetails());
+			clientInstance.setDetails(new ClientInfoDetails());
 			clientInstance = clientServiceInterface.create(clientInstance);
 		}
-
-		clientServiceInterface.getSessionOrNull(customerId, equipmentId, clientInstance.getMacAddress());
+		ClientInfoDetails clientDetails = (ClientInfoDetails) clientInstance.getDetails();
+		clientDetails.setHostName(nodeId);
 
 		try {
 
@@ -983,7 +987,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				LOG.debug("Band {} is not supported.", band);
 			}
 			clientSession.getDetails().setRadioType(radioType);
-
 			clientSession.getDetails().setSessionId(clientSession.getMacAddress().getAddressAsLong());
 			clientSession.getDetails().setSsid(client.getSsid());
 			clientSession.getDetails().setAssociationStatus(0);
@@ -1020,7 +1023,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 	private void populateApSsidMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId,
 			long equipmentId, String apId) {
 
-		LOG.debug("populateApSsidMetrics for Customer {} Equipment {}");
+		LOG.debug("populateApSsidMetrics for Customer {} Equipment {}", customerId, equipmentId);
 		ServiceMetric smr = new ServiceMetric(customerId, equipmentId);
 		ApSsidMetrics apSsidMetrics = new ApSsidMetrics();
 
@@ -1030,7 +1033,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 		long locationId = (equipment != null) ? equipment.getLocationId() : 0;
 
 		smr.setDetails(apSsidMetrics);
-		LOG.debug("ApSsidMetrics Keys {}: ", apSsidMetrics.getSsidStats().keySet());
 		metricRecordList.add(smr);
 
 		for (ClientReport clientReport : report.getClientsList()) {
@@ -1041,27 +1043,81 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				smr.setCreatedTimestamp(clientReport.getTimestampMs());
 			}
 
-			long txBytes = 0;
-			long rxBytes = 0;
+			long txBytes = 0L;
+			long rxBytes = 0L;
+			long txFrames = 0L;
+			long rxFrames = 0L;
+
 			int txErrors = 0;
+			int rxErrors = 0;
+
+			int txRetries = 0;
 			int rxRetries = 0;
+
+			double txRate = 0.0D;
+			double rxRate = 0.0D;
 			int lastRssi = 0;
 			String ssid = null;
+
+			List<McsStats> mcsStats = new ArrayList<McsStats>();
 
 			Set<String> clientMacs = new HashSet<String>();
 			for (Client client : clientReport.getClientListList()) {
 
+				if (client.hasSsid()) {
+					ssid = client.getSsid();
+				}
+
+				LOG.debug("Client {} connected {} connectedCount {}", client.getMacAddress(), client.getConnected(),
+						client.getConnectCount());
+
 				if (client.hasStats()) {
 					clientMacs.add(client.getMacAddress());
+					sts.OpensyncStats.Client.Stats clientStats = client.getStats();
 
-					txBytes += client.getStats().getTxBytes();
-					rxBytes += client.getStats().getRxBytes();
-					txErrors += client.getStats().getTxErrors();
-					rxRetries += client.getStats().getRxRetries();
+//			        optional uint64     rx_bytes        = 1;
+//			        optional uint64     tx_bytes        = 2;
+//			        optional uint64     rx_frames       = 3;
+//			        optional uint64     tx_frames       = 4;
+//			        optional uint64     rx_retries      = 5;
+//			        optional uint64     tx_retries      = 6;
+//			        optional uint64     rx_errors       = 7;
+//			        optional uint64     tx_errors       = 8;
+//			        optional double     rx_rate         = 9;
+//			        optional double     tx_rate         = 10;
+//			        optional uint32     rssi            = 11;
+
+					rxBytes += clientStats.getRxBytes();
+					txBytes += clientStats.getTxBytes();
+					txFrames += clientStats.getRxFrames();
+					rxFrames += clientStats.getTxFrames();
+					rxRetries += clientStats.getRxRetries();
+					txRetries += clientStats.getTxRetries();
+					rxErrors += clientStats.getRxErrors();
+					txErrors += clientStats.getTxErrors();
+					rxRate += clientStats.getRxRate();
+					txRate += clientStats.getTxRate();
+
 					lastRssi = client.getStats().getRssi();
+
+					for (sts.OpensyncStats.Client.TxStats txStats : client.getTxStatsList()) {
+
+						LOG.debug("txStats {}", txStats);
+					}
+
+					for (sts.OpensyncStats.Client.RxStats rxStats : client.getRxStatsList()) {
+
+						LOG.debug("rxStats {}", rxStats);
+					}
+
+					for (sts.OpensyncStats.Client.TidStats tidStats : client.getTidStatsList()) {
+
+						LOG.debug("tidStats {}", tidStats);
+					}
+
 					try {
 						handleClientSessionUpdate(customerId, equipmentId, apId, locationId, clientReport.getChannel(),
-								clientReport.getBand(), clientReport.getTimestampMs(), client);
+								clientReport.getBand(), clientReport.getTimestampMs(), client, report.getNodeID());
 					} catch (Exception e) {
 						LOG.debug("Unabled to update client {} session {}", client, e);
 					}
@@ -1076,8 +1132,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 			SsidStatistics ssidStatistics = new SsidStatistics();
 			ssidStatistics.setRxLastRssi(-1 * lastRssi);
-			ssidStatistics.setRxBytes(rxBytes);
-			ssidStatistics.setNumTxBytesSucc(txBytes - txErrors);
+			ssidStatistics.setNumRxData(Long.valueOf(rxFrames).intValue());
+			ssidStatistics.setRxBytes(rxBytes - rxErrors - rxRetries);
+			ssidStatistics.setNumTxDataRetries(txRetries);
+			ssidStatistics.setNumRcvFrameForTx(txFrames);
+			ssidStatistics.setNumTxBytesSucc(txBytes - txErrors - txRetries);
 			ssidStatistics.setNumRxRetry(rxRetries);
 			ssidStatistics.setNumClient(clientMacs.size());
 			ssidStatistics.setSsid(ssid);
