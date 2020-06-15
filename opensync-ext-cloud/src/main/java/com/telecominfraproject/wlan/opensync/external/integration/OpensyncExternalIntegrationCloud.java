@@ -88,17 +88,17 @@ import com.telecominfraproject.wlan.status.models.StatusDataType;
 import com.telecominfraproject.wlan.status.network.models.NetworkAdminStatusData;
 import com.telecominfraproject.wlan.status.network.models.NetworkAggregateStatusData;
 
-import sts.PlumeStats.Client;
-import sts.PlumeStats.ClientReport;
-import sts.PlumeStats.Device;
-import sts.PlumeStats.Device.RadioTemp;
-import sts.PlumeStats.Neighbor;
-import sts.PlumeStats.Neighbor.NeighborBss;
-import sts.PlumeStats.RadioBandType;
-import sts.PlumeStats.Report;
-import sts.PlumeStats.Survey;
-import sts.PlumeStats.Survey.SurveySample;
-import sts.PlumeStats.SurveyType;
+import sts.OpensyncStats.Client;
+import sts.OpensyncStats.ClientReport;
+import sts.OpensyncStats.Device;
+import sts.OpensyncStats.Device.RadioTemp;
+import sts.OpensyncStats.Neighbor;
+import sts.OpensyncStats.Neighbor.NeighborBss;
+import sts.OpensyncStats.RadioBandType;
+import sts.OpensyncStats.Report;
+import sts.OpensyncStats.Survey;
+import sts.OpensyncStats.Survey.SurveySample;
+import sts.OpensyncStats.SurveyType;
 import traffic.NetworkMetadata.FlowReport;
 import wc.stats.IpDnsTelemetry.WCStatsReport;
 
@@ -926,13 +926,16 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				nr.setSsid(nBss.getSsid());
 			}
 
-			LOG.debug("populateNeighbourScanReports created report {} from stats {}", neighbourScanReports, neighbor);
+			if (LOG.isDebugEnabled()) {
+				LOG.debug("populateNeighbourScanReports created report {} from stats {}", neighbourScanReports,
+						neighbor);
+			}
 
 		}
 	}
 
 	private void handleClientSessionUpdate(int customerId, long equipmentId, String apId, long locationId, int channel,
-			RadioBandType band, long timestamp, sts.PlumeStats.Client client) {
+			RadioBandType band, long timestamp, sts.OpensyncStats.Client client) {
 
 		com.telecominfraproject.wlan.client.models.Client clientInstance = clientServiceInterface.getOrNull(customerId,
 				new MacAddress(client.getMacAddress()));
@@ -1007,8 +1010,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			clientSession.getDetails().setMetricDetails(metricDetails);
 
 			clientSession = clientServiceInterface.updateSession(clientSession);
-			if (clientSession != null)
-				LOG.debug("CreatedOrUpdated clientSession {}", clientSession);
+			LOG.debug("CreatedOrUpdated clientSession {}", clientSession);
 
 		} catch (Exception e) {
 			LOG.error("Error while attempting to create ClientSession and Info", e);
@@ -1038,7 +1040,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			if (smr.getCreatedTimestamp() < clientReport.getTimestampMs()) {
 				smr.setCreatedTimestamp(clientReport.getTimestampMs());
 			}
-			
+
 			long txBytes = 0;
 			long rxBytes = 0;
 			int txErrors = 0;
@@ -1109,7 +1111,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 		}
 
-		LOG.debug("Created ApSsidMetrics Report {}", apSsidMetrics);
+		LOG.debug("ApSsidMetrics {}", apSsidMetrics);
+
+		// LOG.debug("Created ApSsidMetrics Report {}", apSsidMetrics);
 
 	}
 
@@ -1199,6 +1203,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			}
 
 		}
+
 		LOG.debug("ChannelInfoReports {}", channelInfoReports);
 
 	}
@@ -1215,7 +1220,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			busySelf += sample.getBusySelf();
 			busy += sample.getBusy();
 			channelInfo.setChanNumber(sample.getChannel());
-			LOG.debug("MJH Channel {} Sample for Radio {}", sample.getChannel(), radioType);
 		}
 
 		int iBSS = busyTx + busySelf;
@@ -1329,7 +1333,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				continue;
 			}
 
-			if (radioState.getAllowedChannels() != null && !radioState.getAllowedChannels().isEmpty()) {
+			if (radioState.getAllowedChannels() != null) {
 				apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
 				apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
 						.setAllowedChannels(new ArrayList<>(radioState.getAllowedChannels()));

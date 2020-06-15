@@ -2309,6 +2309,10 @@ public class OvsdbDao {
 
 			provisionWifiStatsConfigClient(radioConfigs, getProvisionedWifiStatsConfigs(ovsdbClient), operations);
 
+			provisionWifiStatsConfigBandSteering(radioConfigs, getProvisionedWifiStatsConfigs(ovsdbClient), operations);
+
+			provisionWifiStatsConfigCapacity(radioConfigs, getProvisionedWifiStatsConfigs(ovsdbClient), operations);
+
 			provisionWifiStatsRssi(radioConfigs, getProvisionedWifiStatsConfigs(ovsdbClient), operations);
 
 			if (!operations.isEmpty()) {
@@ -2327,6 +2331,50 @@ public class OvsdbDao {
 		} catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	private void provisionWifiStatsConfigCapacity(Map<String, WifiRadioConfigInfo> radioConfigs,
+			Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs, List<Operation> operations) {
+
+		radioConfigs.values().stream().forEach(rc -> {
+			if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_capacity")) {
+				//
+				Map<String, Value> rowColumns = new HashMap<>();
+				rowColumns.put("radio_type", new Atom<>(rc.freqBand));
+				rowColumns.put("reporting_interval", new Atom<>(60));
+//				rowColumns.put("sampling_interval", new Atom<>(3));
+				rowColumns.put("stats_type", new Atom<>("capacity"));
+//				rowColumns.put("survey_interval_ms", new Atom<>(65));
+//				rowColumns.put("survey_type", new Atom<>("on-chan"));
+
+				Row updateRow = new Row(rowColumns);
+				operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
+
+			}
+		});
+
+	}
+
+	private void provisionWifiStatsConfigBandSteering(Map<String, WifiRadioConfigInfo> radioConfigs,
+			Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs, List<Operation> operations) {
+
+		radioConfigs.values().stream().forEach(rc -> {
+			if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_steering")) {
+				//
+				Map<String, Value> rowColumns = new HashMap<>();
+				rowColumns.put("radio_type", new Atom<>(rc.freqBand));
+				rowColumns.put("reporting_interval", new Atom<>(60));
+//				rowColumns.put("sampling_interval", new Atom<>(3));
+				rowColumns.put("stats_type", new Atom<>("steering"));
+//				rowColumns.put("survey_interval_ms", new Atom<>(65));
+//				rowColumns.put("survey_type", new Atom<>("on-chan"));
+
+				Row updateRow = new Row(rowColumns);
+				operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
+
+			}
+		});
+
 	}
 
 	private void provisionWifiStatsRssi(Map<String, WifiRadioConfigInfo> radioConfigs,

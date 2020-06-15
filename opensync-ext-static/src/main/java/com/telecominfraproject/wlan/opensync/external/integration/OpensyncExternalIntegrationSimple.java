@@ -21,7 +21,7 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAWLANNode;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
 
-import sts.PlumeStats.Report;
+import sts.OpensyncStats.Report;
 import traffic.NetworkMetadata.FlowReport;
 import wc.stats.IpDnsTelemetry.WCStatsReport;
 
