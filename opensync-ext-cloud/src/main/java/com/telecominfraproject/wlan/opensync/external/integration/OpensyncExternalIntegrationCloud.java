@@ -778,8 +778,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 							cl);
 					continue;
 				}
-				
-				LOG.debug ("Processing ClientReport from AP {}", clReport);
+
+				LOG.debug("Processing ClientReport from AP {}", clReport);
 
 				ServiceMetric smr = new ServiceMetric(customerId, equipmentId, new MacAddress(cl.getMacAddress()));
 				metricRecordList.add(smr);
@@ -813,13 +813,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 				if (cl.hasStats()) {
 					if (cl.getStats().hasRssi()) {
-						cMetrics.setRssi(cl.getStats().getRssi());
+						int unsignedRssi = cl.getStats().getRssi();
+						// we can only get Rssi as an unsigned int from opensync, so some shifting
+						int signedRssi = (unsignedRssi << 1) >> 1;
+						cMetrics.setRssi(signedRssi);
 					}
 
 					// we'll report each device as having a single (very long)
 					// session
 					cMetrics.setSessionId(smr.getClientMac());
-					
 
 					// populate Rx stats
 					if (cl.getStats().hasRxBytes()) {
@@ -827,7 +829,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 					}
 
 					if (cl.getStats().hasRxRate()) {
-						cMetrics.setAverageRxRate(cl.getStats().getRxRate());
+						cMetrics.setAverageRxRate((double) (cl.getStats().getTxRate() / 1000));
 					}
 
 					if (cl.getStats().hasRxErrors()) {
@@ -849,12 +851,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 					}
 
 					if (cl.getStats().hasTxRate()) {
-						 cMetrics.setAverageTxRate(cl.getStats().getTxRate());
+						cMetrics.setAverageTxRate(Double.valueOf((double) (cl.getStats().getTxRate() / 1000)));
 					}
 
 					if (cl.getStats().hasTxRate() && cl.getStats().hasRxRate()) {
 						cMetrics.setRates(
-								new byte[] { (byte) cl.getStats().getTxRate(), (byte) cl.getStats().getRxRate() });
+								new byte[] { Double.valueOf((double) (cl.getStats().getTxRate() / 1000)).byteValue(),
+										Double.valueOf((double) (cl.getStats().getRxRate() / 1000)).byteValue() });
 					}
 
 					if (cl.getStats().hasTxErrors()) {
@@ -862,7 +865,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 					}
 
 					if (cl.getStats().hasRxFrames()) {
-						 cMetrics.setNumTxFramesTransmitted(cl.getStats().getTxFrames());
+						cMetrics.setNumTxFramesTransmitted(cl.getStats().getTxFrames());
 					}
 
 					if (cl.getStats().hasTxRetries()) {
@@ -870,7 +873,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 					}
 
 				}
-			
 
 				LOG.debug("ApClientMetrics Report {}", cMetrics);
 
@@ -929,14 +931,16 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				nr.setPacketType(NeighborScanPacketType.BEACON);
 				nr.setPrivacy((nBss.getSsid() == null || nBss.getSsid().isEmpty()) ? true : false);
 				// nr.setRate(rate);
-				nr.setRssi(nBss.getRssi());
+				// we can only get Rssi as an unsigned int from opensync, so some shifting
+				int signedRssi = (nBss.getRssi() << 1) >> 1;
+				nr.setRssi(signedRssi);
 				// nr.setScanTimeInSeconds(scanTimeInSeconds);
 				nr.setSecureMode(DetectedAuthMode.WPA);
 				// nr.setSignal(signal);
 				nr.setSsid(nBss.getSsid());
 			}
 
-			LOG.debug("populateNeighbourScanReports created report {} from stats {}", neighbourScanReports, neighbor);
+//			LOG.debug("populateNeighbourScanReports created report {} from stats {}", neighbourScanReports, neighbor);
 
 		}
 	}
@@ -1002,7 +1006,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			ClientDhcpDetails dhcpDetails = new ClientDhcpDetails(clientSession.getDetails().getSessionId());
 			clientSession.getDetails().setDhcpDetails(dhcpDetails);
 			ClientSessionMetricDetails metricDetails = new ClientSessionMetricDetails();
-			metricDetails.setRssi(client.getStats().getRssi());
+			int signedRssi = (client.getStats().getRssi() << 1) >> 1;
+			metricDetails.setRssi(signedRssi);
 			metricDetails.setRxBytes(client.getStats().getRxBytes());
 			metricDetails.setTxBytes(client.getStats().getTxBytes());
 			metricDetails.setTotalTxPackets(client.getStats().getTxFrames());
@@ -1011,8 +1016,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 					.setTxDataFrames((int) ((int) client.getStats().getTxFrames() - client.getStats().getTxRetries()));
 			metricDetails
 					.setRxDataFrames((int) ((int) client.getStats().getRxFrames() - client.getStats().getRxRetries()));
-			metricDetails.setRxMbps((float) client.getStats().getRxRate());
-			metricDetails.setTxMbps((float) client.getStats().getTxRate());
+			// values reported in Kbps, convert to Mbps
+			metricDetails.setRxMbps(Float.valueOf((float) (client.getStats().getRxRate() / 1000)));
+			metricDetails.setTxMbps(Float.valueOf((float) (client.getStats().getTxRate() / 1000)));
 			clientSession.getDetails().setMetricDetails(metricDetails);
 
 			clientSession = clientServiceInterface.updateSession(clientSession);
@@ -1057,12 +1063,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			int txRetries = 0;
 			int rxRetries = 0;
 
-			double txRate = 0.0D;
-			double rxRate = 0.0D;
 			int lastRssi = 0;
 			String ssid = null;
 
-			List<McsStats> mcsStats = new ArrayList<McsStats>();
 
 			Set<String> clientMacs = new HashSet<String>();
 			for (Client client : clientReport.getClientListList()) {
@@ -1098,8 +1101,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 					txRetries += clientStats.getTxRetries();
 					rxErrors += clientStats.getRxErrors();
 					txErrors += clientStats.getTxErrors();
-					rxRate += clientStats.getRxRate();
-					txRate += clientStats.getTxRate();
 
 					lastRssi = client.getStats().getRssi();
 
@@ -1134,7 +1135,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 					clientReport.getChannel(), clientReport.getBand(), clientMacs);
 
 			SsidStatistics ssidStatistics = new SsidStatistics();
-			ssidStatistics.setRxLastRssi(-1 * lastRssi);
+			// we can only get Rssi as an unsigned int from opensync, so some shifting
+			int signedRssi = (lastRssi << 1) >> 1;
+			ssidStatistics.setRxLastRssi(signedRssi);
 			ssidStatistics.setNumRxData(Long.valueOf(rxFrames).intValue());
 			ssidStatistics.setRxBytes(rxBytes - rxErrors - rxRetries);
 			ssidStatistics.setNumTxDataRetries(txRetries);

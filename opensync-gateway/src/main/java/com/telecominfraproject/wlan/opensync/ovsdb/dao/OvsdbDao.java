@@ -2677,8 +2677,8 @@ public class OvsdbDao {
 				Map<String, Value> rowColumns = new HashMap<>();
 				rowColumns.put("radio_type", new Atom<>(rc.freqBand));
 				rowColumns.put("reporting_interval", new Atom<>(60));
-				rowColumns.put("report_type", new Atom<>("average"));
-//				rowColumns.put("sampling_interval", new Atom<>(6));
+				rowColumns.put("report_type", new Atom<>("raw"));
+				rowColumns.put("sampling_interval", new Atom<>(10));
 				rowColumns.put("stats_type", new Atom<>("client"));
 				rowColumns.put("survey_interval_ms", new Atom<>(65));
 //				rowColumns.put("survey_type", new Atom<>("on-chan"));
