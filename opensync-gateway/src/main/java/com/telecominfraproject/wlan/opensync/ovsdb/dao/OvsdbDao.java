@@ -1205,8 +1205,11 @@ public class OvsdbDao {
 			case is160MHz:
 				ht_mode = "HT160";
 				break;
+			case auto:
+				ht_mode = "0";
+				break;
 			default:
-				ht_mode = "HT20";
+				ht_mode = null;
 			}
 			elementRadioConfig.getAutoChannelSelection();
 
@@ -1780,7 +1783,11 @@ public class OvsdbDao {
 		updateColumns.put("hw_config", hwConfigMap);
 		updateColumns.put("bcn_int", new Atom<>(beaconInterval));
 		updateColumns.put("enabled", new Atom<>(enabled));
-//		updateColumns.put("ht_mode", new Atom<>(ht_mode));
+		if (ht_mode != null && !ht_mode.equals("0")) {
+			updateColumns.put("ht_mode", new Atom<>(ht_mode));
+		} else {
+			updateColumns.put("ht_mode", new com.vmware.ovsdb.protocol.operation.notation.Set());
+		}
 		if (txPower > 0) {
 			updateColumns.put("tx_power", new Atom<>(txPower));
 		} else {
@@ -1819,6 +1826,7 @@ public class OvsdbDao {
 				updateColumns.put("ft_mobility_domain", new Atom<>(17911));
 			} else {
 				updateColumns.put("ft_psk", new Atom<>(0));
+				updateColumns.put("ft_mobility_domain", new com.vmware.ovsdb.protocol.operation.notation.Set());
 			}
 			updateColumns.put("if_name", new Atom<>(ifName));
 			updateColumns.put("mode", new Atom<>("ap"));
@@ -1970,8 +1978,16 @@ public class OvsdbDao {
 				boolean uapsdEnabled = radioConfiguration.getUapsdState() == StateSetting.enabled;
 
 				boolean apBridge = radioConfiguration.getStationIsolation() == StateSetting.enabled; // stationIsolation
+				boolean enable80211r = false;
 
-				boolean enable80211r = ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211r();
+				if (ssidConfig.getRadioBasedConfigs() != null) {
+					if (ssidConfig.getRadioBasedConfigs().containsKey(radioType)
+							&& ssidConfig.getRadioBasedConfigs().get(radioType) != null) {
+						if (ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211r() != null) {
+							enable80211r = ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211r();
+						}
+					}
+				}
 
 				String minHwMode = "11n"; // min_hw_mode is 11ac, wifi 5, we can
 											// also take ++ (11ax) but 2.4GHz only
@@ -2661,8 +2677,8 @@ public class OvsdbDao {
 				Map<String, Value> rowColumns = new HashMap<>();
 				rowColumns.put("radio_type", new Atom<>(rc.freqBand));
 				rowColumns.put("reporting_interval", new Atom<>(60));
-				rowColumns.put("report_type", new Atom<>("raw"));
-				rowColumns.put("sampling_interval", new Atom<>(6));
+				rowColumns.put("report_type", new Atom<>("average"));
+//				rowColumns.put("sampling_interval", new Atom<>(6));
 				rowColumns.put("stats_type", new Atom<>("client"));
 				rowColumns.put("survey_interval_ms", new Atom<>(65));
 //				rowColumns.put("survey_type", new Atom<>("on-chan"));

@@ -219,7 +219,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 				Set<RadioType> appliedRadios = new HashSet<>();
 				appliedRadios.add(RadioType.is2dot4GHz);
-				ssidConfig.getRadioBasedConfigs().get(RadioType.is2dot4GHz).setEnable80211r(true);
+//				ssidConfig.getRadioBasedConfigs().get(RadioType.is2dot4GHz).setEnable80211r(true);
 
 				ssidConfig.setAppliedRadios(appliedRadios);
 				ssidProfile.setDetails(ssidConfig);
@@ -236,8 +236,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				appliedRadios5g.add(RadioType.is5GHzL);
 				appliedRadios5g.add(RadioType.is5GHzU);
 				ssidConfig5g.setAppliedRadios(appliedRadios5g);
-				ssidConfig5g.getRadioBasedConfigs().get(RadioType.is5GHzL).setEnable80211r(true);
-				ssidConfig5g.getRadioBasedConfigs().get(RadioType.is5GHzU).setEnable80211r(true);
+//				ssidConfig5g.getRadioBasedConfigs().get(RadioType.is5GHzL).setEnable80211r(true);
+//				ssidConfig5g.getRadioBasedConfigs().get(RadioType.is5GHzU).setEnable80211r(true);
 
 				ssidProfile5g.setDetails(ssidConfig5g);
 				ssidProfile5g = profileServiceInterface.create(ssidProfile5g);
@@ -778,6 +778,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 							cl);
 					continue;
 				}
+				
+				LOG.debug ("Processing ClientReport from AP {}", clReport);
 
 				ServiceMetric smr = new ServiceMetric(customerId, equipmentId, new MacAddress(cl.getMacAddress()));
 				metricRecordList.add(smr);
@@ -817,6 +819,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 					// we'll report each device as having a single (very long)
 					// session
 					cMetrics.setSessionId(smr.getClientMac());
+					
 
 					// populate Rx stats
 					if (cl.getStats().hasRxBytes()) {
@@ -824,7 +827,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 					}
 
 					if (cl.getStats().hasRxRate()) {
-						// cMetrics.setAverageRxRate(cl.getStats().getRxRate());
+						cMetrics.setAverageRxRate(cl.getStats().getRxRate());
 					}
 
 					if (cl.getStats().hasRxErrors()) {
@@ -832,8 +835,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 					}
 
 					if (cl.getStats().hasRxFrames()) {
-						// cMetrics.setNumRxFramesReceived(cl.getStats().getRxFrames());
-						cMetrics.setNumRxPackets(cl.getStats().getRxFrames());
+						cMetrics.setNumRxFramesReceived(cl.getStats().getRxFrames());
+//						cMetrics.setNumRxPackets(cl.getStats().getRxFrames());
 					}
 
 					if (cl.getStats().hasRxRetries()) {
@@ -846,7 +849,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 					}
 
 					if (cl.getStats().hasTxRate()) {
-						// cMetrics.setAverageTxRate(cl.getStats().getTxRate());
+						 cMetrics.setAverageTxRate(cl.getStats().getTxRate());
 					}
 
 					if (cl.getStats().hasTxRate() && cl.getStats().hasRxRate()) {
@@ -859,8 +862,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 					}
 
 					if (cl.getStats().hasRxFrames()) {
-						// cMetrics.setNumTxFramesTransmitted(cl.getStats().getTxFrames());
-						cMetrics.setNumTxPackets(cl.getStats().getRxFrames());
+						 cMetrics.setNumTxFramesTransmitted(cl.getStats().getTxFrames());
 					}
 
 					if (cl.getStats().hasTxRetries()) {
@@ -868,6 +870,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 					}
 
 				}
+			
 
 				LOG.debug("ApClientMetrics Report {}", cMetrics);
 
