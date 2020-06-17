@@ -11,7 +11,7 @@
 	</parent>
 	<artifactId>opensync-ext-cloud</artifactId>
 	<name>opensync-ext-cloud</name>
-	<description>Configuration interface that provides cloud config from the file</description>
+	<description>Configuration interface that provides config from the cloud services.</description>
 	<dependencies>
 		<dependency>
 			<groupId>com.telecominfraproject.wlan</groupId>
