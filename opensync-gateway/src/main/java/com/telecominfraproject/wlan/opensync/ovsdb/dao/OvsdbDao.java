@@ -344,7 +344,7 @@ public class OvsdbDao {
 			// $ ovsh i Wifi_Stats_Config reporting_interval:=10
 			// radio_type:="2.4G" stats_type:="device"
 
-			updateColumns.put("reporting_interval", new Atom<>(10));
+			updateColumns.put("reporting_interval", new Atom<>(newValue));
 			updateColumns.put("radio_type", new Atom<>("2.4G"));
 			updateColumns.put("stats_type", new Atom<>("device"));
 

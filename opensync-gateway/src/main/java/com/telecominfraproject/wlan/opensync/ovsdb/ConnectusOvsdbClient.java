@@ -50,7 +50,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.listenPort:6640}")
     private int ovsdbListenPort;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.manager.collectionIntervalSec.deviceStats:10}")
+    @org.springframework.beans.factory.annotation.Value("${connectus.manager.collectionIntervalSec.deviceStats:120}")
     private long collectionIntervalSecDeviceStats;
 
     @Autowired
