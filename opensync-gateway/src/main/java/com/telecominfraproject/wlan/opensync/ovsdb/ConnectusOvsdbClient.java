@@ -108,8 +108,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                     LOG.info("ovsdbClient connectedClients = {}",
                             ConnectusOvsdbClient.this.ovsdbSessionMapInterface.getNumSessions());
 
-                }
-                catch (Exception e) {
+                } catch (Exception e) {
                     LOG.error("ovsdbClient error", e);
                     // something is wrong with the SSL
                     ovsdbClient.shutdown();
@@ -126,8 +125,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                 try {
                     subjectDn = ((X509Certificate) ovsdbClient.getConnectionInfo().getRemoteCertificate())
                             .getSubjectDN().getName();
-                }
-                catch (Exception e) {
+                } catch (Exception e) {
                     // do nothing
                 }
 
@@ -153,8 +151,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                         ovsdbClient.cancelMonitor(OvsdbDao.wifiAssociatedClientsDbTable + "_" + key);
                         ovsdbClient.cancelMonitor(OvsdbDao.awlanNodeDbTable + "_" + key);
 
-                    }
-                    catch (OvsdbClientException e) {
+                    } catch (OvsdbClientException e) {
                         LOG.warn("Could not cancel Monitor {}", e.getMessage());
                     }
 
@@ -185,29 +182,27 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
         String apId = clientCn + "_" + connectNodeInfo.serialNumber;
         OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
-
-        try {
-            ovsdbDao.provisionBridgePortInterface(ovsdbClient);
-        }
-        catch (Exception e) {
-            // TODO: for some AP configurations this 'may' not be necessary.
-            LOG.warn("Could not provision Bridge->Port->Interface mapping.", e);
-        }
-
-        ovsdbDao.removeAllSsids(ovsdbClient);
-
         if (opensyncAPConfig != null) {
+            try {
+                ovsdbDao.provisionBridgePortInterface(ovsdbClient);
+            } catch (Exception e) {
+                // TODO: for some AP configurations this 'may' not be necessary.
+                LOG.warn("Could not provision Bridge->Port->Interface mapping.", e);
+            }
+
+            ovsdbDao.removeAllSsids(ovsdbClient);
+
             ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
-        }
-        
-        ovsdbDao.configureStats(ovsdbClient);
+            ovsdbDao.configureStats(ovsdbClient);
 
-        // Check if device stats is configured in Wifi_Stats_Config table,
-        // provision it
-        // if needed
-        if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
-            ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
+            // Check if device stats is configured in Wifi_Stats_Config table,
+            // provision it
+            // if needed
+            if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
+                ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
+            }
+
         }
 
         // ovsdbDao.configureWifiInet(ovsdbClient);
@@ -260,19 +255,19 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
     }
 
     private void monitorOvsdbStateTables(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
-        CompletableFuture<TableUpdates> rsCf = ovsdbClient.monitor(OvsdbDao.ovsdbName,
-                OvsdbDao.wifiRadioStateDbTable + "_" + key,
-                new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiRadioStateDbTable,
-                        new MonitorRequest(new MonitorSelect(true, false, false, true)))),
-                new MonitorCallback() {
+        CompletableFuture<TableUpdates> rsCf = ovsdbClient
+                .monitor(OvsdbDao.ovsdbName, OvsdbDao.wifiRadioStateDbTable + "_" + key,
+                        new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiRadioStateDbTable,
+                                new MonitorRequest(new MonitorSelect(true, false, false, true)))),
+                        new MonitorCallback() {
 
-                    @Override
-                    public void update(TableUpdates tableUpdates) {
-                        extIntegrationInterface.wifiRadioStatusDbTableUpdate(
-                                ovsdbDao.getOpensyncAPRadioState(tableUpdates, key, ovsdbClient), key);
-                    }
+                            @Override
+                            public void update(TableUpdates tableUpdates) {
+                                extIntegrationInterface.wifiRadioStatusDbTableUpdate(
+                                        ovsdbDao.getOpensyncAPRadioState(tableUpdates, key, ovsdbClient), key);
+                            }
 
-                });
+                        });
 
         extIntegrationInterface
                 .wifiRadioStatusDbTableUpdate(ovsdbDao.getOpensyncAPRadioState(rsCf.join(), key, ovsdbClient), key);
@@ -355,51 +350,54 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
         extIntegrationInterface.wifiVIFStateDbTableUpdate(ovsdbDao.getOpensyncAPVIFState(vsCf.join(), key, ovsdbClient),
                 key);
 
-        CompletableFuture<TableUpdates> acCf = ovsdbClient.monitor(OvsdbDao.ovsdbName,
-                OvsdbDao.wifiAssociatedClientsDbTable + "_" + key,
-                new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiAssociatedClientsDbTable,
-                        new MonitorRequest(new MonitorSelect(false, true, true, true)))),
-                new MonitorCallback() {
+        CompletableFuture<TableUpdates> acCf = ovsdbClient
+                .monitor(OvsdbDao.ovsdbName, OvsdbDao.wifiAssociatedClientsDbTable + "_" + key,
+                        new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiAssociatedClientsDbTable,
+                                new MonitorRequest(new MonitorSelect(false, true, true, true)))),
+                        new MonitorCallback() {
 
-                    @Override
-                    public void update(TableUpdates tableUpdates) {
+                            @Override
+                            public void update(TableUpdates tableUpdates) {
 
-                        boolean insertOrModify = false;
-                        for (TableUpdate tableUpdate : tableUpdates.getTableUpdates().values()) {
+                                boolean insertOrModify = false;
+                                for (TableUpdate tableUpdate : tableUpdates.getTableUpdates().values()) {
 
-                            for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
-                                if (rowUpdate.getOld() != null && rowUpdate.getNew() == null) {
-                                    insertOrModify = false;
-                                    Row row = rowUpdate.getOld();
-                                    String deletedClientMac = row.getStringColumn("mac");
-                                    extIntegrationInterface.wifiAssociatedClientsDbTableDelete(deletedClientMac, key);
+                                    for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
+                                        if (rowUpdate.getOld() != null && rowUpdate.getNew() == null) {
+                                            insertOrModify = false;
+                                            Row row = rowUpdate.getOld();
+                                            String deletedClientMac = row.getStringColumn("mac");
+                                            extIntegrationInterface.wifiAssociatedClientsDbTableDelete(deletedClientMac,
+                                                    key);
+                                        }
+                                    }
+
+                                }
+
+                                if (insertOrModify) {
+                                    extIntegrationInterface.wifiAssociatedClientsDbTableUpdate(
+                                            ovsdbDao.getOpensyncWifiAssociatedClients(tableUpdates, key, ovsdbClient),
+                                            key);
                                 }
                             }
 
-                        }
-
-                        if (insertOrModify) {
-                            extIntegrationInterface.wifiAssociatedClientsDbTableUpdate(
-                                    ovsdbDao.getOpensyncWifiAssociatedClients(tableUpdates, key, ovsdbClient), key);
-                        }
-                    }
-
-                });
+                        });
         extIntegrationInterface.wifiAssociatedClientsDbTableUpdate(
                 ovsdbDao.getOpensyncWifiAssociatedClients(acCf.join(), key, ovsdbClient), key);
 
-        CompletableFuture<TableUpdates> awCf = ovsdbClient.monitor(
-                OvsdbDao.ovsdbName, OvsdbDao.awlanNodeDbTable + "_" + key, new MonitorRequests(ImmutableMap
-                        .of(OvsdbDao.awlanNodeDbTable, new MonitorRequest(new MonitorSelect(true, false, false, true)))),
-                new MonitorCallback() {
+        CompletableFuture<TableUpdates> awCf = ovsdbClient
+                .monitor(OvsdbDao.ovsdbName, OvsdbDao.awlanNodeDbTable + "_" + key,
+                        new MonitorRequests(ImmutableMap.of(OvsdbDao.awlanNodeDbTable,
+                                new MonitorRequest(new MonitorSelect(true, false, false, true)))),
+                        new MonitorCallback() {
 
-                    @Override
-                    public void update(TableUpdates tableUpdates) {
-                        extIntegrationInterface.awlanNodeDbTableUpdate(
-                                ovsdbDao.getOpensyncAWLANNode(tableUpdates, key, ovsdbClient), key);
-                    }
+                            @Override
+                            public void update(TableUpdates tableUpdates) {
+                                extIntegrationInterface.awlanNodeDbTableUpdate(
+                                        ovsdbDao.getOpensyncAWLANNode(tableUpdates, key, ovsdbClient), key);
+                            }
 
-                });
+                        });
         extIntegrationInterface.awlanNodeDbTableUpdate(ovsdbDao.getOpensyncAWLANNode(awCf.join(), key, ovsdbClient),
                 key);
 
@@ -410,8 +408,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
         OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
         try {
             session.getOvsdbClient().shutdown();
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             LOG.error("Failed to close session to " + apId + " " + e.getLocalizedMessage());
             return "Failed to close session to " + apId + " " + e.getLocalizedMessage();
 
