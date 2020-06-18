@@ -16,8 +16,8 @@ jobs:
       matrix:
         project:
           - opensync-ext-cloud
-          - opensync-ext-interface
-          - opensync-ext-static
+          # - opensync-ext-interface
+          # - opensync-ext-static
           - opensync-gateway
     runs-on: ubuntu-latest
     steps:
