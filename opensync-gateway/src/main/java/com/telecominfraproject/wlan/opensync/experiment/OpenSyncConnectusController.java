@@ -16,6 +16,7 @@ import com.telecominfraproject.wlan.opensync.external.integration.ConnectusOvsdb
 
 @Profile("ovsdb_manager")
 @RestController
+@RequestMapping(value = "/api")
 public class OpenSyncConnectusController {
 
 	private static final Logger LOG = LoggerFactory.getLogger(OpenSyncConnectusController.class);
