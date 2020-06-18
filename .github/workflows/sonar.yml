@@ -51,4 +51,4 @@ jobs:
         MAVEN_REPO_PASSWORD: ${{ secrets.MAVEN_REPO_PASSWORD }}
       run: |
         mvn clean install
-        mvn sonar:sonar -Dsonar.host.url=${{ env.SONAR_URL }} -Dsonar.login=${{ secrets.SONAR_LOGIN }} -Dsonar.organization=${{ env.SONAR_ORGANIZATION }} -Dsonar.projectKey=${{ env.SONAR_ORGANIZATION }}.${{ matrox.project }}
+        mvn sonar:sonar -Dsonar.host.url=${{ env.SONAR_URL }} -Dsonar.login=${{ secrets.SONAR_LOGIN }} -Dsonar.organization=${{ env.SONAR_ORGANIZATION }} -Dsonar.projectKey=${{ env.SONAR_ORGANIZATION }}.${{ matrix.project }}
