@@ -10,6 +10,7 @@ env:
   SONAR_URL: https://sonarcloud.io
   SONAR_ORGANIZATION: telecominfraproject
 
+
 jobs:
   sonar:
     runs-on: ubuntu-latest
