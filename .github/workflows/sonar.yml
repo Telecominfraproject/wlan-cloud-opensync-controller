@@ -16,6 +16,7 @@ jobs:
       matrix:
         project:
           - opensync-ext-cloud
+          - opensync-ext-interface
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
