@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         project:
-          - opensync-ext-cloud
+          # - opensync-ext-cloud
           - opensync-ext-interface
           - opensync-ext-static
     runs-on: ubuntu-latest
