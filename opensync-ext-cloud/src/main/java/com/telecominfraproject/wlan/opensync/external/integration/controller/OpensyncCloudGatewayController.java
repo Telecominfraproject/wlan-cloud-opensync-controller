@@ -2,7 +2,6 @@ package com.telecominfraproject.wlan.opensync.external.integration.controller;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,6 +32,9 @@ import com.telecominfraproject.wlan.equipmentgateway.models.CEGWBlinkRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWCloseSessionRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWCommandResultCode;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWConfigChangeNotification;
+import com.telecominfraproject.wlan.equipmentgateway.models.CEGWFirmwareDownloadRequest;
+import com.telecominfraproject.wlan.equipmentgateway.models.CEGWFirmwareFlashRequest;
+import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRadioResetRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRouteCheck;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWStartDebugEngine;
 import com.telecominfraproject.wlan.equipmentgateway.models.EquipmentCommand;
@@ -48,422 +50,457 @@ import com.telecominfraproject.wlan.server.exceptions.ConfigurationException;
 
 /**
  * Opensync Gateway Controller - integration code for cloud deployment
- * 
+ *
  * @author yongli
  * @author dtop
- * 
+ *
  */
 @RestController
 @EnableScheduling
 @RequestMapping(value = "/api")
 public class OpensyncCloudGatewayController {
 
-	
     public static class ListOfEquipmentCommandResponses extends ArrayList<EquipmentCommandResponse> {
         private static final long serialVersionUID = 3070319062835500930L;
     }
 
-	@Autowired
-	RoutingServiceInterface eqRoutingSvc;
+    @Autowired
+    RoutingServiceInterface eqRoutingSvc;
 
-	@Autowired
-	ConnectorProperties connectorProperties;
+    @Autowired
+    ConnectorProperties connectorProperties;
 
-	@Autowired
-	private ServiceInstanceInformation serviceInstanceInfo;
+    @Autowired
+    private ServiceInstanceInformation serviceInstanceInfo;
 
-	@Autowired
-	private ConnectusOvsdbClientInterface connectusOvsdbClient;
+    @Autowired
+    private ConnectusOvsdbClientInterface connectusOvsdbClient;
 
-	/**
-	 * Flag indicates if this gateway has registered with routing service
-	 */
-	private boolean registeredWithRoutingService = false;
+    /**
+     * Flag indicates if this gateway has registered with routing service
+     */
+    private boolean registeredWithRoutingService = false;
 
-	private long registeredGwId = -1;
-	
-	private EquipmentGatewayRecord registeredGateway;
+    private long registeredGwId = -1;
 
-	/**
-	 * Lock used to protected {@link #activeCustomerLock}
-	 */
-	private final ReadWriteLock activeCustomerLock = new ReentrantReadWriteLock();
-	private final Lock activeCustomerReadLock = activeCustomerLock.readLock();
-	private final Lock activeCustomerWriteLock = activeCustomerLock.writeLock();
+    private EquipmentGatewayRecord registeredGateway;
 
-	@Autowired
-	private OvsdbSessionMapInterface ovsdbSessionMapInterface;
+    /**
+     * Lock used to protected {@link #activeCustomerLock}
+     */
+    private final ReadWriteLock activeCustomerLock = new ReentrantReadWriteLock();
+    private final Lock activeCustomerReadLock = activeCustomerLock.readLock();
+    private final Lock activeCustomerWriteLock = activeCustomerLock.writeLock();
 
-	/**
-	 * Map <customerId, lastSeenTimestamp>
-	 */
-	private ConcurrentMap<Integer, Long> activeCustomerMap = new ConcurrentHashMap<>();
+    @Autowired
+    private OvsdbSessionMapInterface ovsdbSessionMapInterface;
 
-	/**
-	 * latestTimetamp used when updating {@link #activeCustomerMap}
-	 */
-	private final BiFunction<Long, Long, Long> latestTimestamp = new BiFunction<Long, Long, Long>() {
-		@Override
-		public Long apply(Long oldValue, Long newValue) {
-			if (newValue.compareTo(oldValue) > 0) {
-				return newValue;
-			}
-			return oldValue;
-		}
-	};
+    /**
+     * Map <customerId, lastSeenTimestamp>
+     */
+    private ConcurrentMap<Integer, Long> activeCustomerMap = new ConcurrentHashMap<>();
 
-	private static final Logger LOG = LoggerFactory.getLogger(OpensyncCloudGatewayController.class);
+    /**
+     * latestTimetamp used when updating {@link #activeCustomerMap}
+     */
+    private final BiFunction<Long, Long, Long> latestTimestamp = new BiFunction<>() {
+        @Override
+        public Long apply(Long oldValue, Long newValue) {
+            if (newValue.compareTo(oldValue) > 0) {
+                return newValue;
+            }
+            return oldValue;
+        }
+    };
 
-	@RequestMapping(value = "/commands", method = RequestMethod.POST)
-	public ListOfEquipmentCommandResponses sendCommands(@RequestBody List<CEGWBaseCommand> commands) {
-		ListOfEquipmentCommandResponses ret = new ListOfEquipmentCommandResponses(); 
-		if(commands == null) {
-			return ret;
-		}
-		
-		commands.stream().forEach(command -> {
-			LOG.debug("sendCommands - processing {}", command);
+    private static final Logger LOG = LoggerFactory.getLogger(OpensyncCloudGatewayController.class);
 
-			String inventoryId = command.getInventoryId();
+    @RequestMapping(value = "/commands", method = RequestMethod.POST)
+    public ListOfEquipmentCommandResponses sendCommands(@RequestBody List<CEGWBaseCommand> commands) {
+        ListOfEquipmentCommandResponses ret = new ListOfEquipmentCommandResponses();
+        if (commands == null) {
+            return ret;
+        }
 
-			if (com.telecominfraproject.wlan.core.model.json.BaseJsonModel.hasUnsupportedValue(command)) {
-				LOG.error("[{}] Failed to deliver command {}, command contains unsupported value", inventoryId, command);
-				ret.add( new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
-						"Unsupported value in command for " + inventoryId, command, registeredGateway.getHostname(), registeredGateway.getPort()) );
-				return;
-			}
-			OvsdbSession session = ovsdbSessionMapInterface.getSession(inventoryId);
-			if (session == null) {
-				LOG.warn("[{}] Failed to deliver command {}, equipment session not found", inventoryId, command);
-				ret.add( new EquipmentCommandResponse(CEGWCommandResultCode.NoRouteToCE,
-						"No session found for " + inventoryId, command, registeredGateway.getHostname(), registeredGateway.getPort()) );
-				return;
-			}
-	
-			switch (command.getCommandType()) {
-	
-			case ConfigChangeNotification:
-				ret.add( sendConfigChangeNotification(session, (CEGWConfigChangeNotification) command) );
-				break;
-			case CloseSessionRequest:
-				ret.add( closeSession(session, (CEGWCloseSessionRequest) command) );
-				break;
-			case CheckRouting:
-				ret.add( checkEquipmentRouting(session, (CEGWRouteCheck) command) );
-				break;
-			case BlinkRequest:
-				ret.add( processBlinkRequest(session, (CEGWBlinkRequest) command) );
-				break;
-			case StartDebugEngine:
-				ret.add ( processChangeRedirector(session, (CEGWStartDebugEngine) command) );
-				break;
-	
-			default:
-				LOG.warn("[{}] Failed to deliver command {}, unsupported command type", inventoryId, command);
-				ret.add ( new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
-						"Invalid command type (" + command.getCommandType() + ") for equipment (" + inventoryId + ")", 
-						command, registeredGateway.getHostname(), registeredGateway.getPort()) );
-			}
-		
-		});
-		
-		return ret;
-	}
+        commands.stream().forEach(command -> {
+            LOG.debug("sendCommands - processing {}", command);
 
-	@RequestMapping(value = "/defaults", method = RequestMethod.GET)
-	public GatewayDefaults retrieveGatewayDefaults() {
-		return new GatewayDefaults();
-	}
+            String inventoryId = command.getInventoryId();
 
-	/**
-	 * Verify a route to customer equipment
-	 * 
-	 * @param session
-	 * @param command
-	 * @param protocolVersion
-	 * @return NoRouteToCE if route Id does not match or Success
-	 */
-	private EquipmentCommandResponse checkEquipmentRouting(OvsdbSession session, CEGWRouteCheck command) {
-		if (null != command.getRoutingId()) {
-			if (!command.getRoutingId().equals(session.getRoutingId())) {
+            if (com.telecominfraproject.wlan.core.model.json.BaseJsonModel.hasUnsupportedValue(command)) {
+                LOG.error("[{}] Failed to deliver command {}, command contains unsupported value", inventoryId,
+                        command);
+                ret.add(new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
+                        "Unsupported value in command for " + inventoryId, command, registeredGateway.getHostname(),
+                        registeredGateway.getPort()));
+                return;
+            }
+            OvsdbSession session = ovsdbSessionMapInterface.getSession(inventoryId);
+            if (session == null) {
+                LOG.warn("[{}] Failed to deliver command {}, equipment session not found", inventoryId, command);
+                ret.add(new EquipmentCommandResponse(CEGWCommandResultCode.NoRouteToCE,
+                        "No session found for " + inventoryId, command, registeredGateway.getHostname(),
+                        registeredGateway.getPort()));
+                return;
+            }
 
-				LOG.info("[C:{} E:{} R:{}] Stale routing entry ({}) detected", session.getCustomerId(),
-						command.getInventoryId(), session.getRoutingId(), command.getRoutingId());
+            switch (command.getCommandType()) {
 
-				return new EquipmentCommandResponse(CEGWCommandResultCode.NoRouteToCE,
-						"Inactive Route Identifer", command, 
-						registeredGateway.getHostname(), registeredGateway.getPort());
-			}
-		}
-		return new EquipmentCommandResponse(CEGWCommandResultCode.Success, "Route active", 
-				command, registeredGateway.getHostname(), registeredGateway.getPort());
-	}
+            case ConfigChangeNotification:
+                ret.add(sendConfigChangeNotification(session, (CEGWConfigChangeNotification) command));
+                break;
+            case CloseSessionRequest:
+                ret.add(closeSession(session, (CEGWCloseSessionRequest) command));
+                break;
+            case CheckRouting:
+                ret.add(checkEquipmentRouting(session, (CEGWRouteCheck) command));
+                break;
+            case BlinkRequest:
+                ret.add(processBlinkRequest(session, (CEGWBlinkRequest) command));
+                break;
+            case StartDebugEngine:
+                ret.add(processChangeRedirector(session, (CEGWStartDebugEngine) command));
+                break;
+            case FirmwareDownloadRequest:
+                ret.add(processFirmwareDownload(session, (CEGWFirmwareDownloadRequest) command));
+                break;
+            case FirmwareFlashRequest:
+                ret.add(processFirmwareFlash(session, (CEGWFirmwareFlashRequest) command));
+                break;
+            case RadioReset:
+                ret.add(processRadioReset(session, (CEGWRadioResetRequest) command));
+                break;
 
-	private EquipmentCommandResponse sendConfigChangeNotification(OvsdbSession session,
-			CEGWConfigChangeNotification command) {
+            default:
+                LOG.warn("[{}] Failed to deliver command {}, unsupported command type", inventoryId, command);
+                ret.add(new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
+                        "Invalid command type (" + command.getCommandType() + ") for equipment (" + inventoryId + ")",
+                        command, registeredGateway.getHostname(), registeredGateway.getPort()));
+            }
 
-		return sendMessage(session, command.getInventoryId(), command);
-	}
+        });
 
-	private EquipmentCommandResponse closeSession(OvsdbSession session, CEGWCloseSessionRequest command) {
-		try {
-			session.getOvsdbClient().shutdown();
-		} catch (Exception e) {
-			LOG.error("[{}] Failed to close session on CE: {}", command.getInventoryId(), e.getLocalizedMessage());
-			return new EquipmentCommandResponse(CEGWCommandResultCode.FailedToSend,
-					"Failed to send command " + command.getCommandType() + " to " + command.getInventoryId() + ": "
-							+ e.getMessage(), command, 
-							registeredGateway.getHostname(), registeredGateway.getPort());
-		}
-		LOG.debug("[{}] Closed session to CE", command.getInventoryId());
-		return new EquipmentCommandResponse(CEGWCommandResultCode.Success,
-				"Closed session to " + command.getInventoryId(), command, 
-				registeredGateway.getHostname(), registeredGateway.getPort());
+        return ret;
+    }
 
-	}
+    private EquipmentCommandResponse processFirmwareDownload(OvsdbSession session,
+            CEGWFirmwareDownloadRequest command) {
+        return sendMessage(session, command.getInventoryId(), command);
+    }
 
-	/**
-	 * Deliver a message in payload to the CE
-	 * 
-	 * @param session
-	 * @param inventoryId
-	 * @param command
-	 * @param request
-	 * @return
-	 */
-	private EquipmentCommandResponse sendMessage(OvsdbSession session, String inventoryId,
-			EquipmentCommand command) {
+    private EquipmentCommandResponse processRadioReset(OvsdbSession session, CEGWRadioResetRequest command) {
+        return sendMessage(session, command.getInventoryId(), command);
+    }
 
-		LOG.debug("Received command {} for {}", command.getCommandType(), inventoryId);
-		EquipmentCommandResponse response = new EquipmentCommandResponse(
-				CEGWCommandResultCode.Success,
-				"Received Command " + command.getCommandType() + " for " + inventoryId, command, 
-				registeredGateway.getHostname(), registeredGateway.getPort());
+    @RequestMapping(value = "/defaults", method = RequestMethod.GET)
+    public GatewayDefaults retrieveGatewayDefaults() {
+        return new GatewayDefaults();
+    }
 
-		if (command instanceof CEGWConfigChangeNotification) {
-			connectusOvsdbClient.processConfigChanged(inventoryId);
-		} else if (command instanceof CEGWStartDebugEngine) {
-			// dtop: we will be using CEGWStartDebugEngine command to deliver request to
-			// change redirector
-			// TODO: after the demo introduce a specialized command for this!
-			String newRedirectorAddress = ((CEGWStartDebugEngine) command).getGatewayHostname();
-			connectusOvsdbClient.changeRedirectorAddress(inventoryId, newRedirectorAddress);
-		}
+    /**
+     * Verify a route to customer equipment
+     *
+     * @param session
+     * @param command
+     * @param protocolVersion
+     * @return NoRouteToCE if route Id does not match or Success
+     */
+    private EquipmentCommandResponse checkEquipmentRouting(OvsdbSession session, CEGWRouteCheck command) {
+        if (null != command.getRoutingId()) {
+            if (!command.getRoutingId().equals(session.getRoutingId())) {
 
-		return response;
-	}
+                LOG.info("[C:{} E:{} R:{}] Stale routing entry ({}) detected", session.getCustomerId(),
+                        command.getInventoryId(), session.getRoutingId(), command.getRoutingId());
 
-	private EquipmentCommandResponse processChangeRedirector(OvsdbSession session,
-			CEGWStartDebugEngine command) {
-		return sendMessage(session, command.getInventoryId(), command);
-	}
+                return new EquipmentCommandResponse(CEGWCommandResultCode.NoRouteToCE, "Inactive Route Identifer",
+                        command, registeredGateway.getHostname(), registeredGateway.getPort());
+            }
+        }
+        return new EquipmentCommandResponse(CEGWCommandResultCode.Success, "Route active", command,
+                registeredGateway.getHostname(), registeredGateway.getPort());
+    }
 
-	private EquipmentCommandResponse processBlinkRequest(OvsdbSession session, CEGWBlinkRequest command) {
+    private EquipmentCommandResponse sendConfigChangeNotification(OvsdbSession session,
+            CEGWConfigChangeNotification command) {
 
-		return sendMessage(session, command.getInventoryId(), command);
-	}
+        return sendMessage(session, command.getInventoryId(), command);
+    }
 
-	@RequestMapping(value = "/commandWithUser", method = RequestMethod.POST)
-	public EquipmentCommandResponse sendCommandWithAuthUser(@RequestBody EquipmentCommand command,
-			@AuthenticationPrincipal Object requestUser, HttpServletRequest httpServletRequest) {
+    private EquipmentCommandResponse closeSession(OvsdbSession session, CEGWCloseSessionRequest command) {
+        try {
+            session.getOvsdbClient().shutdown();
+        } catch (Exception e) {
+            LOG.error("[{}] Failed to close session on CE: {}", command.getInventoryId(), e.getLocalizedMessage());
+            return new EquipmentCommandResponse(
+                    CEGWCommandResultCode.FailedToSend, "Failed to send command " + command.getCommandType() + " to "
+                            + command.getInventoryId() + ": " + e.getMessage(),
+                    command, registeredGateway.getHostname(), registeredGateway.getPort());
+        }
+        LOG.debug("[{}] Closed session to CE", command.getInventoryId());
+        return new EquipmentCommandResponse(CEGWCommandResultCode.Success,
+                "Closed session to " + command.getInventoryId(), command, registeredGateway.getHostname(),
+                registeredGateway.getPort());
 
-		// use these properties to get address and port where request has
-		// arrived
-		httpServletRequest.getLocalAddr();
-		httpServletRequest.getLocalPort();
+    }
 
-		// requestUser will be instance of
-		// org.springframework.security.core.userdetails.User for client auth
-		// and digest auth,
-		// although other auth providers may return something entirely different
-		if (requestUser instanceof User) {
-			LOG.debug("calling command with auth principal: {}", ((User) requestUser).getUsername());
-		} else {
-			LOG.debug("calling command with auth principal: {}", requestUser);
-		}
+    /**
+     * Deliver a message in payload to the CE
+     *
+     * @param session
+     * @param inventoryId
+     * @param command
+     * @param request
+     * @return
+     */
+    private EquipmentCommandResponse sendMessage(OvsdbSession session, String inventoryId, EquipmentCommand command) {
 
-		// This is a test method to show how to get access to the auth user
-		// object for a given request
+        LOG.debug("Received command {} for {}", command.getCommandType(), inventoryId);
+        EquipmentCommandResponse response = new EquipmentCommandResponse(CEGWCommandResultCode.Success,
+                "Received Command " + command.getCommandType() + " for " + inventoryId, command,
+                registeredGateway.getHostname(), registeredGateway.getPort());
 
-		return sendCommands(Arrays.asList(command)).get(0);
-	}
+        if (command instanceof CEGWConfigChangeNotification) {
+            connectusOvsdbClient.processConfigChanged(inventoryId);
+        } else if (command instanceof CEGWStartDebugEngine) {
+            // dtop: we will be using CEGWStartDebugEngine command to deliver
+            // request to
+            // change redirector
+            // TODO: after the demo introduce a specialized command for this!
+            String newRedirectorAddress = ((CEGWStartDebugEngine) command).getGatewayHostname();
+            connectusOvsdbClient.changeRedirectorAddress(inventoryId, newRedirectorAddress);
+            //TODO: add support for additional commands below
+        } else if (command instanceof CEGWFirmwareFlashRequest) {
+            response = new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
+                    "Received Command " + command.getCommandType() + " for " + inventoryId, command,
+                    registeredGateway.getHostname(), registeredGateway.getPort());
+        } else if (command instanceof CEGWFirmwareDownloadRequest) {
+            response = new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
+                    "Received Command " + command.getCommandType() + " for " + inventoryId, command,
+                    registeredGateway.getHostname(), registeredGateway.getPort());
+        } else if (command instanceof CEGWRadioResetRequest) {
+            response = new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
+                    "Received Command " + command.getCommandType() + " for " + inventoryId, command,
+                    registeredGateway.getHostname(), registeredGateway.getPort());
+        }
 
-	/**
-	 * Register this controller with Equipment Routing Service
-	 */
-	public void registerWithRoutingService() {
-		synchronized (this) {
-			if (registeredWithRoutingService) {
-				return;
-			}
+        return response;
+    }
 
-			if (eqRoutingSvc == null) {
-				throw new ConfigurationException(
-						"Unable to register gateway with routing service: routing service interface not initialized");
-			}
-			EquipmentGatewayRecord gwRecord = new EquipmentGatewayRecord();
+    private EquipmentCommandResponse processChangeRedirector(OvsdbSession session, CEGWStartDebugEngine command) {
+        return sendMessage(session, command.getInventoryId(), command);
+    }
 
-			// external facing service, protected by the client certificate auth
-			gwRecord.setHostname(getGatewayName());
-			gwRecord.setIpAddr(connectorProperties.getExternalIpAddress().getHostAddress());
-			gwRecord.setPort(connectorProperties.getExternalPort());
+    private EquipmentCommandResponse processFirmwareFlash(OvsdbSession session, CEGWFirmwareFlashRequest command) {
+        return sendMessage(session, command.getInventoryId(), command);
+    }
 
-			try {
+    private EquipmentCommandResponse processBlinkRequest(OvsdbSession session, CEGWBlinkRequest command) {
 
-				EquipmentGatewayRecord result = this.eqRoutingSvc.registerGateway(gwRecord);
-				this.registeredGwId = result.getId();
-				this.registeredGateway = result;
-				LOG.info("Successfully registered (name={}, id={}) with Routing Service", result.getHostname(),
-						registeredGwId);
-				registeredWithRoutingService = true;
-			} catch (RuntimeException e) {
-				// failed
-				LOG.error("Failed to register Customer Equipment Gateway (name={}) with Routing Service : {}",
-						getGatewayName(), e.getLocalizedMessage());
-			}
-		}
-	}
+        return sendMessage(session, command.getInventoryId(), command);
+    }
 
-	/**
-	 * Return the current deployment identifier
-	 * 
-	 * @return
-	 */
-	public int getDeploymentId() {
-		return serviceInstanceInfo.getDeploymentId();
-	}
+    @RequestMapping(value = "/commandWithUser", method = RequestMethod.POST)
+    public EquipmentCommandResponse sendCommandWithAuthUser(@RequestBody EquipmentCommand command,
+            @AuthenticationPrincipal Object requestUser, HttpServletRequest httpServletRequest) {
 
-	/**
-	 * De-register from Routing service
-	 */
-	public void deregisterFromRoutingService() {
-		if (registeredWithRoutingService) {
-			try {
-				eqRoutingSvc.deleteGateway(registeredGwId);
-				LOG.info("Deregistered Customer Equipment Gateway (name={},id={}) with Routing Service",
-						getGatewayName(), this.registeredGwId);
-				this.registeredGwId = -1;
-				this.registeredGateway = null;
-			} catch (Exception e) {
-				// failed
-				LOG.error("Failed to deregister Customer Equipment Gateway (name={},id={}) with Routing Service: {}",
-						getGatewayName(), this.registeredGwId, e.getLocalizedMessage());
-			}
-			registeredWithRoutingService = false;
-		}
-	}
+        // use these properties to get address and port where request has
+        // arrived
+        httpServletRequest.getLocalAddr();
+        httpServletRequest.getLocalPort();
 
-	public long getRegisteredGwId() {
-		return this.registeredGwId;
-	}
+        // requestUser will be instance of
+        // org.springframework.security.core.userdetails.User for client auth
+        // and digest auth,
+        // although other auth providers may return something entirely different
+        if (requestUser instanceof User) {
+            LOG.debug("calling command with auth principal: {}", ((User) requestUser).getUsername());
+        } else {
+            LOG.debug("calling command with auth principal: {}", requestUser);
+        }
 
-	/**
-	 * Register a customer equipment with this gateway
-	 * 
-	 * @param equipmentName
-	 * @param customerId
-	 * @param equipmentId
-	 * @return associationId
-	 */
-	public EquipmentRoutingRecord registerCustomerEquipment(String equipmentName, Integer customerId,
-			Long equipmentId) {
-		registerWithRoutingService();
-		if (!registeredWithRoutingService) {
-			LOG.error("Unable to register customer equipement (name={},id={}): gateway not registered.", equipmentName,
-					equipmentId);
-			return null;
-		}
-		EquipmentRoutingRecord routingRecord = new EquipmentRoutingRecord();
-		routingRecord.setCustomerId(customerId);
-		routingRecord.setEquipmentId(equipmentId);
-		routingRecord.setGatewayId(this.registeredGwId);
-		try {
-			routingRecord = eqRoutingSvc.create(routingRecord);
+        // This is a test method to show how to get access to the auth user
+        // object for a given request
 
-			LOG.debug("Registered customer equipment (name={},id={}) with route id={}", equipmentName, equipmentId,
-					routingRecord.getId());
-			return routingRecord;
+        return sendCommands(Arrays.asList(command)).get(0);
+    }
 
-		} catch (Exception e) {
-			LOG.error("Failed to register customer equipement (name={},id={}): {}", equipmentName, equipmentId,
-					e.getLocalizedMessage());
-		}
-		return null;
-	}
+    /**
+     * Register this controller with Equipment Routing Service
+     */
+    public void registerWithRoutingService() {
+        synchronized (this) {
+            if (registeredWithRoutingService) {
+                return;
+            }
 
-	public void deregisterCustomerEquipment(Long routingId, String equipmentName, Long equipmentId) {
-		if (!registeredWithRoutingService) {
-			LOG.error("Unable to deregister customer equipement (name={},id={}): gateway not registered", equipmentName,
-					equipmentId);
-			return;
-		}
-		try {
-			LOG.debug("Deregistering customer equipment (name={},id={}) with route id={}", equipmentName, equipmentId,
-					routingId);
+            if (eqRoutingSvc == null) {
+                throw new ConfigurationException(
+                        "Unable to register gateway with routing service: routing service interface not initialized");
+            }
+            EquipmentGatewayRecord gwRecord = new EquipmentGatewayRecord();
 
-			eqRoutingSvc.delete(routingId);
-		} catch (Exception e) {
-			LOG.error("Failed to deregister customer equipement (name={},id={}) with route id={}: {}", equipmentName,
-					equipmentId, routingId, e.getLocalizedMessage());
-		}
-	}
+            // external facing service, protected by the client certificate auth
+            gwRecord.setHostname(getGatewayName());
+            gwRecord.setIpAddr(connectorProperties.getExternalIpAddress().getHostAddress());
+            gwRecord.setPort(connectorProperties.getExternalPort());
 
-	/**
-	 * Run every 5 minutes
-	 */
-	@Scheduled(initialDelay = 5 * 60 * 1000, fixedRate = 5 * 60 * 1000)
-	public void updateActiveCustomer() {
-		try {
-			Map<Integer, Long> activeMap = this.getActiveCustomerMapForUpdate();
-			if (null != activeMap) {
-				LOG.info("Updating active customer records, total record size {}", activeMap.size());
-//				this.eqRoutingSvc.updateActiveCustomer(activeMap, getDeploymentId());
-			}
-		} catch (RuntimeException exp) {
-			LOG.error("Failed to update active customer records due to exception {}", exp.getLocalizedMessage());
-		}
-	}
+            try {
 
-	/**
-	 * Use connection external hostname as the gateway name
-	 * 
-	 * @return
-	 */
-	private String getGatewayName() {
-		return connectorProperties.getExternalHostName();
-	}
+                EquipmentGatewayRecord result = this.eqRoutingSvc.registerGateway(gwRecord);
+                this.registeredGwId = result.getId();
+                this.registeredGateway = result;
+                LOG.info("Successfully registered (name={}, id={}) with Routing Service", result.getHostname(),
+                        registeredGwId);
+                registeredWithRoutingService = true;
+            } catch (RuntimeException e) {
+                // failed
+                LOG.error("Failed to register Customer Equipment Gateway (name={}) with Routing Service : {}",
+                        getGatewayName(), e.getLocalizedMessage());
+            }
+        }
+    }
 
-	/**
-	 * Update the active timestamp for the customer
-	 * 
-	 * @param customerId
-	 */
-	public void updateActiveCustomer(int customerId) {
-		this.activeCustomerReadLock.lock();
-		try {
-			this.activeCustomerMap.merge(customerId, System.currentTimeMillis(), latestTimestamp);
-		} finally {
-			this.activeCustomerReadLock.unlock();
-		}
-	}
+    /**
+     * Return the current deployment identifier
+     *
+     * @return
+     */
+    public int getDeploymentId() {
+        return serviceInstanceInfo.getDeploymentId();
+    }
 
-	/**
-	 * Swap the active customer map for reporting if it contains records.
-	 * 
-	 * @return null if no records.
-	 */
-	protected Map<Integer, Long> getActiveCustomerMapForUpdate() {
-		this.activeCustomerWriteLock.lock();
-		try {
-			Map<Integer, Long> map = null;
-			if (!this.activeCustomerMap.isEmpty()) {
-				map = this.activeCustomerMap;
-				this.activeCustomerMap = new ConcurrentHashMap<>();
-			}
+    /**
+     * De-register from Routing service
+     */
+    public void deregisterFromRoutingService() {
+        if (registeredWithRoutingService) {
+            try {
+                eqRoutingSvc.deleteGateway(registeredGwId);
+                LOG.info("Deregistered Customer Equipment Gateway (name={},id={}) with Routing Service",
+                        getGatewayName(), this.registeredGwId);
+                this.registeredGwId = -1;
+                this.registeredGateway = null;
+            } catch (Exception e) {
+                // failed
+                LOG.error("Failed to deregister Customer Equipment Gateway (name={},id={}) with Routing Service: {}",
+                        getGatewayName(), this.registeredGwId, e.getLocalizedMessage());
+            }
+            registeredWithRoutingService = false;
+        }
+    }
 
-			return map;
-		} finally {
-			this.activeCustomerWriteLock.unlock();
-		}
-	}
+    public long getRegisteredGwId() {
+        return this.registeredGwId;
+    }
+
+    /**
+     * Register a customer equipment with this gateway
+     *
+     * @param equipmentName
+     * @param customerId
+     * @param equipmentId
+     * @return associationId
+     */
+    public EquipmentRoutingRecord registerCustomerEquipment(String equipmentName, Integer customerId,
+            Long equipmentId) {
+        registerWithRoutingService();
+        if (!registeredWithRoutingService) {
+            LOG.error("Unable to register customer equipement (name={},id={}): gateway not registered.", equipmentName,
+                    equipmentId);
+            return null;
+        }
+        EquipmentRoutingRecord routingRecord = new EquipmentRoutingRecord();
+        routingRecord.setCustomerId(customerId);
+        routingRecord.setEquipmentId(equipmentId);
+        routingRecord.setGatewayId(this.registeredGwId);
+        try {
+            routingRecord = eqRoutingSvc.create(routingRecord);
+
+            LOG.debug("Registered customer equipment (name={},id={}) with route id={}", equipmentName, equipmentId,
+                    routingRecord.getId());
+            return routingRecord;
+
+        } catch (Exception e) {
+            LOG.error("Failed to register customer equipement (name={},id={}): {}", equipmentName, equipmentId,
+                    e.getLocalizedMessage());
+        }
+        return null;
+    }
+
+    public void deregisterCustomerEquipment(Long routingId, String equipmentName, Long equipmentId) {
+        if (!registeredWithRoutingService) {
+            LOG.error("Unable to deregister customer equipement (name={},id={}): gateway not registered", equipmentName,
+                    equipmentId);
+            return;
+        }
+        try {
+            LOG.debug("Deregistering customer equipment (name={},id={}) with route id={}", equipmentName, equipmentId,
+                    routingId);
+
+            eqRoutingSvc.delete(routingId);
+        } catch (Exception e) {
+            LOG.error("Failed to deregister customer equipement (name={},id={}) with route id={}: {}", equipmentName,
+                    equipmentId, routingId, e.getLocalizedMessage());
+        }
+    }
+
+    /**
+     * Run every 5 minutes
+     */
+    @Scheduled(initialDelay = 5 * 60 * 1000, fixedRate = 5 * 60 * 1000)
+    public void updateActiveCustomer() {
+        try {
+            Map<Integer, Long> activeMap = this.getActiveCustomerMapForUpdate();
+            if (null != activeMap) {
+                LOG.info("Updating active customer records, total record size {}", activeMap.size());
+                // this.eqRoutingSvc.updateActiveCustomer(activeMap,
+                // getDeploymentId());
+            }
+        } catch (RuntimeException exp) {
+            LOG.error("Failed to update active customer records due to exception {}", exp.getLocalizedMessage());
+        }
+    }
+
+    /**
+     * Use connection external hostname as the gateway name
+     *
+     * @return
+     */
+    private String getGatewayName() {
+        return connectorProperties.getExternalHostName();
+    }
+
+    /**
+     * Update the active timestamp for the customer
+     *
+     * @param customerId
+     */
+    public void updateActiveCustomer(int customerId) {
+        this.activeCustomerReadLock.lock();
+        try {
+            this.activeCustomerMap.merge(customerId, System.currentTimeMillis(), latestTimestamp);
+        } finally {
+            this.activeCustomerReadLock.unlock();
+        }
+    }
+
+    /**
+     * Swap the active customer map for reporting if it contains records.
+     *
+     * @return null if no records.
+     */
+    protected Map<Integer, Long> getActiveCustomerMapForUpdate() {
+        this.activeCustomerWriteLock.lock();
+        try {
+            Map<Integer, Long> map = null;
+            if (!this.activeCustomerMap.isEmpty()) {
+                map = this.activeCustomerMap;
+                this.activeCustomerMap = new ConcurrentHashMap<>();
+            }
+
+            return map;
+        } finally {
+            this.activeCustomerWriteLock.unlock();
+        }
+    }
 }

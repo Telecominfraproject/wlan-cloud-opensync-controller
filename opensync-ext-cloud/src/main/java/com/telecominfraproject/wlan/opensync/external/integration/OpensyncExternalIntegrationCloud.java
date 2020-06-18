@@ -83,11 +83,23 @@ import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeStat
 import com.telecominfraproject.wlan.status.equipment.models.VLANStatusData;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSID;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSIDs;
+import com.telecominfraproject.wlan.status.equipment.report.models.EquipmentCapacityDetails;
+import com.telecominfraproject.wlan.status.equipment.report.models.EquipmentPerRadioUtilizationDetails;
+import com.telecominfraproject.wlan.status.equipment.report.models.RadioUtilizationReport;
 import com.telecominfraproject.wlan.status.models.Status;
 import com.telecominfraproject.wlan.status.models.StatusCode;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
+import com.telecominfraproject.wlan.status.network.models.CapacityDetails;
+import com.telecominfraproject.wlan.status.network.models.ChannelUtilizationDetails;
+import com.telecominfraproject.wlan.status.network.models.CommonProbeDetails;
+import com.telecominfraproject.wlan.status.network.models.EquipmentPerformanceDetails;
 import com.telecominfraproject.wlan.status.network.models.NetworkAdminStatusData;
 import com.telecominfraproject.wlan.status.network.models.NetworkAggregateStatusData;
+import com.telecominfraproject.wlan.status.network.models.NoiseFloorDetails;
+import com.telecominfraproject.wlan.status.network.models.RadioUtilizationDetails;
+import com.telecominfraproject.wlan.status.network.models.RadiusDetails;
+import com.telecominfraproject.wlan.status.network.models.TrafficDetails;
+import com.telecominfraproject.wlan.status.network.models.UserDetails;
 
 import sts.OpensyncStats.Client;
 import sts.OpensyncStats.ClientReport;
@@ -362,7 +374,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             protocolStatusData.setReportedSku(connectNodeInfo.skuNumber);
             protocolStatusData.setSerialNumber(connectNodeInfo.serialNumber);
             protocolStatusData.setSystemName(connectNodeInfo.model);
-
             statusRecord.setDetails(protocolStatusData);
             statusServiceInterface.update(statusRecord);
 
@@ -405,7 +416,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             networkAdminStatusRec.setDetails(netAdminStatusData);
 
-            statusServiceInterface.update(networkAdminStatusRec);
+            networkAdminStatusRec = statusServiceInterface.update(networkAdminStatusRec);
 
             Status networkAggStatusRec = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(),
                     StatusDataType.NETWORK_AGGREGATE);
@@ -413,11 +424,25 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 networkAggStatusRec = new Status();
                 networkAggStatusRec.setCustomerId(ce.getCustomerId());
                 networkAggStatusRec.setEquipmentId(ce.getId());
+                networkAdminStatusRec.setStatusDataType(StatusDataType.NETWORK_AGGREGATE);
                 NetworkAggregateStatusData naStatusData = new NetworkAggregateStatusData();
+                naStatusData.setApPerformanceDetails(new EquipmentPerformanceDetails());
+                naStatusData.setCapacityDetails(new CapacityDetails());
+                naStatusData.setChannelUtilizationDetails(new ChannelUtilizationDetails());
+                naStatusData.setCloudLinkDetails(new CommonProbeDetails());
+                naStatusData.setDhcpDetails(new CommonProbeDetails());
+                naStatusData.setDnsDetails(new CommonProbeDetails());
+                naStatusData.setEquipmentPerformanceDetails(new EquipmentPerformanceDetails());
+                naStatusData.setNoiseFloorDetails(new NoiseFloorDetails());
+                naStatusData.setRadioUtilizationDetails(new RadioUtilizationDetails());
+                naStatusData.setRadiusDetails(new RadiusDetails());
+                naStatusData.setTrafficDetails(new TrafficDetails());
+                naStatusData.setUserDetails(new UserDetails());
                 networkAggStatusRec.setDetails(naStatusData);
-            }
 
-            statusServiceInterface.update(networkAggStatusRec);
+                networkAggStatusRec = statusServiceInterface.update(networkAggStatusRec);
+
+            }
 
         } catch (Exception e) {
             LOG.debug("Exception in updateApStatus", e);
@@ -661,8 +686,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 }
 
                 if (deviceReport.hasCpuUtil() && deviceReport.getCpuUtil().hasCpuUtil()) {
-                    apPerformance
-                            .setCpuUtilized(new byte[] { (byte) deviceReport.getCpuUtil().getCpuUtil(), (byte) 0 });
+                    Integer cpuUtilization = deviceReport.getCpuUtil().getCpuUtil();
+                    apPerformance.setCpuUtilized(new byte[] { cpuUtilization.byteValue() });
                 }
 
                 apPerformance.setEthLinkState(EthernetLinkState.UP1000_FULL_DUPLEX);
@@ -1484,6 +1509,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
+        int customerId = ovsdbSession.getCustomerId();
+        long equipmentId = ovsdbSession.getEquipmentId();
+
+        if (customerId < 0 || equipmentId < 0) {
+            LOG.debug("wifiRadioStatusDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
+                    customerId, equipmentId, apId);
+            return;
+        }
+
         for (OpensyncAPRadioState radioState : radioStateTables) {
             Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
             if (ce == null) {
@@ -1541,7 +1575,79 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 ce = equipmentServiceInterface.update(ce);
             }
 
+            initializeRadioUtilizationReport(customerId, equipmentId, radioState.getFreqBand());
+            Status protocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.PROTOCOL);
+
+            if (protocolStatus == null) {
+                protocolStatus = new Status();
+                protocolStatus.setCustomerId(customerId);
+                protocolStatus.setEquipmentId(equipmentId);
+                protocolStatus.setStatusDataType(StatusDataType.PROTOCOL);
+                EquipmentProtocolStatusData protocolStatusData = new EquipmentProtocolStatusData();
+                protocolStatus.setDetails(protocolStatusData);
+
+                protocolStatus = statusServiceInterface.update(protocolStatus);
+
+            }
+
+            EquipmentProtocolStatusData protocolStatusData = (EquipmentProtocolStatusData) protocolStatus.getDetails();
+            protocolStatusData.setReportedCC(CountryCode.valueOf(radioState.getCountry().toLowerCase()));
+
+            try {
+                Location location = locationServiceInterface.get(ce.getLocationId());
+                if (location != null) {
+                    protocolStatusData.setSystemLocation(location.getName());
+                }
+            } catch (Exception e) {
+                LOG.debug("Could not get location {} for customer {} equipment {}", ce.getLocationId(),
+                        ce.getCustomerId(), ce.getId());
+            }
+            protocolStatus.setDetails(protocolStatusData);
+
+            protocolStatus = statusServiceInterface.update(protocolStatus);
         }
+
+    }
+
+    private void initializeRadioUtilizationReport(int customerId, long equipmentId, RadioType radioFreqBand) {
+        Status radioUtilizationStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
+                StatusDataType.RADIO_UTILIZATION);
+        if (radioUtilizationStatus == null) {
+            radioUtilizationStatus = new Status();
+            radioUtilizationStatus.setCustomerId(customerId);
+            radioUtilizationStatus.setEquipmentId(equipmentId);
+            radioUtilizationStatus.setStatusDataType(StatusDataType.RADIO_UTILIZATION);
+            RadioUtilizationReport radioUtilizationReport = new RadioUtilizationReport();
+            radioUtilizationStatus.setDetails(radioUtilizationReport);
+
+            radioUtilizationStatus = statusServiceInterface.update(radioUtilizationStatus);
+
+        }
+
+        RadioUtilizationReport radioUtilizationReport = (RadioUtilizationReport) radioUtilizationStatus.getDetails();
+
+        Map<RadioType, EquipmentPerRadioUtilizationDetails> radioEquipment = radioUtilizationReport
+                .getRadioUtilization();
+        if (!radioEquipment.containsKey(radioFreqBand)) {
+            radioEquipment.put(radioFreqBand, new EquipmentPerRadioUtilizationDetails());
+            radioUtilizationReport.setRadioUtilization(radioEquipment);
+        }
+
+        Map<RadioType, EquipmentCapacityDetails> capacityDetails = radioUtilizationReport.getCapacityDetails();
+        if (!capacityDetails.containsKey(radioFreqBand)) {
+            capacityDetails.put(radioFreqBand, new EquipmentCapacityDetails());
+            radioUtilizationReport.setCapacityDetails(capacityDetails);
+        }
+
+        Map<RadioType, Integer> avgNoiseFloor = radioUtilizationReport.getAvgNoiseFloor();
+        if (!avgNoiseFloor.containsKey(radioFreqBand)) {
+            avgNoiseFloor.put(radioFreqBand, null);
+            radioUtilizationReport.setAvgNoiseFloor(avgNoiseFloor);
+        }
+
+        radioUtilizationStatus.setDetails(radioUtilizationReport);
+
+        radioUtilizationStatus = statusServiceInterface.update(radioUtilizationStatus);
 
     }
 
@@ -1603,20 +1709,45 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     @Override
     public void awlanNodeDbTableUpdate(OpensyncAWLANNode opensyncAPState, String apId) {
 
-        Equipment ce = getCustomerEquipment(apId);
-        if (ce == null) {
-            LOG.debug("awlanNodeDbTableUpdate::Cannot get Equipment for AP {}", apId);
+        OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
+
+        if (ovsdbSession == null) {
+            LOG.debug("awlanNodeDbTableUpdate::Cannot get Session for AP {}", apId);
             return;
         }
 
-        long equipmentId = ce.getId();
+        int customerId = ovsdbSession.getCustomerId();
+        long equipmentId = ovsdbSession.getEquipmentId();
 
-        if (equipmentId < 0L) {
-            LOG.debug("awlanNodeDbTableUpdate::Cannot get equipmentId {} for session {}", equipmentId);
+        if (customerId < 0 || equipmentId < 0) {
+            LOG.debug("awlanNodeDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId,
+                    equipmentId, apId);
             return;
         }
 
-        // TODO: update config where applicable
+        Status protocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.PROTOCOL);
+        if (protocolStatus == null) {
+            protocolStatus = new Status();
+            protocolStatus.setCustomerId(customerId);
+            protocolStatus.setEquipmentId(equipmentId);
+            protocolStatus.setStatusDataType(StatusDataType.PROTOCOL);
+            EquipmentProtocolStatusData protocolStatusData = new EquipmentProtocolStatusData();
+            protocolStatus.setDetails(protocolStatusData);
+
+            protocolStatus = statusServiceInterface.update(protocolStatus);
+
+        }
+
+        EquipmentProtocolStatusData protocolStatusData = (EquipmentProtocolStatusData) protocolStatus.getDetails();
+        protocolStatusData.setReportedSku(opensyncAPState.getSkuNumber());
+        protocolStatusData.setReportedSwVersion(opensyncAPState.getFirmwareVersion());
+        protocolStatusData.setReportedHwVersion(opensyncAPState.getPlatformVersion());
+        protocolStatusData.setSystemName(opensyncAPState.getModel());
+
+        protocolStatus.setDetails(protocolStatusData);
+
+        protocolStatus = statusServiceInterface.update(protocolStatus);
+
     }
 
     @Override
