@@ -268,15 +268,21 @@ public class OpensyncCloudGatewayController {
             // TODO: after the demo introduce a specialized command for this!
             String newRedirectorAddress = ((CEGWStartDebugEngine) command).getGatewayHostname();
             connectusOvsdbClient.changeRedirectorAddress(inventoryId, newRedirectorAddress);
-            //TODO: add support for additional commands below
+            // TODO: add support for additional commands below
         } else if (command instanceof CEGWFirmwareFlashRequest) {
-            response = new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
-                    "Received Command " + command.getCommandType() + " for " + inventoryId, command,
-                    registeredGateway.getHostname(), registeredGateway.getPort());
+            String firmwareVersion = ((CEGWFirmwareFlashRequest) command).getFirmwareVersion();
+            connectusOvsdbClient.processFlashFirmware(inventoryId, firmwareVersion);
+
         } else if (command instanceof CEGWFirmwareDownloadRequest) {
-            response = new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
-                    "Received Command " + command.getCommandType() + " for " + inventoryId, command,
-                    registeredGateway.getHostname(), registeredGateway.getPort());
+
+            String filepath = ((CEGWFirmwareDownloadRequest) command).getFilePath();
+            String firmwareVersion = ((CEGWFirmwareDownloadRequest) command).getFirmwareVersion();
+            String username = ((CEGWFirmwareDownloadRequest) command).getUsername();
+            String validationCode = ((CEGWFirmwareDownloadRequest) command).getUsername();
+
+            connectusOvsdbClient.processFirmwareDownload(inventoryId, filepath, firmwareVersion, username,
+                    validationCode);
+
         } else if (command instanceof CEGWRadioResetRequest) {
             response = new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
                     "Received Command " + command.getCommandType() + " for " + inventoryId, command,

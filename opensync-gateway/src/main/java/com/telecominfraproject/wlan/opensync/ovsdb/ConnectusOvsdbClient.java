@@ -416,4 +416,38 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
         LOG.debug("Closed session to " + apId);
         return "Closed session to " + apId;
     }
+
+    @Override
+    public String processFirmwareDownload(String apId, String firmwareUrl, String firmwareVersion, String username,
+            String validationCode) {
+        try {
+            OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
+
+            ovsdbDao.configureFirmwareDownload(session.getOvsdbClient(), apId, firmwareUrl, firmwareVersion, username,
+                    validationCode);
+        } catch (Exception e) {
+            LOG.error("Failed to initialize firmware download to " + apId + " " + e.getLocalizedMessage());
+            return "Failed to initialize firmware download to " + apId + " " + e.getLocalizedMessage();
+
+        }
+        LOG.debug("Initialized firmware download to " + apId);
+        return "Initialized firmware download to " + apId;
+    }
+
+    @Override
+    public String processFlashFirmware(String apId, String firmwareVersion) {
+        try {
+            OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
+
+            ovsdbDao.flashFirmware(session.getOvsdbClient(), apId, firmwareVersion);
+
+        } catch (Exception e) {
+            LOG.error("Failed to flash firmware version {} on AP {} ", firmwareVersion, apId, e);
+            return "Failed to flash firmware version " + firmwareVersion + " on AP " + apId + "\n"
+                    + e.getLocalizedMessage();
+
+        }
+        LOG.debug("Flashed firmware version {} on AP {}", firmwareVersion, apId);
+        return "Flashed firmware version " + firmwareVersion + " on AP " + apId;
+    }
 }

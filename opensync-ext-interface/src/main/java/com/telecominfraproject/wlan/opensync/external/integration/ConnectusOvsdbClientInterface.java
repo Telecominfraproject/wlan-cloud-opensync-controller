@@ -4,11 +4,16 @@ import java.util.Set;
 
 public interface ConnectusOvsdbClientInterface {
 
-	Set<String> getConnectedClientIds();
+    Set<String> getConnectedClientIds();
 
-	String changeRedirectorAddress(String apId, String newRedirectorAddress);
+    String changeRedirectorAddress(String apId, String newRedirectorAddress);
 
-	void processConfigChanged(String apId);
-	
-	String closeSession(String apId);
+    void processConfigChanged(String apId);
+
+    String processFirmwareDownload(String apId, String firmwareUrl, String firmwareVersion, String username,
+            String validationCode);
+
+    String processFlashFirmware(String apId, String firmwareVersion);
+
+    String closeSession(String apId);
 }

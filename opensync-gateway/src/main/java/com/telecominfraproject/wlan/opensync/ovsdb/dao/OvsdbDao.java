@@ -65,6 +65,7 @@ import com.vmware.ovsdb.protocol.operation.notation.Value;
 import com.vmware.ovsdb.protocol.operation.result.InsertResult;
 import com.vmware.ovsdb.protocol.operation.result.OperationResult;
 import com.vmware.ovsdb.protocol.operation.result.SelectResult;
+import com.vmware.ovsdb.protocol.operation.result.UpdateResult;
 import com.vmware.ovsdb.service.OvsdbClient;
 
 @Component
@@ -2719,6 +2720,57 @@ public class OvsdbDao {
         }
 
         return newRedirectorAddress;
+    }
+
+    public void configureFirmwareDownload(OvsdbClient ovsdbClient, String apId, String firmwareUrl,
+            String firmwareVersion, String username, String validationCode) throws Exception {
+
+        LOG.debug("configureFirmwareDownload for {} to version {} url {}", apId, firmwareVersion, firmwareUrl);
+
+        List<Operation> operations = new ArrayList<>();
+        Map<String, Value> updateColumns = new HashMap<>();
+
+        updateColumns.put("firmware_pass", new Atom<>(validationCode));
+        updateColumns.put("firmware_version", new Atom<>(firmwareVersion));
+        // Until AP enables Upgrade Manager this does nothing
+        updateColumns.put("firmware_url", new Atom<>(firmwareUrl));
+
+        Row row = new Row(updateColumns);
+        operations.add(new Update(awlanNodeDbTable, row));
+
+        CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+        OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+        for (OperationResult r : result) {
+            LOG.debug("Op Result {}", r);
+
+        }
+
+    }
+
+    public void flashFirmware(OvsdbClient ovsdbClient, String apId, String firmwareVersion) throws Exception {
+
+        LOG.debug("flashFirmware for {} to version {}", apId, firmwareVersion);
+
+        // TODO: This needs to be implemented when the AP has Firmware Upgrade
+
+        // List<Operation> operations = new ArrayList<>();
+        // Map<String, Value> updateColumns = new HashMap<>();
+        //
+        // updateColumns.put("firmware_version", new Atom<>(firmwareVersion));
+        // Enabled.
+        // Row row = new Row(updateColumns);
+        // operations.add(new Update(awlanNodeDbTable, row));
+        //
+        //
+        // CompletableFuture<OperationResult[]> fResult =
+        // ovsdbClient.transact(ovsdbName, operations);
+        // OperationResult[] result = fResult.get(ovsdbTimeoutSec,
+        // TimeUnit.SECONDS);
+        // for (OperationResult r : result) {
+        // LOG.debug("Op Result {}", r);
+        //
+        // }
+
     }
 
 }
