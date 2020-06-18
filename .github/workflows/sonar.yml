@@ -37,8 +37,6 @@ jobs:
         server-id: tip-wlan-cloud-maven-repo
         server-username: MAVEN_REPO_USERNAME
         server-password: MAVEN_REPO_PASSWORD
-    - name: test
-      run: cat ~/.m2/settings.xml | grep -v password
     - name: Run sonar
       working-directory: wlan-cloud-opensync-controller/opensync-ext-cloud
       env:
