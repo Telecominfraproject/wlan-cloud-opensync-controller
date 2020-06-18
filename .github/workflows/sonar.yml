@@ -19,6 +19,11 @@ jobs:
           - opensync-ext-interface
           - opensync-ext-static
           - opensync-gateway
+          - opensync-gateway-build
+          - opensync-gateway-cloud-docker
+          - opensync-gateway-cloud-process
+          - opensync-gateway-static-docker
+          - opensync-gateway-static-process
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
