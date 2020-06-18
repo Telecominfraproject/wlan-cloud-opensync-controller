@@ -1,0 +1,31 @@
+name: Run sonar analysis
+
+on:
+  push:
+    branches: [ master ]
+
+env:
+  SONAR_URL: https://sonarcloud.io
+  SONAR_ORGANIZATION: telecominfraproject
+
+jobs:
+  sonar:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Cache Maven packages
+      uses: actions/cache@v1
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2
+    - name: Set up JDK 14
+      uses: actions/setup-java@v1
+      with:
+        java-version: 14
+    - name: Run sonar
+      working-directory: opensync-ext-cloud
+      run: |
+        mvn clean verify sonar:sonar -Dsonar.host.url=${{ env.SONAR_URL }} -Dsonar.login=${{ secrets.SONAR_LOGIN }} -Dsonar.organization=${{ env.SONAR_ORGANIZATION }}
