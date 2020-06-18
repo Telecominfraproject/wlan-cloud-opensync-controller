@@ -22,8 +22,8 @@ jobs:
           - opensync-gateway-build
           - opensync-gateway-cloud-process
           - opensync-gateway-static-process
-          # - opensync-gateway-cloud-docker
-          # - opensync-gateway-static-docker
+          - opensync-gateway-cloud-docker
+          - opensync-gateway-static-docker
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
