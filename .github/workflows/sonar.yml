@@ -6,7 +6,6 @@ on:
   pull_request:
     branches: [ master ]
 
-
 env:
   SONAR_URL: https://sonarcloud.io
   SONAR_ORGANIZATION: telecominfraproject
@@ -16,7 +15,7 @@ jobs:
     strategy:
       matrix:
         project:
-          # - opensync-ext-cloud
+          - opensync-ext-cloud
           - opensync-ext-interface
     runs-on: ubuntu-latest
     steps:
