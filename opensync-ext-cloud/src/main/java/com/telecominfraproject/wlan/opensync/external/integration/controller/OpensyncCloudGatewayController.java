@@ -55,6 +55,7 @@ import com.telecominfraproject.wlan.server.exceptions.ConfigurationException;
  */
 @RestController
 @EnableScheduling
+@RequestMapping(value = "/api")
 public class OpensyncCloudGatewayController {
 
 	
