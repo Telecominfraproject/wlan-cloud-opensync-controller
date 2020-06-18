@@ -17,6 +17,7 @@ jobs:
         project:
           - opensync-ext-cloud
           - opensync-ext-interface
+          - opensync-ext-static
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
