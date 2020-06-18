@@ -41,6 +41,9 @@ jobs:
       run: cat ~/.m2/settings.xml | grep -v password
     - name: Run sonar
       working-directory: wlan-cloud-opensync-controller/opensync-ext-cloud
+      env:
+        MAVEN_REPO_USERNAME: build-pipeline
+        MAVEN_REPO_PASSWORD: ${{ secrets.MAVEN_REPO_PASSWORD }}
       run: |
         mvn clean install
         mvn sonar:sonar -Dsonar.host.url=${{ env.SONAR_URL }} -Dsonar.login=${{ secrets.SONAR_LOGIN }} -Dsonar.organization=${{ env.SONAR_ORGANIZATION }}
