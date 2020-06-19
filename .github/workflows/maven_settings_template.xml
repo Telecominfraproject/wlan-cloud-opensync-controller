@@ -2,18 +2,18 @@
   <servers>
     <server>
       <id>tip-wlan-cloud-maven-repo</id>
-      <username>MAVEN_REPO_USERNAME</username>
-      <password>MAVEN_REPO_PASSWORD</password>
+      <username>${env.MAVEN_REPO_USERNAME}</username>
+      <password>${env.MAVEN_REPO_PASSWORD}</password>
     </server>
     <server>
       <id>jfrog-spring-milestones</id>
-      <username>MAVEN_REPO_USERNAME</username>
-      <password>MAVEN_REPO_PASSWORD</password>
+      <username>${env.MAVEN_REPO_USERNAME}</username>
+      <password>${env.MAVEN_REPO_PASSWORD}</password>
     </server>
     <server>
       <id>jfrog-maven-central</id>
-      <username>MAVEN_REPO_USERNAME</username>
-      <password>MAVEN_REPO_PASSWORD</password>
+      <username>${env.MAVEN_REPO_USERNAME}</username>
+      <password>${env.MAVEN_REPO_PASSWORD}</password>
     </server>
   </servers>
   <mirrors>
@@ -34,8 +34,8 @@
     <profile>
       <id>schema-publisher</id>
       <properties>
-        <schema-repository-user>MAVEN_REPO_USERNAME</schema-repository-user>
-        <schema-repository-password>MAVEN_REPO_PASSWORD</schema-repository-password>
+        <schema-repository-user>${env.MAVEN_REPO_USERNAME}</schema-repository-user>
+        <schema-repository-password>${env.MAVEN_REPO_PASSWORD}</schema-repository-password>
       </properties>
     </profile>
   </profiles>
