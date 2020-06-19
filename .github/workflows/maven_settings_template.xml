@@ -1,0 +1,47 @@
+<settings>
+  <servers>
+    <server>
+      <id>tip-wlan-cloud-maven-repo</id>
+      <username>${env.MAVEN_REPO_USERNAME}</username>
+      <password>${env.MAVEN_REPO_PASSWORD}</password>
+    </server>
+    <server>
+      <id>jfrog-spring-milestones</id>
+      <username>${env.MAVEN_REPO_USERNAME}</username>
+      <password>${env.MAVEN_REPO_PASSWORD}</password>
+    </server>
+    <server>
+      <id>jfrog-maven-central</id>
+      <username>${env.MAVEN_REPO_USERNAME}</username>
+      <password>${env.MAVEN_REPO_PASSWORD}</password>
+    </server>
+  </servers>
+  <mirrors>
+    <mirror>
+      <id>jfrog-maven-central</id>
+      <name>Mirror Repository</name>
+      <url>https://tip.jfrog.io/artifactory/maven-central</url>
+      <mirrorOf>central</mirrorOf>
+    </mirror>
+    <mirror>
+      <id>jfrog-spring-milestones</id>
+      <url>https://tip.jfrog.io/artifactory/spring-milestones</url>
+      <mirrorOf>spring-milestones</mirrorOf>
+    </mirror>
+  </mirrors>
+
+  <profiles>
+    <profile>
+      <id>schema-publisher</id>
+      <properties>
+        <schema-repository-user>${env.MAVEN_REPO_USERNAME}</schema-repository-user>
+        <schema-repository-password>${env.MAVEN_REPO_PASSWORD}</schema-repository-password>
+      </properties>
+    </profile>
+  </profiles>
+
+  <activeProfiles>
+    <activeProfile>schema-publisher</activeProfile>
+  </activeProfiles>
+
+</settings>
