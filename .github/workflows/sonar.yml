@@ -42,6 +42,8 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 14
+    - name: Configure maven settings.xml
+      run: cp wlan-cloud-opensync-controller/.github/workflows/maven_settings_template.xml /home/runner/.m2/settings.xml
     - name: Maven build
       working-directory: wlan-cloud-opensync-controller/${{ matrix.project }}
       env:
