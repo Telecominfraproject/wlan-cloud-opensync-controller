@@ -41,6 +41,11 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 14
+    - name: Cache Maven packages
+      uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository/
+        key: ${{ runner.os }}-m2
     - name: Configure maven settings.xml
       run: cp wlan-cloud-opensync-controller/.github/workflows/maven_settings_template.xml /home/runner/.m2/settings.xml
     - name: Maven build
