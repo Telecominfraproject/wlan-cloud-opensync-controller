@@ -9,7 +9,6 @@ on:
 env:
   SONAR_URL: https://sonarcloud.io
   SONAR_ORGANIZATION: telecominfraproject
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   sonar:
@@ -49,10 +48,12 @@ jobs:
       env:
         MAVEN_REPO_USERNAME: build-pipeline
         MAVEN_REPO_PASSWORD: ${{ secrets.MAVEN_REPO_PASSWORD }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: mvn clean install
     - name: Run sonar
       working-directory: wlan-cloud-opensync-controller/${{ matrix.project }}
       env:
         MAVEN_REPO_USERNAME: build-pipeline
         MAVEN_REPO_PASSWORD: ${{ secrets.MAVEN_REPO_PASSWORD }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: mvn sonar:sonar -Dsonar.host.url=${{ env.SONAR_URL }} -Dsonar.login=${{ secrets.SONAR_LOGIN }} -Dsonar.organization=${{ env.SONAR_ORGANIZATION }} -Dsonar.projectKey=com.telecominfraproject.wlan:${{ matrix.project }}
