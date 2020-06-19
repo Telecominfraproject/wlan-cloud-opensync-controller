@@ -43,6 +43,8 @@ jobs:
         server-id: tip-wlan-cloud-maven-repo
         server-username: MAVEN_REPO_USERNAME
         server-password: MAVEN_REPO_PASSWORD
+    - name: test
+      run: cat ~/.m2/settings.xml
     - name: Maven build
       working-directory: wlan-cloud-opensync-controller/${{ matrix.project }}
       env:
