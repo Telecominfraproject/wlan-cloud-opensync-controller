@@ -9,7 +9,7 @@ on:
 env:
   SONAR_URL: https://sonarcloud.io
   SONAR_ORGANIZATION: telecominfraproject
-
+#
 jobs:
   sonar:
     strategy:
