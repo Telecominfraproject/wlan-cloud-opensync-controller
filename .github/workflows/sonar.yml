@@ -3,8 +3,6 @@ name: Run sonar analysis
 on:
   push:
     branches: [ master ]
-  pull_request:
-    branches: [ master ]
 
 env:
   SONAR_URL: https://sonarcloud.io
