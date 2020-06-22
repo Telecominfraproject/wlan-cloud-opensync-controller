@@ -39,10 +39,16 @@ import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.customer.models.Customer;
 import com.telecominfraproject.wlan.customer.service.CustomerServiceInterface;
 import com.telecominfraproject.wlan.datastore.exceptions.DsConcurrentModificationException;
+import com.telecominfraproject.wlan.datastore.exceptions.DsEntityNotFoundException;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.Equipment;
 import com.telecominfraproject.wlan.equipment.models.StateSetting;
+import com.telecominfraproject.wlan.firmware.FirmwareServiceInterface;
+import com.telecominfraproject.wlan.firmware.models.CustomerFirmwareTrackRecord;
+import com.telecominfraproject.wlan.firmware.models.CustomerFirmwareTrackSettings;
+import com.telecominfraproject.wlan.firmware.models.CustomerFirmwareTrackSettings.TrackFlag;
+import com.telecominfraproject.wlan.firmware.models.FirmwareVersion;
 import com.telecominfraproject.wlan.location.models.Location;
 import com.telecominfraproject.wlan.location.service.LocationServiceInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.controller.OpensyncCloudGatewayController;
@@ -145,6 +151,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     private StatusServiceInterface statusServiceInterface;
     @Autowired
     private ClientServiceInterface clientServiceInterface;
+    @Autowired
+    private FirmwareServiceInterface firmwareServiceInterface;
 
     @Autowired
     private OpensyncCloudGatewayController gatewayController;
@@ -159,6 +167,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     private String autoProvisionedSsid;
     @Value("${connectus.ovsdb.isAutoconfigEnabled:true}")
     private boolean isAutoconfigEnabled;
+    @Value("${connectus.ovsdb.defaultFwVersion:r10947-65030d81f3}")
+    private String defaultFwVersion;
 
     @Autowired
     private CacheManager cacheManagerShortLived;
@@ -189,7 +199,34 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     @Override
     public void apConnected(String apId, ConnectNodeInfo connectNodeInfo) {
+
         if (isAutoconfigEnabled) {
+            // default track settings for firmware
+            CustomerFirmwareTrackSettings trackSettings = firmwareServiceInterface.getDefaultCustomerTrackSetting();
+
+            // check for updated/modified track settings for this customer
+            CustomerFirmwareTrackRecord custFwTrackRecord = firmwareServiceInterface
+                    .getCustomerFirmwareTrackRecord(autoProvisionedCustomerId);
+            if (custFwTrackRecord != null) {
+                trackSettings = custFwTrackRecord.getSettings();
+            }
+            // determine if AP requires FW upgrade before cloud connection/provision
+            if (trackSettings.getAutoUpgradeDeprecatedOnBind().equals(TrackFlag.ALWAYS)
+                    || trackSettings.getAutoUpgradeUnknownOnBind().equals(TrackFlag.ALWAYS)) {
+
+                // check the reported fw version for the AP, if it is < than
+                // the default version for the cloud, then download and
+                // flash the firmware before proceeding.
+                // then return;
+                LOG.debug(
+                        "Automatic firmware upgrade is configured for track {}. Firmware will be flashed to newer version if required.",
+                        trackSettings);
+
+            } else {
+                // auto upgrade not configured for this customer
+                LOG.debug("Automatic firmware upgrade is not configured for track {}", trackSettings);
+            }
+
             Equipment ce = getCustomerEquipment(apId);
 
             try {
@@ -385,6 +422,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 EquipmentUpgradeStatusData statusData = new EquipmentUpgradeStatusData();
                 statusRecord.setDetails(statusData);
             }
+
             EquipmentUpgradeStatusData fwUpgradeStatusData = (EquipmentUpgradeStatusData) statusRecord.getDetails();
             fwUpgradeStatusData.setActiveSwVersion(connectNodeInfo.firmwareVersion);
             fwUpgradeStatusData.setAlternateSwVersion(connectNodeInfo.firmwareVersion);
