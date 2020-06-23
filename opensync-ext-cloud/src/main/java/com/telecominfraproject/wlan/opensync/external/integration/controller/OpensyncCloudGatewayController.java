@@ -10,6 +10,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -122,62 +123,66 @@ public class OpensyncCloudGatewayController {
             return ret;
         }
 
-        commands.stream().forEach(command -> {
-            LOG.debug("sendCommands - processing {}", command);
+        commands.stream().forEach(new Consumer<CEGWBaseCommand>() {
+            @Override
+            public void accept(CEGWBaseCommand command) {
+                LOG.debug("sendCommands - processing {}", command);
 
-            String inventoryId = command.getInventoryId();
+                String inventoryId = command.getInventoryId();
 
-            if (com.telecominfraproject.wlan.core.model.json.BaseJsonModel.hasUnsupportedValue(command)) {
-                LOG.error("[{}] Failed to deliver command {}, command contains unsupported value", inventoryId,
-                        command);
-                ret.add(new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
-                        "Unsupported value in command for " + inventoryId, command, registeredGateway.getHostname(),
-                        registeredGateway.getPort()));
-                return;
+                if (com.telecominfraproject.wlan.core.model.json.BaseJsonModel.hasUnsupportedValue(command)) {
+                    LOG.error("[{}] Failed to deliver command {}, command contains unsupported value", inventoryId,
+                            command);
+                    ret.add(new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
+                            "Unsupported value in command for " + inventoryId, command, registeredGateway.getHostname(),
+                            registeredGateway.getPort()));
+                    return;
+                }
+                OvsdbSession session = ovsdbSessionMapInterface.getSession(inventoryId);
+                if (session == null) {
+                    LOG.warn("[{}] Failed to deliver command {}, equipment session not found", inventoryId, command);
+                    ret.add(new EquipmentCommandResponse(CEGWCommandResultCode.NoRouteToCE,
+                            "No session found for " + inventoryId, command, registeredGateway.getHostname(),
+                            registeredGateway.getPort()));
+                    return;
+                }
+
+                switch (command.getCommandType()) {
+
+                case ConfigChangeNotification:
+                    ret.add(sendConfigChangeNotification(session, (CEGWConfigChangeNotification) command));
+                    break;
+                case CloseSessionRequest:
+                    ret.add(closeSession(session, (CEGWCloseSessionRequest) command));
+                    break;
+                case CheckRouting:
+                    ret.add(checkEquipmentRouting(session, (CEGWRouteCheck) command));
+                    break;
+                case BlinkRequest:
+                    ret.add(processBlinkRequest(session, (CEGWBlinkRequest) command));
+                    break;
+                case StartDebugEngine:
+                    ret.add(processChangeRedirector(session, (CEGWStartDebugEngine) command));
+                    break;
+                case FirmwareDownloadRequest:
+                    ret.add(processFirmwareDownload(session, (CEGWFirmwareDownloadRequest) command));
+                    break;
+                case FirmwareFlashRequest:
+                    ret.add(processFirmwareFlash(session, (CEGWFirmwareFlashRequest) command));
+                    break;
+                case RadioReset:
+                    ret.add(processRadioReset(session, (CEGWRadioResetRequest) command));
+                    break;
+
+                default:
+                    LOG.warn("[{}] Failed to deliver command {}, unsupported command type", inventoryId, command);
+                    ret.add(new EquipmentCommandResponse(
+                            CEGWCommandResultCode.UnsupportedCommand, "Invalid command type ("
+                                    + command.getCommandType() + ") for equipment (" + inventoryId + ")",
+                            command, registeredGateway.getHostname(), registeredGateway.getPort()));
+                }
+
             }
-            OvsdbSession session = ovsdbSessionMapInterface.getSession(inventoryId);
-            if (session == null) {
-                LOG.warn("[{}] Failed to deliver command {}, equipment session not found", inventoryId, command);
-                ret.add(new EquipmentCommandResponse(CEGWCommandResultCode.NoRouteToCE,
-                        "No session found for " + inventoryId, command, registeredGateway.getHostname(),
-                        registeredGateway.getPort()));
-                return;
-            }
-
-            switch (command.getCommandType()) {
-
-            case ConfigChangeNotification:
-                ret.add(sendConfigChangeNotification(session, (CEGWConfigChangeNotification) command));
-                break;
-            case CloseSessionRequest:
-                ret.add(closeSession(session, (CEGWCloseSessionRequest) command));
-                break;
-            case CheckRouting:
-                ret.add(checkEquipmentRouting(session, (CEGWRouteCheck) command));
-                break;
-            case BlinkRequest:
-                ret.add(processBlinkRequest(session, (CEGWBlinkRequest) command));
-                break;
-            case StartDebugEngine:
-                ret.add(processChangeRedirector(session, (CEGWStartDebugEngine) command));
-                break;
-            case FirmwareDownloadRequest:
-                ret.add(processFirmwareDownload(session, (CEGWFirmwareDownloadRequest) command));
-                break;
-            case FirmwareFlashRequest:
-                ret.add(processFirmwareFlash(session, (CEGWFirmwareFlashRequest) command));
-                break;
-            case RadioReset:
-                ret.add(processRadioReset(session, (CEGWRadioResetRequest) command));
-                break;
-
-            default:
-                LOG.warn("[{}] Failed to deliver command {}, unsupported command type", inventoryId, command);
-                ret.add(new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
-                        "Invalid command type (" + command.getCommandType() + ") for equipment (" + inventoryId + ")",
-                        command, registeredGateway.getHostname(), registeredGateway.getPort()));
-            }
-
         });
 
         return ret;
@@ -352,9 +357,9 @@ public class OpensyncCloudGatewayController {
 
             try {
 
-                EquipmentGatewayRecord result = this.eqRoutingSvc.registerGateway(gwRecord);
-                this.registeredGwId = result.getId();
-                this.registeredGateway = result;
+                EquipmentGatewayRecord result = eqRoutingSvc.registerGateway(gwRecord);
+                registeredGwId = result.getId();
+                registeredGateway = result;
                 LOG.info("Successfully registered (name={}, id={}) with Routing Service", result.getHostname(),
                         registeredGwId);
                 registeredWithRoutingService = true;
@@ -383,20 +388,20 @@ public class OpensyncCloudGatewayController {
             try {
                 eqRoutingSvc.deleteGateway(registeredGwId);
                 LOG.info("Deregistered Customer Equipment Gateway (name={},id={}) with Routing Service",
-                        getGatewayName(), this.registeredGwId);
-                this.registeredGwId = -1;
-                this.registeredGateway = null;
+                        getGatewayName(), registeredGwId);
+                registeredGwId = -1;
+                registeredGateway = null;
             } catch (Exception e) {
                 // failed
                 LOG.error("Failed to deregister Customer Equipment Gateway (name={},id={}) with Routing Service: {}",
-                        getGatewayName(), this.registeredGwId, e.getLocalizedMessage());
+                        getGatewayName(), registeredGwId, e.getLocalizedMessage());
             }
             registeredWithRoutingService = false;
         }
     }
 
     public long getRegisteredGwId() {
-        return this.registeredGwId;
+        return registeredGwId;
     }
 
     /**
@@ -418,7 +423,7 @@ public class OpensyncCloudGatewayController {
         EquipmentRoutingRecord routingRecord = new EquipmentRoutingRecord();
         routingRecord.setCustomerId(customerId);
         routingRecord.setEquipmentId(equipmentId);
-        routingRecord.setGatewayId(this.registeredGwId);
+        routingRecord.setGatewayId(registeredGwId);
         try {
             routingRecord = eqRoutingSvc.create(routingRecord);
 
@@ -456,7 +461,7 @@ public class OpensyncCloudGatewayController {
     @Scheduled(initialDelay = 5 * 60 * 1000, fixedRate = 5 * 60 * 1000)
     public void updateActiveCustomer() {
         try {
-            Map<Integer, Long> activeMap = this.getActiveCustomerMapForUpdate();
+            Map<Integer, Long> activeMap = getActiveCustomerMapForUpdate();
             if (null != activeMap) {
                 LOG.info("Updating active customer records, total record size {}", activeMap.size());
                 // this.eqRoutingSvc.updateActiveCustomer(activeMap,
@@ -482,11 +487,11 @@ public class OpensyncCloudGatewayController {
      * @param customerId
      */
     public void updateActiveCustomer(int customerId) {
-        this.activeCustomerReadLock.lock();
+        activeCustomerReadLock.lock();
         try {
-            this.activeCustomerMap.merge(customerId, System.currentTimeMillis(), latestTimestamp);
+            activeCustomerMap.merge(customerId, System.currentTimeMillis(), latestTimestamp);
         } finally {
-            this.activeCustomerReadLock.unlock();
+            activeCustomerReadLock.unlock();
         }
     }
 
@@ -496,17 +501,17 @@ public class OpensyncCloudGatewayController {
      * @return null if no records.
      */
     protected Map<Integer, Long> getActiveCustomerMapForUpdate() {
-        this.activeCustomerWriteLock.lock();
+        activeCustomerWriteLock.lock();
         try {
             Map<Integer, Long> map = null;
-            if (!this.activeCustomerMap.isEmpty()) {
-                map = this.activeCustomerMap;
-                this.activeCustomerMap = new ConcurrentHashMap<>();
+            if (!activeCustomerMap.isEmpty()) {
+                map = activeCustomerMap;
+                activeCustomerMap = new ConcurrentHashMap<>();
             }
 
             return map;
         } finally {
-            this.activeCustomerWriteLock.unlock();
+            activeCustomerWriteLock.unlock();
         }
     }
 }
