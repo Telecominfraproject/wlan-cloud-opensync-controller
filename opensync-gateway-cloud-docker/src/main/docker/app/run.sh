@@ -39,7 +39,7 @@ MQTT_PROPS+=" -Dconnectus.mqttBroker.listenPort=1883"
 LOGGING_PROPS=" -Dlogging.config=file:/app/opensync/logback.xml"
 
 RESTAPI_PROPS=" "
-RESTAPI_PROPS+=" -Dserver.port=443"
+RESTAPI_PROPS+=" -Dserver.port=443 -Dtip.wlan.secondaryPort=444"
 
 SPRING_EXTRA_PROPS=" --add-opens java.base/java.lang=ALL-UNNAMED"
 
@@ -49,7 +49,7 @@ then
   echo Use specifed local host
   HOST_PROPS+=" -Dtip.wlan.externalHostName=$BACKEND_SERVER"
   HOST_PROPS+=" -Dtip.wlan.internalHostName=$BACKEND_SERVER"
-  HOST_PROPS+=" -Dtip.wlan.introspectTokenApi.host=${BACKEND_SERVER}:9091"
+  HOST_PROPS+=" -Dtip.wlan.introspectTokenApi.host=${BACKEND_SERVER}:444"
   
   HOST_URL=https://${BACKEND_SERVER}:9092
   HOST_PROPS+=" -Dtip.wlan.cloudEventDispatcherBaseUrl=$HOST_URL"
@@ -61,9 +61,9 @@ then
   HOST_PROPS+=" -Dtip.wlan.equipmentServiceBaseUrl=$HOST_URL"
   HOST_PROPS+=" -Dtip.wlan.profileServiceBaseUrl=$HOST_URL"
   HOST_PROPS+=" -Dtip.wlan.clientServiceBaseUrl=$HOST_URL"
+  HOST_PROPS+=" -Dtip.wlan.firmwareServiceBaseUrl=$HOST_URL"
+  HOST_PROPS+=" -Dtip.wlan.manufacturerServiceBaseUrl=$HOST_URL"
 fi
-#echo HOST_PROPS $HOST_PROPS
-
 
 export ALL_PROPS="$PROFILES $SSL_PROPS $CLIENT_MQTT_SSL_PROPS $OVSDB_PROPS $MQTT_PROPS $LOGGING_PROPS $RESTAPI_PROPS $SPRING_EXTRA_PROPS $HOST_PROPS"
 
