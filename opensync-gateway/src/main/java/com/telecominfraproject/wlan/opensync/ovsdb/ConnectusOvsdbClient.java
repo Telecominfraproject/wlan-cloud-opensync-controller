@@ -260,6 +260,10 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
             ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
             ovsdbDao.configureStats(ovsdbClient);
             
+            if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
+                ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
+            }
+            
         } else {
             LOG.warn("Could not get provisioned configuration for AP {}", apId);
         }
