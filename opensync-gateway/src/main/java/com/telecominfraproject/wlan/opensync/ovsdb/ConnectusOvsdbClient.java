@@ -97,7 +97,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                     // with the serialNumber and using it as a key (equivalent
                     // of KDC unique qrCode)
                     String key = clientCn + "_" + connectNodeInfo.serialNumber;
-                    ovsdbSessionMapInterface.newSession(key, ovsdbClient);
+                    ConnectusOvsdbClient.this.ovsdbSessionMapInterface.newSession(key, ovsdbClient);
                     extIntegrationInterface.apConnected(key, connectNodeInfo);
 
                     // push configuration to AP
@@ -105,7 +105,8 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                     monitorOvsdbStateTables(ovsdbClient, key);
 
                     LOG.info("ovsdbClient connected from {} on port {} key {} ", remoteHost, localPort, key);
-                    LOG.info("ovsdbClient connectedClients = {}", ovsdbSessionMapInterface.getNumSessions());
+                    LOG.info("ovsdbClient connectedClients = {}",
+                            ConnectusOvsdbClient.this.ovsdbSessionMapInterface.getNumSessions());
 
                 } catch (Exception e) {
                     LOG.error("ovsdbClient error", e);
@@ -138,7 +139,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                 // so we are doing a reverse lookup here, and then if we find
                 // the key we will
                 // remove the entry from the connectedClients.
-                String key = ovsdbSessionMapInterface.lookupClientId(ovsdbClient);
+                String key = ConnectusOvsdbClient.this.ovsdbSessionMapInterface.lookupClientId(ovsdbClient);
 
                 if (key != null) {
                     try {
@@ -154,7 +155,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                     }
                     try {
                         extIntegrationInterface.apDisconnected(key);
-                        ovsdbSessionMapInterface.removeSession(key);
+                        ConnectusOvsdbClient.this.ovsdbSessionMapInterface.removeSession(key);
                     } catch (Exception e) {
                         LOG.debug("Unable to process ap disconnect. {}", e.getMessage());
                     } finally {
@@ -164,7 +165,8 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
                 LOG.info("ovsdbClient disconnected from {} on port {} clientCn {} key {} ", remoteHost, localPort,
                         clientCn, key);
-                LOG.info("ovsdbClient connectedClients = {}", ovsdbSessionMapInterface.getNumSessions());
+                LOG.info("ovsdbClient connectedClients = {}",
+                        ConnectusOvsdbClient.this.ovsdbSessionMapInterface.getNumSessions());
             }
 
         };
@@ -180,8 +182,8 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
         LOG.debug("Starting Client connect");
         connectNodeInfo = ovsdbDao.updateConnectNodeInfoOnConnect(ovsdbClient, clientCn, connectNodeInfo);
 
-        ovsdbDao.vifBridge = connectNodeInfo.ifName;
-        
+        String apId = clientCn + "_" + connectNodeInfo.serialNumber;
+        OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
 
         try {
             ovsdbDao.provisionBridgePortInterface(ovsdbClient);
@@ -191,12 +193,10 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
         }
 
         ovsdbDao.removeAllSsids(ovsdbClient); // always
-        String apId = clientCn + "_" + connectNodeInfo.serialNumber;
-        OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
+
         if (opensyncAPConfig != null) {
             ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
-            ovsdbDao.configureWifiInet(ovsdbClient, opensyncAPConfig);
         }
 
         ovsdbDao.configureStats(ovsdbClient);
@@ -207,6 +207,8 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
         if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
             ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
         }
+
+        // ovsdbDao.configureWifiInet(ovsdbClient);
 
         LOG.debug("Client connect Done");
         return connectNodeInfo;
@@ -305,22 +307,22 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
                                     for (Entry<UUID, RowUpdate> rowUpdate : tableUpdate.getValue().getRowUpdates()
                                             .entrySet()) {
-                                        if ((rowUpdate.getValue().getOld() != null)
-                                                && (rowUpdate.getValue().getNew() == null)) {
+                                        if (rowUpdate.getValue().getOld() != null
+                                                && rowUpdate.getValue().getNew() == null) {
                                             Row row = rowUpdate.getValue().getOld();
                                             String ifName = null;
                                             String ssid = null;
-                                            if ((row.getColumns().get("ssid") != null)
+                                            if (row.getColumns().get("ssid") != null
                                                     && row.getColumns().get("ssid").getClass().equals(
                                                             com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                                                 ssid = row.getStringColumn("ssid");
                                             }
-                                            if ((row.getColumns().get("if_name") != null)
+                                            if (row.getColumns().get("if_name") != null
                                                     && row.getColumns().get("if_name").getClass().equals(
                                                             com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                                                 ifName = row.getStringColumn("if_name");
                                             }
-                                            if ((ifName != null) && (ssid != null)) {
+                                            if (ifName != null && ssid != null) {
                                                 OpensyncAPVIFState toBeDeleted = new OpensyncAPVIFState();
                                                 toBeDeleted.setSsid(ssid);
                                                 toBeDeleted.setIfName(ifName);
@@ -331,7 +333,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
                                     }
 
-                                    if (tableUpdate.getValue().getRowUpdates().isEmpty()) {
+                                    if (tableUpdate.getValue().getRowUpdates().values().isEmpty()) {
                                         tableUpdates.getTableUpdates().remove(tableUpdate.getKey());
                                     }
 
@@ -376,7 +378,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                                 for (TableUpdate tableUpdate : tableUpdates.getTableUpdates().values()) {
 
                                     for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
-                                        if ((rowUpdate.getOld() != null) && (rowUpdate.getNew() == null)) {
+                                        if (rowUpdate.getOld() != null && rowUpdate.getNew() == null) {
                                             Row row = rowUpdate.getOld();
                                             String deletedClientMac = row.getStringColumn("mac");
                                             extIntegrationInterface.wifiAssociatedClientsDbTableDelete(deletedClientMac,
