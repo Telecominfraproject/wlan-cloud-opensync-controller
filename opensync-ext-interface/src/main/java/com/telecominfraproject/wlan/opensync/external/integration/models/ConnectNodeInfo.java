@@ -4,8 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ConnectNodeInfo implements Cloneable {
-    public Map<String, String> mqttSettings;
-    public Map<String, Map<String,String>> wifiRadioStates;
+    public Map<String, String> mqttSettings = new HashMap<>();
+    public Map<String, String> wifiRadioStates = new HashMap<>();
     public String redirectorAddr;
     public String managerAddr;
     public String skuNumber;
@@ -42,7 +42,7 @@ public class ConnectNodeInfo implements Cloneable {
     public String toString() {
         return String.format(
                 "ConnectNodeInfo [mqttSettings=%s, redirectorAddr=%s, managerAddr=%s, skuNumber=%s, serialNumber=%s, "
-                        + "macAddress=%s, ipV4Address=%s, platformVersion=%s, firmwareVersion=%s, revision=%s, model=%s ifName=%s ifType=%s, wifiRadioStates=%s]",
+                        + "macAddress=%s, ipV4Address=%s, platformVersion=%s, firmwareVersion=%s, revision=%s, model=%s, ifName=%s, ifType=%s, wifiRadioStates=%s]",
                 mqttSettings, redirectorAddr, managerAddr, skuNumber, serialNumber, macAddress, ipV4Address,
                 platformVersion, firmwareVersion, revision, model, ifName, ifType, wifiRadioStates);
     }
