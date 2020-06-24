@@ -271,6 +271,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     ssidConfig.setSsid("DefaultSsid-2g");
                     ssidConfig.setSecureMode(SecureMode.wpa2PSK);
                     ssidConfig.setKeyStr("12345678");
+                    ssidConfig.setVlanId(0);
+
 
                     Set<RadioType> appliedRadios = new HashSet<>();
                     appliedRadios.add(RadioType.is2dot4GHz);
@@ -287,6 +289,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     ssidConfig5g.setSecureMode(SecureMode.wpa2PSK);
                     ssidConfig5g.setSsid("DefaultSsid-5g");
                     ssidConfig5g.setKeyStr("12345678");
+                    ssidConfig5g.setVlanId(0);
                     Set<RadioType> appliedRadios5g = new HashSet<>();
                     appliedRadios5g.add(RadioType.is5GHzL);
                     appliedRadios5g.add(RadioType.is5GHzU);
@@ -1438,24 +1441,24 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     @Override
     public void wifiVIFStateDbTableUpdate(List<OpensyncAPVIFState> vifStateTables, String apId) {
+        
+        OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
 
-        Equipment ce = getCustomerEquipment(apId);
-        if (ce == null) {
-            LOG.debug("wifiVIFStateDbTableUpdate::Cannot get Equipment for AP {}", apId);
+        if (ovsdbSession == null) {
+            LOG.debug("wifiVIFStateDbTableUpdate::Cannot get Session for AP {}", apId);
             return;
         }
 
-        long equipmentId = ce.getId();
-        int customerId = ce.getCustomerId();
+        int customerId = ovsdbSession.getCustomerId();
+        long equipmentId = ovsdbSession.getEquipmentId();
 
-        if (equipmentId < 0L) {
-            LOG.debug("Cannot get equipmentId {} for session {}", equipmentId);
+        if (customerId < 0 || equipmentId < 0) {
+            LOG.debug("wifiVIFStateDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
+                    customerId, equipmentId, apId);
             return;
         }
 
-        if (vifStateTables == null || vifStateTables.isEmpty() || apId == null) {
-            return;
-        }
+
 
         for (OpensyncAPVIFState vifState : vifStateTables) {
 
@@ -1698,11 +1701,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
-        Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
-        if (ce == null) {
-            LOG.debug("wifiInetStateDbTableUpdate::Cannot get Equipment for AP {}", apId);
+        int customerId = ovsdbSession.getCustomerId();
+        long equipmentId = ovsdbSession.getEquipmentId();
+
+        if (customerId < 0 || equipmentId < 0) {
+            LOG.debug("wifiInetStateDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
+                    customerId, equipmentId, apId);
             return;
         }
+
 
         if (inetStateTables == null || inetStateTables.isEmpty() || apId == null) {
             return;
@@ -1725,16 +1732,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
-        Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
-        if (ce == null) {
-            LOG.debug("wifiAssociatedClientsDbTableUpdate::Cannot get Equipment for AP {}", apId);
-            return;
-        }
+        int customerId = ovsdbSession.getCustomerId();
+        long equipmentId = ovsdbSession.getEquipmentId();
 
-        long equipmentId = ce.getId();
-
-        if (equipmentId < 0L) {
-            LOG.debug("Cannot get equipmentId {} for session {}", equipmentId);
+        if (customerId < 0 || equipmentId < 0) {
+            LOG.debug("wifiAssociatedClientsDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
+                    customerId, equipmentId, apId);
             return;
         }
 
@@ -1798,13 +1801,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
-        Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
-        if (ce == null) {
-            LOG.debug("wifiVIFStateDbTableDelete::Cannot get Equipment for AP {}", apId);
+        int customerId = ovsdbSession.getCustomerId();
+        long equipmentId = ovsdbSession.getEquipmentId();
+
+        if (customerId < 0 || equipmentId < 0) {
+            LOG.debug("wifiVIFStateDbTableDelete::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
+                    customerId, equipmentId, apId);
             return;
         }
-
-        long equipmentId = ce.getId();
 
         if (equipmentId < 0L) {
             LOG.debug("Cannot get equipmentId {} for session {}", equipmentId);
@@ -1825,15 +1829,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
-        Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
-        if (ce == null) {
-            LOG.debug("wifiAssociatedClientsDbTableDelete::Cannot get Equipment for AP {}", apId);
-            return;
-        }
-        long equipmentId = ce.getId();
+        int customerId = ovsdbSession.getCustomerId();
+        long equipmentId = ovsdbSession.getEquipmentId();
 
-        if (equipmentId < 0L) {
-            LOG.debug("Cannot get equipmentId {} for session {}", equipmentId);
+        if (customerId < 0 || equipmentId < 0) {
+            LOG.debug("wifiAssociatedClientsDbTableDelete::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
+                    customerId, equipmentId, apId);
             return;
         }
 

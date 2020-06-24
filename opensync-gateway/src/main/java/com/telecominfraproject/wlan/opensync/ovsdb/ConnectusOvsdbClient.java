@@ -188,7 +188,6 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
         try {
             ovsdbDao.provisionBridgePortInterface(ovsdbClient);
         } catch (Exception e) {
-            // TODO: for some AP configurations this 'may' not be necessary.
             LOG.warn("Could not provision Bridge->Port->Interface mapping.", e);
         }
 
@@ -198,7 +197,8 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
             ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
         }
-
+        
+        ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
         ovsdbDao.configureStats(ovsdbClient);
 
         // Check if device stats is configured in Wifi_Stats_Config table,
@@ -247,14 +247,24 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
         OvsdbClient ovsdbClient = ovsdbSession.getOvsdbClient();
 
-        ovsdbDao.removeAllSsids(ovsdbClient);
 
         OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
 
         if (opensyncAPConfig != null) {
+            
+            ovsdbDao.removeAllSsids(ovsdbClient);
+
             ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
+            
+            ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
+            ovsdbDao.configureStats(ovsdbClient);
+            
+        } else {
+            LOG.warn("Could not get provisioned configuration for AP {}", apId);
         }
+        
+
 
         LOG.debug("Finished processConfigChanged for {}", apId);
     }

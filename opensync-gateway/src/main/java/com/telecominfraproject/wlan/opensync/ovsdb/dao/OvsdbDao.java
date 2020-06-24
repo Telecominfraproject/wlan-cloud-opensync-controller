@@ -65,7 +65,6 @@ import com.vmware.ovsdb.protocol.operation.notation.Value;
 import com.vmware.ovsdb.protocol.operation.result.InsertResult;
 import com.vmware.ovsdb.protocol.operation.result.OperationResult;
 import com.vmware.ovsdb.protocol.operation.result.SelectResult;
-import com.vmware.ovsdb.protocol.operation.result.UpdateResult;
 import com.vmware.ovsdb.service.OvsdbClient;
 
 @Component
@@ -99,13 +98,6 @@ public class OvsdbDao {
     public String ifName5GHzL;
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_radio0:home-ap-u50}")
     public String ifName5GHzU;
-
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-device.radio0:wifi2}")
-    public String radioName5GHzU;
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-device.radio2:wifi1}")
-    public String radioName5GHzL;
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-device.radio1:wifi0}")
-    public String radioName2pt4GHz;
 
     public static final String ovsdbName = "Open_vSwitch";
     public static final String awlanNodeDbTable = "AWLAN_Node";
@@ -181,11 +173,90 @@ public class OvsdbDao {
                 fillInIpAddressAndMac(ovsdbClient, ret, "br-lan");
             }
 
+            fillInRadioInterfaceNames(ovsdbClient, ret);
+
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             throw new RuntimeException(e);
         }
 
         return ret;
+    }
+
+    private void fillInRadioInterfaceNames(OvsdbClient ovsdbClient, ConnectNodeInfo ret) {
+        try {
+            List<Operation> operations = new ArrayList<>();
+            List<Condition> conditions = new ArrayList<>();
+            List<String> columns = new ArrayList<>();
+
+            columns.add("freq_band");
+            columns.add("if_name");
+
+            operations.add(new Select(wifiRadioStateDbTable, conditions, columns));
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Select from {}:", wifiRadioStateDbTable);
+
+                for (OperationResult res : result) {
+                    LOG.debug("Op Result {}", res);
+                }
+            }
+
+            if (result != null && result.length > 0 && !((SelectResult) result[0]).getRows().isEmpty()) {
+
+                for (Row row : ((SelectResult) result[0]).getRows()) {
+                    ret.wifiRadioStates.put(getSingleValueFromSet(row, "freq_band"),
+                            getSingleValueFromSet(row, "if_name"));
+
+                }
+
+            }
+
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    private Map<String, Set<Integer>> getAllowedChannels(OvsdbClient ovsdbClient) {
+
+        Map<String, Set<Integer>> allowedChannels = new HashMap<>();
+
+        try {
+            List<Operation> operations = new ArrayList<>();
+            List<Condition> conditions = new ArrayList<>();
+            List<String> columns = new ArrayList<>();
+
+            columns.add("freq_band");
+            columns.add("allowed_channels");
+
+            operations.add(new Select(wifiRadioStateDbTable, conditions, columns));
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Select from {}:", wifiRadioStateDbTable);
+
+                for (OperationResult res : result) {
+                    LOG.debug("Op Result {}", res);
+                }
+            }
+
+            if (result != null && result.length > 0 && !((SelectResult) result[0]).getRows().isEmpty()) {
+
+                for (Row row : ((SelectResult) result[0]).getRows()) {
+                    allowedChannels.put(getSingleValueFromSet(row, "freq_band"), row.getSetColumn("allowed_channels"));
+
+                }
+
+            }
+
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        return allowedChannels;
+
     }
 
     public void fillInIpAddressAndMac(OvsdbClient ovsdbClient, ConnectNodeInfo connectNodeInfo, String ifName) {
@@ -197,6 +268,8 @@ public class OvsdbDao {
 
             columns.add("inet_addr");
             columns.add("hwaddr");
+            columns.add("if_name");
+            columns.add("if_type");
 
             conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(ifName)));
 
@@ -216,7 +289,9 @@ public class OvsdbDao {
             if (result != null && result.length > 0 && !((SelectResult) result[0]).getRows().isEmpty()) {
                 row = ((SelectResult) result[0]).getRows().iterator().next();
                 connectNodeInfo.ipV4Address = getSingleValueFromSet(row, "inet_addr");
-                connectNodeInfo.macAddress = row.getStringColumn("hwaddr");
+                connectNodeInfo.ifName = row.getStringColumn("if_name");
+                connectNodeInfo.ifType = getSingleValueFromSet(row, "if_type");
+
             }
 
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
@@ -1177,9 +1252,6 @@ public class OvsdbDao {
 
     public void configureWifiRadios(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
 
-        Map<String, WifiRadioConfigInfo> provisionedWifiRadios = getProvisionedWifiRadioConfigs(ovsdbClient);
-        LOG.debug("Existing WifiRadioConfigs: {}", provisionedWifiRadios.keySet());
-
         String country = opensyncAPConfig.getCountryCode(); // should be the
                                                             // same for all
                                                             // radios on this AP
@@ -1224,10 +1296,10 @@ public class OvsdbDao {
             if (!elementRadioConfig.getEirpTxPower().isAuto()) {
                 txPower = elementRadioConfig.getEirpTxPower().getValue();
             }
-            String configName = null;
+            String freqBand = null;
             switch (radioType) {
             case is2dot4GHz:
-                configName = radioName2pt4GHz;
+                freqBand = "2.4G";
                 break;
             case is5GHz:
                 // 802.11h dfs (Dynamic Frequency Selection) aka military and
@@ -1238,7 +1310,8 @@ public class OvsdbDao {
                 hwConfig.put("dfs_enable", "1");
                 hwConfig.put("dfs_ignorecac", "0");
                 hwConfig.put("dfs_usenol", "1");
-                configName = radioName5GHzU;
+                freqBand = "5G";
+
                 break;
             case is5GHzL:
                 // 802.11h dfs (Dynamic Frequency Selection) aka military and
@@ -1249,7 +1322,8 @@ public class OvsdbDao {
                 hwConfig.put("dfs_enable", "1");
                 hwConfig.put("dfs_ignorecac", "0");
                 hwConfig.put("dfs_usenol", "1");
-                configName = radioName5GHzL;
+                freqBand = "5GL";
+
                 break;
             case is5GHzU:
                 // 802.11h dfs (Dynamic Frequency Selection) aka military and
@@ -1260,17 +1334,18 @@ public class OvsdbDao {
                 hwConfig.put("dfs_enable", "1");
                 hwConfig.put("dfs_ignorecac", "0");
                 hwConfig.put("dfs_usenol", "1");
-                configName = radioName5GHzU;
+                freqBand = "5GU";
+
                 break;
             default: // don't know this interface
                 continue;
 
             }
 
-            if (configName != null) {
+            if (freqBand != null) {
                 try {
-                    configureWifiRadios(ovsdbClient, configName, provisionedWifiRadios, channel, hwConfig, country,
-                            beaconInterval, enabled, ht_mode, txPower);
+                    configureWifiRadios(ovsdbClient, freqBand, channel, hwConfig, country.toUpperCase(), beaconInterval,
+                            enabled, ht_mode, txPower);
                 } catch (OvsdbClientException e) {
                     LOG.error("ConfigureWifiRadios failed with OvsdbClient exception.", e);
                 } catch (TimeoutException e) {
@@ -1347,7 +1422,7 @@ public class OvsdbDao {
                         }
                         if (map.get("country") != null && map.get("country").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
-                            tableState.setCountry(row.getStringColumn("country"));
+                            tableState.setCountry(row.getStringColumn("country").toUpperCase());
                         }
                         if (map.get("enabled") != null && map.get("enabled").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
@@ -1761,22 +1836,16 @@ public class OvsdbDao {
 
     }
 
-    public void configureWifiRadios(OvsdbClient ovsdbClient, String configName,
-            Map<String, WifiRadioConfigInfo> provisionedWifiRadios, int channel, Map<String, String> hwConfig,
+    public void configureWifiRadios(OvsdbClient ovsdbClient, String freqBand,
+            int channel, Map<String, String> hwConfig,
             String country, int beaconInterval, boolean enabled, String ht_mode, int txPower)
             throws OvsdbClientException, TimeoutException, ExecutionException, InterruptedException {
 
-        WifiRadioConfigInfo existingConfig = provisionedWifiRadios.get(configName);
-
-        if (existingConfig == null) {
-            LOG.warn("There is no WifiRadioConfig {}", configName);
-            return;
-        }
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
         List<Condition> conditions = new ArrayList<>();
-        conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(configName)));
+        conditions.add(new Condition("freq_band", Function.EQUALS, new Atom<>(freqBand)));
 
         updateColumns.put("channel", new Atom<>(channel));
         updateColumns.put("country", new Atom<>(country));
@@ -1803,7 +1872,7 @@ public class OvsdbDao {
         CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
         OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
-        LOG.debug("Provisioned channel {} for {}", channel, configName);
+        LOG.debug("Provisioned channel {} for {}", channel, freqBand);
 
         for (OperationResult res : result) {
             LOG.debug("Op Result {}", res);
@@ -1811,8 +1880,7 @@ public class OvsdbDao {
     }
 
     public void configureSingleSsid(OvsdbClient ovsdbClient, String bridge, String ifName, String ssid,
-            boolean ssidBroadcast, Map<String, String> security,
-            Map<String, WifiRadioConfigInfo> provisionedWifiRadioConfigs, String radioIfName, int vlanId,
+            boolean ssidBroadcast, Map<String, String> security, String radioFreqBand, int vlanId,
             boolean rrmEnabled, boolean enable80211r, String minHwMode, boolean enabled, int keyRefresh,
             boolean uapsdEnabled, boolean apBridge, NetworkForwardMode networkForwardMode, String gateway, String inet,
             Map<String, String> dns, String ipAssignScheme) {
@@ -1840,7 +1908,11 @@ public class OvsdbDao {
             // updateColumns.put("vif_radio_idx", new
             // Atom<Integer>(vifRadioIdx));
             updateColumns.put("min_hw_mode", new Atom<>(minHwMode));
-            updateColumns.put("vlan_id", new Atom<>(vlanId));
+            if (vlanId > 0) {
+                updateColumns.put("vlan_id", new Atom<>(vlanId));
+            } else {
+                updateColumns.put("vlan_id", new com.vmware.ovsdb.protocol.operation.notation.Set());
+            }
             updateColumns.put("group_rekey", new Atom<>(keyRefresh));
             updateColumns.put("uapsd_enable", new Atom<>(uapsdEnabled));
             updateColumns.put("ap_bridge", new Atom<>(apBridge));
@@ -1869,42 +1941,15 @@ public class OvsdbDao {
             if (vifConfigUuid == null) {
                 throw new IllegalStateException("Wifi_VIF_Config entry was not created successfully");
             }
-
-            // update Wifi_Radio_Config here - add vifConfigUuid
-            /// usr/plume/tools/ovsh u Wifi_Radio_Config
-            // vif_configs:='["set",[["uuid","98e42897-b567-4186-84a6-4a4e38a51e9d"],["uuid","4314920e-c4e6-42a6-93e3-261142ed9adf"]]]'
-            // --where if_name==wifi0
             updateColumns.clear();
             operations.clear();
-
-            WifiRadioConfigInfo wifiRadioConfigInfo = provisionedWifiRadioConfigs.get(radioIfName);
-            if (wifiRadioConfigInfo == null) {
-                throw new IllegalStateException("missing Wifi_Radio_Config entry " + radioIfName);
-            }
-
-            Set<Uuid> vifConfigsSet = new HashSet<>(wifiRadioConfigInfo.vifConfigUuids);
-            vifConfigsSet.add(vifConfigUuid);
-            com.vmware.ovsdb.protocol.operation.notation.Set vifConfigs = com.vmware.ovsdb.protocol.operation.notation.Set
-                    .of(vifConfigsSet);
-            updateColumns.put("vif_configs", vifConfigs);
-
-            List<Condition> conditions = new ArrayList<>();
-            conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(radioIfName)));
-
-            row = new Row(updateColumns);
-            operations.add(new Update(wifiRadioConfigDbTable, conditions, row));
-
-            fResult = ovsdbClient.transact(ovsdbName, operations);
-            result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Updated WifiRadioConfig {} for SSID {}:", radioIfName, ssid);
-
-                for (OperationResult res : result) {
-                    LOG.debug("Op Result {}", res);
-                }
-            }
+        
+            
+            updateVifConfigsSetForRadio(ovsdbClient, ssid, radioFreqBand, operations, updateColumns, vifConfigUuid);
+            
+            
             Map<String, WifiInetConfigInfo> inetConfigs = getProvisionedWifiInetConfigs(ovsdbClient);
+            
             if (inetConfigs.containsKey(ifName)) {
                 updateWifiInetConfig(ovsdbClient, vlanId, ifName, enabled, networkForwardMode == NetworkForwardMode.NAT,
                         "vif", gateway, inet, dns, ipAssignScheme, vifConfigUuid);
@@ -1915,11 +1960,58 @@ public class OvsdbDao {
                         vifConfigUuid);
             }
 
-            LOG.info("Provisioned SSID {} on interface {} / {}", ssid, ifName, radioIfName);
+            LOG.info("Provisioned SSID {} on interface {} / {}", ssid, ifName, radioFreqBand);
 
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             LOG.error("Error in configureSingleSsid", e);
             throw new RuntimeException(e);
+        }
+    }
+
+    private void updateVifConfigsSetForRadio(OvsdbClient ovsdbClient, String ssid, String radioFreqBand,
+            List<Operation> operations, Map<String, Value> updateColumns, Uuid vifConfigUuid)
+            throws OvsdbClientException, InterruptedException, ExecutionException, TimeoutException {
+        Row row;
+        CompletableFuture<OperationResult[]> fResult;
+        OperationResult[] result;
+        List<Condition> conditions = new ArrayList<>();
+        conditions.add(new Condition("freq_band", Function.EQUALS, new Atom<>(radioFreqBand)));
+        
+        List<String> columns = new ArrayList<>();
+        columns.add("vif_configs");
+        operations.add(new Select(wifiRadioConfigDbTable, conditions, columns));
+        fResult = ovsdbClient.transact(ovsdbName, operations);
+        result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+        Set<Uuid> vifConfigsSet = null;
+
+        if (result != null && result.length > 0 && !((SelectResult) result[0]).getRows().isEmpty()) {
+            row = ((SelectResult) result[0]).getRows().iterator().next();
+            if (row != null) {
+                vifConfigsSet = row.getSetColumn("vif_configs");
+            } else {
+                vifConfigsSet = new HashSet<Uuid>();
+            }
+        }
+
+        vifConfigsSet.add(vifConfigUuid);
+        com.vmware.ovsdb.protocol.operation.notation.Set vifConfigs = com.vmware.ovsdb.protocol.operation.notation.Set
+                .of(vifConfigsSet);
+        
+        updateColumns.put("vif_configs", vifConfigs);
+
+        row = new Row(updateColumns);
+        operations.add(new Update(wifiRadioConfigDbTable, conditions, row));
+
+        fResult = ovsdbClient.transact(ovsdbName, operations);
+        result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Updated WifiRadioConfig {} for SSID {}:", radioFreqBand, ssid);
+
+            for (OperationResult res : result) {
+                LOG.debug("Op Result {}", res);
+            }
         }
     }
 
@@ -2043,30 +2135,33 @@ public class OvsdbDao {
                 boolean enabled = ssidConfig.getSsidAdminState().equals(StateSetting.enabled);
 
                 String ifName = null;
-                String radioIfName = null;
+                String freqBand = null;
 
                 if (radioType == RadioType.is2dot4GHz) {
                     ifName = ifName2pt4GHz;
-                    radioIfName = radioName2pt4GHz;
+                    freqBand = "2.4G";
                 } else if (radioType == RadioType.is5GHzL) {
                     ifName = ifName5GHzL;
-                    radioIfName = radioName5GHzL;
+                    freqBand = "5GL";
                 } else if (radioType == RadioType.is5GHzU) {
                     ifName = ifName5GHzU;
-                    radioIfName = radioName5GHzU;
+                    freqBand = "5GU";
+                } else if (radioType == RadioType.is5GHz) {
+                    ifName = ifName5GHzU;
+                    freqBand = "5G";
                 }
 
                 if (!provisionedWifiVifConfigs.containsKey(ifName + "_" + ssidConfig.getSsid())) {
                     try {
                         configureSingleSsid(ovsdbClient, bridgeNameVifInterfaces, ifName, ssidConfig.getSsid(),
-                                ssidBroadcast, security, provisionedWifiRadioConfigs, radioIfName,
+                                ssidBroadcast, security, freqBand,
                                 ssidConfig.getVlanId(), rrmEnabled, enable80211r, minHwMode, enabled, keyRefresh,
                                 uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet, dns,
                                 ipAssignScheme);
 
                     } catch (IllegalStateException e) {
                         // could not provision this SSID, but still can go on
-                        LOG.warn("could not provision SSID {} on {}", ssidConfig.getSsid(), radioIfName);
+                        LOG.warn("could not provision SSID {} on {}", ssidConfig.getSsid(), freqBand);
                     }
                 }
 
@@ -2329,10 +2424,11 @@ public class OvsdbDao {
                     .of(thresholdMap);
 
             Map<String, WifiRadioConfigInfo> radioConfigs = getProvisionedWifiRadioConfigs(ovsdbClient);
-            provisionWifiStatsConfigSurvey(radioConfigs, getProvisionedWifiStatsConfigs(ovsdbClient), operations,
-                    thresholds);
+            provisionWifiStatsConfigSurvey(getAllowedChannels(ovsdbClient), radioConfigs,
+                    getProvisionedWifiStatsConfigs(ovsdbClient), operations, thresholds);
 
-            provisionWifiStatsConfigNeighbor(radioConfigs, getProvisionedWifiStatsConfigs(ovsdbClient), operations);
+            provisionWifiStatsConfigNeighbor(getAllowedChannels(ovsdbClient), radioConfigs,
+                    getProvisionedWifiStatsConfigs(ovsdbClient), operations);
 
             provisionWifiStatsConfigClient(radioConfigs, getProvisionedWifiStatsConfigs(ovsdbClient), operations);
 
@@ -2425,94 +2521,19 @@ public class OvsdbDao {
         });
     }
 
-    private void provisionWifiStatsConfigNeighbor(Map<String, WifiRadioConfigInfo> radioConfigs,
-            Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs, List<Operation> operations) {
+    private void provisionWifiStatsConfigNeighbor(Map<String, Set<Integer>> allowedChannels,
+            Map<String, WifiRadioConfigInfo> radioConfigs, Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs,
+            List<Operation> operations) {
         Map<String, Value> updateColumns;
         Row row;
-
-        // For off channel, all allowed channels
-        // * 2412 MHz [1] (30.0 dBm)
-        // * 2417 MHz [2] (30.0 dBm)
-        // * 2422 MHz [3] (30.0 dBm)
-        // * 2427 MHz [4] (30.0 dBm)
-        // * 2432 MHz [5] (30.0 dBm)
-        // * 2437 MHz [6] (30.0 dBm)
-        // * 2442 MHz [7] (30.0 dBm)
-        // * 2447 MHz [8] (30.0 dBm)
-        // * 2452 MHz [9] (30.0 dBm)
-        // * 2457 MHz [10] (30.0 dBm)
-        // * 2462 MHz [11] (30.0 dBm)
-        Set<Integer> channelSet2g = new HashSet<>();
-        channelSet2g.add(1);
-        // channelSet2g.add(2);
-        // channelSet2g.add(3);
-        // channelSet2g.add(4);
-        // channelSet2g.add(5);
-        channelSet2g.add(6);
-        // channelSet2g.add(7);
-        // channelSet2g.add(8);
-        // channelSet2g.add(9);
-        // channelSet2g.add(10);
-        channelSet2g.add(11);
-
         com.vmware.ovsdb.protocol.operation.notation.Set channels2g = com.vmware.ovsdb.protocol.operation.notation.Set
-                .of(channelSet2g);
+                .of(allowedChannels.get("2.4G"));
 
-        Set<Integer> channelSet5gl = new HashSet<>();
-        // * 5180 MHz [36] (23.0 dBm)
-        // * 5200 MHz [40] (23.0 dBm)
-        // * 5220 MHz [44] (23.0 dBm)
-        // * 5240 MHz [48] (23.0 dBm)
-        // * 5260 MHz [52] (24.0 dBm) (radar detection)
-        // * 5280 MHz [56] (24.0 dBm) (radar detection)
-        // * 5300 MHz [60] (24.0 dBm) (radar detection)
-        // * 5320 MHz [64] (24.0 dBm) (radar detection)
-        channelSet5gl.add(36);
-        channelSet5gl.add(40);
-        channelSet5gl.add(44);
-        channelSet5gl.add(48);
-        // channelSet5gl.add(52);
-        // channelSet5gl.add(56);
-        // channelSet5gl.add(60);
-        // channelSet5gl.add(64);
         com.vmware.ovsdb.protocol.operation.notation.Set channels5gl = com.vmware.ovsdb.protocol.operation.notation.Set
-                .of(channelSet5gl);
-
-        Set<Integer> channelSet5gu = new HashSet<>();
-        // * 5500 MHz [100] (24.0 dBm) (radar detection)
-        // * 5520 MHz [104] (24.0 dBm) (radar detection)
-        // * 5540 MHz [108] (24.0 dBm) (radar detection)
-        // * 5560 MHz [112] (24.0 dBm) (radar detection)
-        // * 5580 MHz [116] (24.0 dBm) (radar detection)
-        // * 5600 MHz [120] (disabled)
-        // * 5620 MHz [124] (disabled)
-        // * 5640 MHz [128] (disabled)
-        // * 5660 MHz [132] (24.0 dBm) (radar detection)
-        // * 5680 MHz [136] (24.0 dBm) (radar detection)
-        // * 5700 MHz [140] (24.0 dBm) (radar detection)
-        // * 5720 MHz [144] (24.0 dBm) (radar detection)
-        // * 5745 MHz [149] (30.0 dBm)
-        // * 5765 MHz [153] (30.0 dBm)
-        // * 5785 MHz [157] (30.0 dBm)
-        // * 5805 MHz [161] (30.0 dBm)
-        // * 5825 MHz [165] (30.0 dBm)
-        // channelSet5gu.add(100);
-        // channelSet5gu.add(104);
-        // channelSet5gu.add(108);
-        // channelSet5gu.add(112);
-        // channelSet5gu.add(116);
-        // channelSet5gu.add(132);
-        // channelSet5gu.add(136);
-        // channelSet5gu.add(140);
-        // channelSet5gu.add(144);
-        channelSet5gu.add(149);
-        channelSet5gu.add(153);
-        channelSet5gu.add(157);
-        channelSet5gu.add(161);
-        channelSet5gu.add(165);
+                .of(allowedChannels.get("5GL"));
 
         com.vmware.ovsdb.protocol.operation.notation.Set channels5gu = com.vmware.ovsdb.protocol.operation.notation.Set
-                .of(channelSet5gu);
+                .of(allowedChannels.get("5GU"));
 
         if (!provisionedWifiStatsConfigs.containsKey("2.4G_neighbor_off-chan")) {
             updateColumns = new HashMap<>();
@@ -2569,33 +2590,18 @@ public class OvsdbDao {
 
     }
 
-    private void provisionWifiStatsConfigSurvey(Map<String, WifiRadioConfigInfo> radioConfigs,
-            Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs, List<Operation> operations,
-            com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer> thresholds) {
+    private void provisionWifiStatsConfigSurvey(Map<String, Set<Integer>> allowedChannels,
+            Map<String, WifiRadioConfigInfo> radioConfigs, Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs,
+            List<Operation> operations, com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer> thresholds) {
 
-        Set<Integer> channelSet2g = new HashSet<>();
-        channelSet2g.add(1);
-        channelSet2g.add(6);
-        channelSet2g.add(11);
         com.vmware.ovsdb.protocol.operation.notation.Set channels2g = com.vmware.ovsdb.protocol.operation.notation.Set
-                .of(channelSet2g);
+                .of(allowedChannels.get("2.4G"));
 
-        Set<Integer> channelSet5gl = new HashSet<>();
-        channelSet5gl.add(36);
-        channelSet5gl.add(40);
-        channelSet5gl.add(44);
-        channelSet5gl.add(48);
         com.vmware.ovsdb.protocol.operation.notation.Set channels5gl = com.vmware.ovsdb.protocol.operation.notation.Set
-                .of(channelSet5gl);
+                .of(allowedChannels.get("5GL"));
 
-        Set<Integer> channelSet5gu = new HashSet<>();
-        channelSet5gu.add(149);
-        channelSet5gu.add(153);
-        channelSet5gu.add(157);
-        channelSet5gu.add(161);
-        channelSet5gu.add(165);
         com.vmware.ovsdb.protocol.operation.notation.Set channels5gu = com.vmware.ovsdb.protocol.operation.notation.Set
-                .of(channelSet5gu);
+                .of(allowedChannels.get("5GU"));
 
         Map<String, Value> updateColumns;
         Row row;
@@ -2753,23 +2759,30 @@ public class OvsdbDao {
 
         // TODO: This needs to be implemented when the AP has Firmware Upgrade
 
-        // List<Operation> operations = new ArrayList<>();
-        // Map<String, Value> updateColumns = new HashMap<>();
-        //
-        // updateColumns.put("firmware_version", new Atom<>(firmwareVersion));
-        // Enabled.
-        // Row row = new Row(updateColumns);
-        // operations.add(new Update(awlanNodeDbTable, row));
-        //
-        //
-        // CompletableFuture<OperationResult[]> fResult =
-        // ovsdbClient.transact(ovsdbName, operations);
-        // OperationResult[] result = fResult.get(ovsdbTimeoutSec,
-        // TimeUnit.SECONDS);
-        // for (OperationResult r : result) {
-        // LOG.debug("Op Result {}", r);
-        //
-        // }
+    }
+
+    public void removeAllStatsConfigs(OvsdbClient ovsdbClient) {
+
+        try {
+            List<Operation> operations = new ArrayList<>();
+
+            operations.add(new Delete(wifiStatsConfigDbTable));
+
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Removed all existing config from {}:", wifiStatsConfigDbTable);
+
+                for (OperationResult res : result) {
+                    LOG.debug("Op Result {}", res);
+                }
+            }
+
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            LOG.error("Error in removeAllStatsConfigs", e);
+            throw new RuntimeException(e);
+        }
 
     }
 
