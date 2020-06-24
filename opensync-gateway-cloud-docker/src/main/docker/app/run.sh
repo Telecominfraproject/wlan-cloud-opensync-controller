@@ -12,8 +12,8 @@ CLIENT_MQTT_SSL_PROPS+=" -Djavax.net.ssl.trustStore=/opt/tip-wlan/certs/truststo
 CLIENT_MQTT_SSL_PROPS+=" -Djavax.net.ssl.trustStorePassword=mypassword"
 CLIENT_MQTT_SSL_PROPS+=" -Dconnectus.mqttBroker.password=admin"
 
-OVSDB_MANAGER_HOST=opensync-controller
-MQTT_BROKER_HOST=tip-wlan-opensync-mqtt-broke
+OVSDB_MANAGER_HOST=${OVSDB_MANAGER}
+MQTT_BROKER_HOST="${MQTT_SERVER}"
 
 BACKEND_SERVER="${BACKEND_SERVER}"
 
