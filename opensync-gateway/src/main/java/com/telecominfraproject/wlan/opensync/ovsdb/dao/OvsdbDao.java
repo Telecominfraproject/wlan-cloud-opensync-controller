@@ -1983,18 +1983,22 @@ public class OvsdbDao {
         fResult = ovsdbClient.transact(ovsdbName, operations);
         result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
-        Set<Uuid> vifConfigsSet = null;
+        Set<Uuid> vifConfigsSet = new HashSet<Uuid>();
 
         if (result != null && result.length > 0 && !((SelectResult) result[0]).getRows().isEmpty()) {
             row = ((SelectResult) result[0]).getRows().iterator().next();
             if (row != null) {
                 vifConfigsSet = row.getSetColumn("vif_configs");
-            } else {
-                vifConfigsSet = new HashSet<Uuid>();
+                if(vifConfigsSet == null) {
+                	vifConfigsSet = new HashSet<Uuid>();
+                }
             }
         }
 
-        vifConfigsSet.add(vifConfigUuid);
+        if(vifConfigUuid!=null) {
+        	vifConfigsSet.add(vifConfigUuid);
+        }
+        
         com.vmware.ovsdb.protocol.operation.notation.Set vifConfigs = com.vmware.ovsdb.protocol.operation.notation.Set
                 .of(vifConfigsSet);
         
