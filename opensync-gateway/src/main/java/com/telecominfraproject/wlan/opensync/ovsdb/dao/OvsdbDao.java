@@ -1116,6 +1116,8 @@ public class OvsdbDao {
                         provisionedBridges.keySet());
             }
 
+        	LOG.debug("Sending batch of operations : {} ", operations);
+        	
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
@@ -2007,6 +2009,8 @@ public class OvsdbDao {
         row = new Row(updateColumns);
         operations.add(new Update(wifiRadioConfigDbTable, conditions, row));
 
+    	LOG.debug("Sending batch of operations : {} ", operations);
+        
         fResult = ovsdbClient.transact(ovsdbName, operations);
         result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
@@ -2443,6 +2447,8 @@ public class OvsdbDao {
             provisionWifiStatsRssi(radioConfigs, getProvisionedWifiStatsConfigs(ovsdbClient), operations);
 
             if (!operations.isEmpty()) {
+            	LOG.debug("Sending batch of operations : {} ", operations);
+            	
                 CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
                 OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
