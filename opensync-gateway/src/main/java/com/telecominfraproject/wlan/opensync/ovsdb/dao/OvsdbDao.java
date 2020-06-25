@@ -1,6 +1,7 @@
 package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -930,6 +931,9 @@ public class OvsdbDao {
                 WifiStatsConfigInfo wifiStatsConfigInfo = new WifiStatsConfigInfo();
 
                 wifiStatsConfigInfo.channelList = row.getSetColumn("channel_list");
+                if(wifiStatsConfigInfo.channelList==null) {
+                	wifiStatsConfigInfo.channelList = Collections.emptySet();
+                }
                 wifiStatsConfigInfo.radioType = row.getStringColumn("radio_type");
                 wifiStatsConfigInfo.reportingInterval = row.getIntegerColumn("reporting_interval").intValue();
                 wifiStatsConfigInfo.samplingInterval = row.getIntegerColumn("sampling_interval").intValue();
@@ -2545,6 +2549,18 @@ public class OvsdbDao {
         com.vmware.ovsdb.protocol.operation.notation.Set channels5gu = com.vmware.ovsdb.protocol.operation.notation.Set
                 .of(allowedChannels.get("5GU"));
 
+        if(channels2g == null) {
+        	channels2g = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
+        }
+
+        if(channels5gl == null) {
+        	channels5gl= com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
+        }
+
+        if(channels5gu == null) {
+        	channels5gu= com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
+        }
+
         if (!provisionedWifiStatsConfigs.containsKey("2.4G_neighbor_off-chan")) {
             updateColumns = new HashMap<>();
             updateColumns.put("channel_list", channels2g);
@@ -2612,6 +2628,18 @@ public class OvsdbDao {
 
         com.vmware.ovsdb.protocol.operation.notation.Set channels5gu = com.vmware.ovsdb.protocol.operation.notation.Set
                 .of(allowedChannels.get("5GU"));
+        
+        if(channels2g == null) {
+        	channels2g = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
+        }
+
+        if(channels5gl == null) {
+        	channels5gl= com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
+        }
+
+        if(channels5gu == null) {
+        	channels5gu= com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
+        }
 
         Map<String, Value> updateColumns;
         Row row;

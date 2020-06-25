@@ -30,7 +30,8 @@ MQTT_PROPS=" "
 MQTT_PROPS+=" -Dconnectus.mqttBroker.address=$MQTT_BROKER_HOST"
 MQTT_PROPS+=" -Dconnectus.mqttBroker.listenPort=1883"
 
-LOGGING_PROPS=" -Dlogging.config=file:/app/opensync/logback.xml"
+LOGBACK_CONFIG_FILE="${LOGBACK_CONFIG_FILE:=/app/opensync/logback.xml}"
+LOGGING_PROPS=" -Dlogging.config=file:$LOGBACK_CONFIG_FILE"
 
 RESTAPI_PROPS=" "
 RESTAPI_PROPS+=" -Dserver.port=443 -Dtip.wlan.secondaryPort=444"
@@ -59,9 +60,11 @@ then
 fi
 
 DEFAULT_BRIDGE="${DEFAULT_BRIDGE:=br-lan}"
+AUTO_PROV_CUSTOMER_ID="${AUTO_PROV_CUSTOMER_ID:=2}"
  
 PROV_PROPS=" "
 PROV_PROPS+=" -Dconnectus.ovsdb.wifi-iface.default_bridge=$DEFAULT_BRIDGE"
+PROV_PROPS+=" -Dconnectus.ovsdb.autoProvisionedCustomerId=$AUTO_PROV_CUSTOMER_ID"
 
 export ALL_PROPS="$PROFILES $SSL_PROPS $CLIENT_MQTT_SSL_PROPS $OVSDB_PROPS $MQTT_PROPS $LOGGING_PROPS $RESTAPI_PROPS $SPRING_EXTRA_PROPS $HOST_PROPS $PROV_PROPS"
 
