@@ -2165,11 +2165,18 @@ public class OvsdbDao {
 
                 if (!provisionedWifiVifConfigs.containsKey(ifName + "_" + ssidConfig.getSsid())) {
                     try {
-                        configureSingleSsid(ovsdbClient, bridgeNameVifInterfaces, ifName, ssidConfig.getSsid(),
-                                ssidBroadcast, security, freqBand,
-                                ssidConfig.getVlanId(), rrmEnabled, enable80211r, minHwMode, enabled, keyRefresh,
-                                uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet, dns,
-                                ipAssignScheme);
+                    	WifiRadioConfigInfo wci = provisionedWifiRadioConfigs.get(ifName);
+                    	if(wci!=null && wci.enabled) {
+	                        configureSingleSsid(ovsdbClient, bridgeNameVifInterfaces, ifName, ssidConfig.getSsid(),
+	                                ssidBroadcast, security, freqBand,
+	                                ssidConfig.getVlanId(), rrmEnabled, enable80211r, minHwMode, enabled, keyRefresh,
+	                                uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet, dns,
+	                                ipAssignScheme);
+                    	} else if(wci!=null) {
+                    		LOG.warn("SSID {} wants to be on interface {} but that radio is disabled, will not configure ssid", ssidConfig.getSsid(), ifName);
+                    	} else {
+                    		LOG.warn("SSID {} wants to be on interface {} but there is no radio for that interface, will not configure ssid", ssidConfig.getSsid(), ifName);
+                    	}
 
                     } catch (IllegalStateException e) {
                         // could not provision this SSID, but still can go on
