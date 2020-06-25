@@ -30,7 +30,8 @@ MQTT_PROPS=" "
 MQTT_PROPS+=" -Dconnectus.mqttBroker.address=$MQTT_BROKER_HOST"
 MQTT_PROPS+=" -Dconnectus.mqttBroker.listenPort=1883"
 
-LOGGING_PROPS=" -Dlogging.config=file:/app/opensync/logback.xml"
+LOGBACK_CONFIG_FILE="${LOGBACK_CONFIG_FILE:=/app/opensync/logback.xml}"
+LOGGING_PROPS=" -Dlogging.config=file:$LOGBACK_CONFIG_FILE"
 
 RESTAPI_PROPS=" "
 RESTAPI_PROPS+=" -Dserver.port=443 -Dtip.wlan.secondaryPort=444"
