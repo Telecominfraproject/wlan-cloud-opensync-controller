@@ -38,13 +38,12 @@ RESTAPI_PROPS+=" -Dserver.port=443 -Dtip.wlan.secondaryPort=444"
 SPRING_EXTRA_PROPS=" --add-opens java.base/java.lang=ALL-UNNAMED"
 
 HOST_PROPS=" "
+HOST_PROPS+=" -Dtip.wlan.introspectTokenApi.host=${OVSDB_MANAGER_HOST}:444"
+
 if [[ -n $BACKEND_SERVER ]]
 then
   echo Use specifed local host
-  HOST_PROPS+=" -Dtip.wlan.externalHostName=$BACKEND_SERVER"
-  HOST_PROPS+=" -Dtip.wlan.internalHostName=$BACKEND_SERVER"
-  HOST_PROPS+=" -Dtip.wlan.introspectTokenApi.host=${BACKEND_SERVER}:444"
-  
+
   HOST_URL=https://${BACKEND_SERVER}:9092
   HOST_PROPS+=" -Dtip.wlan.cloudEventDispatcherBaseUrl=$HOST_URL"
   HOST_PROPS+=" -Dtip.wlan.statusServiceBaseUrl=$HOST_URL"
