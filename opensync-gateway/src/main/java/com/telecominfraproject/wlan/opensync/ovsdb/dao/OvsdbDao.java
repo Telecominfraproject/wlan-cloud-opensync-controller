@@ -90,8 +90,14 @@ public class OvsdbDao {
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.timeoutSec:30}")
     private int ovsdbTimeoutSec;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_bridge:br-home}")
+    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_bridge:defaultBridgeForEAPOL}")
     public String bridgeNameVifInterfaces;
+
+    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_lan:br-lan}")
+    public String defaultLanIfName;
+
+    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_wan:eth1}")
+    public String defaultWanIfName;
 
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_radio1:home-ap-24}")
     public String ifName2pt4GHz;
@@ -168,10 +174,10 @@ public class OvsdbDao {
 
             // now populate macAddress, ipV4Address from Wifi_Inet_State
             // first look them up for if_name = br-wan
-            fillInIpAddressAndMac(ovsdbClient, ret, "br-wan");
+            fillInIpAddressAndMac(ovsdbClient, ret, defaultWanIfName);
             if (ret.ipV4Address == null || ret.macAddress == null) {
                 // when not found - look them up for if_name = br-lan
-                fillInIpAddressAndMac(ovsdbClient, ret, "br-lan");
+                fillInIpAddressAndMac(ovsdbClient, ret, defaultLanIfName);
             }
 
             fillInRadioInterfaceNames(ovsdbClient, ret);
@@ -179,6 +185,8 @@ public class OvsdbDao {
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             throw new RuntimeException(e);
         }
+
+        LOG.debug("ConnectNodeInfo created {}", ret);
 
         return ret;
     }
@@ -209,6 +217,61 @@ public class OvsdbDao {
                 for (Row row : ((SelectResult) result[0]).getRows()) {
                     ret.wifiRadioStates.put(getSingleValueFromSet(row, "freq_band"),
                             getSingleValueFromSet(row, "if_name"));
+
+                }
+
+            }
+
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    private void getEnabledRadios(OvsdbClient ovsdbClient, List<RadioType> radios) {
+        try {
+            List<Operation> operations = new ArrayList<>();
+            List<Condition> conditions = new ArrayList<>();
+            List<String> columns = new ArrayList<>();
+
+            columns.add("freq_band");
+
+            conditions.add(new Condition("enabled", Function.EQUALS, new Atom<Boolean>(true)));
+
+            operations.add(new Select(wifiRadioStateDbTable, conditions, columns));
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Select from {}:", wifiRadioStateDbTable);
+
+                for (OperationResult res : result) {
+                    LOG.debug("Op Result {}", res);
+                }
+            }
+
+            if (result != null && result.length > 0 && !((SelectResult) result[0]).getRows().isEmpty()) {
+
+                for (Row row : ((SelectResult) result[0]).getRows()) {
+
+                    String radioFrequencyBand = getSingleValueFromSet(row, "freq_band");
+                    switch (radioFrequencyBand) {
+                    case "2.4G":
+                        radios.add(RadioType.is2dot4GHz);
+                        break;
+                    case "5G":
+                        radios.add(RadioType.is5GHz);
+                        break;
+                    case "5GL":
+                        radios.add(RadioType.is5GHzL);
+                        break;
+                    case "5GU":
+                        radios.add(RadioType.is5GHzU);
+                        break;
+                    default:
+                        LOG.debug("Unsupported or unrecognized radio band type {}", radioFrequencyBand);
+
+                    }
 
                 }
 
@@ -292,6 +355,7 @@ public class OvsdbDao {
                 connectNodeInfo.ipV4Address = getSingleValueFromSet(row, "inet_addr");
                 connectNodeInfo.ifName = row.getStringColumn("if_name");
                 connectNodeInfo.ifType = getSingleValueFromSet(row, "if_type");
+                connectNodeInfo.macAddress = getSingleValueFromSet(row, "hwaddr");
 
             }
 
@@ -786,31 +850,82 @@ public class OvsdbDao {
             for (Row row : ((SelectResult) result[0]).getRows()) {
 
                 WifiVifConfigInfo wifiVifConfigInfo = new WifiVifConfigInfo();
-                wifiVifConfigInfo.bridge = row.getStringColumn("bridge");
-                wifiVifConfigInfo.apBridge = row.getBooleanColumn("ap_bridge");
-                wifiVifConfigInfo.uuid = row.getUuidColumn("_uuid");
-                wifiVifConfigInfo.btm = row.getIntegerColumn("btm").intValue();
-                wifiVifConfigInfo.enabled = row.getBooleanColumn("enabled");
-                wifiVifConfigInfo.ftPsk = row.getIntegerColumn("ft_psk").intValue();
-                wifiVifConfigInfo.groupRekey = row.getIntegerColumn("group_rekey").intValue();
-                wifiVifConfigInfo.minHwMode = row.getStringColumn("min_hw_mode");
-                wifiVifConfigInfo.ifName = row.getStringColumn("if_name");
-                wifiVifConfigInfo.mode = row.getStringColumn("mode");
-                wifiVifConfigInfo.rrm = row.getIntegerColumn("rrm").intValue();
-                wifiVifConfigInfo.ssid = row.getStringColumn("ssid");
-                wifiVifConfigInfo.ssidBroadcast = row.getStringColumn("ssid_broadcast");
-                wifiVifConfigInfo.uapsdEnable = row.getBooleanColumn("uapsd_enable");
-                Long radioIdxTmp = getSingleValueFromSet(row, "vif_radio_idx");
-                if (radioIdxTmp == null) {
-                    radioIdxTmp = 0L;
+
+                String bridge = getSingleValueFromSet(row, "bridge");
+                if (bridge != null) {
+                    wifiVifConfigInfo.bridge = bridge;
                 }
-                wifiVifConfigInfo.vifRadioIdx = radioIdxTmp.intValue();
+
+                Boolean apBridge = getSingleValueFromSet(row, "ap_bridge");
+                if (apBridge != null) {
+                    wifiVifConfigInfo.apBridge = apBridge;
+                }
+
+                wifiVifConfigInfo.uuid = row.getUuidColumn("_uuid");
+
+                Long btm = getSingleValueFromSet(row, "btm");
+                if (btm != null) {
+                    wifiVifConfigInfo.btm = btm.intValue();
+                }
+
+                Boolean enabled = getSingleValueFromSet(row, "enabled");
+                if (enabled != null) {
+                    wifiVifConfigInfo.enabled = enabled;
+                }
+
+                Long ftPsk = getSingleValueFromSet(row, "ft_psk");
+                if (ftPsk != null) {
+                    wifiVifConfigInfo.ftPsk = ftPsk.intValue();
+                }
+
+                Long groupRekey = getSingleValueFromSet(row, "group_rekey");
+                if (groupRekey != null) {
+                    wifiVifConfigInfo.groupRekey = groupRekey.intValue();
+                }
+
+                String minHwMode = getSingleValueFromSet(row, "min_hw_mode");
+                if (minHwMode != null) {
+                    wifiVifConfigInfo.bridge = minHwMode;
+                }
+
+                wifiVifConfigInfo.ifName = row.getStringColumn("if_name");
+
+                String mode = getSingleValueFromSet(row, "mode");
+                if (mode != null) {
+                    wifiVifConfigInfo.mode = mode;
+                }
+
+                Long rrm = getSingleValueFromSet(row, "rrm");
+                if (rrm != null) {
+                    wifiVifConfigInfo.rrm = rrm.intValue();
+                }
+
+                String ssid = getSingleValueFromSet(row, "ssid");
+                if (ssid != null) {
+                    wifiVifConfigInfo.ssid = ssid;
+                }
+
+                String ssidBroadcast = getSingleValueFromSet(row, "ssid_broadcast");
+                if (ssid != null) {
+                    wifiVifConfigInfo.ssidBroadcast = ssidBroadcast;
+                }
+                Boolean uapsdEnable = getSingleValueFromSet(row, "uapsd_enable");
+                if (uapsdEnable != null) {
+                    wifiVifConfigInfo.uapsdEnable = uapsdEnable;
+                }
+
+                Long vifRadioIdx = getSingleValueFromSet(row, "vif_radio_idx");
+                if (vifRadioIdx != null) {
+                    wifiVifConfigInfo.vifRadioIdx = vifRadioIdx.intValue();
+                }
+
                 wifiVifConfigInfo.security = row.getMapColumn("security");
 
-                if (row.getColumns().get("vlan_id") != null && row.getColumns().get("vlan_id").getClass()
-                        .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
-                    wifiVifConfigInfo.vlanId = row.getIntegerColumn("vlan_id").intValue();
+                Long vlanId = getSingleValueFromSet(row, "vlan_id");
+                if (vlanId != null) {
+                    wifiVifConfigInfo.vlanId = vlanId.intValue();
                 }
+
                 ret.put(wifiVifConfigInfo.ifName + '_' + wifiVifConfigInfo.ssid, wifiVifConfigInfo);
             }
 
@@ -931,8 +1046,8 @@ public class OvsdbDao {
                 WifiStatsConfigInfo wifiStatsConfigInfo = new WifiStatsConfigInfo();
 
                 wifiStatsConfigInfo.channelList = row.getSetColumn("channel_list");
-                if(wifiStatsConfigInfo.channelList==null) {
-                	wifiStatsConfigInfo.channelList = Collections.emptySet();
+                if (wifiStatsConfigInfo.channelList == null) {
+                    wifiStatsConfigInfo.channelList = Collections.emptySet();
                 }
                 wifiStatsConfigInfo.radioType = row.getStringColumn("radio_type");
                 wifiStatsConfigInfo.reportingInterval = row.getIntegerColumn("reporting_interval").intValue();
@@ -1120,8 +1235,8 @@ public class OvsdbDao {
                         provisionedBridges.keySet());
             }
 
-        	LOG.debug("Sending batch of operations : {} ", operations);
-        	
+            LOG.debug("Sending batch of operations : {} ", operations);
+
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
@@ -1140,21 +1255,34 @@ public class OvsdbDao {
     // public static final String homeApL50 = "home-ap-l50";
     // public static final String homeApU50 = "home-ap-u50";
 
-    public static final String brWan = "br-wan";
-    public static final String brLan = "br-lan";
+    // public static final String brWan = "br-wan";
+    // public static final String brLan = "br-lan";
 
-    public static final String patchW2h = "patch-w2h";
-    public static final String patchH2w = "patch-h2w";
-
+    //
     public void provisionBridgePortInterface(OvsdbClient ovsdbClient) {
         try {
+
+            String patchW2h = "patch-w2h";
+            String patchH2w = "patch-h2w";
             Map<String, InterfaceInfo> provisionedInterfaces = getProvisionedInterfaces(ovsdbClient);
+            if (provisionedInterfaces.isEmpty()) {
+                LOG.debug("No Interfaces defined in Ovsdb. Cannot perform Bridge/Port/Interface mapping.");
+                return;
+            }
             LOG.debug("Existing Interfaces: {}", provisionedInterfaces.keySet());
 
             Map<String, PortInfo> provisionedPorts = getProvisionedPorts(ovsdbClient);
+            if (provisionedInterfaces.isEmpty()) {
+                LOG.debug("No Ports defined in Ovsdb. Cannot perform Bridge/Port/Interface mapping.");
+                return;
+            }
             LOG.debug("Existing Ports: {}", provisionedPorts.keySet());
 
             Map<String, BridgeInfo> provisionedBridges = getProvisionedBridges(ovsdbClient);
+            if (provisionedInterfaces.isEmpty()) {
+                LOG.debug("No Bridges defined in Ovsdb. Cannot perform Bridge/Port/Interface mapping.");
+                return;
+            }
             LOG.debug("Existing Bridges: {}", provisionedBridges.keySet());
 
             Map<String, String> patchH2wOptions = new HashMap<>();
@@ -1165,7 +1293,7 @@ public class OvsdbDao {
 
             provisionSingleBridgePortInterface(ovsdbClient, patchH2w, bridgeNameVifInterfaces, "patch", patchH2wOptions,
                     provisionedInterfaces, provisionedPorts, provisionedBridges);
-            provisionSingleBridgePortInterface(ovsdbClient, patchW2h, brWan, "patch", patchW2hOptions,
+            provisionSingleBridgePortInterface(ovsdbClient, patchW2h, defaultWanIfName, "patch", patchW2hOptions,
                     provisionedInterfaces, provisionedPorts, provisionedBridges);
 
             provisionSingleBridgePortInterface(ovsdbClient, ifName5GHzU, bridgeNameVifInterfaces, "vif", null,
@@ -1842,11 +1970,9 @@ public class OvsdbDao {
 
     }
 
-    public void configureWifiRadios(OvsdbClient ovsdbClient, String freqBand,
-            int channel, Map<String, String> hwConfig,
+    public void configureWifiRadios(OvsdbClient ovsdbClient, String freqBand, int channel, Map<String, String> hwConfig,
             String country, int beaconInterval, boolean enabled, String ht_mode, int txPower)
             throws OvsdbClientException, TimeoutException, ExecutionException, InterruptedException {
-
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
@@ -1886,9 +2012,9 @@ public class OvsdbDao {
     }
 
     public void configureSingleSsid(OvsdbClient ovsdbClient, String bridge, String ifName, String ssid,
-            boolean ssidBroadcast, Map<String, String> security, String radioFreqBand, int vlanId,
-            boolean rrmEnabled, boolean enable80211r, String minHwMode, boolean enabled, int keyRefresh,
-            boolean uapsdEnabled, boolean apBridge, NetworkForwardMode networkForwardMode, String gateway, String inet,
+            boolean ssidBroadcast, Map<String, String> security, String radioFreqBand, int vlanId, boolean rrmEnabled,
+            boolean enable80211r, String minHwMode, boolean enabled, int keyRefresh, boolean uapsdEnabled,
+            boolean apBridge, NetworkForwardMode networkForwardMode, String gateway, String inet,
             Map<String, String> dns, String ipAssignScheme) {
 
         List<Operation> operations = new ArrayList<>();
@@ -1949,13 +2075,11 @@ public class OvsdbDao {
             }
             updateColumns.clear();
             operations.clear();
-        
-            
+
             updateVifConfigsSetForRadio(ovsdbClient, ssid, radioFreqBand, operations, updateColumns, vifConfigUuid);
-            
-            
+
             Map<String, WifiInetConfigInfo> inetConfigs = getProvisionedWifiInetConfigs(ovsdbClient);
-            
+
             if (inetConfigs.containsKey(ifName)) {
                 updateWifiInetConfig(ovsdbClient, vlanId, ifName, enabled, networkForwardMode == NetworkForwardMode.NAT,
                         "vif", gateway, inet, dns, ipAssignScheme, vifConfigUuid);
@@ -1982,7 +2106,7 @@ public class OvsdbDao {
         OperationResult[] result;
         List<Condition> conditions = new ArrayList<>();
         conditions.add(new Condition("freq_band", Function.EQUALS, new Atom<>(radioFreqBand)));
-        
+
         List<String> columns = new ArrayList<>();
         columns.add("vif_configs");
         operations.add(new Select(wifiRadioConfigDbTable, conditions, columns));
@@ -1995,26 +2119,26 @@ public class OvsdbDao {
             row = ((SelectResult) result[0]).getRows().iterator().next();
             if (row != null) {
                 vifConfigsSet = row.getSetColumn("vif_configs");
-                if(vifConfigsSet == null) {
-                	vifConfigsSet = new HashSet<Uuid>();
+                if (vifConfigsSet == null) {
+                    vifConfigsSet = new HashSet<Uuid>();
                 }
             }
         }
 
-        if(vifConfigUuid!=null) {
-        	vifConfigsSet.add(vifConfigUuid);
+        if (vifConfigUuid != null) {
+            vifConfigsSet.add(vifConfigUuid);
         }
-        
+
         com.vmware.ovsdb.protocol.operation.notation.Set vifConfigs = com.vmware.ovsdb.protocol.operation.notation.Set
                 .of(vifConfigsSet);
-        
+
         updateColumns.put("vif_configs", vifConfigs);
 
         row = new Row(updateColumns);
         operations.add(new Update(wifiRadioConfigDbTable, conditions, row));
 
-    	LOG.debug("Sending batch of operations : {} ", operations);
-        
+        LOG.debug("Sending batch of operations : {} ", operations);
+
         fResult = ovsdbClient.transact(ovsdbName, operations);
         result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
@@ -2035,20 +2159,35 @@ public class OvsdbDao {
             rrmEnabled = opensyncApConfig.getEquipmentLocation().getDetails().isRrmEnabled();
         }
 
-        for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
+        List<RadioType> enabledRadiosFromAp = new ArrayList<>();
+        getEnabledRadios(ovsdbClient, enabledRadiosFromAp);
 
-            Map<String, WifiVifConfigInfo> provisionedWifiVifConfigs = getProvisionedWifiVifConfigs(ovsdbClient);
-            LOG.debug("Existing WifiVifConfigs: {}", provisionedWifiVifConfigs.keySet());
+        Set<String> inetIfs = getProvisionedWifiInetConfigs(ovsdbClient).keySet();
+
+        if (inetIfs.contains(defaultWanIfName)) {
+            bridgeNameVifInterfaces = defaultWanIfName;
+        } else if (inetIfs.contains(defaultLanIfName)) {
+            bridgeNameVifInterfaces = defaultLanIfName;
+        } else {
+            LOG.error("Cannot provision a VIF without either LAN or WAN interface on AP");
+            return;
+        }
+
+        for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
 
             SsidConfiguration ssidConfig = (SsidConfiguration) ssidProfile.getDetails();
             ApElementConfiguration apElementConfig = (ApElementConfiguration) opensyncApConfig.getCustomerEquipment()
                     .getDetails();
             for (RadioType radioType : ssidConfig.getAppliedRadios()) {
 
+                if (!enabledRadiosFromAp.contains(radioType)) {
+                    // Not on this AP
+                    LOG.debug(
+                            "AP {} does not have a radio where frequency band is {}. Cannot provision this radio profile on AP.",
+                            opensyncApConfig.getCustomerEquipment().getInventoryId(), radioType);
+                    continue;
+                }
                 int keyRefresh = ssidConfig.getKeyRefresh();
-
-                Map<String, WifiRadioConfigInfo> provisionedWifiRadioConfigs = getProvisionedWifiRadioConfigs(
-                        ovsdbClient);
 
                 boolean ssidBroadcast = ssidConfig.getBroadcastSsid() == StateSetting.enabled;
                 Map<String, String> security = new HashMap<>();
@@ -2159,24 +2298,17 @@ public class OvsdbDao {
                     ifName = ifName5GHzU;
                     freqBand = "5GU";
                 } else if (radioType == RadioType.is5GHz) {
-                    ifName = ifName5GHzU;
+                    ifName = ifName5GHzL;
                     freqBand = "5G";
                 }
 
-                if (!provisionedWifiVifConfigs.containsKey(ifName + "_" + ssidConfig.getSsid())) {
+                if (!getProvisionedWifiVifConfigs(ovsdbClient).containsKey(ifName + "_" + ssidConfig.getSsid())) {
                     try {
-                    	WifiRadioConfigInfo wci = provisionedWifiRadioConfigs.get(ifName);
-                    	if(wci!=null && wci.enabled) {
-	                        configureSingleSsid(ovsdbClient, bridgeNameVifInterfaces, ifName, ssidConfig.getSsid(),
-	                                ssidBroadcast, security, freqBand,
-	                                ssidConfig.getVlanId(), rrmEnabled, enable80211r, minHwMode, enabled, keyRefresh,
-	                                uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet, dns,
-	                                ipAssignScheme);
-                    	} else if(wci!=null) {
-                    		LOG.warn("SSID {} wants to be on interface {} but that radio is disabled, will not configure ssid", ssidConfig.getSsid(), ifName);
-                    	} else {
-                    		LOG.warn("SSID {} wants to be on interface {} but there is no radio for that interface, will not configure ssid", ssidConfig.getSsid(), ifName);
-                    	}
+
+                        configureSingleSsid(ovsdbClient, bridgeNameVifInterfaces, ifName, ssidConfig.getSsid(),
+                                ssidBroadcast, security, freqBand, ssidConfig.getVlanId(), rrmEnabled, enable80211r,
+                                minHwMode, enabled, keyRefresh, uapsdEnabled, apBridge, ssidConfig.getForwardMode(),
+                                gateway, inet, dns, ipAssignScheme);
 
                     } catch (IllegalStateException e) {
                         // could not provision this SSID, but still can go on
@@ -2424,10 +2556,11 @@ public class OvsdbDao {
             configureWifiInet(ovsdbClient, provisionedWifiInetConfigs, ifName);
         }
 
-        if (!provisionedWifiInetConfigs.containsKey(brLan) || !provisionedWifiInetConfigs.get(brLan).network) {
-            // set network flag on brHome in wifiInetConfig table
-            configureWifiInetSetNetwork(ovsdbClient, brLan);
-        }
+        // if (!provisionedWifiInetConfigs.containsKey(brLan) ||
+        // !provisionedWifiInetConfigs.get(brLan).network) {
+        // // set network flag on brHome in wifiInetConfig table
+        // configureWifiInetSetNetwork(ovsdbClient, brLan);
+        // }
     }
 
     public void configureStats(OvsdbClient ovsdbClient) {
@@ -2458,8 +2591,8 @@ public class OvsdbDao {
             provisionWifiStatsRssi(radioConfigs, getProvisionedWifiStatsConfigs(ovsdbClient), operations);
 
             if (!operations.isEmpty()) {
-            	LOG.debug("Sending batch of operations : {} ", operations);
-            	
+                LOG.debug("Sending batch of operations : {} ", operations);
+
                 CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
                 OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
@@ -2556,16 +2689,16 @@ public class OvsdbDao {
         com.vmware.ovsdb.protocol.operation.notation.Set channels5gu = com.vmware.ovsdb.protocol.operation.notation.Set
                 .of(allowedChannels.get("5GU"));
 
-        if(channels2g == null) {
-        	channels2g = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
+        if (channels2g == null) {
+            channels2g = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
         }
 
-        if(channels5gl == null) {
-        	channels5gl= com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
+        if (channels5gl == null) {
+            channels5gl = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
         }
 
-        if(channels5gu == null) {
-        	channels5gu= com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
+        if (channels5gu == null) {
+            channels5gu = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
         }
 
         if (!provisionedWifiStatsConfigs.containsKey("2.4G_neighbor_off-chan")) {
@@ -2635,17 +2768,17 @@ public class OvsdbDao {
 
         com.vmware.ovsdb.protocol.operation.notation.Set channels5gu = com.vmware.ovsdb.protocol.operation.notation.Set
                 .of(allowedChannels.get("5GU"));
-        
-        if(channels2g == null) {
-        	channels2g = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
+
+        if (channels2g == null) {
+            channels2g = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
         }
 
-        if(channels5gl == null) {
-        	channels5gl= com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
+        if (channels5gl == null) {
+            channels5gl = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
         }
 
-        if(channels5gu == null) {
-        	channels5gu= com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
+        if (channels5gu == null) {
+            channels5gu = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
         }
 
         Map<String, Value> updateColumns;
