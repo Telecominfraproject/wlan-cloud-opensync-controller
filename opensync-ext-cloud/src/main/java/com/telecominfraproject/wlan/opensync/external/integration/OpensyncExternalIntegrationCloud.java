@@ -39,7 +39,6 @@ import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.customer.models.Customer;
 import com.telecominfraproject.wlan.customer.service.CustomerServiceInterface;
 import com.telecominfraproject.wlan.datastore.exceptions.DsConcurrentModificationException;
-import com.telecominfraproject.wlan.datastore.exceptions.DsEntityNotFoundException;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.Equipment;
@@ -48,7 +47,6 @@ import com.telecominfraproject.wlan.firmware.FirmwareServiceInterface;
 import com.telecominfraproject.wlan.firmware.models.CustomerFirmwareTrackRecord;
 import com.telecominfraproject.wlan.firmware.models.CustomerFirmwareTrackSettings;
 import com.telecominfraproject.wlan.firmware.models.CustomerFirmwareTrackSettings.TrackFlag;
-import com.telecominfraproject.wlan.firmware.models.FirmwareVersion;
 import com.telecominfraproject.wlan.location.models.Location;
 import com.telecominfraproject.wlan.location.service.LocationServiceInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.controller.OpensyncCloudGatewayController;
@@ -237,12 +235,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     ce.setInventoryId(apId);
                     ce.setSerial(connectNodeInfo.serialNumber);
                     ce.setDetails(ApElementConfiguration.createWithDefaults());
+                    ce.setCustomerId(autoProvisionedCustomerId);
+                    ce.setName(ce.getEquipmentType().name() + "_" + ce.getSerial());
+                    ce.setLocationId(autoProvisionedLocationId);
+                    
                     ce = equipmentServiceInterface.create(ce);
 
-                    ce.setCustomerId(autoProvisionedCustomerId);
-                    ce.setName(apId);
-                    ce.setLocationId(autoProvisionedLocationId);
                     ApElementConfiguration apElementConfig = (ApElementConfiguration) ce.getDetails();
+                    apElementConfig.setDeviceName(ce.getName());
                     apElementConfig.setEquipmentModel(connectNodeInfo.model);
                     apElementConfig.getAdvancedRadioMap().get(RadioType.is2dot4GHz)
                             .setAutoChannelSelection(StateSetting.disabled);
