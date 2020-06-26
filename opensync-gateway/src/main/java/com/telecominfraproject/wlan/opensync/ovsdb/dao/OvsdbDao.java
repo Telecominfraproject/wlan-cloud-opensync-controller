@@ -96,7 +96,7 @@ public class OvsdbDao {
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_lan:br-lan}")
     public String defaultLanIfName;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_wan:eth1}")
+    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_wan:eth}")
     public String defaultWanIfName;
 
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_radio1:home-ap-24}")
@@ -174,7 +174,7 @@ public class OvsdbDao {
 
             // now populate macAddress, ipV4Address from Wifi_Inet_State
             // first look them up for if_name = br-wan
-            fillInIpAddressAndMac(ovsdbClient, ret, defaultWanIfName);
+            getIpAddressAndMacForEth(ovsdbClient, ret, defaultWanIfName);
             if (ret.ipV4Address == null || ret.macAddress == null) {
                 // when not found - look them up for if_name = br-lan
                 fillInIpAddressAndMac(ovsdbClient, ret, defaultLanIfName);
@@ -320,6 +320,49 @@ public class OvsdbDao {
             throw new RuntimeException(e);
         }
         return allowedChannels;
+
+    }
+    
+    public void getIpAddressAndMacForEth(OvsdbClient ovsdbClient, ConnectNodeInfo connectNodeInfo, String ifType) {
+        try {
+            List<Operation> operations = new ArrayList<>();
+            List<Condition> conditions = new ArrayList<>();
+            List<String> columns = new ArrayList<>();
+            // populate macAddress, ipV4Address from Wifi_Inet_State
+
+            columns.add("inet_addr");
+            columns.add("hwaddr");
+            columns.add("if_type");
+            columns.add("if_name");
+
+
+            conditions.add(new Condition("if_type", Function.EQUALS, new Atom<>(ifType)));
+
+            operations.add(new Select(wifiInetStateDbTable, conditions, columns));
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Select from {}:", wifiInetStateDbTable);
+
+                for (OperationResult res : result) {
+                    LOG.debug("Op Result {}", res);
+                }
+            }
+
+            Row row = null;
+            if (result != null && result.length > 0 && !((SelectResult) result[0]).getRows().isEmpty()) {
+                row = ((SelectResult) result[0]).getRows().iterator().next();
+                connectNodeInfo.ipV4Address = getSingleValueFromSet(row, "inet_addr");
+                connectNodeInfo.ifName = row.getStringColumn("if_name");
+                connectNodeInfo.ifType = getSingleValueFromSet(row, "if_type");
+                connectNodeInfo.macAddress = getSingleValueFromSet(row, "hwaddr");
+
+            }
+
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
 
     }
 
@@ -2154,16 +2197,7 @@ public class OvsdbDao {
         List<RadioType> enabledRadiosFromAp = new ArrayList<>();
         getEnabledRadios(ovsdbClient, enabledRadiosFromAp);
 
-        Set<String> inetIfs = getProvisionedWifiInetConfigs(ovsdbClient).keySet();
-
-        if (inetIfs.contains(defaultWanIfName)) {
-            bridgeNameVifInterfaces = defaultWanIfName;
-        } else if (inetIfs.contains(defaultLanIfName)) {
-            bridgeNameVifInterfaces = defaultLanIfName;
-        } else {
-            LOG.error("Cannot provision a VIF without either LAN or WAN interface on AP");
-            return;
-        }
+        bridgeNameVifInterfaces = getConnectNodeInfo(ovsdbClient).ifName;
 
         for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
 
