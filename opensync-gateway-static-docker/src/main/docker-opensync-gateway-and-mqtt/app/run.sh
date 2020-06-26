@@ -51,6 +51,10 @@ OVSDB_DEVICE_RADIO_1="${OVSDB_DEVICE_RADIO_1:=wifi0}"
 echo $OVSDB_DEVICE_RADIO_1
 OVSDB_DEVICE_RADIO_2="${OVSDB_DEVICE_RADIO_2:=wifi1}"
 echo $OVSDB_DEVICE_RADIO_2
+OVSDB_DEVICE_DEFAULT_WAN="${OVSDB_DEVICE_DEFAULT_WAN:=eth1}"
+echo $OVSDB_DEVICE_DEFAULT_WAN
+OVSDB_DEVICE_DEFAULT_LAN="${OVSDB_DEVICE_DEFAULT_LAN:=br-lan}"
+echo $OVSDB_DEVICE_DEFAULT_LAN
 
 echo Reading AP configuration from $OVSDB_CONFIG_FILE
 
@@ -129,6 +133,8 @@ OVSDB_PROPS="$OVSDB_PROPS -Dconnectus.ovsdb.ssidProfileFileName=$OVSDB_SSIDPROFI
 OVSDB_PROPS="$OVSDB_PROPS -Dconnectus.ovsdb.radiusProfileFileName=$OVSDB_RADIUSPROFILE_CONFIG_FILE"
 OVSDB_PROPS="$OVSDB_PROPS -Dconnectus.ovsdb.locationFileName=$OVSDB_LOCATION_CONFIG_FILE"
 OVSDB_PROPS="$OVSDB_PROPS -Dconnectus.ovsdb.wifi-iface.default_bridge=$OVSDB_IF_DEFAULT_BRIDGE"
+OVSDB_PROPS="$OVSDB_PROPS -Dconnectus.ovsdb.wifi-iface.default_wan=$OVSDB_DEVICE_DEFAULT_WAN"
+OVSDB_PROPS="$OVSDB_PROPS -Dconnectus.ovsdb.wifi-iface.default_lan=$OVSDB_DEVICE_DEFAULT_LAN"
 OVSDB_PROPS="$OVSDB_PROPS -Dconnectus.ovsdb.wifi-iface.default_radio0=$OVSDB_IF_DEFAULT_RADIO_0"
 OVSDB_PROPS="$OVSDB_PROPS -Dconnectus.ovsdb.wifi-iface.default_radio1=$OVSDB_IF_DEFAULT_RADIO_1"
 OVSDB_PROPS="$OVSDB_PROPS -Dconnectus.ovsdb.wifi-iface.default_radio2=$OVSDB_IF_DEFAULT_RADIO_2"

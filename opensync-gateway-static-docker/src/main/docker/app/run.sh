@@ -25,6 +25,8 @@ OVSDB_PROPS+=" -Dconnectus.ovsdb.ssidProfileFileName=$OVSDB_SSIDPROFILE_CONFIG_F
 OVSDB_PROPS+=" -Dconnectus.ovsdb.radiusProfileFileName=$OVSDB_RADIUSPROFILE_CONFIG_FILE"
 OVSDB_PROPS+=" -Dconnectus.ovsdb.locationFileName=$OVSDB_LOCATION_CONFIG_FILE"
 OVSDB_PROPS+=" -Dconnectus.ovsdb.wifi-iface.default_bridge=$OVSDB_IF_DEFAULT_BRIDGE"
+OVSDB_PROPS+=" -Dconnectus.ovsdb.wifi-iface.default_wan=$OVSDB_DEVICE_DEFAULT_WAN"
+OVSDB_PROPS+=" -Dconnectus.ovsdb.wifi-iface.default_lan=$OVSDB_DEVICE_DEFAULT_LAN"
 OVSDB_PROPS+=" -Dconnectus.ovsdb.wifi-iface.default_radio0=$OVSDB_IF_DEFAULT_RADIO_0"
 OVSDB_PROPS+=" -Dconnectus.ovsdb.wifi-iface.default_radio1=$OVSDB_IF_DEFAULT_RADIO_1"
 OVSDB_PROPS+=" -Dconnectus.ovsdb.wifi-iface.default_radio2=$OVSDB_IF_DEFAULT_RADIO_2"
