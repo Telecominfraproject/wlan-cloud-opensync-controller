@@ -36,12 +36,13 @@ import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.NeighborScanPacketType;
 import com.telecominfraproject.wlan.core.model.equipment.NetworkType;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
-import com.telecominfraproject.wlan.customer.models.Customer;
 import com.telecominfraproject.wlan.customer.service.CustomerServiceInterface;
 import com.telecominfraproject.wlan.datastore.exceptions.DsConcurrentModificationException;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
+import com.telecominfraproject.wlan.equipment.models.ElementRadioConfiguration;
 import com.telecominfraproject.wlan.equipment.models.Equipment;
+import com.telecominfraproject.wlan.equipment.models.RadioConfiguration;
 import com.telecominfraproject.wlan.equipment.models.StateSetting;
 import com.telecominfraproject.wlan.firmware.FirmwareServiceInterface;
 import com.telecominfraproject.wlan.firmware.models.CustomerFirmwareTrackRecord;
@@ -62,6 +63,7 @@ import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileContainer;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
+import com.telecominfraproject.wlan.profile.network.models.RadioProfileConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration.SecureMode;
 import com.telecominfraproject.wlan.routing.RoutingServiceInterface;
@@ -195,6 +197,23 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         return ce;
     }
 
+    private RadioType getRadioTypeForOvsdbRadioFreqBand(String ovsdbRadioFreqBand) {
+
+        switch (ovsdbRadioFreqBand) {
+        case "2.4G":
+            return RadioType.is2dot4GHz;
+        case "5G":
+            return RadioType.is5GHz;
+        case "5GL":
+            return RadioType.is5GHzL;
+        case "5GU":
+            return RadioType.is5GHzU;
+        default:
+            return RadioType.UNSUPPORTED;
+        }
+
+    }
+
     @Override
     public void apConnected(String apId, ConnectNodeInfo connectNodeInfo) {
 
@@ -208,7 +227,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             if (custFwTrackRecord != null) {
                 trackSettings = custFwTrackRecord.getSettings();
             }
-            // determine if AP requires FW upgrade before cloud connection/provision
+            // determine if AP requires FW upgrade before cloud
+            // connection/provision
             if (trackSettings.getAutoUpgradeDeprecatedOnBind().equals(TrackFlag.ALWAYS)
                     || trackSettings.getAutoUpgradeUnknownOnBind().equals(TrackFlag.ALWAYS)) {
 
@@ -238,22 +258,39 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     ce.setCustomerId(autoProvisionedCustomerId);
                     ce.setName(ce.getEquipmentType().name() + "_" + ce.getSerial());
                     ce.setLocationId(autoProvisionedLocationId);
-                    
+
                     ce = equipmentServiceInterface.create(ce);
 
                     ApElementConfiguration apElementConfig = (ApElementConfiguration) ce.getDetails();
                     apElementConfig.setDeviceName(ce.getName());
                     apElementConfig.setEquipmentModel(connectNodeInfo.model);
-                    apElementConfig.getAdvancedRadioMap().get(RadioType.is2dot4GHz)
-                            .setAutoChannelSelection(StateSetting.disabled);
-                    apElementConfig.getAdvancedRadioMap().get(RadioType.is5GHzL)
-                            .setAutoChannelSelection(StateSetting.disabled);
-                    apElementConfig.getAdvancedRadioMap().get(RadioType.is5GHzU)
-                            .setAutoChannelSelection(StateSetting.disabled);
+                    Map<RadioType, RadioConfiguration> advancedRadioMap = new HashMap<>();
+                    Map<RadioType, ElementRadioConfiguration> radioMap = new HashMap<>();
+                    for (String radio : connectNodeInfo.wifiRadioStates.keySet()) {
+                        RadioConfiguration advancedRadioConfiguration = null;
+                        ElementRadioConfiguration radioConfiguration = null;
+                        RadioType radioType = RadioType.UNSUPPORTED;
+                        if (radio.equals("2.4G")) {
+                            radioType = RadioType.is2dot4GHz;
+                        } else if (radio.equals("5G")) {
+                            radioType = RadioType.is5GHz;
+                        } else if (radio.equals("5GL")) {
+                            radioType = RadioType.is5GHzL;
+                        } else if (radio.equals("5GU")) {
+                            radioType = RadioType.is5GHzU;
+                        }
+                        if (!radioType.equals(RadioType.UNSUPPORTED)) {
+                            advancedRadioConfiguration = RadioConfiguration.createWithDefaults(radioType);
+                            advancedRadioConfiguration.setAutoChannelSelection(StateSetting.disabled);
+                            advancedRadioMap.put(radioType, advancedRadioConfiguration);
+                            radioConfiguration = ElementRadioConfiguration.createWithDefaults(radioType);
+                            radioConfiguration.setAutoChannelSelection(false);
+                            radioMap.put(radioType, radioConfiguration);
+                        }
+                    }
 
-                    apElementConfig.getRadioMap().get(RadioType.is2dot4GHz).setAutoChannelSelection(false);
-                    apElementConfig.getRadioMap().get(RadioType.is5GHzL).setAutoChannelSelection(false);
-                    apElementConfig.getRadioMap().get(RadioType.is5GHzU).setAutoChannelSelection(false);
+                    apElementConfig.setRadioMap(radioMap);
+                    apElementConfig.setAdvancedRadioMap(advancedRadioMap);
 
                     ce.setDetails(apElementConfig);
                     ce = equipmentServiceInterface.update(ce);
@@ -264,61 +301,51 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     apProfile.setDetails(ApNetworkConfiguration.createWithDefaults());
                     apProfile = profileServiceInterface.create(apProfile);
 
-                    Profile ssidProfile = new Profile();
-                    ssidProfile.setCustomerId(ce.getCustomerId());
-                    ssidProfile.setName("DefaultSsid-2g");
-                    SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
-                    ssidConfig.setSsid("DefaultSsid-2g");
-                    ssidConfig.setSecureMode(SecureMode.wpa2PSK);
-                    ssidConfig.setKeyStr("12345678");
-                    ssidConfig.setVlanId(0);
+                    ApNetworkConfiguration apNetworkConfig = (ApNetworkConfiguration) apProfile.getDetails();
+                    Map<RadioType, RadioProfileConfiguration> radioProfileMap = new HashMap<>();
 
+                    for (String radioBand : connectNodeInfo.wifiRadioStates.keySet()) {
 
-                    Set<RadioType> appliedRadios = new HashSet<>();
-                    appliedRadios.add(RadioType.is2dot4GHz);
-                    // ssidConfig.getRadioBasedConfigs().get(RadioType.is2dot4GHz).setEnable80211r(true);
+                        RadioType radioType = getRadioTypeForOvsdbRadioFreqBand(radioBand);
+                        if (!radioType.equals(RadioType.UNSUPPORTED)) {
+                            radioProfileMap.put(radioType, RadioProfileConfiguration.createWithDefaults(radioType));
+                        }
 
-                    ssidConfig.setAppliedRadios(appliedRadios);
-                    ssidProfile.setDetails(ssidConfig);
-                    ssidProfile = profileServiceInterface.create(ssidProfile);
+                    }
 
-                    Profile ssidProfile5g = new Profile();
-                    ssidProfile5g.setCustomerId(ce.getCustomerId());
-                    ssidProfile5g.setName("DefaultSsid-5g");
-                    SsidConfiguration ssidConfig5g = SsidConfiguration.createWithDefaults();
-                    ssidConfig5g.setSecureMode(SecureMode.wpa2PSK);
-                    ssidConfig5g.setSsid("DefaultSsid-5g");
-                    ssidConfig5g.setKeyStr("12345678");
-                    ssidConfig5g.setVlanId(0);
-                    Set<RadioType> appliedRadios5g = new HashSet<>();
-                    appliedRadios5g.add(RadioType.is5GHzL);
-                    appliedRadios5g.add(RadioType.is5GHzU);
-                    ssidConfig5g.setAppliedRadios(appliedRadios5g);
-                    // ssidConfig5g.getRadioBasedConfigs().get(RadioType.is5GHzL).setEnable80211r(true);
-                    // ssidConfig5g.getRadioBasedConfigs().get(RadioType.is5GHzU).setEnable80211r(true);
+                    apNetworkConfig.setRadioMap(radioProfileMap);
 
-                    ssidProfile5g.setDetails(ssidConfig5g);
-                    ssidProfile5g = profileServiceInterface.create(ssidProfile5g);
+                    apProfile.setDetails(apNetworkConfig);
 
-                    Set<Long> childProfileIds = new HashSet<>();
-                    childProfileIds.add(ssidProfile.getId());
-                    childProfileIds.add(ssidProfile5g.getId());
+                    apProfile = profileServiceInterface.create(apProfile);
 
-                    apProfile.setChildProfileIds(childProfileIds);
+                    apNetworkConfig = (ApNetworkConfiguration) apProfile.getDetails();
 
-                    apProfile = profileServiceInterface.update(apProfile);
+                    Set<RadioType> radioTypes = radioProfileMap.keySet();
+
+                    for (RadioType radioType : radioTypes) {
+                        Profile ssidProfile = new Profile();
+                        ssidProfile.setCustomerId(ce.getCustomerId());
+                        ssidProfile.setName("DefaultSsid-" + radioType.name());
+                        SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
+
+                        ssidConfig.setSecureMode(SecureMode.open);
+                        Set<RadioType> appliedRadios = new HashSet<>();
+                        appliedRadios.add(radioType);
+                        ssidConfig.setAppliedRadios(appliedRadios);
+                        ssidProfile.setDetails(ssidConfig);
+                        ssidProfile = profileServiceInterface.create(ssidProfile);
+
+                        apProfile.getChildProfileIds().add(ssidProfile.getId());
+
+                        apProfile = profileServiceInterface.update(apProfile);
+                    }
+
                     ce.setProfileId(apProfile.getId());
 
                     ce = equipmentServiceInterface.update(ce);
 
-                    Customer customer = customerServiceInterface.getOrNull(ce.getCustomerId());
-                    if (customer == null) {
-                        customer = new Customer();
-                        customer.setId(autoProvisionedCustomerId);
-                        customerServiceInterface.create(customer);
-                        ce.setCustomerId(customer.getId());
-                        equipmentServiceInterface.update(ce);
-                    }
+
                 }
 
                 EquipmentRoutingRecord equipmentRoutingRecord = gatewayController
@@ -1441,7 +1468,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     @Override
     public void wifiVIFStateDbTableUpdate(List<OpensyncAPVIFState> vifStateTables, String apId) {
-        
+
         OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
 
         if (ovsdbSession == null) {
@@ -1457,8 +1484,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     customerId, equipmentId, apId);
             return;
         }
-
-
 
         for (OpensyncAPVIFState vifState : vifStateTables) {
 
@@ -1709,7 +1734,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     customerId, equipmentId, apId);
             return;
         }
-
 
         if (inetStateTables == null || inetStateTables.isEmpty() || apId == null) {
             return;

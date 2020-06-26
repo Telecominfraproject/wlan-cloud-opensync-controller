@@ -1251,14 +1251,6 @@ public class OvsdbDao {
         }
     }
 
-    // public static final String homeAp24 = "home-ap-24";
-    // public static final String homeApL50 = "home-ap-l50";
-    // public static final String homeApU50 = "home-ap-u50";
-
-    // public static final String brWan = "br-wan";
-    // public static final String brLan = "br-lan";
-
-    //
     public void provisionBridgePortInterface(OvsdbClient ovsdbClient) {
         try {
 
@@ -2504,63 +2496,6 @@ public class OvsdbDao {
             throw new RuntimeException(e);
         }
 
-    }
-
-    public void configureWifiInetSetNetwork(OvsdbClient ovsdbClient, String ifName) {
-        List<Operation> operations = new ArrayList<>();
-        Map<String, Value> updateColumns = new HashMap<>();
-        List<Condition> conditions = new ArrayList<>();
-
-        try {
-            /// usr/plume/tools/ovsh u Wifi_Inet_Config -w if_name=="br-home"
-            /// network:=true
-
-            conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(ifName)));
-            updateColumns.put("network", new Atom<>(true));
-
-            Row row = new Row(updateColumns);
-            operations.add(new Update(wifiInetConfigDbTable, conditions, row));
-
-            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
-            LOG.debug("Enabled network on WifiInetConfig {}", ifName);
-
-            for (OperationResult res : result) {
-                LOG.debug("Op Result {}", res);
-            }
-
-        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
-            LOG.error("Error in configureWifiInetSetNetwork", e);
-            throw new RuntimeException(e);
-        }
-
-    }
-
-    public void configureWifiInet(OvsdbClient ovsdbClient) {
-        Map<String, WifiInetConfigInfo> provisionedWifiInetConfigs = getProvisionedWifiInetConfigs(ovsdbClient);
-        LOG.debug("Existing WifiInetConfigs: {}", provisionedWifiInetConfigs.keySet());
-
-        String ifName = ifName2pt4GHz;
-        if (!provisionedWifiInetConfigs.containsKey(ifName)) {
-            configureWifiInet(ovsdbClient, provisionedWifiInetConfigs, ifName);
-        }
-
-        ifName = ifName5GHzL;
-        if (!provisionedWifiInetConfigs.containsKey(ifName)) {
-            configureWifiInet(ovsdbClient, provisionedWifiInetConfigs, ifName);
-        }
-
-        ifName = ifName5GHzU;
-        if (!provisionedWifiInetConfigs.containsKey(ifName)) {
-            configureWifiInet(ovsdbClient, provisionedWifiInetConfigs, ifName);
-        }
-
-        // if (!provisionedWifiInetConfigs.containsKey(brLan) ||
-        // !provisionedWifiInetConfigs.get(brLan).network) {
-        // // set network flag on brHome in wifiInetConfig table
-        // configureWifiInetSetNetwork(ovsdbClient, brLan);
-        // }
     }
 
     public void configureStats(OvsdbClient ovsdbClient) {
