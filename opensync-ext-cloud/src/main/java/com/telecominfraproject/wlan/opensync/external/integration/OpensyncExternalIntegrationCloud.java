@@ -253,6 +253,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     ce = new Equipment();
                     ce.setEquipmentType(EquipmentType.AP);
                     ce.setInventoryId(apId);
+                    try {
+                    	ce.setBaseMacAddress(new MacAddress(connectNodeInfo.macAddress));
+                    }catch(RuntimeException e) {
+                    	LOG.warn("Auto-provisioning: cannot parse equipment mac address {}", connectNodeInfo.macAddress);
+                    }
                     ce.setSerial(connectNodeInfo.serialNumber);
                     ce.setDetails(ApElementConfiguration.createWithDefaults());
                     ce.setCustomerId(autoProvisionedCustomerId);
@@ -345,6 +350,31 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                     ce = equipmentServiceInterface.update(ce);
 
+                    //update the cache right away, no need to wait until the entry expires
+                    cloudEquipmentRecordCache.put(ce.getInventoryId(), ce);
+
+                } else {
+                	//equipment already exists
+                	
+                	MacAddress reportedMacAddress = null;
+                    try {
+                    	reportedMacAddress = new MacAddress(connectNodeInfo.macAddress);
+                    }catch(RuntimeException e) {
+                    	LOG.warn("AP connect: cannot parse equipment mac address {}", connectNodeInfo.macAddress);
+                    }
+                    
+                    if(reportedMacAddress != null) {
+                    	//check if reported mac address matches what is in the db
+                    	if(!reportedMacAddress.equals(ce.getBaseMacAddress())) {
+                    		//need to update base mac address on equipment in DB
+                    		ce = equipmentServiceInterface.get(ce.getId());
+                    		ce.setBaseMacAddress(reportedMacAddress);
+                    		ce = equipmentServiceInterface.update(ce);
+                    		
+                            //update the cache right away, no need to wait until the entry expires
+                            cloudEquipmentRecordCache.put(ce.getInventoryId(), ce);
+                    	}
+                    }
 
                 }
 
@@ -769,28 +799,33 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             }
 
             // Main Network dashboard shows Traffic and Capacity values that
-            // are
-            // calculated
-            // from
+            // are calculated from
             // ApNodeMetric properties getPeriodLengthSec, getRxBytes2G,
-            // getTxBytes2G,
-            // getRxBytes5G, getTxBytes5G
+            // getTxBytes2G, getRxBytes5G, getTxBytes5G
 
             // go over all the clients to aggregate per-client tx/rx stats -
-            // we
-            // want to do
-            // this
+            // we want to do this
             // only once per batch of ApNodeMetrics - so we do not repeat
-            // values
-            // over and
-            // over again
+            // values over and over again
 
             for (ClientReport clReport : report.getClientsList()) {
 
                 long rxBytes = 0;
                 long txBytes = 0;
+                Set<String> clientMacs = new HashSet<>();
 
                 for (Client cl : clReport.getClientListList()) {
+                	
+                	if(!cl.hasConnected() || cl.getConnected() != true) {
+                		//this client is not currently connected, skip it
+                		//TODO: how come AP reports disconencted clients? What if it is a busy coffe shop with thousands of peopele per day, when do clients disappear from the reports?
+                		continue;
+                	}
+                	
+                	if(cl.hasMacAddress()) {
+                		clientMacs.add(cl.getMacAddress());
+                	}
+                	
                     if (cl.getStats().hasTxBytes()) {
                         txBytes += cl.getStats().getTxBytes();
                     }
@@ -804,6 +839,17 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 apNodeMetrics.setRxBytes(radioType, rxBytes);
                 apNodeMetrics.setTxBytes(radioType, txBytes);
+                
+                List<MacAddress> clientMacList = new ArrayList<>();                
+				clientMacs.forEach(macStr -> {
+					try {
+						clientMacList.add(new MacAddress(macStr));
+					} catch(RuntimeException e) {
+						LOG.warn("Cannot parse mac address from MQTT ClientReport {} ", macStr);
+					}
+				});
+				
+                apNodeMetrics.setClientMacAddresses(radioType, clientMacList);
 
                 // TODO: temporary solution as this was causing Noise Floor to
                 // disappear from Dashboard and Access Point rows
