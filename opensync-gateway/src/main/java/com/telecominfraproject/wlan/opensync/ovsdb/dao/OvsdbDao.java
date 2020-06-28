@@ -63,6 +63,7 @@ import com.vmware.ovsdb.protocol.operation.notation.Function;
 import com.vmware.ovsdb.protocol.operation.notation.Row;
 import com.vmware.ovsdb.protocol.operation.notation.Uuid;
 import com.vmware.ovsdb.protocol.operation.notation.Value;
+import com.vmware.ovsdb.protocol.operation.result.ErrorResult;
 import com.vmware.ovsdb.protocol.operation.result.InsertResult;
 import com.vmware.ovsdb.protocol.operation.result.OperationResult;
 import com.vmware.ovsdb.protocol.operation.result.SelectResult;
@@ -355,13 +356,15 @@ public class OvsdbDao {
             }
 
             Row row = null;
-            if (result != null && result.length > 0 && !((SelectResult) result[0]).getRows().isEmpty()) {
+            if (result != null && result.length > 0 &&  (result[0] instanceof SelectResult) && !((SelectResult) result[0]).getRows().isEmpty()) {
                 row = ((SelectResult) result[0]).getRows().iterator().next();
                 connectNodeInfo.lanIpV4Address = getSingleValueFromSet(row, "inet_addr");
                 connectNodeInfo.lanIfName = row.getStringColumn("if_name");
                 connectNodeInfo.lanIfType = getSingleValueFromSet(row, "if_type");
                 connectNodeInfo.lanMacAddress = getSingleValueFromSet(row, "hwaddr");
 
+            } else  if (result != null && result.length > 0 &&  (result[0] instanceof ErrorResult) ) {
+            	LOG.warn("Error reading from {} table: {}", wifiInetStateDbTable, result[0]);
             }
 
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
