@@ -60,7 +60,6 @@
   <logger name ="com.telecominfraproject.wlan.core.server.webconfig.WebMvcRegistrationsConfiguration$1$1" level="INFO"/>
   
   <logger name="com.telecominfraproject.wlan" level="DEBUG"/>
-  <logger name="ai.connectus" level="DEBUG"/>
   <logger name="com.vmware.ovsdb.service.OvsdbConnectionInfo" level="OFF"/>
   <logger name="com.vmware.ovsdb.netty.OvsdbConnectionHandler" level="ERROR"/>
   

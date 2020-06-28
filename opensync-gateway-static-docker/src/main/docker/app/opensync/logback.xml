@@ -57,7 +57,6 @@
   <logger name="org.springframework.boot.context.embedded.tomcat.TomcatEmbeddedServletContainer" level="INFO"/>
   
   <logger name="com.telecominfraproject.wlan" level="DEBUG"/>
-  <logger name="ai.connectus" level="DEBUG"/>
   <logger name="com.netflix.servo.tag.aws.AwsInjectableTag" level="OFF"/>
   <logger name="com.vmware.ovsdb.service.OvsdbConnectionInfo" level="OFF"/>
   <logger name="com.vmware.ovsdb.netty.OvsdbConnectionHandler" level="ERROR"/>
