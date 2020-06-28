@@ -93,11 +93,11 @@ public class OvsdbDao {
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_bridge:defaultBridgeForEAPOL}")
     public String bridgeNameVifInterfaces;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_lan:br-lan}")
-    public String defaultLanIfName;
+    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_lan:bridge}")
+    public String defaultLanInterfaceType;
 
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_wan:eth}")
-    public String defaultWanIfName;
+    public String defaultWanInterfaceType;
 
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_radio1:home-ap-24}")
     public String ifName2pt4GHz;
@@ -174,11 +174,13 @@ public class OvsdbDao {
 
             // now populate macAddress, ipV4Address from Wifi_Inet_State
             // first look them up for if_name = br-wan
-            getIpAddressAndMacForEth(ovsdbClient, ret, defaultWanIfName);
+            fillInWanIpAddressAndMac(ovsdbClient, ret, defaultWanInterfaceType);
             if (ret.ipV4Address == null || ret.macAddress == null) {
                 // when not found - look them up for if_name = br-lan
-                fillInIpAddressAndMac(ovsdbClient, ret, defaultLanIfName);
+                fillInWanIpAddressAndMac(ovsdbClient, ret, defaultLanInterfaceType);
+
             }
+            fillInLanIpAddressAndMac(ovsdbClient, ret, defaultLanInterfaceType);
 
             fillInRadioInterfaceNames(ovsdbClient, ret);
 
@@ -322,8 +324,8 @@ public class OvsdbDao {
         return allowedChannels;
 
     }
-    
-    public void getIpAddressAndMacForEth(OvsdbClient ovsdbClient, ConnectNodeInfo connectNodeInfo, String ifType) {
+
+    public void fillInLanIpAddressAndMac(OvsdbClient ovsdbClient, ConnectNodeInfo connectNodeInfo, String ifType) {
         try {
             List<Operation> operations = new ArrayList<>();
             List<Condition> conditions = new ArrayList<>();
@@ -334,7 +336,6 @@ public class OvsdbDao {
             columns.add("hwaddr");
             columns.add("if_type");
             columns.add("if_name");
-
 
             conditions.add(new Condition("if_type", Function.EQUALS, new Atom<>(ifType)));
 
@@ -353,10 +354,10 @@ public class OvsdbDao {
             Row row = null;
             if (result != null && result.length > 0 && !((SelectResult) result[0]).getRows().isEmpty()) {
                 row = ((SelectResult) result[0]).getRows().iterator().next();
-                connectNodeInfo.ipV4Address = getSingleValueFromSet(row, "inet_addr");
-                connectNodeInfo.ifName = row.getStringColumn("if_name");
-                connectNodeInfo.ifType = getSingleValueFromSet(row, "if_type");
-                connectNodeInfo.macAddress = getSingleValueFromSet(row, "hwaddr");
+                connectNodeInfo.lanIpV4Address = getSingleValueFromSet(row, "inet_addr");
+                connectNodeInfo.lanIfName = row.getStringColumn("if_name");
+                connectNodeInfo.lanIfType = getSingleValueFromSet(row, "if_type");
+                connectNodeInfo.lanMacAddress = getSingleValueFromSet(row, "hwaddr");
 
             }
 
@@ -366,7 +367,7 @@ public class OvsdbDao {
 
     }
 
-    public void fillInIpAddressAndMac(OvsdbClient ovsdbClient, ConnectNodeInfo connectNodeInfo, String ifName) {
+    public void fillInWanIpAddressAndMac(OvsdbClient ovsdbClient, ConnectNodeInfo connectNodeInfo, String ifType) {
         try {
             List<Operation> operations = new ArrayList<>();
             List<Condition> conditions = new ArrayList<>();
@@ -378,7 +379,7 @@ public class OvsdbDao {
             columns.add("if_name");
             columns.add("if_type");
 
-            conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(ifName)));
+            conditions.add(new Condition("if_type", Function.EQUALS, new Atom<>(ifType)));
 
             operations.add(new Select(wifiInetStateDbTable, conditions, columns));
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
@@ -1328,7 +1329,7 @@ public class OvsdbDao {
 
             provisionSingleBridgePortInterface(ovsdbClient, patchH2w, bridgeNameVifInterfaces, "patch", patchH2wOptions,
                     provisionedInterfaces, provisionedPorts, provisionedBridges);
-            provisionSingleBridgePortInterface(ovsdbClient, patchW2h, defaultWanIfName, "patch", patchW2hOptions,
+            provisionSingleBridgePortInterface(ovsdbClient, patchW2h, defaultWanInterfaceType, "patch", patchW2hOptions,
                     provisionedInterfaces, provisionedPorts, provisionedBridges);
 
             provisionSingleBridgePortInterface(ovsdbClient, ifName5GHzU, bridgeNameVifInterfaces, "vif", null,
@@ -2196,8 +2197,10 @@ public class OvsdbDao {
 
         List<RadioType> enabledRadiosFromAp = new ArrayList<>();
         getEnabledRadios(ovsdbClient, enabledRadiosFromAp);
-
-        bridgeNameVifInterfaces = getConnectNodeInfo(ovsdbClient).ifName;
+       
+        ConnectNodeInfo connectNodeInfo = getConnectNodeInfo(ovsdbClient);
+        
+        LOG.info("connectNodeInfo = {}", connectNodeInfo.toString());
 
         for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
 
@@ -2205,14 +2208,15 @@ public class OvsdbDao {
             ApElementConfiguration apElementConfig = (ApElementConfiguration) opensyncApConfig.getCustomerEquipment()
                     .getDetails();
             for (RadioType radioType : ssidConfig.getAppliedRadios()) {
-
-                if (!enabledRadiosFromAp.contains(radioType)) {
-                    // Not on this AP
-                    LOG.debug(
-                            "AP {} does not have a radio where frequency band is {}. Cannot provision this radio profile on AP.",
-                            opensyncApConfig.getCustomerEquipment().getInventoryId(), radioType);
-                    continue;
-                }
+// Still put profiles on disabled radios for now.
+//                
+//                if (!enabledRadiosFromAp.contains(radioType)) {
+//                    // Not on this AP
+//                    LOG.debug(
+//                            "AP {} does not have a radio where frequency band is {}. Cannot provision this radio profile on AP.",
+//                            opensyncApConfig.getCustomerEquipment().getInventoryId(), radioType);
+//                    continue;
+//                }
                 int keyRefresh = ssidConfig.getKeyRefresh();
 
                 boolean ssidBroadcast = ssidConfig.getBroadcastSsid() == StateSetting.enabled;
@@ -2324,14 +2328,14 @@ public class OvsdbDao {
                     ifName = ifName5GHzU;
                     freqBand = "5GU";
                 } else if (radioType == RadioType.is5GHz) {
-                    ifName = ifName5GHzL;
+                    ifName = ifName5GHzU;
                     freqBand = "5G";
                 }
 
                 if (!getProvisionedWifiVifConfigs(ovsdbClient).containsKey(ifName + "_" + ssidConfig.getSsid())) {
                     try {
 
-                        configureSingleSsid(ovsdbClient, bridgeNameVifInterfaces, ifName, ssidConfig.getSsid(),
+                        configureSingleSsid(ovsdbClient, connectNodeInfo.lanIfName, ifName, ssidConfig.getSsid(),
                                 ssidBroadcast, security, freqBand, ssidConfig.getVlanId(), rrmEnabled, enable80211r,
                                 minHwMode, enabled, keyRefresh, uapsdEnabled, apBridge, ssidConfig.getForwardMode(),
                                 gateway, inet, dns, ipAssignScheme);

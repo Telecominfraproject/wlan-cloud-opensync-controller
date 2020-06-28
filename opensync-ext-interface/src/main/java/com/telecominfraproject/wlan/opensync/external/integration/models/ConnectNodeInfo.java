@@ -19,8 +19,10 @@ public class ConnectNodeInfo implements Cloneable {
     public String ifName;
     public String ifType;
     public String country;
-
-
+    public String lanIpV4Address;
+    public String lanIfName;
+    public String lanIfType;
+    public String lanMacAddress;
 
     @Override
     public ConnectNodeInfo clone() {
@@ -42,9 +44,10 @@ public class ConnectNodeInfo implements Cloneable {
     public String toString() {
         return String.format(
                 "ConnectNodeInfo [mqttSettings=%s, redirectorAddr=%s, managerAddr=%s, skuNumber=%s, serialNumber=%s, "
-                        + "macAddress=%s, ipV4Address=%s, platformVersion=%s, firmwareVersion=%s, revision=%s, model=%s, ifName=%s, ifType=%s, wifiRadioStates=%s]",
+                        + "macAddress=%s, ipV4Address=%s, platformVersion=%s, firmwareVersion=%s, revision=%s, model=%s, ifName=%s, lanIpV4Address=%s, lanIfName=%s, lanIfType=%s, lanMacAddress=%s, ifType=%s, wifiRadioStates=%s]",
                 mqttSettings, redirectorAddr, managerAddr, skuNumber, serialNumber, macAddress, ipV4Address,
-                platformVersion, firmwareVersion, revision, model, ifName, ifType, wifiRadioStates);
+                platformVersion, firmwareVersion, revision, model, ifName, lanIpV4Address, lanIfName, lanIfType,
+                lanMacAddress, ifType, wifiRadioStates);
     }
 
 }

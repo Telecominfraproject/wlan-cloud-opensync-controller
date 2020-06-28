@@ -287,6 +287,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         if (!radioType.equals(RadioType.UNSUPPORTED)) {
                             advancedRadioConfiguration = RadioConfiguration.createWithDefaults(radioType);
                             advancedRadioConfiguration.setAutoChannelSelection(StateSetting.disabled);
+                            
                             advancedRadioMap.put(radioType, advancedRadioConfiguration);
                             radioConfiguration = ElementRadioConfiguration.createWithDefaults(radioType);
                             radioConfiguration.setAutoChannelSelection(false);
@@ -427,7 +428,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 statusRecord.setCustomerId(ce.getCustomerId());
                 statusRecord.setEquipmentId(ce.getId());
 
-                EquipmentLANStatusData statusData = new EquipmentLANStatusData();
+                EquipmentLANStatusData statusData = new EquipmentLANStatusData();              
                 statusRecord.setDetails(statusData);
             }
 
