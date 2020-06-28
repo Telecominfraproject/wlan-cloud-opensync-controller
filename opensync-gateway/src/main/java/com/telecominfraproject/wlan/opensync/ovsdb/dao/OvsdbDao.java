@@ -93,10 +93,13 @@ public class OvsdbDao {
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_bridge:defaultBridgeForEAPOL}")
     public String bridgeNameVifInterfaces;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_lan:bridge}")
+    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_lan_type:bridge}")
     public String defaultLanInterfaceType;
+    
+    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_lan_name:lan}")
+    public String defaultLanInterfaceName;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_wan:eth}")
+    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_wan_type:eth}")
     public String defaultWanInterfaceType;
 
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_radio1:home-ap-24}")

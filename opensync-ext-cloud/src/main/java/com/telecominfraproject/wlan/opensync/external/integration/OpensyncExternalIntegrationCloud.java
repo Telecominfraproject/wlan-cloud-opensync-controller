@@ -163,8 +163,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     private int autoProvisionedLocationId;
     @Value("${connectus.ovsdb.autoProvisionedProfileId:1}")
     private int autoProvisionedProfileId;
-    @Value("${connectus.ovsdb.autoProvisionedSsid:autoProvisionedSsid}")
+    @Value("${connectus.ovsdb.autoProvisionedSsid:DefaultSsid-}")
     private String autoProvisionedSsid;
+    @Value("${connectus.ovsdb.autoprovisionedSsidKey:autoProvisionedSsid}")
+    private String autoprovisionedSsidKey;
     @Value("${connectus.ovsdb.isAutoconfigEnabled:true}")
     private boolean isAutoconfigEnabled;
     @Value("${connectus.ovsdb.defaultFwVersion:r10947-65030d81f3}")
@@ -332,10 +334,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     for (RadioType radioType : radioTypes) {
                         Profile ssidProfile = new Profile();
                         ssidProfile.setCustomerId(ce.getCustomerId());
-                        ssidProfile.setName("DefaultSsid-" + radioType.name());
+                        ssidProfile.setName(autoProvisionedSsid + radioType.name());
                         SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
+                        ssidConfig.setSsid(ssidProfile.getName());
+                        ssidConfig.setSsidAdminState(StateSetting.enabled);
+                        ssidConfig.setBroadcastSsid(StateSetting.enabled);
+                        ssidConfig.setSecureMode(SecureMode.wpa2PSK);
+                        ssidConfig.setKeyStr(autoprovisionedSsidKey);
 
-                        ssidConfig.setSecureMode(SecureMode.open);
                         Set<RadioType> appliedRadios = new HashSet<>();
                         appliedRadios.add(radioType);
                         ssidConfig.setAppliedRadios(appliedRadios);
