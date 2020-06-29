@@ -24,7 +24,7 @@ public class ConnectusOvsdbRedirector {
 
     private static final Logger LOG = LoggerFactory.getLogger(ConnectusOvsdbRedirector.class);
     
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.redirector.listenPort:6643}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.redirector.listenPort:6643}")
     private int ovsdbRedirectorListenPort;
 
     @Autowired

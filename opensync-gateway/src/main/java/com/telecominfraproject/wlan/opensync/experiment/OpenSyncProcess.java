@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 
-@ComponentScan(basePackages={"com.telecominfraproject.wlan", "ai.connectus"})
+@ComponentScan(basePackages={"com.telecominfraproject.wlan"})
 @EnableAutoConfiguration
 public class OpenSyncProcess {
 

@@ -55,10 +55,10 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
     private Thread mqttClientThread;
 
     public OpensyncMqttClient(@Autowired io.netty.handler.ssl.SslContext sslContext,
-            @Value("${connectus.mqttBroker.address:testportal.123wlan.com}") String mqttBrokerAddress,
-            @Value("${connectus.mqttBroker.listenPort:1883}") int mqttBrokerListenPort,
-            @Value("${connectus.mqttBroker.user:admin}") String username,
-            @Value("${connectus.mqttBroker.password:admin}") String password,
+            @Value("${tip.wlan.mqttBroker.address:testportal.123wlan.com}") String mqttBrokerAddress,
+            @Value("${tip.wlan.mqttBroker.listenPort:1883}") int mqttBrokerListenPort,
+            @Value("${tip.wlan.mqttBroker.user:admin}") String username,
+            @Value("${tip.wlan.mqttBroker.password:admin}") String password,
             @Value("${mqtt.javax.net.ssl.keyStore:/opt/tip-wlan/certs/client_keystore.jks}") String jdkKeyStoreLocation,
             @Value("${mqtt.javax.net.ssl.keyStorePassword:mypassword}") String jdkKeyStorePassword,
             @Value("${mqtt.javax.net.ssl.trustStore:/opt/tip-wlan/certs/truststore.jks}") String jdkTrustStoreLocation,
