@@ -94,10 +94,13 @@ public class OvsdbDao {
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_bridge:defaultBridgeForEAPOL}")
     public String bridgeNameVifInterfaces;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_lan:bridge}")
+    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_lan_type:bridge}")
     public String defaultLanInterfaceType;
+    
+    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_lan_name:lan}")
+    public String defaultLanInterfaceName;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_wan:eth}")
+    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_wan_type:eth}")
     public String defaultWanInterfaceType;
 
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_radio1:home-ap-24}")
@@ -2200,11 +2203,7 @@ public class OvsdbDao {
 
         List<RadioType> enabledRadiosFromAp = new ArrayList<>();
         getEnabledRadios(ovsdbClient, enabledRadiosFromAp);
-       
-        ConnectNodeInfo connectNodeInfo = getConnectNodeInfo(ovsdbClient);
-        
-        LOG.info("connectNodeInfo = {}", connectNodeInfo.toString());
-
+              
         for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
 
             SsidConfiguration ssidConfig = (SsidConfiguration) ssidProfile.getDetails();
@@ -2338,7 +2337,7 @@ public class OvsdbDao {
                 if (!getProvisionedWifiVifConfigs(ovsdbClient).containsKey(ifName + "_" + ssidConfig.getSsid())) {
                     try {
 
-                        configureSingleSsid(ovsdbClient, connectNodeInfo.lanIfName, ifName, ssidConfig.getSsid(),
+                        configureSingleSsid(ovsdbClient, defaultLanInterfaceName, ifName, ssidConfig.getSsid(),
                                 ssidBroadcast, security, freqBand, ssidConfig.getVlanId(), rrmEnabled, enable80211r,
                                 minHwMode, enabled, keyRefresh, uapsdEnabled, apBridge, ssidConfig.getForwardMode(),
                                 gateway, inet, dns, ipAssignScheme);

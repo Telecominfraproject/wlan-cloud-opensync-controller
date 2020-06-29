@@ -60,15 +60,19 @@ then
 fi
 
 DEFAULT_BRIDGE="${DEFAULT_BRIDGE:=br-lan}"
-DEFAULT_WAN="${DEFAULT_WAN:=eth}"
-DEFAULT_LAN="${DEFAULT_LAN:=br-lan}"
+DEFAULT_WAN_TYPE="${DEFAULT_WAN_TYPE:=eth}"
+DEFAULT_LAN_TYPE="${DEFAULT_LAN_TYPE:=bridge}"
+DEFAULT_LAN_NAME="${DEFAULT_LAN_NAME:=lan}"
+
 
 AUTO_PROV_CUSTOMER_ID="${AUTO_PROV_CUSTOMER_ID:=2}"
  
 PROV_PROPS=" "
 PROV_PROPS+=" -Dconnectus.ovsdb.wifi-iface.default_bridge=$DEFAULT_BRIDGE"
-PROV_PROPS+=" -Dconnectus.ovsdb.wifi-iface.default_wan=$DEFAULT_WAN"
-PROV_PROPS+=" -Dconnectus.ovsdb.wifi-iface.default_lan=$DEFAULT_LAN"
+PROV_PROPS+=" -Dconnectus.ovsdb.wifi-iface.default_wan_type=$DEFAULT_WAN_TYPE"
+PROV_PROPS+=" -Dconnectus.ovsdb.wifi-iface.default_lan_type=$DEFAULT_LAN_TYPE"
+PROV_PROPS+=" -Dconnectus.ovsdb.wifi-iface.default_lan_name=$DEFAULT_LAN_NAME"
+
 PROV_PROPS+=" -Dconnectus.ovsdb.autoProvisionedCustomerId=$AUTO_PROV_CUSTOMER_ID"
 
 export ALL_PROPS="$PROFILES $SSL_PROPS $CLIENT_MQTT_SSL_PROPS $OVSDB_PROPS $MQTT_PROPS $LOGGING_PROPS $RESTAPI_PROPS $SPRING_EXTRA_PROPS $HOST_PROPS $PROV_PROPS"

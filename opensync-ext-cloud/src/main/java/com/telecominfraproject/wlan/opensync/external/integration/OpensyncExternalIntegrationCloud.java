@@ -93,6 +93,7 @@ import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSID;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSIDs;
 import com.telecominfraproject.wlan.status.equipment.report.models.EquipmentCapacityDetails;
 import com.telecominfraproject.wlan.status.equipment.report.models.EquipmentPerRadioUtilizationDetails;
+import com.telecominfraproject.wlan.status.equipment.report.models.OperatingSystemPerformance;
 import com.telecominfraproject.wlan.status.equipment.report.models.RadioUtilizationReport;
 import com.telecominfraproject.wlan.status.models.Status;
 import com.telecominfraproject.wlan.status.models.StatusCode;
@@ -165,8 +166,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     private int autoProvisionedLocationId;
     @Value("${connectus.ovsdb.autoProvisionedProfileId:1}")
     private int autoProvisionedProfileId;
-    @Value("${connectus.ovsdb.autoProvisionedSsid:autoProvisionedSsid}")
+    @Value("${connectus.ovsdb.autoProvisionedSsid:DefaultSsid-}")
     private String autoProvisionedSsid;
+    @Value("${connectus.ovsdb.autoprovisionedSsidKey:12345678}")
+    private String autoprovisionedSsidKey;
     @Value("${connectus.ovsdb.isAutoconfigEnabled:true}")
     private boolean isAutoconfigEnabled;
     @Value("${connectus.ovsdb.defaultFwVersion:r10947-65030d81f3}")
@@ -256,9 +259,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     ce.setEquipmentType(EquipmentType.AP);
                     ce.setInventoryId(apId);
                     try {
-                    	ce.setBaseMacAddress(new MacAddress(connectNodeInfo.macAddress));
-                    }catch(RuntimeException e) {
-                    	LOG.warn("Auto-provisioning: cannot parse equipment mac address {}", connectNodeInfo.macAddress);
+                        ce.setBaseMacAddress(new MacAddress(connectNodeInfo.macAddress));
+                    } catch (RuntimeException e) {
+                        LOG.warn("Auto-provisioning: cannot parse equipment mac address {}",
+                                connectNodeInfo.macAddress);
                     }
                     
                     Customer customer = customerServiceInterface.getOrNull(autoProvisionedCustomerId);
@@ -312,7 +316,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         if (!radioType.equals(RadioType.UNSUPPORTED)) {
                             advancedRadioConfiguration = RadioConfiguration.createWithDefaults(radioType);
                             advancedRadioConfiguration.setAutoChannelSelection(StateSetting.disabled);
-                            
+
                             advancedRadioMap.put(radioType, advancedRadioConfiguration);
                             radioConfiguration = ElementRadioConfiguration.createWithDefaults(radioType);
                             radioConfiguration.setAutoChannelSelection(false);
@@ -339,7 +343,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     	}
                     }
 
-                    
                     if(profileId == null) {
 	                    //create default apProfile if cannot find applicable one:
 	                    Profile apProfile = createDefaultApProfile(ce, connectNodeInfo);
@@ -350,30 +353,34 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     
                     ce = equipmentServiceInterface.create(ce);
 
-                    //update the cache right away, no need to wait until the entry expires
+                    // update the cache right away, no need to wait until the
+                    // entry expires
                     cloudEquipmentRecordCache.put(ce.getInventoryId(), ce);
 
                 } else {
-                	//equipment already exists
-                	
-                	MacAddress reportedMacAddress = null;
+                    // equipment already exists
+
+                    MacAddress reportedMacAddress = null;
                     try {
-                    	reportedMacAddress = new MacAddress(connectNodeInfo.macAddress);
-                    }catch(RuntimeException e) {
-                    	LOG.warn("AP connect: cannot parse equipment mac address {}", connectNodeInfo.macAddress);
+                        reportedMacAddress = new MacAddress(connectNodeInfo.macAddress);
+                    } catch (RuntimeException e) {
+                        LOG.warn("AP connect: cannot parse equipment mac address {}", connectNodeInfo.macAddress);
                     }
-                    
-                    if(reportedMacAddress != null) {
-                    	//check if reported mac address matches what is in the db
-                    	if(!reportedMacAddress.equals(ce.getBaseMacAddress())) {
-                    		//need to update base mac address on equipment in DB
-                    		ce = equipmentServiceInterface.get(ce.getId());
-                    		ce.setBaseMacAddress(reportedMacAddress);
-                    		ce = equipmentServiceInterface.update(ce);
-                    		
-                            //update the cache right away, no need to wait until the entry expires
+
+                    if (reportedMacAddress != null) {
+                        // check if reported mac address matches what is in the
+                        // db
+                        if (!reportedMacAddress.equals(ce.getBaseMacAddress())) {
+                            // need to update base mac address on equipment in
+                            // DB
+                            ce = equipmentServiceInterface.get(ce.getId());
+                            ce.setBaseMacAddress(reportedMacAddress);
+                            ce = equipmentServiceInterface.update(ce);
+
+                            // update the cache right away, no need to wait
+                            // until the entry expires
                             cloudEquipmentRecordCache.put(ce.getInventoryId(), ce);
-                    	}
+                        }
                     }
 
                 }
@@ -434,10 +441,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         for (RadioType radioType : radioTypes) {
             Profile ssidProfile = new Profile();
             ssidProfile.setCustomerId(ce.getCustomerId());
-            ssidProfile.setName("DefaultSsid-" + radioType.name()+ " for " + ce.getName() );
+            ssidProfile.setName(autoProvisionedSsid + radioType.name()+ " for " + ce.getName() );
             SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
 
-            ssidConfig.setSecureMode(SecureMode.open);
+            ssidConfig.setSsid(ssidProfile.getName());
+            ssidConfig.setSsidAdminState(StateSetting.enabled);
+            ssidConfig.setBroadcastSsid(StateSetting.enabled);
+            ssidConfig.setSecureMode(SecureMode.wpa2PSK);
+            ssidConfig.setKeyStr(autoprovisionedSsidKey);
+            
             Set<RadioType> appliedRadios = new HashSet<>();
             appliedRadios.add(radioType);
             ssidConfig.setAppliedRadios(appliedRadios);
@@ -478,7 +490,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 statusRecord.setCustomerId(ce.getCustomerId());
                 statusRecord.setEquipmentId(ce.getId());
 
-                EquipmentLANStatusData statusData = new EquipmentLANStatusData();              
+                EquipmentLANStatusData statusData = new EquipmentLANStatusData();
                 statusRecord.setDetails(statusData);
             }
 
@@ -812,6 +824,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             for (Device deviceReport : report.getDeviceList()) {
 
+                int avgRadioTemp = 0;
+
                 ApPerformance apPerformance = new ApPerformance();
                 apNodeMetrics.setApPerformance(apPerformance);
 
@@ -820,7 +834,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 // data.setChannelUtilization5G(channelUtilization5G);
 
                 if (deviceReport.getRadioTempCount() > 0) {
-                    int cpuTemperature = 0;
+                    float cpuTemperature = 0;
                     int numSamples = 0;
                     for (RadioTemp r : deviceReport.getRadioTempList()) {
                         if (r.hasValue()) {
@@ -830,7 +844,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     }
 
                     if (numSamples > 0) {
-                        apPerformance.setCpuTemperature(cpuTemperature / numSamples);
+                        avgRadioTemp = Math.round((cpuTemperature / numSamples));
+                        apPerformance.setCpuTemperature(avgRadioTemp);
                     }
                 }
 
@@ -847,7 +862,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                             deviceReport.getMemUtil().getMemTotal() - deviceReport.getMemUtil().getMemUsed());
                 }
                 apPerformance.setUpTime((long) deviceReport.getUptime());
+
+                updateDeviceStatusForReport(customerId, equipmentId, deviceReport, avgRadioTemp);
+
             }
+
+            // statusList.add(status);
 
             // Main Network dashboard shows Traffic and Capacity values that
             // are calculated from
@@ -866,17 +886,19 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 Set<String> clientMacs = new HashSet<>();
 
                 for (Client cl : clReport.getClientListList()) {
-                	
-                	if(!cl.hasConnected() || cl.getConnected() != true) {
-                		//this client is not currently connected, skip it
-                		//TODO: how come AP reports disconencted clients? What if it is a busy coffe shop with thousands of peopele per day, when do clients disappear from the reports?
-                		continue;
-                	}
-                	
-                	if(cl.hasMacAddress()) {
-                		clientMacs.add(cl.getMacAddress());
-                	}
-                	
+
+                    if (!cl.hasConnected() || cl.getConnected() != true) {
+                        // this client is not currently connected, skip it
+                        // TODO: how come AP reports disconencted clients? What
+                        // if it is a busy coffe shop with thousands of peopele
+                        // per day, when do clients disappear from the reports?
+                        continue;
+                    }
+
+                    if (cl.hasMacAddress()) {
+                        clientMacs.add(cl.getMacAddress());
+                    }
+
                     if (cl.getStats().hasTxBytes()) {
                         txBytes += cl.getStats().getTxBytes();
                     }
@@ -890,16 +912,16 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 apNodeMetrics.setRxBytes(radioType, rxBytes);
                 apNodeMetrics.setTxBytes(radioType, txBytes);
-                
-                List<MacAddress> clientMacList = new ArrayList<>();                
-				clientMacs.forEach(macStr -> {
-					try {
-						clientMacList.add(new MacAddress(macStr));
-					} catch(RuntimeException e) {
-						LOG.warn("Cannot parse mac address from MQTT ClientReport {} ", macStr);
-					}
-				});
-				
+
+                List<MacAddress> clientMacList = new ArrayList<>();
+                clientMacs.forEach(macStr -> {
+                    try {
+                        clientMacList.add(new MacAddress(macStr));
+                    } catch (RuntimeException e) {
+                        LOG.warn("Cannot parse mac address from MQTT ClientReport {} ", macStr);
+                    }
+                });
+
                 apNodeMetrics.setClientMacAddresses(radioType, clientMacList);
 
                 // TODO: temporary solution as this was causing Noise Floor to
@@ -987,6 +1009,39 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             // }
 
         }
+
+    }
+
+    private void updateDeviceStatusForReport(int customerId, long equipmentId, Device deviceReport, int avgRadioTemp) {
+        Status status = new Status();
+        status.setCustomerId(customerId);
+        status.setEquipmentId(equipmentId);
+        OperatingSystemPerformance eqOsPerformance = new OperatingSystemPerformance();
+        eqOsPerformance.setUptimeInSeconds(deviceReport.getUptime());
+        eqOsPerformance.setAvgCpuTemperature(avgRadioTemp);
+        eqOsPerformance.setAvgCpuUtilization(deviceReport.getCpuUtil().getCpuUtil());
+        eqOsPerformance
+                .setAvgFreeMemoryKb(deviceReport.getMemUtil().getMemTotal() - deviceReport.getMemUtil().getMemUsed());
+        eqOsPerformance.setTotalAvailableMemoryKb(deviceReport.getMemUtil().getMemTotal());
+        status.setDetails(eqOsPerformance);
+        status = statusServiceInterface.update(status);
+        LOG.debug("updated status {}", status);
+
+        Status networkAggStatusRec = statusServiceInterface.getOrNull(customerId, equipmentId,
+                StatusDataType.NETWORK_AGGREGATE);
+
+        NetworkAggregateStatusData naStatusData = (NetworkAggregateStatusData) networkAggStatusRec.getDetails();
+
+        EquipmentPerformanceDetails equipmentPerformanceDetails = new EquipmentPerformanceDetails();
+        equipmentPerformanceDetails.setAvgCpuTemperature((int) eqOsPerformance.getAvgCpuTemperature());
+        equipmentPerformanceDetails.setAvgFreeMemory(eqOsPerformance.getAvgFreeMemoryKb());
+
+        naStatusData.setApPerformanceDetails(
+                equipmentPerformanceDetails.combineWith(naStatusData.getApPerformanceDetails()));
+        networkAggStatusRec.setDetails(naStatusData);
+        networkAggStatusRec = statusServiceInterface.update(networkAggStatusRec);
+
+        LOG.debug("updated aggregate status {}", networkAggStatusRec);
 
     }
 
@@ -1300,14 +1355,17 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
                     StatusDataType.ACTIVE_BSSIDS);
+            ActiveBSSIDs statusDetails = null;
+            int indexOfBssid = -1;
             if (activeBssidsStatus != null) {
-                ActiveBSSIDs statusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
+                statusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
                 for (ActiveBSSID activeBSSID : statusDetails.getActiveBSSIDs()) {
                     if (activeBSSID.getRadioType().equals(radioType)) {
                         ssidStatistics.setBssid(new MacAddress(activeBSSID.getBssid()));
                         // ssid value, in case not in stats, else will take
                         // stats value after
                         ssid = activeBSSID.getSsid();
+                        indexOfBssid = statusDetails.getActiveBSSIDs().indexOf(activeBSSID);
                     }
                 }
             }
@@ -1381,6 +1439,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 }
                 ssidStatsList.add(ssidStatistics);
                 apSsidMetrics.getSsidStats().put(radioType, ssidStatsList);
+            }
+
+            if (statusDetails != null && indexOfBssid >= 0) {
+                statusDetails.getActiveBSSIDs().get(indexOfBssid).setNumDevicesConnected(ssidStatistics.getNumClient());
+                activeBssidsStatus.setDetails(statusDetails);
+                activeBssidsStatus = statusServiceInterface.update(activeBssidsStatus);
+                LOG.debug("update activeBSSIDs {}", activeBssidsStatus);
             }
 
         }
