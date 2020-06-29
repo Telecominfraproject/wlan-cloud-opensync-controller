@@ -47,10 +47,10 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
     private static final Logger LOG = LoggerFactory.getLogger(ConnectusOvsdbClient.class);
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.listenPort:6640}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.listenPort:6640}")
     private int ovsdbListenPort;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.manager.collectionIntervalSec.deviceStats:120}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.manager.collectionIntervalSec.deviceStats:120}")
     private long collectionIntervalSecDeviceStats;
 
     @Autowired

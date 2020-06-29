@@ -31,19 +31,19 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 
 	private static final Logger LOG = LoggerFactory.getLogger(OpensyncExternalIntegrationSimple.class);
 
-	@Value("${connectus.ovsdb.customerEquipmentFileName:/app/config/EquipmentExample.json}")
+	@Value("${tip.wlan.ovsdb.customerEquipmentFileName:/app/config/EquipmentExample.json}")
 	private String customerEquipmentFileName;
 
-	@Value("${connectus.ovsdb.apProfileFileName:/app/config/ProfileAPExample.json}")
+	@Value("${tip.wlan.ovsdb.apProfileFileName:/app/config/ProfileAPExample.json}")
 	private String apProfileFileName;
 
-	@Value("${connectus.ovsdb.ssidProfileFileName:/app/config/ProfileSsid.json}")
+	@Value("${tip.wlan.ovsdb.ssidProfileFileName:/app/config/ProfileSsid.json}")
 	private String ssidProfileFileName;
 
-	@Value("${connectus.ovsdb.radiusProfileFileName:/app/config/ProfileRadius.json}")
+	@Value("${tip.wlan.ovsdb.radiusProfileFileName:/app/config/ProfileRadius.json}")
 	private String radiusProfileFileName;
 
-	@Value("${connectus.ovsdb.locationFileName:/app/config/LocationBuildingExample.json}")
+	@Value("${tip.wlan.ovsdb.locationFileName:/app/config/LocationBuildingExample.json}")
 	private String locationFileName;
 
 	private String serialNumber = "";

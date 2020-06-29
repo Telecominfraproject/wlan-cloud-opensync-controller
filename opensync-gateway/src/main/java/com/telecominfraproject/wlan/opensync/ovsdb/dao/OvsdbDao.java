@@ -75,53 +75,57 @@ import com.vmware.ovsdb.service.OvsdbClient;
 public class OvsdbDao {
     private static final Logger LOG = LoggerFactory.getLogger(OvsdbDao.class);
 
+
     public static final String wifiRouteStateDbTable = "Wifi_Route_State";
 
     public static final String wifiMasterStateDbTable = "Wifi_Master_State";
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.managerAddr:3.88.149.10}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.managerAddr:3.88.149.10}")
+
     private String managerIpAddr;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.region:Ottawa}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.region:Ottawa}")
     public String region;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.listenPort:6640}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.listenPort:6640}")
     private int ovsdbListenPort;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.mqttBroker.address:testportal.123wlan.com}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.mqttBroker.address:testportal.123wlan.com}")
     private String mqttBrokerAddress;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.mqttBroker.listenPort:1883}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.mqttBroker.listenPort:1883}")
     private int mqttBrokerListenPort;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.timeoutSec:30}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.timeoutSec:30}")
     private int ovsdbTimeoutSec;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_bridge:defaultBridgeForEAPOL}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_bridge:defaultBridgeForEAPOL}")
     public String bridgeNameVifInterfaces;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_lan_type:bridge}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_lan_type:bridge}")
     public String defaultLanInterfaceType;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_lan_name:lan}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_lan_name:lan}")
+
     public String defaultLanInterfaceName;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_wan_type:eth}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_wan_type:eth}")
     public String defaultWanInterfaceType;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_radio1:home-ap-24}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_radio1:home-ap-24}")
     public String ifPfx2pt4GHz;
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_radio2:home-ap-l50}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_radio2:home-ap-l50}")
     public String ifPfx5GHzL;
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_radio0:home-ap-u50}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_radio0:home-ap-u50}")
     public String ifPfx5GHzU;
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.max:8}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.max:8}")
     public int maxInterfacesPerRadio;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.awlan-node.upgrade_dl_timer:60}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.awlan-node.upgrade_dl_timer:60}")
     public long upgradeDlTimerSeconds;
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.awlan-node.upgrade_timer:60}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.awlan-node.upgrade_timer:60}")
     public long upgradeTimerSeconds;
+
 
     public static final String ovsdbName = "Open_vSwitch";
     public static final String awlanNodeDbTable = "AWLAN_Node";
@@ -442,7 +446,7 @@ public class OvsdbDao {
 
             // update sku_number if it was empty
             if ((ret.skuNumber == null) || ret.skuNumber.isEmpty()) {
-                ret.skuNumber = "connectus.ai_" + ret.serialNumber;
+                ret.skuNumber = "tip.wlan_" + ret.serialNumber;
                 updateColumns.put("sku_number", new Atom<>(ret.skuNumber));
             }
 
