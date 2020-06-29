@@ -14,7 +14,6 @@ CLIENT_MQTT_SSL_PROPS+=" -Dconnectus.mqttBroker.password=admin"
 
 OVSDB_MANAGER_HOST=${OVSDB_MANAGER}
 MQTT_BROKER_HOST="${MQTT_SERVER}"
-
 BACKEND_SERVER="${BACKEND_SERVER}"
 
 OVSDB_PROPS=" "
@@ -40,6 +39,16 @@ SPRING_EXTRA_PROPS=" --add-opens java.base/java.lang=ALL-UNNAMED"
 
 HOST_PROPS=" "
 HOST_PROPS+=" -Dtip.wlan.introspectTokenApi.host=${OVSDB_MANAGER_HOST}:444"
+
+## These properties are used by the Routing Service and the values will be
+## overridden in Helm chart to the IP-Address of running opensync-gw pod
+## If OVSDB_MANAGER_IP variable is not defined, these properties default
+## to the Hostname of the container
+if [[ -n ${OVSDB_MANAGER_IP} ]]
+then
+  HOST_PROPS+=" -Dtip.wlan.externalHostName=${OVSDB_MANAGER_IP}"
+  HOST_PROPS+=" -Dtip.wlan.internalHostName=${OVSDB_MANAGER_IP}"
+fi
 
 if [[ -n $BACKEND_SERVER ]]
 then
