@@ -73,6 +73,7 @@ import com.telecominfraproject.wlan.routing.models.EquipmentRoutingRecord;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.ApNodeMetrics;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.ApPerformance;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.EthernetLinkState;
+import com.telecominfraproject.wlan.servicemetric.apnode.models.RadioUtilization;
 import com.telecominfraproject.wlan.servicemetric.apssid.models.ApSsidMetrics;
 import com.telecominfraproject.wlan.servicemetric.apssid.models.SsidStatistics;
 import com.telecominfraproject.wlan.servicemetric.channelinfo.models.ChannelInfo;
@@ -91,6 +92,7 @@ import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeStat
 import com.telecominfraproject.wlan.status.equipment.models.VLANStatusData;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSID;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSIDs;
+import com.telecominfraproject.wlan.status.equipment.report.models.ClientConnectionDetails;
 import com.telecominfraproject.wlan.status.equipment.report.models.EquipmentCapacityDetails;
 import com.telecominfraproject.wlan.status.equipment.report.models.EquipmentPerRadioUtilizationDetails;
 import com.telecominfraproject.wlan.status.equipment.report.models.OperatingSystemPerformance;
@@ -264,32 +266,45 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         LOG.warn("Auto-provisioning: cannot parse equipment mac address {}",
                                 connectNodeInfo.macAddress);
                     }
-                    
+
                     Customer customer = customerServiceInterface.getOrNull(autoProvisionedCustomerId);
-                    if(customer == null) {
-                    	LOG.error("Cannot auto-provision equipment because customer with id {} is not found", autoProvisionedCustomerId);
-                    	throw new IllegalStateException("Cannot auto-provision equipment because customer is not found : " + autoProvisionedCustomerId);
+                    if (customer == null) {
+                        LOG.error("Cannot auto-provision equipment because customer with id {} is not found",
+                                autoProvisionedCustomerId);
+                        throw new IllegalStateException(
+                                "Cannot auto-provision equipment because customer is not found : "
+                                        + autoProvisionedCustomerId);
                     }
-                    
-                    if(customer.getDetails()!=null && customer.getDetails().getAutoProvisioning()!=null && ! customer.getDetails().getAutoProvisioning().isEnabled()) {
-                    	LOG.error("Cannot auto-provision equipment because customer with id {} explicitly turned that feature off", autoProvisionedCustomerId);
-                    	throw new IllegalStateException("Cannot auto-provision equipment because customer explicitly turned that feature off : " + autoProvisionedCustomerId);                    	
+
+                    if (customer.getDetails() != null && customer.getDetails().getAutoProvisioning() != null
+                            && !customer.getDetails().getAutoProvisioning().isEnabled()) {
+                        LOG.error(
+                                "Cannot auto-provision equipment because customer with id {} explicitly turned that feature off",
+                                autoProvisionedCustomerId);
+                        throw new IllegalStateException(
+                                "Cannot auto-provision equipment because customer explicitly turned that feature off : "
+                                        + autoProvisionedCustomerId);
                     }
-                    
+
                     long locationId = autoProvisionedLocationId;
-                    if(customer.getDetails()!=null && customer.getDetails().getAutoProvisioning()!=null && customer.getDetails().getAutoProvisioning().isEnabled()) {
-                    	locationId = customer.getDetails().getAutoProvisioning().getLocationId();
+                    if (customer.getDetails() != null && customer.getDetails().getAutoProvisioning() != null
+                            && customer.getDetails().getAutoProvisioning().isEnabled()) {
+                        locationId = customer.getDetails().getAutoProvisioning().getLocationId();
                     }
 
                     try {
-                    	Location location = locationServiceInterface.get(locationId);
+                        Location location = locationServiceInterface.get(locationId);
                         ce.setLocationId(location.getId());
                     } catch (Exception e) {
-                    	LOG.error("Cannot auto-provision equipment because customer location with id {} cannot be found", locationId);
-                    	throw new IllegalStateException("Cannot auto-provision equipment because customer location cannot be found : " + locationId);                    	
-                    	
+                        LOG.error(
+                                "Cannot auto-provision equipment because customer location with id {} cannot be found",
+                                locationId);
+                        throw new IllegalStateException(
+                                "Cannot auto-provision equipment because customer location cannot be found : "
+                                        + locationId);
+
                     }
-                    
+
                     ce.setSerial(connectNodeInfo.serialNumber);
                     ce.setDetails(ApElementConfiguration.createWithDefaults());
                     ce.setCustomerId(autoProvisionedCustomerId);
@@ -330,27 +345,31 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     ce.setDetails(apElementConfig);
 
                     Long profileId = null;
-                    if(customer.getDetails()!=null 
-                    		&& customer.getDetails().getAutoProvisioning()!=null 
-                    		&& customer.getDetails().getAutoProvisioning().isEnabled() 
-                    		&& customer.getDetails().getAutoProvisioning().getEquipmentProfileIdPerModel()!=null ) {
-                    	
-                    	//try to find auto-provisioning profile for the current equipment model
-                    	profileId = customer.getDetails().getAutoProvisioning().getEquipmentProfileIdPerModel().get(ce.getDetails().getEquipmentModel());
-                    	if(profileId == null) {
-                    		//could not find profile for the equipment model, lets try to find a default profile 
-                    		profileId = customer.getDetails().getAutoProvisioning().getEquipmentProfileIdPerModel().get(EquipmentAutoProvisioningSettings.DEFAULT_MODEL_NAME);
-                    	}
+                    if (customer.getDetails() != null && customer.getDetails().getAutoProvisioning() != null
+                            && customer.getDetails().getAutoProvisioning().isEnabled()
+                            && customer.getDetails().getAutoProvisioning().getEquipmentProfileIdPerModel() != null) {
+
+                        // try to find auto-provisioning profile for the current
+                        // equipment model
+                        profileId = customer.getDetails().getAutoProvisioning().getEquipmentProfileIdPerModel()
+                                .get(ce.getDetails().getEquipmentModel());
+                        if (profileId == null) {
+                            // could not find profile for the equipment model,
+                            // lets try to find a default profile
+                            profileId = customer.getDetails().getAutoProvisioning().getEquipmentProfileIdPerModel()
+                                    .get(EquipmentAutoProvisioningSettings.DEFAULT_MODEL_NAME);
+                        }
                     }
 
-                    if(profileId == null) {
-	                    //create default apProfile if cannot find applicable one:
-	                    Profile apProfile = createDefaultApProfile(ce, connectNodeInfo);
-	                    profileId = apProfile.getId();
+                    if (profileId == null) {
+                        // create default apProfile if cannot find applicable
+                        // one:
+                        Profile apProfile = createDefaultApProfile(ce, connectNodeInfo);
+                        profileId = apProfile.getId();
                     }
-                    
+
                     ce.setProfileId(profileId);
-                    
+
                     ce = equipmentServiceInterface.create(ce);
 
                     // update the cache right away, no need to wait until the
@@ -412,7 +431,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     private Profile createDefaultApProfile(Equipment ce, ConnectNodeInfo connectNodeInfo) {
         Profile apProfile = new Profile();
         apProfile.setCustomerId(ce.getCustomerId());
-        apProfile.setName("DefaultApProfile for "+ ce.getName());
+        apProfile.setName("DefaultApProfile for " + ce.getName());
         apProfile.setDetails(ApNetworkConfiguration.createWithDefaults());
         apProfile = profileServiceInterface.create(apProfile);
 
@@ -441,7 +460,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         for (RadioType radioType : radioTypes) {
             Profile ssidProfile = new Profile();
             ssidProfile.setCustomerId(ce.getCustomerId());
-            ssidProfile.setName(autoProvisionedSsid + radioType.name()+ " for " + ce.getName() );
+            ssidProfile.setName(autoProvisionedSsid + radioType.name() + " for " + ce.getName());
             SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
 
             ssidConfig.setSsid(ssidProfile.getName());
@@ -449,7 +468,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             ssidConfig.setBroadcastSsid(StateSetting.enabled);
             ssidConfig.setSecureMode(SecureMode.wpa2PSK);
             ssidConfig.setKeyStr(autoprovisionedSsidKey);
-            
+
             Set<RadioType> appliedRadios = new HashSet<>();
             appliedRadios.add(radioType);
             ssidConfig.setAppliedRadios(appliedRadios);
@@ -460,12 +479,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             apProfile = profileServiceInterface.update(apProfile);
         }
-    
+
         return apProfile;
     }
 
-
-	private void updateApStatus(Equipment ce, ConnectNodeInfo connectNodeInfo) {
+    private void updateApStatus(Equipment ce, ConnectNodeInfo connectNodeInfo) {
 
         try {
 
@@ -560,6 +578,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             // main dashboard
             // from APDemoMetric properties getPeriodLengthSec, getRxBytes2G,
             // getTxBytes2G, getRxBytes5G, getTxBytes5G
+
             Status networkAdminStatusRec = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(),
                     StatusDataType.NETWORK_ADMIN);
             if (networkAdminStatusRec == null) {
@@ -578,7 +597,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             networkAdminStatusRec.setDetails(netAdminStatusData);
 
             networkAdminStatusRec = statusServiceInterface.update(networkAdminStatusRec);
-
             Status networkAggStatusRec = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(),
                     StatusDataType.NETWORK_AGGREGATE);
             if (networkAggStatusRec == null) {
@@ -929,7 +947,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 apNodeMetrics.setNoiseFloor(radioType, -98);
                 // TODO: Radio Utilization will be calculated when the survey is
                 // enabled
-                apNodeMetrics.setRadioUtilization(radioType, new ArrayList<>());
+
+                apNodeMetrics.setRadioUtilization(radioType, new ArrayList<RadioUtilization>());
 
             }
 
@@ -1036,8 +1055,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         equipmentPerformanceDetails.setAvgCpuTemperature((int) eqOsPerformance.getAvgCpuTemperature());
         equipmentPerformanceDetails.setAvgFreeMemory(eqOsPerformance.getAvgFreeMemoryKb());
 
-        naStatusData.setApPerformanceDetails(
-                equipmentPerformanceDetails.combineWith(naStatusData.getApPerformanceDetails()));
+        naStatusData.setApPerformanceDetails(equipmentPerformanceDetails);
         networkAggStatusRec.setDetails(naStatusData);
         networkAggStatusRec = statusServiceInterface.update(networkAggStatusRec);
 
@@ -1137,6 +1155,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     }
 
                 }
+                
 
                 LOG.debug("ApClientMetrics Report {}", cMetrics);
 
@@ -1264,8 +1283,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             clientSession = clientServiceInterface.updateSession(clientSession);
 
-            LOG.debug("CreatedOrUpdated clientSession {}", clientSession);
-
+            LOG.debug("CreatedOrUpdated clientSession {}", clientSession);            
+            
         } catch (Exception e) {
             LOG.error("Error while attempting to create ClientSession and Info", e);
         }
@@ -1447,13 +1466,43 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 activeBssidsStatus = statusServiceInterface.update(activeBssidsStatus);
                 LOG.debug("update activeBSSIDs {}", activeBssidsStatus);
             }
+            
+            updateClientConnectionDetails(customerId, equipmentId, clientReport, radioType);
+
 
         }
 
         LOG.debug("ApSsidMetrics {}", apSsidMetrics);
 
-        // LOG.debug("Created ApSsidMetrics Report {}", apSsidMetrics);
 
+    }
+
+    private void updateClientConnectionDetails(int customerId, long equipmentId, ClientReport clientReport,
+            RadioType radioType) {
+        // update client status for radio type
+        Status clientConnectionDetails = statusServiceInterface.getOrNull(customerId, equipmentId,
+                StatusDataType.CLIENT_DETAILS);
+
+        if (clientConnectionDetails == null) {
+            clientConnectionDetails = new Status();
+            clientConnectionDetails.setCustomerId(customerId);
+            clientConnectionDetails.setEquipmentId(equipmentId);
+            clientConnectionDetails.setStatusDataType(StatusDataType.CLIENT_DETAILS);
+            clientConnectionDetails.setDetails(new ClientConnectionDetails());
+        }
+        
+        ClientConnectionDetails connectionDetails = (ClientConnectionDetails)clientConnectionDetails.getDetails();
+        Map<RadioType,Integer> clientsPerRadio = connectionDetails.getNumClientsPerRadio();
+        if (clientsPerRadio == null) {
+            clientsPerRadio = new HashMap<RadioType,Integer>();
+        }
+        clientsPerRadio.put(radioType, clientReport.getClientListCount());
+        connectionDetails.setNumClientsPerRadio(clientsPerRadio);
+        clientConnectionDetails.setDetails(connectionDetails);
+        
+        clientConnectionDetails = statusServiceInterface.update(clientConnectionDetails);
+        
+        LOG.debug("update client connection details {}", clientConnectionDetails);
     }
 
     int getNegativeSignedIntFromUnsigned(int unsignedValue) {
