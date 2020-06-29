@@ -1,6 +1,6 @@
 FROM adoptopenjdk/openjdk13:alpine-jre
 
-LABEL maintainer="ConnectUs.ai as part of the Telecom Infrastructure Project"
+LABEL maintainer="Telecom Infrastructure Project"
 LABEL version="1.0"
 LABEL description="This image runs the mqtt broker (mosquitto) and \
 a statically configured OpenSync gateway."
