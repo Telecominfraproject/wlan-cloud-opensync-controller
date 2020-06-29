@@ -36,6 +36,8 @@ import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.NeighborScanPacketType;
 import com.telecominfraproject.wlan.core.model.equipment.NetworkType;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
+import com.telecominfraproject.wlan.customer.models.Customer;
+import com.telecominfraproject.wlan.customer.models.EquipmentAutoProvisioningSettings;
 import com.telecominfraproject.wlan.customer.service.CustomerServiceInterface;
 import com.telecominfraproject.wlan.datastore.exceptions.DsConcurrentModificationException;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
@@ -258,13 +260,36 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     }catch(RuntimeException e) {
                     	LOG.warn("Auto-provisioning: cannot parse equipment mac address {}", connectNodeInfo.macAddress);
                     }
+                    
+                    Customer customer = customerServiceInterface.getOrNull(autoProvisionedCustomerId);
+                    if(customer == null) {
+                    	LOG.error("Cannot auto-provision equipment because customer with id {} is not found", autoProvisionedCustomerId);
+                    	throw new IllegalStateException("Cannot auto-provision equipment because customer is not found : " + autoProvisionedCustomerId);
+                    }
+                    
+                    if(customer.getDetails()!=null && customer.getDetails().getAutoProvisioning()!=null && ! customer.getDetails().getAutoProvisioning().isEnabled()) {
+                    	LOG.error("Cannot auto-provision equipment because customer with id {} explicitly turned that feature off", autoProvisionedCustomerId);
+                    	throw new IllegalStateException("Cannot auto-provision equipment because customer explicitly turned that feature off : " + autoProvisionedCustomerId);                    	
+                    }
+                    
+                    long locationId = autoProvisionedLocationId;
+                    if(customer.getDetails()!=null && customer.getDetails().getAutoProvisioning()!=null && customer.getDetails().getAutoProvisioning().isEnabled()) {
+                    	locationId = customer.getDetails().getAutoProvisioning().getLocationId();
+                    }
+
+                    try {
+                    	Location location = locationServiceInterface.get(locationId);
+                        ce.setLocationId(location.getId());
+                    } catch (Exception e) {
+                    	LOG.error("Cannot auto-provision equipment because customer location with id {} cannot be found", locationId);
+                    	throw new IllegalStateException("Cannot auto-provision equipment because customer location cannot be found : " + locationId);                    	
+                    	
+                    }
+                    
                     ce.setSerial(connectNodeInfo.serialNumber);
                     ce.setDetails(ApElementConfiguration.createWithDefaults());
                     ce.setCustomerId(autoProvisionedCustomerId);
                     ce.setName(ce.getEquipmentType().name() + "_" + ce.getSerial());
-                    ce.setLocationId(autoProvisionedLocationId);
-
-                    ce = equipmentServiceInterface.create(ce);
 
                     ApElementConfiguration apElementConfig = (ApElementConfiguration) ce.getDetails();
                     apElementConfig.setDeviceName(ce.getName());
@@ -299,57 +324,31 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     apElementConfig.setAdvancedRadioMap(advancedRadioMap);
 
                     ce.setDetails(apElementConfig);
-                    ce = equipmentServiceInterface.update(ce);
 
-                    Profile apProfile = new Profile();
-                    apProfile.setCustomerId(ce.getCustomerId());
-                    apProfile.setName("DefaultApProfile");
-                    apProfile.setDetails(ApNetworkConfiguration.createWithDefaults());
-                    apProfile = profileServiceInterface.create(apProfile);
-
-                    ApNetworkConfiguration apNetworkConfig = (ApNetworkConfiguration) apProfile.getDetails();
-                    Map<RadioType, RadioProfileConfiguration> radioProfileMap = new HashMap<>();
-
-                    for (String radioBand : connectNodeInfo.wifiRadioStates.keySet()) {
-
-                        RadioType radioType = getRadioTypeForOvsdbRadioFreqBand(radioBand);
-                        if (!radioType.equals(RadioType.UNSUPPORTED)) {
-                            radioProfileMap.put(radioType, RadioProfileConfiguration.createWithDefaults(radioType));
-                        }
-
+                    Long profileId = null;
+                    if(customer.getDetails()!=null 
+                    		&& customer.getDetails().getAutoProvisioning()!=null 
+                    		&& customer.getDetails().getAutoProvisioning().isEnabled() 
+                    		&& customer.getDetails().getAutoProvisioning().getEquipmentProfileIdPerModel()!=null ) {
+                    	
+                    	//try to find auto-provisioning profile for the current equipment model
+                    	profileId = customer.getDetails().getAutoProvisioning().getEquipmentProfileIdPerModel().get(ce.getDetails().getEquipmentModel());
+                    	if(profileId == null) {
+                    		//could not find profile for the equipment model, lets try to find a default profile 
+                    		profileId = customer.getDetails().getAutoProvisioning().getEquipmentProfileIdPerModel().get(EquipmentAutoProvisioningSettings.DEFAULT_MODEL_NAME);
+                    	}
                     }
 
-                    apNetworkConfig.setRadioMap(radioProfileMap);
-
-                    apProfile.setDetails(apNetworkConfig);
-
-                    apProfile = profileServiceInterface.create(apProfile);
-
-                    apNetworkConfig = (ApNetworkConfiguration) apProfile.getDetails();
-
-                    Set<RadioType> radioTypes = radioProfileMap.keySet();
-
-                    for (RadioType radioType : radioTypes) {
-                        Profile ssidProfile = new Profile();
-                        ssidProfile.setCustomerId(ce.getCustomerId());
-                        ssidProfile.setName("DefaultSsid-" + radioType.name());
-                        SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
-
-                        ssidConfig.setSecureMode(SecureMode.open);
-                        Set<RadioType> appliedRadios = new HashSet<>();
-                        appliedRadios.add(radioType);
-                        ssidConfig.setAppliedRadios(appliedRadios);
-                        ssidProfile.setDetails(ssidConfig);
-                        ssidProfile = profileServiceInterface.create(ssidProfile);
-
-                        apProfile.getChildProfileIds().add(ssidProfile.getId());
-
-                        apProfile = profileServiceInterface.update(apProfile);
+                    
+                    if(profileId == null) {
+	                    //create default apProfile if cannot find applicable one:
+	                    Profile apProfile = createDefaultApProfile(ce, connectNodeInfo);
+	                    profileId = apProfile.getId();
                     }
-
-                    ce.setProfileId(apProfile.getId());
-
-                    ce = equipmentServiceInterface.update(ce);
+                    
+                    ce.setProfileId(profileId);
+                    
+                    ce = equipmentServiceInterface.create(ce);
 
                     //update the cache right away, no need to wait until the entry expires
                     cloudEquipmentRecordCache.put(ce.getInventoryId(), ce);
@@ -403,7 +402,58 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     }
 
-    private void updateApStatus(Equipment ce, ConnectNodeInfo connectNodeInfo) {
+    private Profile createDefaultApProfile(Equipment ce, ConnectNodeInfo connectNodeInfo) {
+        Profile apProfile = new Profile();
+        apProfile.setCustomerId(ce.getCustomerId());
+        apProfile.setName("DefaultApProfile for "+ ce.getName());
+        apProfile.setDetails(ApNetworkConfiguration.createWithDefaults());
+        apProfile = profileServiceInterface.create(apProfile);
+
+        ApNetworkConfiguration apNetworkConfig = (ApNetworkConfiguration) apProfile.getDetails();
+        Map<RadioType, RadioProfileConfiguration> radioProfileMap = new HashMap<>();
+
+        for (String radioBand : connectNodeInfo.wifiRadioStates.keySet()) {
+
+            RadioType radioType = getRadioTypeForOvsdbRadioFreqBand(radioBand);
+            if (!radioType.equals(RadioType.UNSUPPORTED)) {
+                radioProfileMap.put(radioType, RadioProfileConfiguration.createWithDefaults(radioType));
+            }
+
+        }
+
+        apNetworkConfig.setRadioMap(radioProfileMap);
+
+        apProfile.setDetails(apNetworkConfig);
+
+        apProfile = profileServiceInterface.create(apProfile);
+
+        apNetworkConfig = (ApNetworkConfiguration) apProfile.getDetails();
+
+        Set<RadioType> radioTypes = radioProfileMap.keySet();
+
+        for (RadioType radioType : radioTypes) {
+            Profile ssidProfile = new Profile();
+            ssidProfile.setCustomerId(ce.getCustomerId());
+            ssidProfile.setName("DefaultSsid-" + radioType.name()+ " for " + ce.getName() );
+            SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
+
+            ssidConfig.setSecureMode(SecureMode.open);
+            Set<RadioType> appliedRadios = new HashSet<>();
+            appliedRadios.add(radioType);
+            ssidConfig.setAppliedRadios(appliedRadios);
+            ssidProfile.setDetails(ssidConfig);
+            ssidProfile = profileServiceInterface.create(ssidProfile);
+
+            apProfile.getChildProfileIds().add(ssidProfile.getId());
+
+            apProfile = profileServiceInterface.update(apProfile);
+        }
+    
+        return apProfile;
+    }
+
+
+	private void updateApStatus(Equipment ce, ConnectNodeInfo connectNodeInfo) {
 
         try {
 
