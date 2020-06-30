@@ -1244,8 +1244,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         try
 
         {
-            LOG.info("handleClientSessionUpdate for {} on BSSID {}", client,
-                    bssidAddress);
+            LOG.info("handleClientSessionUpdate for {} on BSSID {}", client, bssidAddress);
 
             com.telecominfraproject.wlan.client.models.Client clientInstance = clientServiceInterface
                     .getOrNull(customerId, new MacAddress(client.getMacAddress()));
@@ -1274,7 +1273,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             }
 
             ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                    bssidAddress);
+                    clientInstance.getMacAddress());
             // For this session if we have a disconnected client, remove, else
             // update
             if (!client.getConnected()) {
@@ -1481,9 +1480,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     }
 
                     try {
-                        handleClientSessionUpdate(customerId, equipmentId, apId, locationId, clientReport.getChannel(),
-                                clientReport.getBand(), clientReport.getTimestampMs(), client, report.getNodeID(),
-                                ssidStatistics.getBssid(), ssidStatistics.getSsid());
+                        if (ssidStatistics.getBssid() != null && ssidStatistics.getSsid() != null
+                                && client.getMacAddress() != null) {
+                            handleClientSessionUpdate(customerId, equipmentId, apId, locationId,
+                                    clientReport.getChannel(), clientReport.getBand(), clientReport.getTimestampMs(),
+                                    client, report.getNodeID(), ssidStatistics.getBssid(), ssidStatistics.getSsid());
+                        }
                     } catch (Exception e) {
                         LOG.debug("Unabled to update client {} session {}", client, e);
                     }
@@ -1992,7 +1994,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     @Override
     public void wifiInetStateDbTableUpdate(List<OpensyncAPInetState> inetStateTables, String apId) {
-        
+
         LOG.debug("Received Wifi_Inet_State table update for AP {}", apId);
 
         OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
