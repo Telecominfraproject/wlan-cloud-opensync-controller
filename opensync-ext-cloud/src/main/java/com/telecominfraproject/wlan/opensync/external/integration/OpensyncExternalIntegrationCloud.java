@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import javax.annotation.PostConstruct;
 
@@ -277,7 +279,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                                         + autoProvisionedCustomerId);
                     }
 
-                    if (customer.getDetails() != null && customer.getDetails().getAutoProvisioning() != null
+                    if ((customer.getDetails() != null) && (customer.getDetails().getAutoProvisioning() != null)
                             && !customer.getDetails().getAutoProvisioning().isEnabled()) {
                         LOG.error(
                                 "Cannot auto-provision equipment because customer with id {} explicitly turned that feature off",
@@ -288,7 +290,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     }
 
                     long locationId = autoProvisionedLocationId;
-                    if (customer.getDetails() != null && customer.getDetails().getAutoProvisioning() != null
+                    if ((customer.getDetails() != null) && (customer.getDetails().getAutoProvisioning() != null)
                             && customer.getDetails().getAutoProvisioning().isEnabled()) {
                         locationId = customer.getDetails().getAutoProvisioning().getLocationId();
                     }
@@ -346,9 +348,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     ce.setDetails(apElementConfig);
 
                     Long profileId = null;
-                    if (customer.getDetails() != null && customer.getDetails().getAutoProvisioning() != null
+                    if ((customer.getDetails() != null) && (customer.getDetails().getAutoProvisioning() != null)
                             && customer.getDetails().getAutoProvisioning().isEnabled()
-                            && customer.getDetails().getAutoProvisioning().getEquipmentProfileIdPerModel() != null) {
+                            && (customer.getDetails().getAutoProvisioning().getEquipmentProfileIdPerModel() != null)) {
 
                         // try to find auto-provisioning profile for the current
                         // equipment model
@@ -547,7 +549,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             } catch (UnknownHostException e) {
                 // do nothing here
             }
-            if (connectNodeInfo.macAddress != null && MacAddress.valueOf(connectNodeInfo.macAddress) != null) {
+            if ((connectNodeInfo.macAddress != null) && (MacAddress.valueOf(connectNodeInfo.macAddress) != null)) {
                 protocolStatusData.setReportedMacAddr(MacAddress.valueOf(connectNodeInfo.macAddress));
             }
             protocolStatusData.setReportedSku(connectNodeInfo.skuNumber);
@@ -775,7 +777,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         int customerId = extractCustomerIdFromTopic(topic);
 
         long equipmentId = extractEquipmentIdFromTopic(topic);
-        if (equipmentId <= 0 || customerId <= 0) {
+        if ((equipmentId <= 0) || (customerId <= 0)) {
             LOG.warn("Cannot determine equipment ids from topic {} - customerId {} equipmentId {}", topic, customerId,
                     equipmentId);
             return;
@@ -906,7 +908,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 for (Client cl : clReport.getClientListList()) {
 
-                    if (!cl.hasConnected() || cl.getConnected() != true) {
+                    if (!cl.hasConnected() || (cl.getConnected() != true)) {
                         // this client is not currently connected, skip it
                         // TODO: how come AP reports disconencted clients? What
                         // if it is a busy coffe shop with thousands of peopele
@@ -933,11 +935,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 apNodeMetrics.setTxBytes(radioType, txBytes);
 
                 List<MacAddress> clientMacList = new ArrayList<>();
-                clientMacs.forEach(macStr -> {
-                    try {
-                        clientMacList.add(new MacAddress(macStr));
-                    } catch (RuntimeException e) {
-                        LOG.warn("Cannot parse mac address from MQTT ClientReport {} ", macStr);
+                clientMacs.forEach(new Consumer<String>() {
+                    @Override
+                    public void accept(String macStr) {
+                        try {
+                            clientMacList.add(new MacAddress(macStr));
+                        } catch (RuntimeException e) {
+                            LOG.warn("Cannot parse mac address from MQTT ClientReport {} ", macStr);
+                        }
                     }
                 });
 
@@ -984,9 +989,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             // populate it from report.survey
             // for (Survey survey : report.getSurveyList()) {
             /*
-             * LOG.debug("MJH Survey {}", survey); // int oBSS = 0; // int iBSS
-             * = 0; // int totalBusy = 0; // int durationMs = 0; for
-             * (SurveySample surveySample : survey.getSurveyListList()) { if
+             * LOG.debug("Survey {}", survey); // int oBSS = 0; // int iBSS = 0;
+             * // int totalBusy = 0; // int durationMs = 0; for (SurveySample
+             * surveySample : survey.getSurveyListList()) { if
              * (surveySample.getDurationMs() == 0) { continue; }
              *
              * // iBSS += surveySample.getBusySelf() + //
@@ -1047,20 +1052,25 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         status = statusServiceInterface.update(status);
         LOG.debug("updated status {}", status);
 
-        Status networkAggStatusRec = statusServiceInterface.getOrNull(customerId, equipmentId,
-                StatusDataType.NETWORK_AGGREGATE);
-
-        NetworkAggregateStatusData naStatusData = (NetworkAggregateStatusData) networkAggStatusRec.getDetails();
-
-        EquipmentPerformanceDetails equipmentPerformanceDetails = new EquipmentPerformanceDetails();
-        equipmentPerformanceDetails.setAvgCpuTemperature((int) eqOsPerformance.getAvgCpuTemperature());
-        equipmentPerformanceDetails.setAvgFreeMemory(eqOsPerformance.getAvgFreeMemoryKb());
-
-        naStatusData.setApPerformanceDetails(equipmentPerformanceDetails);
-        networkAggStatusRec.setDetails(naStatusData);
-        networkAggStatusRec = statusServiceInterface.update(networkAggStatusRec);
-
-        LOG.debug("updated aggregate status {}", networkAggStatusRec);
+        // Status networkAggStatusRec =
+        // statusServiceInterface.getOrNull(customerId, equipmentId,
+        // StatusDataType.NETWORK_AGGREGATE);
+        //
+        // NetworkAggregateStatusData naStatusData =
+        // (NetworkAggregateStatusData) networkAggStatusRec.getDetails();
+        //
+        // EquipmentPerformanceDetails equipmentPerformanceDetails = new
+        // EquipmentPerformanceDetails();
+        // equipmentPerformanceDetails.setAvgCpuTemperature((int)
+        // eqOsPerformance.getAvgCpuTemperature());
+        // equipmentPerformanceDetails.setAvgFreeMemory(eqOsPerformance.getAvgFreeMemoryKb());
+        //
+        // naStatusData.setApPerformanceDetails(equipmentPerformanceDetails);
+        // networkAggStatusRec.setDetails(naStatusData);
+        // networkAggStatusRec =
+        // statusServiceInterface.update(networkAggStatusRec);
+        //
+        // LOG.debug("updated aggregate status {}", networkAggStatusRec);
 
     }
 
@@ -1135,7 +1145,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     }
 
                     if (cl.getStats().hasTxRate()) {
-                        cMetrics.setAverageTxRate(Double.valueOf(cl.getStats().getTxRate() / 1000));
+                        cMetrics.setAverageTxRate(cl.getStats().getTxRate() / 1000);
                     }
 
                     if (cl.getStats().hasTxRate() && cl.getStats().hasRxRate()) {
@@ -1214,7 +1224,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 nr.setMacAddress(new MacAddress(nBss.getBssid()));
                 nr.setNetworkType(NetworkType.AP);
                 nr.setPacketType(NeighborScanPacketType.BEACON);
-                nr.setPrivacy((nBss.getSsid() == null || nBss.getSsid().isEmpty()) ? true : false);
+                nr.setPrivacy(((nBss.getSsid() == null) || nBss.getSsid().isEmpty()) ? true : false);
                 // nr.setRate(rate);
                 // we can only get Rssi as an unsigned int from opensync, so
                 // some shifting
@@ -1239,6 +1249,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             com.telecominfraproject.wlan.client.models.Client clientInstance = clientServiceInterface
                     .getOrNull(customerId, new MacAddress(client.getMacAddress()));
+
             if (!client.getConnected()) {
                 if (clientInstance != null) {
                     clientServiceInterface.delete(customerId, clientInstance.getMacAddress());
@@ -1246,13 +1257,18 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             } else {
                 if (clientInstance == null) {
                     clientInstance = new com.telecominfraproject.wlan.client.models.Client();
+
                     clientInstance.setCustomerId(customerId);
                     clientInstance.setMacAddress(new MacAddress(client.getMacAddress()));
                     clientInstance.setDetails(new ClientInfoDetails());
                     clientInstance = clientServiceInterface.create(clientInstance);
                 }
                 ClientInfoDetails clientDetails = (ClientInfoDetails) clientInstance.getDetails();
-                clientDetails.setHostName(apId);
+
+                clientDetails.setAlias("alias " + clientInstance.getMacAddress().getAddressAsLong());
+                clientDetails.setApFingerprint("fp " + clientInstance.getMacAddress().getAddressAsString());
+                clientDetails.setHostName("hostName-" + clientInstance.getMacAddress().getAddressAsLong());
+                clientDetails.setUserName("user-" + clientInstance.getMacAddress().getAddressAsLong());
                 clientInstance.setDetails(clientDetails);
                 clientInstance = clientServiceInterface.update(clientInstance);
             }
@@ -1268,13 +1284,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     LOG.debug("Client session {} deleted due to disconnect", clientSession);
                 }
             } else {
+                ClientInfoDetails clientDetails = (ClientInfoDetails) clientInstance.getDetails();
+
                 if (clientSession == null) {
                     LOG.debug("No session found for Client {}, creating new one.", client.getMacAddress());
                     clientSession = new ClientSession();
                     clientSession.setCustomerId(customerId);
                     clientSession.setEquipmentId(equipmentId);
                     clientSession.setLocationId(locationId);
-                    clientSession.setMacAddress(new MacAddress(client.getMacAddress()));
+                    clientSession.setMacAddress(clientInstance.getMacAddress());
 
                     ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
                     clientSessionDetails.setAssocTimestamp(timestamp - client.getConnectOffsetMs());
@@ -1282,19 +1300,27 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                     clientSessionDetails.setFirstDataSentTimestamp(timestamp - client.getDurationMs());
                     clientSessionDetails.setFirstDataRcvdTimestamp(timestamp - client.getDurationMs());
+
+                    ClientDhcpDetails dhcpDetails = new ClientDhcpDetails(clientSessionDetails.getAuthTimestamp());
+                    dhcpDetails.setLeaseStartTimestamp(clientSessionDetails.getAuthTimestamp());
+                    dhcpDetails.setLeaseTimeInSeconds((int) TimeUnit.HOURS.toSeconds(4));
+
+                    clientSessionDetails.setDhcpDetails(dhcpDetails);
+
                     clientSession.setDetails(clientSessionDetails);
 
                     clientSession = clientServiceInterface.updateSession(clientSession);
                 }
 
                 ClientSessionDetails clientSessionDetails = clientSession.getDetails();
+
+                clientSessionDetails.setApFingerprint(clientDetails.getApFingerprint());
+                clientSessionDetails.setHostname(clientDetails.getHostName());
                 clientSessionDetails.setRadioType(getRadioTypeFromOpensyncRadioBand(band));
                 clientSessionDetails.setSessionId(clientSession.getMacAddress().getAddressAsLong());
                 clientSessionDetails.setSsid(ssid);
-                clientSessionDetails.setAssociationStatus(0);
+                clientSessionDetails.setAssocRssi(getNegativeSignedIntFromUnsigned(client.getStats().getRssi()));
                 clientSessionDetails.setLastRxTimestamp(timestamp);
-
-                clientSessionDetails.setHostname(apId);
 
                 clientSessionDetails.setMetricDetails(calculateClientSessionMetricDetails(client));
                 clientSession.setDetails(clientSessionDetails);
@@ -1341,8 +1367,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         metricDetails.setTxDataFrames((int) ((int) client.getStats().getTxFrames() - client.getStats().getTxRetries()));
         metricDetails.setRxDataFrames((int) ((int) client.getStats().getRxFrames() - client.getStats().getRxRetries()));
         // values reported in Kbps, convert to Mbps
-        metricDetails.setRxMbps(Float.valueOf((float) (client.getStats().getRxRate() / 1000)));
-        metricDetails.setTxMbps(Float.valueOf((float) (client.getStats().getTxRate() / 1000)));
+        metricDetails.setRxMbps((float) (client.getStats().getRxRate() / 1000));
+        metricDetails.setTxMbps((float) (client.getStats().getTxRate() / 1000));
         metricDetails.setRxRateKbps((long) client.getStats().getRxRate());
         metricDetails.setTxRateKbps((long) client.getStats().getTxRate());
         return metricDetails;
@@ -1420,7 +1446,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 numConnectedClients += 1;
 
-                if (client.hasSsid() && client.getSsid() != null && !client.getSsid().equals("")) {
+                if (client.hasSsid() && (client.getSsid() != null) && !client.getSsid().equals("")) {
                     ssid = client.getSsid();
                 }
 
@@ -1486,7 +1512,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 apSsidMetrics.getSsidStats().put(radioType, ssidStatsList);
             }
 
-            if (statusDetails != null && indexOfBssid >= 0) {
+            if ((statusDetails != null) && (indexOfBssid >= 0)) {
                 statusDetails.getActiveBSSIDs().get(indexOfBssid).setNumDevicesConnected(numConnectedClients);
                 activeBssidsStatus.setDetails(statusDetails);
                 activeBssidsStatus = statusServiceInterface.update(activeBssidsStatus);
@@ -1501,6 +1527,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     private void updateClientConnectionDetails(int customerId, long equipmentId, ClientReport clientReport,
             RadioType radioType) {
+        LOG.debug("Update updateClientConnectionDetails for equipment {} radio {}", equipmentId, radioType);
         // update client status for radio type
         Status clientConnectionStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
                 StatusDataType.CLIENT_DETAILS);
@@ -1511,11 +1538,17 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             clientConnectionStatus.setEquipmentId(equipmentId);
             clientConnectionStatus.setStatusDataType(StatusDataType.CLIENT_DETAILS);
             clientConnectionStatus.setDetails(new ClientConnectionDetails());
+            clientConnectionStatus = statusServiceInterface.update(clientConnectionStatus);
         }
 
         ClientConnectionDetails connectionDetails = (ClientConnectionDetails) clientConnectionStatus.getDetails();
         Map<RadioType, Integer> clientsPerRadio = connectionDetails.getNumClientsPerRadio();
 
+        initializeConnectedClientsPerRadioByActiveBSSID(customerId, equipmentId, clientsPerRadio,
+                clientReport.getTimestampMs());
+        LOG.debug("Clients per Radio after BSSID sync is {}", clientsPerRadio);
+
+        // take the report (metric) data for this RadioType
         int clientCount = 0;
         for (Client client : clientReport.getClientListList()) {
             if (client.getConnected()) {
@@ -1528,7 +1561,44 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         clientConnectionStatus = statusServiceInterface.update(clientConnectionStatus);
 
-        LOG.info("Sending ClientConnectionDetails {}", clientConnectionStatus);
+        LOG.debug("Sending ClientConnectionDetails {} based on MQTT Client Report Data at {}", clientConnectionStatus,
+                new Date(clientReport.getTimestampMs()));
+    }
+
+    private void initializeConnectedClientsPerRadioByActiveBSSID(int customerId, long equipmentId,
+            Map<RadioType, Integer> clientsPerRadio, long timestampForClientReport) {
+        LOG.debug("initializeConnectedClientsPerRadioByActiveBSSID for customer {} equipmentId {}", customerId,
+                equipmentId);
+        Status activeBSSIDStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
+                StatusDataType.ACTIVE_BSSIDS);
+        if (activeBSSIDStatus != null) {
+            if (activeBSSIDStatus.getLastModifiedTimestamp() < timestampForClientReport) {
+                LOG.debug("Client report more recent than BSSID list, do not use for seeding");
+                return;
+            }
+            ActiveBSSIDs activeBSSIDsDetails = (ActiveBSSIDs) activeBSSIDStatus.getDetails();
+
+            if (activeBSSIDsDetails != null) {
+                for (ActiveBSSID activeBssid : activeBSSIDsDetails.getActiveBSSIDs()) {
+
+                    RadioType key = activeBssid.getRadioType();
+
+                    LOG.debug("RadioKey is {}", key);
+
+                    clientsPerRadio.put(key, activeBssid.getNumDevicesConnected());
+                    LOG.debug("Updated number of devices connected {} for {}", clientsPerRadio.get(key),
+                            activeBssid.getRadioType());
+
+                }
+            } else {
+                LOG.debug("No details for activeBSSIDs");
+            }
+        } else {
+            LOG.debug("could not get active BSSIDs, status is null");
+        }
+
+        LOG.debug("Updated clients per Radio is {}", clientsPerRadio);
+
     }
 
     int getNegativeSignedIntFromUnsigned(int unsignedValue) {
@@ -1586,15 +1656,18 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 // ChannelInfo entries per surveyed channel
                 Map<Integer, List<SurveySample>> sampleByChannelMap = new HashMap<>();
 
-                survey.getSurveyListList().stream().forEach(s -> {
-                    List<SurveySample> surveySampleList;
-                    if (sampleByChannelMap.get(s.getChannel()) == null) {
-                        surveySampleList = new ArrayList<>();
-                    } else {
-                        surveySampleList = sampleByChannelMap.get(s.getChannel());
+                survey.getSurveyListList().stream().forEach(new Consumer<SurveySample>() {
+                    @Override
+                    public void accept(SurveySample s) {
+                        List<SurveySample> surveySampleList;
+                        if (sampleByChannelMap.get(s.getChannel()) == null) {
+                            surveySampleList = new ArrayList<>();
+                        } else {
+                            surveySampleList = sampleByChannelMap.get(s.getChannel());
+                        }
+                        surveySampleList.add(s);
+                        sampleByChannelMap.put(s.getChannel(), surveySampleList);
                     }
-                    surveySampleList.add(s);
-                    sampleByChannelMap.put(s.getChannel(), surveySampleList);
                 });
 
                 for (List<SurveySample> surveySampleList : sampleByChannelMap.values()) {
@@ -1650,7 +1723,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         channelInfo.setWifiUtilization(totalWifi);
         channelInfo.setBandwidth(((ApElementConfiguration) equipmentServiceInterface.get(equipmentId).getDetails())
                 .getRadioMap().get(radioType).getChannelBandwidth());
-        channelInfo.setNoiseFloor(Integer.valueOf(-84)); // TODO: when this
+        channelInfo.setNoiseFloor(-84); // TODO: when this
                                                          // becomes available
                                                          // add
         return channelInfo;
@@ -1663,7 +1736,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         int customerId = extractCustomerIdFromTopic(topic);
 
         long equipmentId = extractEquipmentIdFromTopic(topic);
-        if (equipmentId <= 0 || customerId <= 0) {
+        if ((equipmentId <= 0) || (customerId <= 0)) {
             LOG.warn("Cannot determine equipment ids from topic {} - customerId {} equipmentId {}", topic, customerId,
                     equipmentId);
             return;
@@ -1687,7 +1760,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         int customerId = extractCustomerIdFromTopic(topic);
 
         long equipmentId = extractEquipmentIdFromTopic(topic);
-        if (equipmentId <= 0 || customerId <= 0) {
+        if ((equipmentId <= 0) || (customerId <= 0)) {
             LOG.warn("Cannot determine equipment ids from topic {} - customerId {} equipmentId {}", topic, customerId,
                     equipmentId);
             return;
@@ -1716,7 +1789,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         int customerId = ovsdbSession.getCustomerId();
         long equipmentId = ovsdbSession.getEquipmentId();
 
-        if (customerId < 0 || equipmentId < 0) {
+        if ((customerId < 0) || (equipmentId < 0)) {
             LOG.debug("wifiVIFStateDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
                     customerId, equipmentId, apId);
             return;
@@ -1724,7 +1797,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         for (OpensyncAPVIFState vifState : vifStateTables) {
 
-            if (vifState.getMac() != null && vifState.getSsid() != null && vifState.getChannel() > 0) {
+            if ((vifState.getMac() != null) && (vifState.getSsid() != null) && (vifState.getChannel() > 0)) {
                 String bssid = vifState.getMac();
                 String ssid = vifState.getSsid();
 
@@ -1815,7 +1888,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         int customerId = ovsdbSession.getCustomerId();
         long equipmentId = ovsdbSession.getEquipmentId();
 
-        if (customerId < 0 || equipmentId < 0) {
+        if ((customerId < 0) || (equipmentId < 0)) {
             LOG.debug("wifiRadioStatusDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
                     customerId, equipmentId, apId);
             return;
@@ -1968,18 +2041,20 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         int customerId = ovsdbSession.getCustomerId();
         long equipmentId = ovsdbSession.getEquipmentId();
 
-        if (customerId < 0 || equipmentId < 0) {
+        if ((customerId < 0) || (equipmentId < 0)) {
             LOG.debug("wifiInetStateDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
                     customerId, equipmentId, apId);
             return;
         }
 
-        if (inetStateTables == null || inetStateTables.isEmpty() || apId == null) {
+        if ((inetStateTables == null) || inetStateTables.isEmpty() || (apId == null)) {
             return;
         }
 
         for (OpensyncAPInetState inetState : inetStateTables) {
-            LOG.info("Received InetState table update {}", inetState.toPrettyString());
+            if (LOG.isTraceEnabled()) {
+                LOG.trace("Received InetState table update {}", inetState.toPrettyString());
+            }
         }
 
     }
@@ -1998,13 +2073,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         int customerId = ovsdbSession.getCustomerId();
         long equipmentId = ovsdbSession.getEquipmentId();
 
-        if (customerId < 0 || equipmentId < 0) {
+        if ((customerId < 0) || (equipmentId < 0)) {
             LOG.debug("wifiAssociatedClientsDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
                     customerId, equipmentId, apId);
             return;
         }
 
-        if (wifiAssociatedClients == null || wifiAssociatedClients.isEmpty() || apId == null) {
+        if ((wifiAssociatedClients == null) || wifiAssociatedClients.isEmpty() || (apId == null)) {
             return;
         }
 
@@ -2023,7 +2098,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         int customerId = ovsdbSession.getCustomerId();
         long equipmentId = ovsdbSession.getEquipmentId();
 
-        if (customerId < 0 || equipmentId < 0) {
+        if ((customerId < 0) || (equipmentId < 0)) {
             LOG.debug("awlanNodeDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId,
                     equipmentId, apId);
             return;
@@ -2067,7 +2142,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         int customerId = ovsdbSession.getCustomerId();
         long equipmentId = ovsdbSession.getEquipmentId();
 
-        if (customerId < 0 || equipmentId < 0) {
+        if ((customerId < 0) || (equipmentId < 0)) {
             LOG.debug("wifiVIFStateDbTableDelete::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
                     customerId, equipmentId, apId);
             return;
@@ -2095,7 +2170,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         int customerId = ovsdbSession.getCustomerId();
         long equipmentId = ovsdbSession.getEquipmentId();
 
-        if (customerId < 0 || equipmentId < 0) {
+        if ((customerId < 0) || (equipmentId < 0)) {
             LOG.debug("wifiAssociatedClientsDbTableDelete::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
                     customerId, equipmentId, apId);
             return;
