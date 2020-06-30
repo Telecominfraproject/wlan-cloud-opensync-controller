@@ -1724,8 +1724,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         channelInfo.setBandwidth(((ApElementConfiguration) equipmentServiceInterface.get(equipmentId).getDetails())
                 .getRadioMap().get(radioType).getChannelBandwidth());
         channelInfo.setNoiseFloor(-84); // TODO: when this
-                                                         // becomes available
-                                                         // add
+                                        // becomes available
+                                        // add
         return channelInfo;
     }
 
@@ -1778,6 +1778,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     @Override
     public void wifiVIFStateDbTableUpdate(List<OpensyncAPVIFState> vifStateTables, String apId) {
+        LOG.debug("Received Wifi_VIF_State table update for AP {}", apId);
 
         OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
 
@@ -1878,6 +1879,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     @Override
     public void wifiRadioStatusDbTableUpdate(List<OpensyncAPRadioState> radioStateTables, String apId) {
 
+        LOG.debug("Received Wifi_Radio_State table update for AP {}", apId);
         OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
 
         if (ovsdbSession == null) {
@@ -1894,16 +1896,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
+        Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
+        if (ce == null) {
+            LOG.debug("wifiRadioStatusDbTableUpdate::Cannot get Equipment for AP {}", apId);
+            return;
+        }
+
+        ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
+
         for (OpensyncAPRadioState radioState : radioStateTables) {
-            Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
-            if (ce == null) {
-                LOG.debug("wifiRadioStatusDbTableUpdate::Cannot get Equipment for AP {}", apId);
-                return;
-            }
-
-            gatewayController.updateActiveCustomer(ce.getCustomerId());
-
-            ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
 
             if (radioState.getFreqBand().equals(RadioType.UNSUPPORTED)) {
                 LOG.debug("Could not get radio configuration for AP {}", apId);
@@ -1911,7 +1912,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             }
 
             if (radioState.getAllowedChannels() != null) {
-                apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
                 apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
                         .setAllowedChannels(new ArrayList<>(radioState.getAllowedChannels()));
 
@@ -1920,7 +1920,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             }
 
             if (radioState.getTxPower() > 0) {
-                apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
                 apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
                         .setEirpTxPower(AutoOrManualValue.createManualInstance(radioState.getTxPower()));
 
@@ -1941,17 +1940,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             }
 
-            ce.setDetails(apElementConfiguration);
-            try {
-                equipmentServiceInterface.update(ce);
-            } catch (DsConcurrentModificationException e) {
-                LOG.debug("Equipment reference changed, update instance and retry.", e.getMessage());
-                ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
-                ce.setDetails(apElementConfiguration);
-                ce = equipmentServiceInterface.update(ce);
-            }
-
-            initializeRadioUtilizationReport(customerId, equipmentId, radioState.getFreqBand());
             Status protocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.PROTOCOL);
 
             if (protocolStatus == null) {
@@ -1983,54 +1971,30 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             protocolStatus = statusServiceInterface.update(protocolStatus);
         }
 
-    }
-
-    private void initializeRadioUtilizationReport(int customerId, long equipmentId, RadioType radioFreqBand) {
-        Status radioUtilizationStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
-                StatusDataType.RADIO_UTILIZATION);
-        if (radioUtilizationStatus == null) {
-            radioUtilizationStatus = new Status();
-            radioUtilizationStatus.setCustomerId(customerId);
-            radioUtilizationStatus.setEquipmentId(equipmentId);
-            radioUtilizationStatus.setStatusDataType(StatusDataType.RADIO_UTILIZATION);
-            RadioUtilizationReport radioUtilizationReport = new RadioUtilizationReport();
-            radioUtilizationStatus.setDetails(radioUtilizationReport);
-
-            radioUtilizationStatus = statusServiceInterface.update(radioUtilizationStatus);
-
+        ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
+        if (ce == null) {
+            LOG.debug("wifiRadioStatusDbTableUpdate::Cannot get Equipment for AP {}", apId);
+            return;
         }
+        ((ApElementConfiguration) ce.getDetails()).setRadioMap(apElementConfiguration.getRadioMap());
+        ((ApElementConfiguration) ce.getDetails()).setAdvancedRadioMap(apElementConfiguration.getAdvancedRadioMap());
 
-        RadioUtilizationReport radioUtilizationReport = (RadioUtilizationReport) radioUtilizationStatus.getDetails();
-
-        Map<RadioType, EquipmentPerRadioUtilizationDetails> radioEquipment = radioUtilizationReport
-                .getRadioUtilization();
-        if (!radioEquipment.containsKey(radioFreqBand)) {
-            radioEquipment.put(radioFreqBand, new EquipmentPerRadioUtilizationDetails());
-            radioUtilizationReport.setRadioUtilization(radioEquipment);
+        try {
+            equipmentServiceInterface.update(ce);
+        } catch (DsConcurrentModificationException e) {
+            LOG.debug("Equipment reference changed, update instance and retry.", e.getMessage());
+            ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
+            ce.setDetails(apElementConfiguration);
+            ce = equipmentServiceInterface.update(ce);
         }
-
-        Map<RadioType, EquipmentCapacityDetails> capacityDetails = radioUtilizationReport.getCapacityDetails();
-        if (!capacityDetails.containsKey(radioFreqBand)) {
-            EquipmentCapacityDetails details = new EquipmentCapacityDetails();
-            details.setTotalCapacity(100);
-            capacityDetails.put(radioFreqBand, details);
-            radioUtilizationReport.setCapacityDetails(capacityDetails);
-        }
-
-        Map<RadioType, Integer> avgNoiseFloor = radioUtilizationReport.getAvgNoiseFloor();
-        if (!avgNoiseFloor.containsKey(radioFreqBand)) {
-            avgNoiseFloor.put(radioFreqBand, null);
-            radioUtilizationReport.setAvgNoiseFloor(avgNoiseFloor);
-        }
-
-        radioUtilizationStatus.setDetails(radioUtilizationReport);
-
-        radioUtilizationStatus = statusServiceInterface.update(radioUtilizationStatus);
 
     }
 
     @Override
     public void wifiInetStateDbTableUpdate(List<OpensyncAPInetState> inetStateTables, String apId) {
+        
+        LOG.debug("Received Wifi_Inet_State table update for AP {}", apId);
+
         OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
 
         if (ovsdbSession == null) {
