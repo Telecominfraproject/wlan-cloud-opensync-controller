@@ -3,8 +3,8 @@
  */
 package com.telecominfraproject.wlan.opensync.external.integration.models;
 
+import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 
 import com.telecominfraproject.wlan.core.model.json.BaseJsonModel;
 import com.vmware.ovsdb.protocol.operation.notation.Uuid;
@@ -26,6 +26,11 @@ public class OpensyncWifiAssociatedClients extends BaseJsonModel {
     public String oftag;
     public Uuid _uuid;
     public Uuid version;
+
+    public OpensyncWifiAssociatedClients() {
+        super();
+        capabilities = new HashSet<>();
+    }
 
     public String getKeyId() {
         return keyId;

@@ -1,7 +1,7 @@
 package com.telecominfraproject.wlan.opensync.external.integration.models;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 import com.telecominfraproject.wlan.core.model.json.BaseJsonModel;
 import com.vmware.ovsdb.protocol.operation.notation.Uuid;
@@ -38,7 +38,15 @@ public class OpensyncAPInetState extends BaseJsonModel  {
 	public Uuid _uuid;
 	public Uuid version;
 
-	public String getIfName() {
+	
+	
+	
+	public OpensyncAPInetState() {
+        super();
+        dns = new HashMap<>();
+        dhcpc = new HashMap<>();
+    }
+    public String getIfName() {
 		return ifName;
 	}
 	public void setIfName(String ifName) {

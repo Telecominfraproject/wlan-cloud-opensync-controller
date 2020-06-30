@@ -1250,9 +1250,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     clientInstance.setMacAddress(new MacAddress(client.getMacAddress()));
                     clientInstance.setDetails(new ClientInfoDetails());
                     clientInstance = clientServiceInterface.create(clientInstance);
-                } 
+                }
                 ClientInfoDetails clientDetails = (ClientInfoDetails) clientInstance.getDetails();
-                clientDetails.setHostName(nodeId);
+                clientDetails.setHostName(apId);
                 clientInstance.setDetails(clientDetails);
                 clientInstance = clientServiceInterface.update(clientInstance);
             }
@@ -1294,7 +1294,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientSessionDetails.setAssociationStatus(0);
                 clientSessionDetails.setLastRxTimestamp(timestamp);
 
-                clientSessionDetails.setHostname(bssidAddress.getAddressAsString());
+                clientSessionDetails.setHostname(apId);
 
                 clientSessionDetails.setMetricDetails(calculateClientSessionMetricDetails(client));
                 clientSession.setDetails(clientSessionDetails);
@@ -1938,7 +1938,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         Map<RadioType, EquipmentCapacityDetails> capacityDetails = radioUtilizationReport.getCapacityDetails();
         if (!capacityDetails.containsKey(radioFreqBand)) {
-            capacityDetails.put(radioFreqBand, new EquipmentCapacityDetails());
+            EquipmentCapacityDetails details = new EquipmentCapacityDetails();
+            details.setTotalCapacity(100);
+            capacityDetails.put(radioFreqBand, details);
             radioUtilizationReport.setCapacityDetails(capacityDetails);
         }
 
@@ -1977,7 +1979,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
 
         for (OpensyncAPInetState inetState : inetStateTables) {
-            // TODO: implement me
+            LOG.info("Received InetState table update {}", inetState.toPrettyString());
         }
 
     }

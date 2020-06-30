@@ -1,8 +1,9 @@
 package com.telecominfraproject.wlan.opensync.external.integration.models;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
 import com.telecominfraproject.wlan.core.model.json.BaseJsonModel;
 import com.vmware.ovsdb.protocol.operation.notation.Uuid;
@@ -41,6 +42,13 @@ public class OpensyncAPVIFState extends BaseJsonModel {
 
     public String getIfName() {
         return ifName;
+    }
+
+    public OpensyncAPVIFState() {
+        super();
+        security = new HashMap<>();
+        associatedClients = new HashSet<>();
+       
     }
 
     public void setIfName(String ifName) {

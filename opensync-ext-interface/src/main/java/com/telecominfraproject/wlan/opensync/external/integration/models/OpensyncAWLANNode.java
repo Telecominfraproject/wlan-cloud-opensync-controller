@@ -3,8 +3,8 @@
  */
 package com.telecominfraproject.wlan.opensync.external.integration.models;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 import com.telecominfraproject.wlan.core.model.json.BaseJsonModel;
 import com.vmware.ovsdb.protocol.operation.notation.Uuid;
@@ -42,6 +42,15 @@ public class OpensyncAWLANNode extends BaseJsonModel {
     public boolean factoryReset;
     public Uuid _uuid;
     public Uuid version;
+
+    public OpensyncAWLANNode() {
+        super();
+        mqttSettings = new HashMap<>();
+        versionMatrix = new HashMap<>();
+        ledConfig = new HashMap<>();
+        mqttHeaders = new HashMap<>();
+        mqttTopics = new HashMap<>();
+    }
 
     public Map<Object, Object> getMqttSettings() {
         return mqttSettings;

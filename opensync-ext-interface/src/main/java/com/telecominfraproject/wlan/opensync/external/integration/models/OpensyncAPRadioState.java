@@ -3,6 +3,8 @@
  */
 package com.telecominfraproject.wlan.opensync.external.integration.models;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -44,6 +46,16 @@ public class OpensyncAPRadioState extends BaseJsonModel {
     public Map<String, String> hwParams;
     public RadioType freqBand;
     public int thermalIntegration;
+    
+    
+    public OpensyncAPRadioState() {
+        super();
+        allowedChannels = new HashSet<>();
+        hwConfig = new HashMap<>();
+        channels = new HashMap<>();
+        hwParams = new HashMap<>();
+    }
+
     public String channelMode;
     public Uuid _uuid;
     public Uuid version;
