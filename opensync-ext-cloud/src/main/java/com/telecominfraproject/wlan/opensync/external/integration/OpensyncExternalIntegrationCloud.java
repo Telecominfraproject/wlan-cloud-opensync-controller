@@ -1244,8 +1244,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         try
 
         {
-            LOG.info("handleClientSessionUpdate for {} on BSSID {}", client.getMacAddress(),
-                    bssidAddress.getAddressAsString());
+            LOG.info("handleClientSessionUpdate for {} on BSSID {}", client,
+                    bssidAddress);
 
             com.telecominfraproject.wlan.client.models.Client clientInstance = clientServiceInterface
                     .getOrNull(customerId, new MacAddress(client.getMacAddress()));
