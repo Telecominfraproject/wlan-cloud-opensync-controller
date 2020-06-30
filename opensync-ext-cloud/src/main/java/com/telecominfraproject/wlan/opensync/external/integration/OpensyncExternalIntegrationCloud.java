@@ -1273,7 +1273,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             }
 
             ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                    clientInstance.getMacAddress());
+                    new MacAddress(client.getMacAddress()));
             // For this session if we have a disconnected client, remove, else
             // update
             if (!client.getConnected()) {
@@ -1291,7 +1291,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     clientSession.setCustomerId(customerId);
                     clientSession.setEquipmentId(equipmentId);
                     clientSession.setLocationId(locationId);
-                    clientSession.setMacAddress(clientInstance.getMacAddress());
+                    clientSession.setMacAddress(new MacAddress(client.getMacAddress()));
 
                     ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
                     clientSessionDetails.setAssocTimestamp(timestamp - client.getConnectOffsetMs());
