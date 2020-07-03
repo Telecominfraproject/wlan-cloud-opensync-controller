@@ -96,10 +96,7 @@ import com.telecominfraproject.wlan.status.equipment.models.VLANStatusData;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSID;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSIDs;
 import com.telecominfraproject.wlan.status.equipment.report.models.ClientConnectionDetails;
-import com.telecominfraproject.wlan.status.equipment.report.models.EquipmentCapacityDetails;
-import com.telecominfraproject.wlan.status.equipment.report.models.EquipmentPerRadioUtilizationDetails;
 import com.telecominfraproject.wlan.status.equipment.report.models.OperatingSystemPerformance;
-import com.telecominfraproject.wlan.status.equipment.report.models.RadioUtilizationReport;
 import com.telecominfraproject.wlan.status.models.Status;
 import com.telecominfraproject.wlan.status.models.StatusCode;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
@@ -1479,15 +1476,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         LOG.debug("tidStats {}", tidStats);
                     }
 
-
                 }
-                
+
                 try {
-                    if (ssidStatistics.getBssid() != null && ssid != null
-                            && client.getMacAddress() != null) {
-                        handleClientSessionUpdate(customerId, equipmentId, apId, locationId,
-                                clientReport.getChannel(), clientReport.getBand(), clientReport.getTimestampMs(),
-                                client, report.getNodeID(), ssidStatistics.getBssid(), ssid);
+                    if ((ssidStatistics.getBssid() != null) && (ssid != null) && (client.getMacAddress() != null)) {
+                        handleClientSessionUpdate(customerId, equipmentId, apId, locationId, clientReport.getChannel(),
+                                clientReport.getBand(), clientReport.getTimestampMs(), client, report.getNodeID(),
+                                ssidStatistics.getBssid(), ssid);
                     }
                 } catch (Exception e) {
                     LOG.debug("Unabled to update client {} session {}", client, e);
@@ -1908,6 +1903,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
 
+        Status protocolStatus = null;
+
         for (OpensyncAPRadioState radioState : radioStateTables) {
 
             if (radioState.getFreqBand().equals(RadioType.UNSUPPORTED)) {
@@ -1944,35 +1941,22 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             }
 
-            Status protocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.PROTOCOL);
+            protocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.PROTOCOL);
 
-            if (protocolStatus == null) {
-                protocolStatus = new Status();
-                protocolStatus.setCustomerId(customerId);
-                protocolStatus.setEquipmentId(equipmentId);
-                protocolStatus.setStatusDataType(StatusDataType.PROTOCOL);
-                EquipmentProtocolStatusData protocolStatusData = new EquipmentProtocolStatusData();
-                protocolStatus.setDetails(protocolStatusData);
+            if (protocolStatus != null) {
 
-                protocolStatus = statusServiceInterface.update(protocolStatus);
-
-            }
-
-            EquipmentProtocolStatusData protocolStatusData = (EquipmentProtocolStatusData) protocolStatus.getDetails();
-            protocolStatusData.setReportedCC(CountryCode.valueOf(radioState.getCountry().toLowerCase()));
-
-            try {
-                Location location = locationServiceInterface.get(ce.getLocationId());
-                if (location != null) {
-                    protocolStatusData.setSystemLocation(location.getName());
+                EquipmentProtocolStatusData protocolStatusData = (EquipmentProtocolStatusData) protocolStatus
+                        .getDetails();
+                if (!protocolStatusData.getReportedCC()
+                        .equals(CountryCode.valueOf(radioState.getCountry().toLowerCase()))) {
+                    protocolStatusData.setReportedCC(CountryCode.valueOf(radioState.getCountry().toLowerCase()));
+                    protocolStatus.setDetails(protocolStatusData);
+                } else {
+                    protocolStatusData = null; // no change we will ignore at
+                                               // the end
                 }
-            } catch (Exception e) {
-                LOG.debug("Could not get location {} for customer {} equipment {}", ce.getLocationId(),
-                        ce.getCustomerId(), ce.getId());
-            }
-            protocolStatus.setDetails(protocolStatusData);
 
-            protocolStatus = statusServiceInterface.update(protocolStatus);
+            }
         }
 
         ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
@@ -1990,6 +1974,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
             ce.setDetails(apElementConfiguration);
             ce = equipmentServiceInterface.update(ce);
+        }
+
+        if (protocolStatus != null) {
+            statusServiceInterface.update(protocolStatus);
         }
 
     }
@@ -2133,8 +2121,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         List<ActiveBSSID> bssidList = statusDetails.getActiveBSSIDs();
 
-        
-        
         bssidList.clear();
 
         statusDetails.setActiveBSSIDs(bssidList);

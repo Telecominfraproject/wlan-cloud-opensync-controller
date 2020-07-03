@@ -14,6 +14,6 @@ public interface ConnectusOvsdbClientInterface {
             String validationCode);
 
     String processFlashFirmware(String apId, String firmwareVersion);
-
+  
     String closeSession(String apId);
 }

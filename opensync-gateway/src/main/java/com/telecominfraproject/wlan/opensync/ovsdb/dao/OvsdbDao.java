@@ -13,6 +13,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -73,6 +75,10 @@ import com.vmware.ovsdb.service.OvsdbClient;
 public class OvsdbDao {
     private static final Logger LOG = LoggerFactory.getLogger(OvsdbDao.class);
 
+    public static final String wifiRouteStateDbTable = "Wifi_Route_State";
+
+    public static final String wifiMasterStateDbTable = "Wifi_Master_State";
+
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.managerAddr:3.88.149.10}")
     private String managerIpAddr;
 
@@ -96,7 +102,7 @@ public class OvsdbDao {
 
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_lan_type:bridge}")
     public String defaultLanInterfaceType;
-    
+
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_lan_name:lan}")
     public String defaultLanInterfaceName;
 
@@ -159,7 +165,7 @@ public class OvsdbDao {
             }
 
             Row row = null;
-            if (result != null && result.length > 0 && !((SelectResult) result[0]).getRows().isEmpty()) {
+            if ((result != null) && (result.length > 0) && !((SelectResult) result[0]).getRows().isEmpty()) {
                 row = ((SelectResult) result[0]).getRows().iterator().next();
             }
 
@@ -179,7 +185,7 @@ public class OvsdbDao {
             // now populate macAddress, ipV4Address from Wifi_Inet_State
             // first look them up for if_name = br-wan
             fillInWanIpAddressAndMac(ovsdbClient, ret, defaultWanInterfaceType);
-            if (ret.ipV4Address == null || ret.macAddress == null) {
+            if ((ret.ipV4Address == null) || (ret.macAddress == null)) {
                 // when not found - look them up for if_name = br-lan
                 fillInWanIpAddressAndMac(ovsdbClient, ret, defaultLanInterfaceType);
 
@@ -218,7 +224,7 @@ public class OvsdbDao {
                 }
             }
 
-            if (result != null && result.length > 0 && !((SelectResult) result[0]).getRows().isEmpty()) {
+            if ((result != null) && (result.length > 0) && !((SelectResult) result[0]).getRows().isEmpty()) {
 
                 for (Row row : ((SelectResult) result[0]).getRows()) {
                     ret.wifiRadioStates.put(getSingleValueFromSet(row, "freq_band"),
@@ -242,7 +248,7 @@ public class OvsdbDao {
 
             columns.add("freq_band");
 
-            conditions.add(new Condition("enabled", Function.EQUALS, new Atom<Boolean>(true)));
+            conditions.add(new Condition("enabled", Function.EQUALS, new Atom<>(true)));
 
             operations.add(new Select(wifiRadioStateDbTable, conditions, columns));
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
@@ -256,7 +262,7 @@ public class OvsdbDao {
                 }
             }
 
-            if (result != null && result.length > 0 && !((SelectResult) result[0]).getRows().isEmpty()) {
+            if ((result != null) && (result.length > 0) && !((SelectResult) result[0]).getRows().isEmpty()) {
 
                 for (Row row : ((SelectResult) result[0]).getRows()) {
 
@@ -313,7 +319,7 @@ public class OvsdbDao {
                 }
             }
 
-            if (result != null && result.length > 0 && !((SelectResult) result[0]).getRows().isEmpty()) {
+            if ((result != null) && (result.length > 0) && !((SelectResult) result[0]).getRows().isEmpty()) {
 
                 for (Row row : ((SelectResult) result[0]).getRows()) {
                     allowedChannels.put(getSingleValueFromSet(row, "freq_band"), row.getSetColumn("allowed_channels"));
@@ -356,15 +362,16 @@ public class OvsdbDao {
             }
 
             Row row = null;
-            if (result != null && result.length > 0 &&  (result[0] instanceof SelectResult) && !((SelectResult) result[0]).getRows().isEmpty()) {
+            if ((result != null) && (result.length > 0) && (result[0] instanceof SelectResult)
+                    && !((SelectResult) result[0]).getRows().isEmpty()) {
                 row = ((SelectResult) result[0]).getRows().iterator().next();
                 connectNodeInfo.lanIpV4Address = getSingleValueFromSet(row, "inet_addr");
                 connectNodeInfo.lanIfName = row.getStringColumn("if_name");
                 connectNodeInfo.lanIfType = getSingleValueFromSet(row, "if_type");
                 connectNodeInfo.lanMacAddress = getSingleValueFromSet(row, "hwaddr");
 
-            } else  if (result != null && result.length > 0 &&  (result[0] instanceof ErrorResult) ) {
-            	LOG.warn("Error reading from {} table: {}", wifiInetStateDbTable, result[0]);
+            } else if ((result != null) && (result.length > 0) && (result[0] instanceof ErrorResult)) {
+                LOG.warn("Error reading from {} table: {}", wifiInetStateDbTable, result[0]);
             }
 
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
@@ -400,7 +407,7 @@ public class OvsdbDao {
             }
 
             Row row = null;
-            if (result != null && result.length > 0 && !((SelectResult) result[0]).getRows().isEmpty()) {
+            if ((result != null) && (result.length > 0) && !((SelectResult) result[0]).getRows().isEmpty()) {
                 row = ((SelectResult) result[0]).getRows().iterator().next();
                 connectNodeInfo.ipV4Address = getSingleValueFromSet(row, "inet_addr");
                 connectNodeInfo.ifName = row.getStringColumn("if_name");
@@ -427,7 +434,7 @@ public class OvsdbDao {
             // updateColumns.put("device_mode", new Atom<String>("cloud") );
 
             // update sku_number if it was empty
-            if (ret.skuNumber == null || ret.skuNumber.isEmpty()) {
+            if ((ret.skuNumber == null) || ret.skuNumber.isEmpty()) {
                 ret.skuNumber = "connectus.ai_" + ret.serialNumber;
                 updateColumns.put("sku_number", new Atom<>(ret.skuNumber));
             }
@@ -443,7 +450,7 @@ public class OvsdbDao {
             newMqttSettings.put("qos", "0");
             newMqttSettings.put("remote_log", "1");
 
-            if (ret.mqttSettings == null || !ret.mqttSettings.equals(newMqttSettings)) {
+            if ((ret.mqttSettings == null) || !ret.mqttSettings.equals(newMqttSettings)) {
                 @SuppressWarnings("unchecked")
                 com.vmware.ovsdb.protocol.operation.notation.Map<String, String> mgttSettings = com.vmware.ovsdb.protocol.operation.notation.Map
                         .of(newMqttSettings);
@@ -506,7 +513,7 @@ public class OvsdbDao {
             }
 
             Row row = null;
-            if (result != null && result.length > 0 && !((SelectResult) result[0]).getRows().isEmpty()) {
+            if ((result != null) && (result.length > 0) && !((SelectResult) result[0]).getRows().isEmpty()) {
                 row = ((SelectResult) result[0]).getRows().iterator().next();
                 ret = row.getIntegerColumn("reporting_interval");
                 LOG.info("Stats collection for stats_type=device is already configured with reporting_interval = {}",
@@ -591,7 +598,7 @@ public class OvsdbDao {
             String firmwareVersion = null;
 
             Row row = null;
-            if (result != null && result.length > 0 && !((SelectResult) result[0]).getRows().isEmpty()) {
+            if ((result != null) && (result.length > 0) && !((SelectResult) result[0]).getRows().isEmpty()) {
                 row = ((SelectResult) result[0]).getRows().iterator().next();
             }
 
@@ -640,7 +647,7 @@ public class OvsdbDao {
     public <T> T getSingleValueFromSet(Row row, String columnName) {
 
         Set<T> set = row != null ? row.getSetColumn(columnName) : null;
-        T ret = set != null && !set.isEmpty() ? set.iterator().next() : null;
+        T ret = (set != null) && !set.isEmpty() ? set.iterator().next() : null;
 
         return ret;
     }
@@ -1026,7 +1033,7 @@ public class OvsdbDao {
                 wifiInetConfigInfo.nat = natTmp != null ? natTmp : false;
 
                 wifiInetConfigInfo.uuid = row.getUuidColumn("_uuid");
-                if (row.getColumns().get("broadcast") != null && row.getColumns().get("broadcast").getClass()
+                if ((row.getColumns().get("broadcast") != null) && row.getColumns().get("broadcast").getClass()
                         .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                     wifiInetConfigInfo.broadcast = row.getStringColumn("broadcast");
                 }
@@ -1035,19 +1042,19 @@ public class OvsdbDao {
                 wifiInetConfigInfo.ifType = row.getStringColumn("if_type");
                 wifiInetConfigInfo.ipAssignScheme = row.getStringColumn("ip_assign_scheme");
                 wifiInetConfigInfo.network = row.getBooleanColumn("network");
-                if (row.getColumns().get("inet_addr") != null && row.getColumns().get("inet_addr").getClass()
+                if ((row.getColumns().get("inet_addr") != null) && row.getColumns().get("inet_addr").getClass()
                         .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                     wifiInetConfigInfo.inetAddr = row.getStringColumn("inet_addr");
                 }
-                if (row.getColumns().get("mtu") != null && row.getColumns().get("mtu").getClass()
+                if ((row.getColumns().get("mtu") != null) && row.getColumns().get("mtu").getClass()
                         .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                     wifiInetConfigInfo.mtu = row.getIntegerColumn("mtu").intValue();
                 }
-                if (row.getColumns().get("netmask") != null && row.getColumns().get("netmask").getClass()
+                if ((row.getColumns().get("netmask") != null) && row.getColumns().get("netmask").getClass()
                         .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                     wifiInetConfigInfo.netmask = row.getStringColumn("netmask");
                 }
-                if (row.getColumns().get("vlan_id") != null && row.getColumns().get("vlan_id").getClass()
+                if ((row.getColumns().get("vlan_id") != null) && row.getColumns().get("vlan_id").getClass()
                         .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                     wifiInetConfigInfo.vlanId = row.getIntegerColumn("vlan_id").intValue();
                 }
@@ -1560,15 +1567,15 @@ public class OvsdbDao {
 
                         Map<String, Value> map = row.getColumns();
 
-                        if (map.get("mac") != null && map.get("mac").getClass()
+                        if ((map.get("mac") != null) && map.get("mac").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setMac(row.getStringColumn("mac"));
                         }
-                        if (map.get("channel") != null && map.get("channel").getClass()
+                        if ((map.get("channel") != null) && map.get("channel").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setChannel(row.getIntegerColumn("channel").intValue());
                         }
-                        if (map.get("freq_band") != null && map.get("freq_band").getClass()
+                        if ((map.get("freq_band") != null) && map.get("freq_band").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             String frequencyBand = row.getStringColumn("freq_band");
                             switch (frequencyBand) {
@@ -1588,39 +1595,39 @@ public class OvsdbDao {
                                 tableState.setFreqBand(RadioType.UNSUPPORTED);
                             }
                         }
-                        if (map.get("if_name") != null && map.get("if_name").getClass()
+                        if ((map.get("if_name") != null) && map.get("if_name").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setIfName(row.getStringColumn("if_name"));
                         }
-                        if (map.get("channel_mode") != null && map.get("channel_mode").getClass()
+                        if ((map.get("channel_mode") != null) && map.get("channel_mode").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setChannelMode(row.getStringColumn("channel_mode"));
                         }
-                        if (map.get("country") != null && map.get("country").getClass()
+                        if ((map.get("country") != null) && map.get("country").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setCountry(row.getStringColumn("country").toUpperCase());
                         }
-                        if (map.get("enabled") != null && map.get("enabled").getClass()
+                        if ((map.get("enabled") != null) && map.get("enabled").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setEnabled(row.getBooleanColumn("enabled"));
                         }
-                        if (map.get("ht_mode") != null && map.get("ht_mode").getClass()
+                        if ((map.get("ht_mode") != null) && map.get("ht_mode").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setHtMode(row.getStringColumn("ht_mode"));
                         }
-                        if (map.get("tx_power") != null && map.get("tx_power").getClass()
+                        if ((map.get("tx_power") != null) && map.get("tx_power").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setTxPower(row.getIntegerColumn("tx_power").intValue());
                         }
-                        if (map.get("hw_config") != null && map.get("hw_config").getClass()
+                        if ((map.get("hw_config") != null) && map.get("hw_config").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Map.class)) {
                             tableState.setHwConfig(row.getMapColumn("hw_config"));
                         }
-                        if (map.get("_version") != null && map.get("_version").getClass()
+                        if ((map.get("_version") != null) && map.get("_version").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setVersion(row.getUuidColumn("_version"));
                         }
-                        if (map.get("_uuid") != null && map.get("_uuid").getClass()
+                        if ((map.get("_uuid") != null) && map.get("_uuid").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setVersion(row.getUuidColumn("_uuid"));
                         }
@@ -1640,8 +1647,11 @@ public class OvsdbDao {
                 }
             }
 
-            ret.stream().forEach(wrs -> {
-                LOG.debug("Wifi_Radio_State row {}", wrs);
+            ret.stream().forEach(new Consumer<OpensyncAPRadioState>() {
+                @Override
+                public void accept(OpensyncAPRadioState wrs) {
+                    LOG.debug("Wifi_Radio_State row {}", wrs);
+                }
             });
 
         } catch (Exception e) {
@@ -1669,39 +1679,39 @@ public class OvsdbDao {
                         OpensyncAPInetState tableState = new OpensyncAPInetState();
                         Map<String, Value> map = row.getColumns();
 
-                        if (map.get("NAT") != null && map.get("NAT").getClass()
+                        if ((map.get("NAT") != null) && map.get("NAT").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setNat(row.getBooleanColumn("NAT"));
                         }
-                        if (map.get("enabled") != null && map.get("enabled").getClass()
+                        if ((map.get("enabled") != null) && map.get("enabled").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setEnabled(row.getBooleanColumn("enabled"));
                         }
-                        if (map.get("if_name") != null && map.get("if_name").getClass()
+                        if ((map.get("if_name") != null) && map.get("if_name").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setIfName(row.getStringColumn("if_name"));
                         }
-                        if (map.get("if_type") != null && map.get("if_type").getClass()
+                        if ((map.get("if_type") != null) && map.get("if_type").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setIfType(row.getStringColumn("if_type"));
                         }
-                        if (map.get("ip_assign_scheme") != null && map.get("ip_assign_scheme").getClass()
+                        if ((map.get("ip_assign_scheme") != null) && map.get("ip_assign_scheme").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setIpAssignScheme(row.getStringColumn("ip_assign_scheme"));
                         }
-                        if (map.get("network") != null && map.get("network").getClass()
+                        if ((map.get("network") != null) && map.get("network").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setNetwork(row.getBooleanColumn("network"));
                         }
-                        if (map.get("hwaddr") != null && map.get("hwaddr").getClass()
+                        if ((map.get("hwaddr") != null) && map.get("hwaddr").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setHwAddr(row.getStringColumn("hwaddr"));
                         }
-                        if (map.get("_version") != null && map.get("_version").getClass()
+                        if ((map.get("_version") != null) && map.get("_version").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setVersion(row.getUuidColumn("_version"));
                         }
-                        if (map.get("_uuid") != null && map.get("_uuid").getClass()
+                        if ((map.get("_uuid") != null) && map.get("_uuid").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setVersion(row.getUuidColumn("_uuid"));
                         }
@@ -1711,8 +1721,11 @@ public class OvsdbDao {
                 }
             }
 
-            ret.stream().forEach(wrs -> {
-                LOG.debug("Wifi_Inet_State row {}", wrs);
+            ret.stream().forEach(new Consumer<OpensyncAPInetState>() {
+                @Override
+                public void accept(OpensyncAPInetState wrs) {
+                    LOG.debug("Wifi_Inet_State row {}", wrs);
+                }
             });
 
         } catch (Exception e) {
@@ -1739,61 +1752,61 @@ public class OvsdbDao {
 
                         Map<String, Value> map = row.getColumns();
 
-                        if (map.get("mac") != null && map.get("mac").getClass()
+                        if ((map.get("mac") != null) && map.get("mac").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setMac(row.getStringColumn("mac"));
                         }
-                        if (map.get("bridge") != null && map.get("bridge").getClass()
+                        if ((map.get("bridge") != null) && map.get("bridge").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setBridge(row.getStringColumn("bridge"));
                         }
-                        if (map.get("btm") != null && map.get("btm").getClass()
+                        if ((map.get("btm") != null) && map.get("btm").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setBtm(row.getIntegerColumn("btm").intValue());
                         }
 
-                        if (map.get("channel") != null && map.get("channel").getClass()
+                        if ((map.get("channel") != null) && map.get("channel").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setChannel(row.getIntegerColumn("channel").intValue());
                         }
 
-                        if (map.get("enabled") != null && map.get("enabled").getClass()
+                        if ((map.get("enabled") != null) && map.get("enabled").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setEnabled(row.getBooleanColumn("enabled"));
                         }
 
-                        if (map.get("group_rekey") != null && map.get("group_rekey").getClass()
+                        if ((map.get("group_rekey") != null) && map.get("group_rekey").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setGroupRekey(row.getIntegerColumn("group_rekey").intValue());
                         }
-                        if (map.get("if_name") != null && map.get("if_name").getClass()
+                        if ((map.get("if_name") != null) && map.get("if_name").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setIfName(row.getStringColumn("if_name"));
                         }
 
-                        if (map.get("mode") != null && map.get("mode").getClass()
+                        if ((map.get("mode") != null) && map.get("mode").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setMode(row.getStringColumn("mode"));
                         }
 
-                        if (map.get("rrm") != null && map.get("rrm").getClass()
+                        if ((map.get("rrm") != null) && map.get("rrm").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setRrm(row.getIntegerColumn("rrm").intValue());
                         }
-                        if (map.get("ssid") != null && map.get("ssid").getClass()
+                        if ((map.get("ssid") != null) && map.get("ssid").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setSsid(row.getStringColumn("ssid"));
                         }
 
-                        if (map.get("ssid_broadcast") != null && map.get("ssid_broadcast").getClass()
+                        if ((map.get("ssid_broadcast") != null) && map.get("ssid_broadcast").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setSsidBroadcast(row.getStringColumn("ssid_broadcast"));
                         }
-                        if (map.get("uapsd_enable") != null && map.get("uapsd_enable").getClass()
+                        if ((map.get("uapsd_enable") != null) && map.get("uapsd_enable").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setUapsdEnable(row.getBooleanColumn("uapsd_enable"));
                         }
-                        if (map.get("vif_radio_idx") != null && map.get("vif_radio_idx").getClass()
+                        if ((map.get("vif_radio_idx") != null) && map.get("vif_radio_idx").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setVifRadioIdx(row.getIntegerColumn("vif_radio_idx").intValue());
                         }
@@ -1806,11 +1819,11 @@ public class OvsdbDao {
                             tableState.setSecurity(row.getMapColumn("security"));
                         }
 
-                        if (map.get("_version") != null && map.get("_version").getClass()
+                        if ((map.get("_version") != null) && map.get("_version").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setVersion(row.getUuidColumn("_version"));
                         }
-                        if (map.get("_uuid") != null && map.get("_uuid").getClass()
+                        if ((map.get("_uuid") != null) && map.get("_uuid").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setVersion(row.getUuidColumn("_uuid"));
                         }
@@ -1822,8 +1835,11 @@ public class OvsdbDao {
                 }
             }
 
-            ret.stream().forEach(wrs -> {
-                LOG.debug("Wifi_VIF_State row {}", wrs);
+            ret.stream().forEach(new Consumer<OpensyncAPVIFState>() {
+                @Override
+                public void accept(OpensyncAPVIFState wrs) {
+                    LOG.debug("Wifi_VIF_State row {}", wrs);
+                }
             });
 
         } catch (Exception e) {
@@ -1850,22 +1866,22 @@ public class OvsdbDao {
                         OpensyncWifiAssociatedClients tableState = new OpensyncWifiAssociatedClients();
                         Map<String, Value> map = row.getColumns();
 
-                        if (map.get("mac") != null && map.get("mac").getClass()
+                        if ((map.get("mac") != null) && map.get("mac").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setMac(row.getStringColumn("mac"));
                         }
                         if (row.getSetColumn("capabilities") != null) {
                             tableState.setCapabilities(row.getSetColumn("capabilities"));
                         }
-                        if (map.get("state") != null && map.get("state").getClass()
+                        if ((map.get("state") != null) && map.get("state").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setState(row.getStringColumn("state"));
                         }
-                        if (map.get("_version") != null && map.get("_version").getClass()
+                        if ((map.get("_version") != null) && map.get("_version").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setVersion(row.getUuidColumn("_version"));
                         }
-                        if (map.get("_uuid") != null && map.get("_uuid").getClass()
+                        if ((map.get("_uuid") != null) && map.get("_uuid").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setVersion(row.getUuidColumn("_uuid"));
                         }
@@ -1875,8 +1891,11 @@ public class OvsdbDao {
                     }
                 }
             }
-            ret.stream().forEach(wrs -> {
-                LOG.debug("Wifi_Associated_Clients row {}", wrs);
+            ret.stream().forEach(new Consumer<OpensyncWifiAssociatedClients>() {
+                @Override
+                public void accept(OpensyncWifiAssociatedClients wrs) {
+                    LOG.debug("Wifi_Associated_Clients row {}", wrs);
+                }
             });
         } catch (Exception e) {
             LOG.error("Could not get Wifi_Associated_Clients list from table update", e);
@@ -1910,15 +1929,15 @@ public class OvsdbDao {
                             tableState.setMqttHeaders(row.getMapColumn("mqtt_topics"));
                         }
 
-                        if (map.get("model") != null && map.get("model").getClass()
+                        if ((map.get("model") != null) && map.get("model").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setModel(row.getStringColumn("model"));
                         }
-                        if (map.get("sku_number") != null && map.get("sku_number").getClass()
+                        if ((map.get("sku_number") != null) && map.get("sku_number").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setSkuNumber(row.getStringColumn("sku_number"));
                         }
-                        if (map.get("id") != null && map.get("id").getClass()
+                        if ((map.get("id") != null) && map.get("id").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setId(row.getStringColumn("id"));
                         }
@@ -1926,76 +1945,76 @@ public class OvsdbDao {
                         if (map.get("version_matrix") != null) {
                             tableState.setVersionMatrix(row.getMapColumn("version_matrix"));
                         }
-                        if (map.get("firmware_version") != null && map.get("firmware_version").getClass()
+                        if ((map.get("firmware_version") != null) && map.get("firmware_version").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setFirmwareVersion(row.getStringColumn("firmware_version"));
                         }
-                        if (map.get("firmware_url") != null && map.get("firmware_url").getClass()
+                        if ((map.get("firmware_url") != null) && map.get("firmware_url").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setFirmwareUrl(row.getStringColumn("firmware_url"));
                         }
 
-                        if (map.get("_uuid") != null && map.get("_uuid").getClass()
+                        if ((map.get("_uuid") != null) && map.get("_uuid").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setVersion(row.getUuidColumn("_uuid"));
                         }
-                        if (map.get("upgrade_dl_timer") != null && map.get("upgrade_dl_timer").getClass()
+                        if ((map.get("upgrade_dl_timer") != null) && map.get("upgrade_dl_timer").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setUpgradeDlTimer(row.getIntegerColumn("upgrade_dl_timer").intValue());
                         }
-                        if (map.get("platform_version") != null && map.get("platform_version").getClass()
+                        if ((map.get("platform_version") != null) && map.get("platform_version").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setPlatformVersion(row.getStringColumn("platform_version"));
                         }
-                        if (map.get("firmware_pass") != null && map.get("firmware_pass").getClass()
+                        if ((map.get("firmware_pass") != null) && map.get("firmware_pass").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setFirmwarePass(row.getStringColumn("firmware_pass"));
                         }
-                        if (map.get("upgrade_timer") != null && map.get("upgrade_timer").getClass()
+                        if ((map.get("upgrade_timer") != null) && map.get("upgrade_timer").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setUpgradeTimer(row.getIntegerColumn("upgrade_timer").intValue());
                         }
-                        if (map.get("max_backoff") != null && map.get("max_backoff").getClass()
+                        if ((map.get("max_backoff") != null) && map.get("max_backoff").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setMaxBackoff(row.getIntegerColumn("max_backoff").intValue());
                         }
                         if (map.get("led_config") != null) {
                             tableState.setLedConfig(row.getMapColumn("led_config"));
                         }
-                        if (map.get("redirector_addr") != null && map.get("redirector_addr").getClass()
+                        if ((map.get("redirector_addr") != null) && map.get("redirector_addr").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setRedirectorAddr(row.getStringColumn("redirector_addr"));
                         }
-                        if (map.get("serial_number") != null && map.get("serial_number").getClass()
+                        if ((map.get("serial_number") != null) && map.get("serial_number").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setSerialNumber(row.getStringColumn("serial_number"));
                         }
-                        if (map.get("_version") != null && map.get("_version").getClass()
+                        if ((map.get("_version") != null) && map.get("_version").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setVersion(row.getUuidColumn("_version"));
                         }
-                        if (map.get("upgrade_status") != null && map.get("upgrade_status").getClass()
+                        if ((map.get("upgrade_status") != null) && map.get("upgrade_status").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setUpgradeTimer(row.getIntegerColumn("upgrade_status").intValue());
                         }
-                        if (map.get("device_mode") != null && map.get("device_mode").getClass()
+                        if ((map.get("device_mode") != null) && map.get("device_mode").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setDeviceMode(row.getStringColumn("device_mode"));
                         }
-                        if (map.get("min_backoff") != null && map.get("min_backoff").getClass()
+                        if ((map.get("min_backoff") != null) && map.get("min_backoff").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setMinBackoff(row.getIntegerColumn("min_backoff").intValue());
                         }
 
-                        if (map.get("revision") != null && map.get("revision").getClass()
+                        if ((map.get("revision") != null) && map.get("revision").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setRevision(row.getStringColumn("revision"));
                         }
-                        if (map.get("manager_addr") != null && map.get("manager_addr").getClass()
+                        if ((map.get("manager_addr") != null) && map.get("manager_addr").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setManagerAddr(row.getStringColumn("manager_addr"));
                         }
-                        if (map.get("factory_reset") != null && map.get("factory_reset").getClass()
+                        if ((map.get("factory_reset") != null) && map.get("factory_reset").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setFactoryReset(row.getBooleanColumn("factory_reset"));
                         }
@@ -2029,7 +2048,7 @@ public class OvsdbDao {
         updateColumns.put("hw_config", hwConfigMap);
         updateColumns.put("bcn_int", new Atom<>(beaconInterval));
         updateColumns.put("enabled", new Atom<>(enabled));
-        if (ht_mode != null && !ht_mode.equals("0")) {
+        if ((ht_mode != null) && !ht_mode.equals("0")) {
             updateColumns.put("ht_mode", new Atom<>(ht_mode));
         } else {
             updateColumns.put("ht_mode", new com.vmware.ovsdb.protocol.operation.notation.Set());
@@ -2155,14 +2174,14 @@ public class OvsdbDao {
         fResult = ovsdbClient.transact(ovsdbName, operations);
         result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
-        Set<Uuid> vifConfigsSet = new HashSet<Uuid>();
+        Set<Uuid> vifConfigsSet = new HashSet<>();
 
-        if (result != null && result.length > 0 && !((SelectResult) result[0]).getRows().isEmpty()) {
+        if ((result != null) && (result.length > 0) && !((SelectResult) result[0]).getRows().isEmpty()) {
             row = ((SelectResult) result[0]).getRows().iterator().next();
             if (row != null) {
                 vifConfigsSet = row.getSetColumn("vif_configs");
                 if (vifConfigsSet == null) {
-                    vifConfigsSet = new HashSet<Uuid>();
+                    vifConfigsSet = new HashSet<>();
                 }
             }
         }
@@ -2196,29 +2215,31 @@ public class OvsdbDao {
     public void configureSsids(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
 
         boolean rrmEnabled = false;
-        if (opensyncApConfig.getEquipmentLocation() != null
-                && opensyncApConfig.getEquipmentLocation().getDetails() != null) {
+        if ((opensyncApConfig.getEquipmentLocation() != null)
+                && (opensyncApConfig.getEquipmentLocation().getDetails() != null)) {
             rrmEnabled = opensyncApConfig.getEquipmentLocation().getDetails().isRrmEnabled();
         }
 
         List<RadioType> enabledRadiosFromAp = new ArrayList<>();
         getEnabledRadios(ovsdbClient, enabledRadiosFromAp);
-              
+
         for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
 
             SsidConfiguration ssidConfig = (SsidConfiguration) ssidProfile.getDetails();
             ApElementConfiguration apElementConfig = (ApElementConfiguration) opensyncApConfig.getCustomerEquipment()
                     .getDetails();
             for (RadioType radioType : ssidConfig.getAppliedRadios()) {
-// Still put profiles on disabled radios for now.
-//                
-//                if (!enabledRadiosFromAp.contains(radioType)) {
-//                    // Not on this AP
-//                    LOG.debug(
-//                            "AP {} does not have a radio where frequency band is {}. Cannot provision this radio profile on AP.",
-//                            opensyncApConfig.getCustomerEquipment().getInventoryId(), radioType);
-//                    continue;
-//                }
+                // Still put profiles on disabled radios for now.
+                //
+                // if (!enabledRadiosFromAp.contains(radioType)) {
+                // // Not on this AP
+                // LOG.debug(
+                // "AP {} does not have a radio where frequency band is {}.
+                // Cannot provision this radio profile on AP.",
+                // opensyncApConfig.getCustomerEquipment().getInventoryId(),
+                // radioType);
+                // continue;
+                // }
                 int keyRefresh = ssidConfig.getKeyRefresh();
 
                 boolean ssidBroadcast = ssidConfig.getBroadcastSsid() == StateSetting.enabled;
@@ -2260,7 +2281,7 @@ public class OvsdbDao {
 
                 if (ssidConfig.getRadioBasedConfigs() != null) {
                     if (ssidConfig.getRadioBasedConfigs().containsKey(radioType)
-                            && ssidConfig.getRadioBasedConfigs().get(radioType) != null) {
+                            && (ssidConfig.getRadioBasedConfigs().get(radioType) != null)) {
                         if (ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211r() != null) {
                             enable80211r = ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211r();
                         }
@@ -2356,8 +2377,12 @@ public class OvsdbDao {
     private void getRadiusConfiguration(OpensyncAPConfig opensyncApConfig, SsidConfiguration ssidConfig,
             Map<String, String> security) {
         List<Profile> radiusServiceList = new ArrayList<>();
-        radiusServiceList = opensyncApConfig.getRadiusProfiles().stream()
-                .filter(p -> p.getName().equals((ssidConfig.getRadiusServiceName()))).collect(Collectors.toList());
+        radiusServiceList = opensyncApConfig.getRadiusProfiles().stream().filter(new Predicate<Profile>() {
+            @Override
+            public boolean test(Profile p) {
+                return p.getName().equals((ssidConfig.getRadiusServiceName()));
+            }
+        }).collect(Collectors.toList());
         if (!radiusServiceList.isEmpty()) {
             Profile profileRadius = radiusServiceList.get(0);
             String region = opensyncApConfig.getEquipmentLocation().getName();
@@ -2588,20 +2613,23 @@ public class OvsdbDao {
     private void provisionWifiStatsConfigCapacity(Map<String, WifiRadioConfigInfo> radioConfigs,
             Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs, List<Operation> operations) {
 
-        radioConfigs.values().stream().forEach(rc -> {
-            if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_capacity")) {
-                //
-                Map<String, Value> rowColumns = new HashMap<>();
-                rowColumns.put("radio_type", new Atom<>(rc.freqBand));
-                rowColumns.put("reporting_interval", new Atom<>(60));
-                // rowColumns.put("sampling_interval", new Atom<>(3));
-                rowColumns.put("stats_type", new Atom<>("capacity"));
-                // rowColumns.put("survey_interval_ms", new Atom<>(65));
-                // rowColumns.put("survey_type", new Atom<>("on-chan"));
+        radioConfigs.values().stream().forEach(new Consumer<WifiRadioConfigInfo>() {
+            @Override
+            public void accept(WifiRadioConfigInfo rc) {
+                if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_capacity")) {
+                    //
+                    Map<String, Value> rowColumns = new HashMap<>();
+                    rowColumns.put("radio_type", new Atom<>(rc.freqBand));
+                    rowColumns.put("reporting_interval", new Atom<>(60));
+                    // rowColumns.put("sampling_interval", new Atom<>(3));
+                    rowColumns.put("stats_type", new Atom<>("capacity"));
+                    // rowColumns.put("survey_interval_ms", new Atom<>(65));
+                    // rowColumns.put("survey_type", new Atom<>("on-chan"));
 
-                Row updateRow = new Row(rowColumns);
-                operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
+                    Row updateRow = new Row(rowColumns);
+                    operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
 
+                }
             }
         });
 
@@ -2610,20 +2638,23 @@ public class OvsdbDao {
     private void provisionWifiStatsConfigBandSteering(Map<String, WifiRadioConfigInfo> radioConfigs,
             Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs, List<Operation> operations) {
 
-        radioConfigs.values().stream().forEach(rc -> {
-            if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_steering")) {
-                //
-                Map<String, Value> rowColumns = new HashMap<>();
-                rowColumns.put("radio_type", new Atom<>(rc.freqBand));
-                rowColumns.put("reporting_interval", new Atom<>(60));
-                // rowColumns.put("sampling_interval", new Atom<>(3));
-                rowColumns.put("stats_type", new Atom<>("steering"));
-                // rowColumns.put("survey_interval_ms", new Atom<>(65));
-                // rowColumns.put("survey_type", new Atom<>("on-chan"));
+        radioConfigs.values().stream().forEach(new Consumer<WifiRadioConfigInfo>() {
+            @Override
+            public void accept(WifiRadioConfigInfo rc) {
+                if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_steering")) {
+                    //
+                    Map<String, Value> rowColumns = new HashMap<>();
+                    rowColumns.put("radio_type", new Atom<>(rc.freqBand));
+                    rowColumns.put("reporting_interval", new Atom<>(60));
+                    // rowColumns.put("sampling_interval", new Atom<>(3));
+                    rowColumns.put("stats_type", new Atom<>("steering"));
+                    // rowColumns.put("survey_interval_ms", new Atom<>(65));
+                    // rowColumns.put("survey_type", new Atom<>("on-chan"));
 
-                Row updateRow = new Row(rowColumns);
-                operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
+                    Row updateRow = new Row(rowColumns);
+                    operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
 
+                }
             }
         });
 
@@ -2632,20 +2663,23 @@ public class OvsdbDao {
     private void provisionWifiStatsRssi(Map<String, WifiRadioConfigInfo> radioConfigs,
             Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs, List<Operation> operations) {
 
-        radioConfigs.values().stream().forEach(rc -> {
-            if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_rssi")) {
-                //
-                Map<String, Value> rowColumns = new HashMap<>();
-                rowColumns.put("radio_type", new Atom<>(rc.freqBand));
-                rowColumns.put("reporting_interval", new Atom<>(30));
-                // rowColumns.put("sampling_interval", new Atom<>(3));
-                rowColumns.put("stats_type", new Atom<>("rssi"));
-                rowColumns.put("survey_interval_ms", new Atom<>(65));
-                // rowColumns.put("survey_type", new Atom<>("on-chan"));
+        radioConfigs.values().stream().forEach(new Consumer<WifiRadioConfigInfo>() {
+            @Override
+            public void accept(WifiRadioConfigInfo rc) {
+                if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_rssi")) {
+                    //
+                    Map<String, Value> rowColumns = new HashMap<>();
+                    rowColumns.put("radio_type", new Atom<>(rc.freqBand));
+                    rowColumns.put("reporting_interval", new Atom<>(30));
+                    // rowColumns.put("sampling_interval", new Atom<>(3));
+                    rowColumns.put("stats_type", new Atom<>("rssi"));
+                    rowColumns.put("survey_interval_ms", new Atom<>(65));
+                    // rowColumns.put("survey_type", new Atom<>("on-chan"));
 
-                Row updateRow = new Row(rowColumns);
-                operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
+                    Row updateRow = new Row(rowColumns);
+                    operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
 
+                }
             }
         });
     }
@@ -2653,79 +2687,47 @@ public class OvsdbDao {
     private void provisionWifiStatsConfigNeighbor(Map<String, Set<Integer>> allowedChannels,
             Map<String, WifiRadioConfigInfo> radioConfigs, Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs,
             List<Operation> operations) {
-        Map<String, Value> updateColumns;
-        Row row;
-        com.vmware.ovsdb.protocol.operation.notation.Set channels2g = com.vmware.ovsdb.protocol.operation.notation.Set
-                .of(allowedChannels.get("2.4G"));
 
-        com.vmware.ovsdb.protocol.operation.notation.Set channels5gl = com.vmware.ovsdb.protocol.operation.notation.Set
-                .of(allowedChannels.get("5GL"));
+        radioConfigs.values().stream().forEach(new Consumer<WifiRadioConfigInfo>() {
+            @Override
+            public void accept(WifiRadioConfigInfo rc) {
+                if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_neighbor_off-chan")) {
+                    //
+                    Map<String, Value> rowColumns = new HashMap<>();
+                    com.vmware.ovsdb.protocol.operation.notation.Set channels = com.vmware.ovsdb.protocol.operation.notation.Set
+                            .of(allowedChannels.get(rc.freqBand));
+                    if (channels == null) {
+                        channels = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
+                    }
+                    rowColumns.put("channel_list", channels);
 
-        com.vmware.ovsdb.protocol.operation.notation.Set channels5gu = com.vmware.ovsdb.protocol.operation.notation.Set
-                .of(allowedChannels.get("5GU"));
+                    rowColumns.put("radio_type", new Atom<>(rc.freqBand));
+                    rowColumns.put("reporting_interval", new Atom<>(60));
+                    rowColumns.put("stats_type", new Atom<>("neighbor"));
+                    rowColumns.put("survey_type", new Atom<>("off-chan"));
 
-        if (channels2g == null) {
-            channels2g = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
-        }
+                    Row updateRow = new Row(rowColumns);
+                    operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
 
-        if (channels5gl == null) {
-            channels5gl = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
-        }
+                }
+            }
+        });
 
-        if (channels5gu == null) {
-            channels5gu = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
-        }
+        radioConfigs.values().stream().forEach(new Consumer<WifiRadioConfigInfo>() {
+            @Override
+            public void accept(WifiRadioConfigInfo rc) {
+                if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_neighbor_on-chan")) {
+                    //
+                    Map<String, Value> rowColumns = new HashMap<>();
+                    rowColumns.put("radio_type", new Atom<>(rc.freqBand));
+                    rowColumns.put("reporting_interval", new Atom<>(60));
+                    rowColumns.put("stats_type", new Atom<>("neighbor"));
+                    rowColumns.put("survey_type", new Atom<>("on-chan"));
 
-        if (!provisionedWifiStatsConfigs.containsKey("2.4G_neighbor_off-chan")) {
-            updateColumns = new HashMap<>();
-            updateColumns.put("channel_list", channels2g);
-            updateColumns.put("radio_type", new Atom<>("2.4G"));
-            updateColumns.put("reporting_interval", new Atom<>(120));
-            updateColumns.put("stats_type", new Atom<>("neighbor"));
-            updateColumns.put("survey_type", new Atom<>("off-chan"));
-            row = new Row(updateColumns);
-            operations.add(new Insert(wifiStatsConfigDbTable, row));
+                    Row updateRow = new Row(rowColumns);
+                    operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
 
-        }
-
-        if (!provisionedWifiStatsConfigs.containsKey("5GL_neighbor_off-chan")) {
-
-            updateColumns = new HashMap<>();
-            updateColumns.put("channel_list", channels5gl);
-            updateColumns.put("radio_type", new Atom<>("5GL"));
-            updateColumns.put("reporting_interval", new Atom<>(120));
-            updateColumns.put("stats_type", new Atom<>("neighbor"));
-            updateColumns.put("survey_type", new Atom<>("off-chan"));
-            row = new Row(updateColumns);
-            operations.add(new Insert(wifiStatsConfigDbTable, row));
-
-        }
-
-        if (!provisionedWifiStatsConfigs.containsKey("5GU_neighbor_off-chan")) {
-
-            updateColumns = new HashMap<>();
-            updateColumns.put("channel_list", channels5gu);
-            updateColumns.put("radio_type", new Atom<>("5GU"));
-            updateColumns.put("reporting_interval", new Atom<>(120));
-            updateColumns.put("stats_type", new Atom<>("neighbor"));
-            updateColumns.put("survey_type", new Atom<>("off-chan"));
-            row = new Row(updateColumns);
-            operations.add(new Insert(wifiStatsConfigDbTable, row));
-
-        }
-
-        radioConfigs.values().stream().forEach(rc -> {
-            if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_neighbor_on-chan")) {
-                //
-                Map<String, Value> rowColumns = new HashMap<>();
-                rowColumns.put("radio_type", new Atom<>(rc.freqBand));
-                rowColumns.put("reporting_interval", new Atom<>(60));
-                rowColumns.put("stats_type", new Atom<>("neighbor"));
-                rowColumns.put("survey_type", new Atom<>("on-chan"));
-
-                Row updateRow = new Row(rowColumns);
-                operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
-
+                }
             }
         });
 
@@ -2735,119 +2737,76 @@ public class OvsdbDao {
             Map<String, WifiRadioConfigInfo> radioConfigs, Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs,
             List<Operation> operations, com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer> thresholds) {
 
-        com.vmware.ovsdb.protocol.operation.notation.Set channels2g = com.vmware.ovsdb.protocol.operation.notation.Set
-                .of(allowedChannels.get("2.4G"));
+        radioConfigs.values().stream().forEach(new Consumer<WifiRadioConfigInfo>() {
+            @Override
+            public void accept(WifiRadioConfigInfo rc) {
+                if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_survey_on-chan")) {
 
-        com.vmware.ovsdb.protocol.operation.notation.Set channels5gl = com.vmware.ovsdb.protocol.operation.notation.Set
-                .of(allowedChannels.get("5GL"));
+                    Map<String, Value> rowColumns = new HashMap<>();
+                    rowColumns.put("radio_type", new Atom<>(rc.freqBand));
+                    rowColumns.put("reporting_interval", new Atom<>(60));
+                    rowColumns.put("report_type", new Atom<>("raw"));
+                    rowColumns.put("sampling_interval", new Atom<>(6));
+                    rowColumns.put("stats_type", new Atom<>("survey"));
+                    rowColumns.put("survey_interval_ms", new Atom<>(65));
+                    rowColumns.put("survey_type", new Atom<>("on-chan"));
 
-        com.vmware.ovsdb.protocol.operation.notation.Set channels5gu = com.vmware.ovsdb.protocol.operation.notation.Set
-                .of(allowedChannels.get("5GU"));
+                    Row updateRow = new Row(rowColumns);
+                    operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
 
-        if (channels2g == null) {
-            channels2g = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
-        }
-
-        if (channels5gl == null) {
-            channels5gl = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
-        }
-
-        if (channels5gu == null) {
-            channels5gu = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
-        }
-
-        Map<String, Value> updateColumns;
-        Row row;
-
-        radioConfigs.values().stream().forEach(rc -> {
-            if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_survey_on-chan")) {
-
-                Map<String, Value> rowColumns = new HashMap<>();
-                rowColumns.put("radio_type", new Atom<>(rc.freqBand));
-                rowColumns.put("reporting_interval", new Atom<>(60));
-                rowColumns.put("report_type", new Atom<>("raw"));
-                rowColumns.put("sampling_interval", new Atom<>(6));
-                rowColumns.put("stats_type", new Atom<>("survey"));
-                rowColumns.put("survey_interval_ms", new Atom<>(65));
-                rowColumns.put("survey_type", new Atom<>("on-chan"));
-
-                Row updateRow = new Row(rowColumns);
-                operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
-
+                }
             }
         });
 
-        if (!provisionedWifiStatsConfigs.containsKey("2.4G_survey_off-chan")) {
+        radioConfigs.values().stream().forEach(new Consumer<WifiRadioConfigInfo>() {
+            @Override
+            public void accept(WifiRadioConfigInfo rc) {
+                if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_survey_off-chan")) {
+                    //
+                    Map<String, Value> rowColumns = new HashMap<>();
+                    com.vmware.ovsdb.protocol.operation.notation.Set channels = com.vmware.ovsdb.protocol.operation.notation.Set
+                            .of(allowedChannels.get(rc.freqBand));
+                    if (channels == null) {
+                        channels = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
+                    }
+                    rowColumns.put("channel_list", channels);
 
-            updateColumns = new HashMap<>();
-            updateColumns.put("channel_list", channels2g);
-            updateColumns.put("radio_type", new Atom<>("2.4G"));
-            updateColumns.put("reporting_interval", new Atom<>(600));
-            updateColumns.put("report_type", new Atom<>("raw"));
-            updateColumns.put("sampling_interval", new Atom<>(60));
-            updateColumns.put("stats_type", new Atom<>("survey"));
-            updateColumns.put("survey_interval_ms", new Atom<>(65));
-            updateColumns.put("survey_type", new Atom<>("off-chan"));
-            updateColumns.put("threshold", thresholds);
-            row = new Row(updateColumns);
-            operations.add(new Insert(wifiStatsConfigDbTable, row));
+                    rowColumns.put("radio_type", new Atom<>(rc.freqBand));
+                    rowColumns.put("reporting_interval", new Atom<>(60));
+                    rowColumns.put("stats_type", new Atom<>("survey"));
+                    rowColumns.put("survey_type", new Atom<>("off-chan"));
+                    rowColumns.put("report_type", new Atom<>("raw"));
+                    rowColumns.put("sampling_interval", new Atom<>(60));
+                    rowColumns.put("survey_interval_ms", new Atom<>(65));
+                    rowColumns.put("threshold", thresholds);
+                    Row updateRow = new Row(rowColumns);
+                    operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
 
-        }
-
-        if (!provisionedWifiStatsConfigs.containsKey("5GL_survey_off-chan")) {
-
-            updateColumns = new HashMap<>();
-            updateColumns.put("channel_list", channels5gl);
-            updateColumns.put("radio_type", new Atom<>("5GL"));
-            updateColumns.put("reporting_interval", new Atom<>(600));
-            updateColumns.put("report_type", new Atom<>("raw"));
-            updateColumns.put("sampling_interval", new Atom<>(45));
-            updateColumns.put("stats_type", new Atom<>("survey"));
-            updateColumns.put("survey_interval_ms", new Atom<>(65));
-            updateColumns.put("survey_type", new Atom<>("off-chan"));
-            updateColumns.put("threshold", thresholds);
-            row = new Row(updateColumns);
-            operations.add(new Insert(wifiStatsConfigDbTable, row));
-
-        }
-
-        if (!provisionedWifiStatsConfigs.containsKey("5GU_survey_off-chan")) {
-
-            updateColumns = new HashMap<>();
-            updateColumns.put("channel_list", channels5gu);
-            updateColumns.put("radio_type", new Atom<>("5GU"));
-            updateColumns.put("reporting_interval", new Atom<>(600));
-            updateColumns.put("report_type", new Atom<>("raw"));
-            updateColumns.put("sampling_interval", new Atom<>(30));
-            updateColumns.put("stats_type", new Atom<>("survey"));
-            updateColumns.put("survey_interval_ms", new Atom<>(65));
-            updateColumns.put("survey_type", new Atom<>("off-chan"));
-            updateColumns.put("threshold", thresholds);
-            row = new Row(updateColumns);
-            operations.add(new Insert(wifiStatsConfigDbTable, row));
-
-        }
+                }
+            }
+        });
 
     }
 
     private void provisionWifiStatsConfigClient(Map<String, WifiRadioConfigInfo> radioConfigs,
             Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs, List<Operation> operations) {
 
-        radioConfigs.values().stream().forEach(rc -> {
-            if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_client")) {
-                //
-                Map<String, Value> rowColumns = new HashMap<>();
-                rowColumns.put("radio_type", new Atom<>(rc.freqBand));
-                rowColumns.put("reporting_interval", new Atom<>(60));
-                rowColumns.put("report_type", new Atom<>("raw"));
-                rowColumns.put("sampling_interval", new Atom<>(10));
-                rowColumns.put("stats_type", new Atom<>("client"));
-                rowColumns.put("survey_interval_ms", new Atom<>(65));
-                // rowColumns.put("survey_type", new Atom<>("on-chan"));
+        radioConfigs.values().stream().forEach(new Consumer<WifiRadioConfigInfo>() {
+            @Override
+            public void accept(WifiRadioConfigInfo rc) {
+                if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_client")) {
+                    //
+                    Map<String, Value> rowColumns = new HashMap<>();
+                    rowColumns.put("radio_type", new Atom<>(rc.freqBand));
+                    rowColumns.put("reporting_interval", new Atom<>(60));
+                    rowColumns.put("report_type", new Atom<>("raw"));
+                    rowColumns.put("sampling_interval", new Atom<>(10));
+                    rowColumns.put("stats_type", new Atom<>("client"));
+                    rowColumns.put("survey_interval_ms", new Atom<>(65));
+                    Row updateRow = new Row(rowColumns);
+                    operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
 
-                Row updateRow = new Row(rowColumns);
-                operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
-
+                }
             }
         });
 
@@ -2916,6 +2875,7 @@ public class OvsdbDao {
 
     public void removeAllStatsConfigs(OvsdbClient ovsdbClient) {
 
+        LOG.info("Remove existing Wifi_Stats_Config table entries");
         try {
             List<Operation> operations = new ArrayList<>();
 

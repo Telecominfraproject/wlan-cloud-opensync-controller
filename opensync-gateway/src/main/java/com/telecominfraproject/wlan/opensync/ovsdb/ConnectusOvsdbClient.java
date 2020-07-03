@@ -78,6 +78,8 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
         ConnectionCallback connectionCallback = new ConnectionCallback() {
             @Override
             public void connected(OvsdbClient ovsdbClient) {
+                
+                LOG.info("MJH {}", ovsdbClient.getConnectionInfo());
                 String remoteHost = ovsdbClient.getConnectionInfo().getRemoteAddress().getHostAddress();
                 int localPort = ovsdbClient.getConnectionInfo().getLocalPort();
                 String subjectDn = null;
@@ -97,7 +99,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                     // with the serialNumber and using it as a key (equivalent
                     // of KDC unique qrCode)
                     String key = clientCn + "_" + connectNodeInfo.serialNumber;
-                    ConnectusOvsdbClient.this.ovsdbSessionMapInterface.newSession(key, ovsdbClient);
+                    ovsdbSessionMapInterface.newSession(key, ovsdbClient);
                     extIntegrationInterface.apConnected(key, connectNodeInfo);
 
                     // push configuration to AP
@@ -105,8 +107,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                     monitorOvsdbStateTables(ovsdbClient, key);
 
                     LOG.info("ovsdbClient connected from {} on port {} key {} ", remoteHost, localPort, key);
-                    LOG.info("ovsdbClient connectedClients = {}",
-                            ConnectusOvsdbClient.this.ovsdbSessionMapInterface.getNumSessions());
+                    LOG.info("ovsdbClient connectedClients = {}", ovsdbSessionMapInterface.getNumSessions());
 
                 } catch (Exception e) {
                     LOG.error("ovsdbClient error", e);
@@ -139,13 +140,12 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                 // so we are doing a reverse lookup here, and then if we find
                 // the key we will
                 // remove the entry from the connectedClients.
-                String key = ConnectusOvsdbClient.this.ovsdbSessionMapInterface.lookupClientId(ovsdbClient);
+                String key = ovsdbSessionMapInterface.lookupClientId(ovsdbClient);
 
                 if (key != null) {
-                    cancelMonitors(ovsdbClient, key);
                     try {
                         extIntegrationInterface.apDisconnected(key);
-                        ConnectusOvsdbClient.this.ovsdbSessionMapInterface.removeSession(key);
+                        ovsdbSessionMapInterface.removeSession(key);
                     } catch (Exception e) {
                         LOG.debug("Unable to process ap disconnect. {}", e.getMessage());
                     } finally {
@@ -155,11 +155,8 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
                 LOG.info("ovsdbClient disconnected from {} on port {} clientCn {} key {} ", remoteHost, localPort,
                         clientCn, key);
-                LOG.info("ovsdbClient connectedClients = {}",
-                        ConnectusOvsdbClient.this.ovsdbSessionMapInterface.getNumSessions());
+                LOG.info("ovsdbClient connectedClients = {}", ovsdbSessionMapInterface.getNumSessions());
             }
-
-           
 
         };
 
@@ -167,7 +164,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
         LOG.info("Manager waiting for connection on port {}...", ovsdbListenPort);
     }
-    
+
     private void cancelMonitors(OvsdbClient ovsdbClient, String key) {
         try {
             ovsdbClient.cancelMonitor(OvsdbDao.wifiRadioStateDbTable + "_" + key).join();
@@ -203,7 +200,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
             ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
         }
-        
+
         ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
         ovsdbDao.configureStats(ovsdbClient);
 
@@ -253,22 +250,21 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
         OvsdbClient ovsdbClient = ovsdbSession.getOvsdbClient();
 
-
         OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
 
         if (opensyncAPConfig != null) {
             try {
+
                 ovsdbClient.cancelMonitor(OvsdbDao.wifiRadioStateDbTable + "_" + apId).join();
                 ovsdbClient.cancelMonitor(OvsdbDao.wifiVifStateDbTable + "_" + apId).join();
                 ovsdbDao.removeAllSsids(ovsdbClient);
 
                 ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
                 ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
-                
-                
+
                 ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
                 ovsdbDao.configureStats(ovsdbClient);
-                
+
                 if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
                     ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
                 }
@@ -276,32 +272,27 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                 monitorWifiVifStateDbTable(ovsdbClient, apId);
 
             } catch (OvsdbClientException e) {
-                LOG.error("Could not enable/disable table state monitors, cannot proccess config change for AP {}", apId);
+                LOG.error("Could not enable/disable table state monitors, cannot proccess config change for AP {}",
+                        apId);
             }
-            
-            
 
-            
         } else {
             LOG.warn("Could not get provisioned configuration for AP {}", apId);
         }
-        
-
 
         LOG.debug("Finished processConfigChanged for {}", apId);
     }
 
     private void monitorOvsdbStateTables(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
         monitorWifiRadioStateDbTable(ovsdbClient, key);
-//        monitorWifiInetStateDbTable(ovsdbClient, key);
+        monitorWifiInetStateDbTable(ovsdbClient, key);
 
         monitorWifiVifStateDbTableDeletion(ovsdbClient, key);
 
         monitorWifiVifStateDbTable(ovsdbClient, key);
 
-//        monitorWifiAssociatedClientsDbTableDeletion(ovsdbClient, key);
-
-//        monitorWifiAssociatedClientsDbTable(ovsdbClient, key);
+        monitorWifiAssociatedClientsDbTable(ovsdbClient, key);
+        monitorWifiAssociatedClientsDbTableDeletion(ovsdbClient, key);
 
         monitorAwlanNodeDbTable(ovsdbClient, key);
 
@@ -316,6 +307,8 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
                             @Override
                             public void update(TableUpdates tableUpdates) {
+                                LOG.info("Monitor callback received {}", tableUpdates);
+
                                 extIntegrationInterface.awlanNodeDbTableUpdate(
                                         ovsdbDao.getOpensyncAWLANNode(tableUpdates, key, ovsdbClient), key);
                             }
@@ -333,6 +326,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
                             @Override
                             public void update(TableUpdates tableUpdates) {
+                                LOG.info("Monitor callback received {}", tableUpdates);
 
                                 for (TableUpdate tableUpdate : tableUpdates.getTableUpdates().values()) {
 
@@ -355,6 +349,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
                     @Override
                     public void update(TableUpdates tableUpdates) {
+                        LOG.info("Monitor callback received {}", tableUpdates);
 
                         extIntegrationInterface.wifiInetStateDbTableUpdate(
                                 ovsdbDao.getOpensyncAPInetState(tableUpdates, key, ovsdbClient), key);
@@ -374,6 +369,8 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
                             @Override
                             public void update(TableUpdates tableUpdates) {
+                                LOG.info("Monitor callback received {}", tableUpdates);
+
                                 extIntegrationInterface.wifiRadioStatusDbTableUpdate(
                                         ovsdbDao.getOpensyncAPRadioState(tableUpdates, key, ovsdbClient), key);
                             }
@@ -390,6 +387,9 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                         new MonitorCallback() {
                             @Override
                             public void update(TableUpdates tableUpdates) {
+
+                                LOG.info("Monitor callback received {}", tableUpdates);
+
                                 // extIntegrationInterface.wifiVIFStateDbTableUpdate(
                                 // ovsdbDao.getOpensyncAPVIFState(tableUpdates,
                                 // key, ovsdbClient), key);
@@ -399,22 +399,22 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
                                     for (Entry<UUID, RowUpdate> rowUpdate : tableUpdate.getValue().getRowUpdates()
                                             .entrySet()) {
-                                        if (rowUpdate.getValue().getOld() != null
-                                                && rowUpdate.getValue().getNew() == null) {
+                                        if ((rowUpdate.getValue().getOld() != null)
+                                                && (rowUpdate.getValue().getNew() == null)) {
                                             Row row = rowUpdate.getValue().getOld();
                                             String ifName = null;
                                             String ssid = null;
-                                            if (row.getColumns().get("ssid") != null
+                                            if ((row.getColumns().get("ssid") != null)
                                                     && row.getColumns().get("ssid").getClass().equals(
                                                             com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                                                 ssid = row.getStringColumn("ssid");
                                             }
-                                            if (row.getColumns().get("if_name") != null
+                                            if ((row.getColumns().get("if_name") != null)
                                                     && row.getColumns().get("if_name").getClass().equals(
                                                             com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                                                 ifName = row.getStringColumn("if_name");
                                             }
-                                            if (ifName != null && ssid != null) {
+                                            if ((ifName != null) && (ssid != null)) {
                                                 OpensyncAPVIFState toBeDeleted = new OpensyncAPVIFState();
                                                 toBeDeleted.setSsid(ssid);
                                                 toBeDeleted.setIfName(ifName);
@@ -425,7 +425,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
                                     }
 
-                                    if (tableUpdate.getValue().getRowUpdates().values().isEmpty()) {
+                                    if (tableUpdate.getValue().getRowUpdates().isEmpty()) {
                                         tableUpdates.getTableUpdates().remove(tableUpdate.getKey());
                                     }
 
@@ -442,7 +442,8 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
         vsdCf.join();
     }
 
-    private void monitorWifiAssociatedClientsDbTableDeletion(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
+    private void monitorWifiAssociatedClientsDbTableDeletion(OvsdbClient ovsdbClient, String key)
+            throws OvsdbClientException {
         CompletableFuture<TableUpdates> acdCf = ovsdbClient
                 .monitor(OvsdbDao.ovsdbName, OvsdbDao.wifiAssociatedClientsDbTable + "_delete_" + key,
                         new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiAssociatedClientsDbTable,
@@ -451,11 +452,12 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
                             @Override
                             public void update(TableUpdates tableUpdates) {
+                                LOG.info("Monitor callback received {}", tableUpdates);
 
                                 for (TableUpdate tableUpdate : tableUpdates.getTableUpdates().values()) {
 
                                     for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
-                                        if (rowUpdate.getOld() != null && rowUpdate.getNew() == null) {
+                                        if ((rowUpdate.getOld() != null) && (rowUpdate.getNew() == null)) {
                                             Row row = rowUpdate.getOld();
                                             String deletedClientMac = row.getStringColumn("mac");
                                             extIntegrationInterface.wifiAssociatedClientsDbTableDelete(deletedClientMac,
@@ -479,6 +481,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                         new MonitorCallback() {
                             @Override
                             public void update(TableUpdates tableUpdates) {
+                                LOG.info("Monitor callback received {}", tableUpdates);
 
                                 extIntegrationInterface.wifiVIFStateDbTableUpdate(
                                         ovsdbDao.getOpensyncAPVIFState(tableUpdates, key, ovsdbClient), key);
