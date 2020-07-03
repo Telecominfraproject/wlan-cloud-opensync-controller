@@ -79,7 +79,6 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
             @Override
             public void connected(OvsdbClient ovsdbClient) {
                 
-                LOG.info("MJH {}", ovsdbClient.getConnectionInfo());
                 String remoteHost = ovsdbClient.getConnectionInfo().getRemoteAddress().getHostAddress();
                 int localPort = ovsdbClient.getConnectionInfo().getLocalPort();
                 String subjectDn = null;
