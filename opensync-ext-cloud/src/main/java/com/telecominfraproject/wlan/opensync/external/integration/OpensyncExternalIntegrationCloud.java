@@ -1479,16 +1479,18 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         LOG.debug("tidStats {}", tidStats);
                     }
 
-                    try {
-                        if (ssidStatistics.getBssid() != null && ssidStatistics.getSsid() != null
-                                && client.getMacAddress() != null) {
-                            handleClientSessionUpdate(customerId, equipmentId, apId, locationId,
-                                    clientReport.getChannel(), clientReport.getBand(), clientReport.getTimestampMs(),
-                                    client, report.getNodeID(), ssidStatistics.getBssid(), ssidStatistics.getSsid());
-                        }
-                    } catch (Exception e) {
-                        LOG.debug("Unabled to update client {} session {}", client, e);
+
+                }
+                
+                try {
+                    if (ssidStatistics.getBssid() != null && ssid != null
+                            && client.getMacAddress() != null) {
+                        handleClientSessionUpdate(customerId, equipmentId, apId, locationId,
+                                clientReport.getChannel(), clientReport.getBand(), clientReport.getTimestampMs(),
+                                client, report.getNodeID(), ssidStatistics.getBssid(), ssid);
                     }
+                } catch (Exception e) {
+                    LOG.debug("Unabled to update client {} session {}", client, e);
                 }
 
             }
@@ -2119,8 +2121,27 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
-        // TODO: if applicable, remove SsidProfiles related to deleted VIF rows
-        // for this AP
+        Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
+                StatusDataType.ACTIVE_BSSIDS);
+
+        if (activeBssidsStatus == null) {
+            return; // nothing to delete
+
+        }
+
+        ActiveBSSIDs statusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
+
+        List<ActiveBSSID> bssidList = statusDetails.getActiveBSSIDs();
+
+        
+        
+        bssidList.clear();
+
+        statusDetails.setActiveBSSIDs(bssidList);
+
+        activeBssidsStatus.setDetails(statusDetails);
+
+        statusServiceInterface.update(activeBssidsStatus);
     }
 
     @Override
@@ -2141,9 +2162,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     customerId, equipmentId, apId);
             return;
         }
-
-        // TODO: update activeBSSDs, etc based on associated clients, client
-        // information, etc
 
     }
 
