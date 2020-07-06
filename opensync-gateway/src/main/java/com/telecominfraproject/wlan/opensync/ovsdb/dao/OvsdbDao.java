@@ -902,6 +902,8 @@ public class OvsdbDao {
         columns.add("vif_radio_idx");
         columns.add("security");
         columns.add("vlan_id");
+        columns.add("mac_list");
+        columns.add("mac_list_type");
 
         try {
             LOG.debug("Retrieving WifiVifConfig:");
@@ -992,6 +994,14 @@ public class OvsdbDao {
                 if (vlanId != null) {
                     wifiVifConfigInfo.vlanId = vlanId.intValue();
                 }
+                
+                wifiVifConfigInfo.macList = row.getSetColumn("mac_list");
+                
+                if (row.getColumns().get("mac_list_typ") != null && 
+                               row.getColumns().get("mac_list_typ").getClass()
+                        .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+                    wifiVifConfigInfo.macListType = row.getStringColumn("mac_list_typ");
+               }
 
                 ret.put(wifiVifConfigInfo.ifName + '_' + wifiVifConfigInfo.ssid, wifiVifConfigInfo);
             }
@@ -2086,7 +2096,7 @@ public class OvsdbDao {
             boolean ssidBroadcast, Map<String, String> security, String radioFreqBand, int vlanId, boolean rrmEnabled,
             boolean enable80211r, String minHwMode, boolean enabled, int keyRefresh, boolean uapsdEnabled,
             boolean apBridge, NetworkForwardMode networkForwardMode, String gateway, String inet,
-            Map<String, String> dns, String ipAssignScheme) {
+            Map<String, String> dns, String ipAssignScheme, Set<String> macBlackList, Set<String> macWhiteList) {
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
@@ -2124,6 +2134,29 @@ public class OvsdbDao {
             com.vmware.ovsdb.protocol.operation.notation.Map<String, String> securityMap = com.vmware.ovsdb.protocol.operation.notation.Map
                     .of(security);
             updateColumns.put("security", securityMap);
+            
+            Set<String> macList = new HashSet<>();
+            if (macBlackList != null && !macBlackList.isEmpty()) {
+            	macList = macBlackList;
+            	updateColumns.put("mac_list_type", new Atom<>("blacklist"));
+            } else if (macWhiteList != null && !macWhiteList.isEmpty()) {
+            	macList = macWhiteList;
+            	updateColumns.put("mac_list_type", new Atom<>("whitelist"));
+            } else {	
+                updateColumns.put("mac_list_type", new Atom<>("none"));
+            }
+            
+            if (!macList.isEmpty()) {
+            	Set<Atom<String>> atomMacList = new HashSet<>();
+            	for (String mac : macList) {
+            		atomMacList.add(new Atom<>(mac));
+            	}
+            	com.vmware.ovsdb.protocol.operation.notation.Set macListSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                        .of(atomMacList);
+            	updateColumns.put("mac_list", macListSet);
+            } else {
+            	updateColumns.put("mac_list", new com.vmware.ovsdb.protocol.operation.notation.Set());
+            }
 
             Row row = new Row(updateColumns);
             operations.add(new Insert(wifiVifConfigDbTable, row));
@@ -2345,6 +2378,10 @@ public class OvsdbDao {
                         security.put("mode", "1");
                     }
                 }
+                
+                //TODO fill from NBI
+                Set<String> macBlackList = new HashSet<>();
+                Set<String> macWhiteList = new HashSet<>();
 
                 boolean enabled = ssidConfig.getSsidAdminState().equals(StateSetting.enabled);
 
@@ -2388,7 +2425,7 @@ public class OvsdbDao {
                     configureSingleSsid(ovsdbClient, defaultLanInterfaceName, ifName, ssidConfig.getSsid(),
                             ssidBroadcast, security, freqBand, ssidConfig.getVlanId(), rrmEnabled, enable80211r,
                             minHwMode, enabled, keyRefresh, uapsdEnabled, apBridge, ssidConfig.getForwardMode(),
-                            gateway, inet, dns, ipAssignScheme);
+                            gateway, inet, dns, ipAssignScheme, macBlackList, macWhiteList);
 
                 } catch (IllegalStateException e) {
                     // could not provision this SSID, but still can go on
@@ -2424,7 +2461,7 @@ public class OvsdbDao {
             }
         }
     }
-
+    
     private void updateWifiInetConfig(OvsdbClient ovsdbClient, int vlanId, String ifName, boolean enabled,
             boolean isNAT, String ifType, String gateway, String inet, Map<String, String> dns, String ipAssignScheme,
             Uuid vifConfigUuid) {
