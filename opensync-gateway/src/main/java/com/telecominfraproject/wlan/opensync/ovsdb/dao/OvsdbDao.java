@@ -8,7 +8,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -114,15 +113,18 @@ public class OvsdbDao {
     public String defaultWanInterfaceType;
 
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_radio1:home-ap-24}")
-    public String ifName2pt4GHz;
+    public String ifPfx2pt4GHz;
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_radio2:home-ap-l50}")
-    public String ifName5GHzL;
+    public String ifPfx5GHzL;
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_radio0:home-ap-u50}")
-    public String ifName5GHzU;
+    public String ifPfx5GHzU;
+    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.max:8}")
+    public int maxInterfacesPerRadio;
+
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.awlan-node.upgrade_dl_timer:300}")
-    public long upgradeDlTimer;
+    public long upgradeDlTimerSeconds;
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.awlan-node.upgrade_timer:300}")
-    public long upgradeTimer;
+    public long upgradeTimerSeconds;
 
     public static final String ovsdbName = "Open_vSwitch";
     public static final String awlanNodeDbTable = "AWLAN_Node";
@@ -1353,11 +1355,11 @@ public class OvsdbDao {
             provisionSingleBridgePortInterface(ovsdbClient, patchW2h, defaultWanInterfaceType, "patch", patchW2hOptions,
                     provisionedInterfaces, provisionedPorts, provisionedBridges);
 
-            provisionSingleBridgePortInterface(ovsdbClient, ifName5GHzU, bridgeNameVifInterfaces, "vif", null,
+            provisionSingleBridgePortInterface(ovsdbClient, ifPfx5GHzU, bridgeNameVifInterfaces, "vif", null,
                     provisionedInterfaces, provisionedPorts, provisionedBridges);
-            provisionSingleBridgePortInterface(ovsdbClient, ifName5GHzL, bridgeNameVifInterfaces, "vif", null,
+            provisionSingleBridgePortInterface(ovsdbClient, ifPfx5GHzL, bridgeNameVifInterfaces, "vif", null,
                     provisionedInterfaces, provisionedPorts, provisionedBridges);
-            provisionSingleBridgePortInterface(ovsdbClient, ifName2pt4GHz, bridgeNameVifInterfaces, "vif", null,
+            provisionSingleBridgePortInterface(ovsdbClient, ifPfx2pt4GHz, bridgeNameVifInterfaces, "vif", null,
                     provisionedInterfaces, provisionedPorts, provisionedBridges);
 
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
@@ -2350,31 +2352,47 @@ public class OvsdbDao {
                 String freqBand = null;
 
                 if (radioType == RadioType.is2dot4GHz) {
-                    ifName = ifName2pt4GHz;
+                    ifName = ifPfx2pt4GHz;
                     freqBand = "2.4G";
                 } else if (radioType == RadioType.is5GHzL) {
-                    ifName = ifName5GHzL;
+                    ifName = ifPfx5GHzL;
                     freqBand = "5GL";
                 } else if (radioType == RadioType.is5GHzU) {
-                    ifName = ifName5GHzU;
+                    ifName = ifPfx5GHzU;
                     freqBand = "5GU";
                 } else if (radioType == RadioType.is5GHz) {
-                    ifName = ifName5GHzU;
+                    ifName = ifPfx5GHzU;
                     freqBand = "5G";
                 }
 
-                if (!getProvisionedWifiVifConfigs(ovsdbClient).containsKey(ifName + "_" + ssidConfig.getSsid())) {
-                    try {
-
-                        configureSingleSsid(ovsdbClient, defaultLanInterfaceName, ifName, ssidConfig.getSsid(),
-                                ssidBroadcast, security, freqBand, ssidConfig.getVlanId(), rrmEnabled, enable80211r,
-                                minHwMode, enabled, keyRefresh, uapsdEnabled, apBridge, ssidConfig.getForwardMode(),
-                                gateway, inet, dns, ipAssignScheme);
-
-                    } catch (IllegalStateException e) {
-                        // could not provision this SSID, but still can go on
-                        LOG.warn("could not provision SSID {} on {}", ssidConfig.getSsid(), freqBand);
+                int numberOfInterfaces = 0;
+                for (String key : getProvisionedWifiVifConfigs(ovsdbClient).keySet()) {
+                    if (key.startsWith(ifName)) {
+                        numberOfInterfaces++;
                     }
+                }
+
+                try {
+
+                    if (numberOfInterfaces >= maxInterfacesPerRadio) {
+                        // this cannot occur, log error, do not try to provision
+                        throw new IllegalStateException(
+                                "Cannot provision more than " + maxInterfacesPerRadio + " interfaces per Wifi Radio");
+                    }
+                    if (numberOfInterfaces > 0) {
+                        // 1st interface has no number, 2nd has '-1', 3rd has
+                        // '-2' etc.
+                        ifName = ifName + "-" + numberOfInterfaces;
+                    }
+
+                    configureSingleSsid(ovsdbClient, defaultLanInterfaceName, ifName, ssidConfig.getSsid(),
+                            ssidBroadcast, security, freqBand, ssidConfig.getVlanId(), rrmEnabled, enable80211r,
+                            minHwMode, enabled, keyRefresh, uapsdEnabled, apBridge, ssidConfig.getForwardMode(),
+                            gateway, inet, dns, ipAssignScheme);
+
+                } catch (IllegalStateException e) {
+                    // could not provision this SSID, but still can go on
+                    LOG.warn("could not provision SSID {} on {}", ssidConfig.getSsid(), freqBand);
                 }
 
             }
@@ -2918,9 +2936,9 @@ public class OvsdbDao {
 
             List<Operation> operations = new ArrayList<>();
             Map<String, Value> updateColumns = new HashMap<>();
-            updateColumns.put("upgrade_dl_timer", new Atom<Long>(upgradeDlTimer));
-            updateColumns.put("firmware_pass", new Atom<String>(validationCode));
-            updateColumns.put("firmware_url", new Atom<String>(firmwareUrl));
+            updateColumns.put("upgrade_dl_timer", new Atom<>(upgradeDlTimerSeconds));
+            updateColumns.put("firmware_pass", new Atom<>(validationCode));
+            updateColumns.put("firmware_url", new Atom<>(firmwareUrl));
             updateColumns.put("version_matrix", com.vmware.ovsdb.protocol.operation.notation.Map.of(versionMap));
 
             Row row = new Row(updateColumns);
@@ -2944,7 +2962,7 @@ public class OvsdbDao {
         LOG.debug("flashFirmware for {} to version {}", apId, firmwareVersion);
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
-        updateColumns.put("upgrade_timer", new Atom<Long>(upgradeTimer));
+        updateColumns.put("upgrade_timer", new Atom<>(upgradeTimerSeconds));
 
         Row row = new Row(updateColumns);
         operations.add(new Update(awlanNodeDbTable, row));
