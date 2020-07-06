@@ -1,10 +1,14 @@
 package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 
+import java.net.URL;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -115,6 +119,10 @@ public class OvsdbDao {
     public String ifName5GHzL;
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.default_radio0:home-ap-u50}")
     public String ifName5GHzU;
+    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.awlan-node.upgrade_dl_timer:300}")
+    public long upgradeDlTimer;
+    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.awlan-node.upgrade_timer:300}")
+    public long upgradeTimer;
 
     public static final String ovsdbName = "Open_vSwitch";
     public static final String awlanNodeDbTable = "AWLAN_Node";
@@ -2840,18 +2848,103 @@ public class OvsdbDao {
         return newRedirectorAddress;
     }
 
+    private Row getAWLANNodeDbTableForFirmwareUpdate(OvsdbClient ovsdbClient) {
+        Row row = null;
+
+        try {
+            List<Operation> operations = new ArrayList<>();
+            List<Condition> conditions = new ArrayList<>();
+            List<String> columns = new ArrayList<>();
+            columns.add("firmware_version");
+            columns.add("firmware_pass");
+            columns.add("firmware_url");
+            columns.add("version_matrix");
+            columns.add("upgrade_timer");
+            columns.add("upgrade_status");
+            columns.add("upgrade_dl_timer");
+
+            operations.add(new Select(awlanNodeDbTable, conditions, columns));
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Select from {}:", awlanNodeDbTable);
+
+                for (OperationResult res : result) {
+                    LOG.debug("Op Result {}", res);
+                }
+            }
+
+            if ((result != null) && (result.length > 0) && !((SelectResult) result[0]).getRows().isEmpty()) {
+                row = ((SelectResult) result[0]).getRows().iterator().next();
+            }
+
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        LOG.debug("AWLAN_Node {}", row);
+
+        return row;
+    }
+
     public void configureFirmwareDownload(OvsdbClient ovsdbClient, String apId, String firmwareUrl,
             String firmwareVersion, String username, String validationCode) throws Exception {
 
-        LOG.debug("configureFirmwareDownload for {} to version {} url {}", apId, firmwareVersion, firmwareUrl);
+        try {
+            LOG.debug("configureFirmwareDownload for {} to version {} url {} validationCode {} username {}", apId,
+                    firmwareVersion, firmwareUrl, validationCode, username);
 
+            // get existing table info
+            Row awlanNode = getAWLANNodeDbTableForFirmwareUpdate(ovsdbClient);
+
+            if (awlanNode == null) {
+                LOG.error("Cannot update AWLAN_Node firmware information");
+                return;
+            }
+            URL aURL = new URL(firmwareUrl);
+
+            Map<String, String> versionMap = awlanNode.getMapColumn("version_matrix");
+            versionMap.put("vendor/ipq40xx", aURL.getPath().substring(0, aURL.getPath().lastIndexOf('/')));
+            versionMap.put("FIRMWARE", firmwareVersion);
+            versionMap.put("FW_VERSION", firmwareVersion.substring(0, firmwareVersion.indexOf('-')));
+            versionMap.put("FW_BUILD",
+                    firmwareVersion.substring(firmwareVersion.indexOf('-') + 1, firmwareVersion.lastIndexOf('-')));
+            versionMap.put("FW_COMMIT", firmwareVersion.substring(firmwareVersion.lastIndexOf('-') + 1));
+            versionMap.put("HOST", aURL.getHost());
+            versionMap.put("FW_PROFILE", firmwareVersion.substring(0, firmwareVersion.indexOf('-')));
+            SimpleDateFormat sdf = new SimpleDateFormat("EEE MMM dd HH:mm:ss z yyyy");
+            versionMap.put("DATE", sdf.format(new Date()));
+
+            List<Operation> operations = new ArrayList<>();
+            Map<String, Value> updateColumns = new HashMap<>();
+            updateColumns.put("upgrade_dl_timer", new Atom<Long>(upgradeDlTimer));
+            updateColumns.put("firmware_pass", new Atom<String>(validationCode));
+            updateColumns.put("firmware_url", new Atom<String>(firmwareUrl));
+            updateColumns.put("version_matrix", com.vmware.ovsdb.protocol.operation.notation.Map.of(versionMap));
+
+            Row row = new Row(updateColumns);
+            operations.add(new Update(awlanNodeDbTable, row));
+
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+            for (OperationResult r : result) {
+                LOG.debug("Op Result {}", r);
+
+            }
+
+        } catch (Exception e) {
+            LOG.error("Could not download firmware to AP", e);
+        }
+
+    }
+
+    public void flashFirmware(OvsdbClient ovsdbClient, String apId, String firmwareVersion) throws Exception {
+
+        LOG.debug("flashFirmware for {} to version {}", apId, firmwareVersion);
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
-
-        updateColumns.put("firmware_pass", new Atom<>(validationCode));
-        updateColumns.put("firmware_version", new Atom<>(firmwareVersion));
-        // Until AP enables Upgrade Manager this does nothing
-        updateColumns.put("firmware_url", new Atom<>(firmwareUrl));
+        updateColumns.put("upgrade_timer", new Atom<Long>(upgradeTimer));
 
         Row row = new Row(updateColumns);
         operations.add(new Update(awlanNodeDbTable, row));
@@ -2862,14 +2955,6 @@ public class OvsdbDao {
             LOG.debug("Op Result {}", r);
 
         }
-
-    }
-
-    public void flashFirmware(OvsdbClient ovsdbClient, String apId, String firmwareVersion) throws Exception {
-
-        LOG.debug("flashFirmware for {} to version {}", apId, firmwareVersion);
-
-        // TODO: This needs to be implemented when the AP has Firmware Upgrade
 
     }
 

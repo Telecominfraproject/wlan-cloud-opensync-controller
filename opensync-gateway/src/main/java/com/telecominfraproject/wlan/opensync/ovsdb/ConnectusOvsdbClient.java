@@ -78,7 +78,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
         ConnectionCallback connectionCallback = new ConnectionCallback() {
             @Override
             public void connected(OvsdbClient ovsdbClient) {
-                
+
                 String remoteHost = ovsdbClient.getConnectionInfo().getRemoteAddress().getHostAddress();
                 int localPort = ovsdbClient.getConnectionInfo().getLocalPort();
                 String subjectDn = null;
@@ -162,20 +162,6 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
         listener.startListeningWithSsl(ovsdbListenPort, sslContext, connectionCallback).join();
 
         LOG.info("Manager waiting for connection on port {}...", ovsdbListenPort);
-    }
-
-    private void cancelMonitors(OvsdbClient ovsdbClient, String key) {
-        try {
-            ovsdbClient.cancelMonitor(OvsdbDao.wifiRadioStateDbTable + "_" + key).join();
-            ovsdbClient.cancelMonitor(OvsdbDao.wifiVifStateDbTable + "_delete_" + key).join();
-            ovsdbClient.cancelMonitor(OvsdbDao.wifiVifStateDbTable + "_" + key).join();
-            ovsdbClient.cancelMonitor(OvsdbDao.wifiInetStateDbTable + "_" + key).join();
-            ovsdbClient.cancelMonitor(OvsdbDao.wifiAssociatedClientsDbTable + "_" + key).join();
-            ovsdbClient.cancelMonitor(OvsdbDao.wifiAssociatedClientsDbTable + "_delete_" + key).join();
-            ovsdbClient.cancelMonitor(OvsdbDao.awlanNodeDbTable + "_" + key).join();
-        } catch (OvsdbClientException e) {
-            LOG.debug("Unable to cancel monitor for state table. {}", e.getMessage());
-        }
     }
 
     private ConnectNodeInfo processConnectRequest(OvsdbClient ovsdbClient, String clientCn,
@@ -313,7 +299,10 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                             }
 
                         });
-        awCf.join();
+
+        extIntegrationInterface.awlanNodeDbTableUpdate(ovsdbDao.getOpensyncAWLANNode(awCf.join(), key, ovsdbClient),
+                key);
+
     }
 
     private void monitorWifiAssociatedClientsDbTable(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
@@ -336,7 +325,10 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                             }
 
                         });
-        acCf.join();
+
+        extIntegrationInterface.wifiAssociatedClientsDbTableUpdate(
+                ovsdbDao.getOpensyncWifiAssociatedClients(acCf.join(), key, ovsdbClient), key);
+
     }
 
     private void monitorWifiInetStateDbTable(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
@@ -356,7 +348,9 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                     }
 
                 });
-        isCf.join();
+
+        extIntegrationInterface
+                .wifiInetStateDbTableUpdate(ovsdbDao.getOpensyncAPInetState(isCf.join(), key, ovsdbClient), key);
     }
 
     private void monitorWifiRadioStateDbTable(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
@@ -375,7 +369,8 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                             }
 
                         });
-        rsCf.join();
+        extIntegrationInterface
+                .wifiRadioStatusDbTableUpdate(ovsdbDao.getOpensyncAPRadioState(rsCf.join(), key, ovsdbClient), key);
     }
 
     private void monitorWifiVifStateDbTableDeletion(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
@@ -476,7 +471,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
         CompletableFuture<TableUpdates> vsCf = ovsdbClient
                 .monitor(OvsdbDao.ovsdbName, OvsdbDao.wifiVifStateDbTable + "_" + key,
                         new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiVifStateDbTable,
-                                new MonitorRequest(new MonitorSelect(true, true, false, true)))),
+                                new MonitorRequest(new MonitorSelect(true, true, true, true)))),
                         new MonitorCallback() {
                             @Override
                             public void update(TableUpdates tableUpdates) {
@@ -489,7 +484,9 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
 
                         });
 
-        vsCf.join();
+        extIntegrationInterface.wifiVIFStateDbTableUpdate(ovsdbDao.getOpensyncAPVIFState(vsCf.join(), key, ovsdbClient),
+                key);
+
     }
 
     @Override

@@ -280,10 +280,12 @@ public class OpensyncCloudGatewayController {
 
         } else if (command instanceof CEGWFirmwareDownloadRequest) {
 
-            String filepath = ((CEGWFirmwareDownloadRequest) command).getFilePath();
-            String firmwareVersion = ((CEGWFirmwareDownloadRequest) command).getFirmwareVersion();
-            String username = ((CEGWFirmwareDownloadRequest) command).getUsername();
-            String validationCode = ((CEGWFirmwareDownloadRequest) command).getUsername();
+            CEGWFirmwareDownloadRequest dlRequest = (CEGWFirmwareDownloadRequest)command;
+            
+            String filepath = dlRequest.getFilePath();
+            String firmwareVersion = dlRequest.getFirmwareVersion();
+            String username = dlRequest.getUsername();
+            String validationCode = dlRequest.getValidationCode();
 
             connectusOvsdbClient.processFirmwareDownload(inventoryId, filepath, firmwareVersion, username,
                     validationCode);
