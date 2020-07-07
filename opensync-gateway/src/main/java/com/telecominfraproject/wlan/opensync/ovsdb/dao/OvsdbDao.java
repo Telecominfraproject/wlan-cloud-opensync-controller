@@ -997,10 +997,10 @@ public class OvsdbDao {
                 
                 wifiVifConfigInfo.macList = row.getSetColumn("mac_list");
                 
-                if (row.getColumns().get("mac_list_typ") != null && 
-                               row.getColumns().get("mac_list_typ").getClass()
+                if (row.getColumns().get("mac_list_type") != null && 
+                               row.getColumns().get("mac_list_type").getClass()
                         .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
-                    wifiVifConfigInfo.macListType = row.getStringColumn("mac_list_typ");
+                    wifiVifConfigInfo.macListType = row.getStringColumn("mac_list_type");
                }
 
                 ret.put(wifiVifConfigInfo.ifName + '_' + wifiVifConfigInfo.ssid, wifiVifConfigInfo);
