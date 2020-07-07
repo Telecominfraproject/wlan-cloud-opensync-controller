@@ -2123,6 +2123,9 @@ public class OvsdbDao {
             updateColumns.put("min_hw_mode", new Atom<>(minHwMode));
             if (vlanId > 0) {
                 updateColumns.put("vlan_id", new Atom<>(vlanId));
+                if (vlanId > 1) {
+                	updateColumns.put("bridge", new Atom<>("vlan" + vlanId));
+                }
             } else {
                 updateColumns.put("vlan_id", new com.vmware.ovsdb.protocol.operation.notation.Set());
             }
