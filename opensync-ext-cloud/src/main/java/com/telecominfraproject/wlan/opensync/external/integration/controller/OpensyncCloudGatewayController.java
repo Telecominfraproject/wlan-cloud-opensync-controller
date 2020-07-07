@@ -167,9 +167,9 @@ public class OpensyncCloudGatewayController {
                 case FirmwareDownloadRequest:
                     ret.add(processFirmwareDownload(session, (CEGWFirmwareDownloadRequest) command));
                     break;
-                case FirmwareFlashRequest:
-                    ret.add(processFirmwareFlash(session, (CEGWFirmwareFlashRequest) command));
-                    break;
+//                case FirmwareFlashRequest:
+//                    ret.add(processFirmwareFlash(session, (CEGWFirmwareFlashRequest) command));
+//                    break;
                 case RadioReset:
                     ret.add(processRadioReset(session, (CEGWRadioResetRequest) command));
                     break;
@@ -274,10 +274,6 @@ public class OpensyncCloudGatewayController {
             String newRedirectorAddress = ((CEGWStartDebugEngine) command).getGatewayHostname();
             connectusOvsdbClient.changeRedirectorAddress(inventoryId, newRedirectorAddress);
             // TODO: add support for additional commands below
-        } else if (command instanceof CEGWFirmwareFlashRequest) {
-            String firmwareVersion = ((CEGWFirmwareFlashRequest) command).getFirmwareVersion();
-            connectusOvsdbClient.processFlashFirmware(inventoryId, firmwareVersion);
-
         } else if (command instanceof CEGWFirmwareDownloadRequest) {
 
             CEGWFirmwareDownloadRequest dlRequest = (CEGWFirmwareDownloadRequest)command;
@@ -300,10 +296,6 @@ public class OpensyncCloudGatewayController {
     }
 
     private EquipmentCommandResponse processChangeRedirector(OvsdbSession session, CEGWStartDebugEngine command) {
-        return sendMessage(session, command.getInventoryId(), command);
-    }
-
-    private EquipmentCommandResponse processFirmwareFlash(OvsdbSession session, CEGWFirmwareFlashRequest command) {
         return sendMessage(session, command.getInventoryId(), command);
     }
 

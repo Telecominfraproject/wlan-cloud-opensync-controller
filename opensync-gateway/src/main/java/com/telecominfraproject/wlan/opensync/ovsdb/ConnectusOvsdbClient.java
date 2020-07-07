@@ -99,11 +99,13 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                     // of KDC unique qrCode)
                     String key = clientCn + "_" + connectNodeInfo.serialNumber;
                     ovsdbSessionMapInterface.newSession(key, ovsdbClient);
+                                      
                     extIntegrationInterface.apConnected(key, connectNodeInfo);
+                    
+                    monitorOvsdbStateTables(ovsdbClient, key);
 
                     // push configuration to AP
                     connectNodeInfo = processConnectRequest(ovsdbClient, clientCn, connectNodeInfo);
-                    monitorOvsdbStateTables(ovsdbClient, key);
 
                     LOG.info("ovsdbClient connected from {} on port {} key {} ", remoteHost, localPort, key);
                     LOG.info("ovsdbClient connectedClients = {}", ovsdbSessionMapInterface.getNumSessions());
@@ -520,20 +522,4 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
         return "Initialized firmware download to " + apId;
     }
 
-    @Override
-    public String processFlashFirmware(String apId, String firmwareVersion) {
-        try {
-            OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
-
-            ovsdbDao.flashFirmware(session.getOvsdbClient(), apId, firmwareVersion);
-
-        } catch (Exception e) {
-            LOG.error("Failed to flash firmware version {} on AP {} ", firmwareVersion, apId, e);
-            return "Failed to flash firmware version " + firmwareVersion + " on AP " + apId + "\n"
-                    + e.getLocalizedMessage();
-
-        }
-        LOG.debug("Flashed firmware version {} on AP {}", firmwareVersion, apId);
-        return "Flashed firmware version " + firmwareVersion + " on AP " + apId;
-    }
 }

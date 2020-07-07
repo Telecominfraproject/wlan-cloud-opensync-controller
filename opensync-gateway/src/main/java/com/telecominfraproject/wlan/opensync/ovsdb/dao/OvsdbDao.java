@@ -1,10 +1,7 @@
 package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 
-import java.net.URL;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -121,9 +118,9 @@ public class OvsdbDao {
     @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.wifi-iface.max:8}")
     public int maxInterfacesPerRadio;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.awlan-node.upgrade_dl_timer:300}")
+    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.awlan-node.upgrade_dl_timer:60}")
     public long upgradeDlTimerSeconds;
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.awlan-node.upgrade_timer:300}")
+    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.awlan-node.upgrade_timer:60}")
     public long upgradeTimerSeconds;
 
     public static final String ovsdbName = "Open_vSwitch";
@@ -994,14 +991,13 @@ public class OvsdbDao {
                 if (vlanId != null) {
                     wifiVifConfigInfo.vlanId = vlanId.intValue();
                 }
-                
+
                 wifiVifConfigInfo.macList = row.getSetColumn("mac_list");
-                
-                if (row.getColumns().get("mac_list_typ") != null && 
-                               row.getColumns().get("mac_list_typ").getClass()
+
+                if (row.getColumns().get("mac_list_typ") != null && row.getColumns().get("mac_list_typ").getClass()
                         .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                     wifiVifConfigInfo.macListType = row.getStringColumn("mac_list_typ");
-               }
+                }
 
                 ret.put(wifiVifConfigInfo.ifName + '_' + wifiVifConfigInfo.ssid, wifiVifConfigInfo);
             }
@@ -2013,10 +2009,9 @@ public class OvsdbDao {
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setVersion(row.getUuidColumn("_version"));
                         }
-                        if ((map.get("upgrade_status") != null) && map.get("upgrade_status").getClass()
-                                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
-                            tableState.setUpgradeTimer(row.getIntegerColumn("upgrade_status").intValue());
-                        }
+
+                        tableState.setUpgradeStatus(row.getIntegerColumn("upgrade_status").intValue());
+
                         if ((map.get("device_mode") != null) && map.get("device_mode").getClass()
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             tableState.setDeviceMode(row.getStringColumn("device_mode"));
@@ -2124,7 +2119,7 @@ public class OvsdbDao {
             if (vlanId > 0) {
                 updateColumns.put("vlan_id", new Atom<>(vlanId));
                 if (vlanId > 1) {
-                	updateColumns.put("bridge", new Atom<>("vlan" + vlanId));
+                    updateColumns.put("bridge", new Atom<>("vlan" + vlanId));
                 }
             } else {
                 updateColumns.put("vlan_id", new com.vmware.ovsdb.protocol.operation.notation.Set());
@@ -2137,28 +2132,28 @@ public class OvsdbDao {
             com.vmware.ovsdb.protocol.operation.notation.Map<String, String> securityMap = com.vmware.ovsdb.protocol.operation.notation.Map
                     .of(security);
             updateColumns.put("security", securityMap);
-            
+
             Set<String> macList = new HashSet<>();
             if (macBlackList != null && !macBlackList.isEmpty()) {
-            	macList = macBlackList;
-            	updateColumns.put("mac_list_type", new Atom<>("blacklist"));
+                macList = macBlackList;
+                updateColumns.put("mac_list_type", new Atom<>("blacklist"));
             } else if (macWhiteList != null && !macWhiteList.isEmpty()) {
-            	macList = macWhiteList;
-            	updateColumns.put("mac_list_type", new Atom<>("whitelist"));
-            } else {	
+                macList = macWhiteList;
+                updateColumns.put("mac_list_type", new Atom<>("whitelist"));
+            } else {
                 updateColumns.put("mac_list_type", new Atom<>("none"));
             }
-            
+
             if (!macList.isEmpty()) {
-            	Set<Atom<String>> atomMacList = new HashSet<>();
-            	for (String mac : macList) {
-            		atomMacList.add(new Atom<>(mac));
-            	}
-            	com.vmware.ovsdb.protocol.operation.notation.Set macListSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                Set<Atom<String>> atomMacList = new HashSet<>();
+                for (String mac : macList) {
+                    atomMacList.add(new Atom<>(mac));
+                }
+                com.vmware.ovsdb.protocol.operation.notation.Set macListSet = com.vmware.ovsdb.protocol.operation.notation.Set
                         .of(atomMacList);
-            	updateColumns.put("mac_list", macListSet);
+                updateColumns.put("mac_list", macListSet);
             } else {
-            	updateColumns.put("mac_list", new com.vmware.ovsdb.protocol.operation.notation.Set());
+                updateColumns.put("mac_list", new com.vmware.ovsdb.protocol.operation.notation.Set());
             }
 
             Row row = new Row(updateColumns);
@@ -2381,8 +2376,8 @@ public class OvsdbDao {
                         security.put("mode", "1");
                     }
                 }
-                
-                //TODO fill from NBI
+
+                // TODO fill from NBI
                 Set<String> macBlackList = new HashSet<>();
                 Set<String> macWhiteList = new HashSet<>();
 
@@ -2464,7 +2459,7 @@ public class OvsdbDao {
             }
         }
     }
-    
+
     private void updateWifiInetConfig(OvsdbClient ovsdbClient, int vlanId, String ifName, boolean enabled,
             boolean isNAT, String ifType, String gateway, String inet, Map<String, String> dns, String ipAssignScheme,
             Uuid vifConfigUuid) {
@@ -2650,12 +2645,6 @@ public class OvsdbDao {
 
             provisionWifiStatsConfigClient(radioConfigs, getProvisionedWifiStatsConfigs(ovsdbClient), operations);
 
-            provisionWifiStatsConfigBandSteering(radioConfigs, getProvisionedWifiStatsConfigs(ovsdbClient), operations);
-
-            provisionWifiStatsConfigCapacity(radioConfigs, getProvisionedWifiStatsConfigs(ovsdbClient), operations);
-
-            provisionWifiStatsRssi(radioConfigs, getProvisionedWifiStatsConfigs(ovsdbClient), operations);
-
             if (!operations.isEmpty()) {
                 LOG.debug("Sending batch of operations : {} ", operations);
 
@@ -2674,80 +2663,6 @@ public class OvsdbDao {
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private void provisionWifiStatsConfigCapacity(Map<String, WifiRadioConfigInfo> radioConfigs,
-            Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs, List<Operation> operations) {
-
-        radioConfigs.values().stream().forEach(new Consumer<WifiRadioConfigInfo>() {
-            @Override
-            public void accept(WifiRadioConfigInfo rc) {
-                if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_capacity")) {
-                    //
-                    Map<String, Value> rowColumns = new HashMap<>();
-                    rowColumns.put("radio_type", new Atom<>(rc.freqBand));
-                    rowColumns.put("reporting_interval", new Atom<>(60));
-                    // rowColumns.put("sampling_interval", new Atom<>(3));
-                    rowColumns.put("stats_type", new Atom<>("capacity"));
-                    // rowColumns.put("survey_interval_ms", new Atom<>(65));
-                    // rowColumns.put("survey_type", new Atom<>("on-chan"));
-
-                    Row updateRow = new Row(rowColumns);
-                    operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
-
-                }
-            }
-        });
-
-    }
-
-    private void provisionWifiStatsConfigBandSteering(Map<String, WifiRadioConfigInfo> radioConfigs,
-            Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs, List<Operation> operations) {
-
-        radioConfigs.values().stream().forEach(new Consumer<WifiRadioConfigInfo>() {
-            @Override
-            public void accept(WifiRadioConfigInfo rc) {
-                if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_steering")) {
-                    //
-                    Map<String, Value> rowColumns = new HashMap<>();
-                    rowColumns.put("radio_type", new Atom<>(rc.freqBand));
-                    rowColumns.put("reporting_interval", new Atom<>(60));
-                    // rowColumns.put("sampling_interval", new Atom<>(3));
-                    rowColumns.put("stats_type", new Atom<>("steering"));
-                    // rowColumns.put("survey_interval_ms", new Atom<>(65));
-                    // rowColumns.put("survey_type", new Atom<>("on-chan"));
-
-                    Row updateRow = new Row(rowColumns);
-                    operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
-
-                }
-            }
-        });
-
-    }
-
-    private void provisionWifiStatsRssi(Map<String, WifiRadioConfigInfo> radioConfigs,
-            Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs, List<Operation> operations) {
-
-        radioConfigs.values().stream().forEach(new Consumer<WifiRadioConfigInfo>() {
-            @Override
-            public void accept(WifiRadioConfigInfo rc) {
-                if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_rssi")) {
-                    //
-                    Map<String, Value> rowColumns = new HashMap<>();
-                    rowColumns.put("radio_type", new Atom<>(rc.freqBand));
-                    rowColumns.put("reporting_interval", new Atom<>(30));
-                    // rowColumns.put("sampling_interval", new Atom<>(3));
-                    rowColumns.put("stats_type", new Atom<>("rssi"));
-                    rowColumns.put("survey_interval_ms", new Atom<>(65));
-                    // rowColumns.put("survey_type", new Atom<>("on-chan"));
-
-                    Row updateRow = new Row(rowColumns);
-                    operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
-
-                }
-            }
-        });
     }
 
     private void provisionWifiStatsConfigNeighbor(Map<String, Set<Integer>> allowedChannels,
@@ -2952,34 +2867,24 @@ public class OvsdbDao {
         try {
             LOG.debug("configureFirmwareDownload for {} to version {} url {} validationCode {} username {}", apId,
                     firmwareVersion, firmwareUrl, validationCode, username);
-
+            // TODO: version matrix update
+            // waiting on AP to provide guidance wrt load naming and version
+            // matrix content
             // get existing table info
-            Row awlanNode = getAWLANNodeDbTableForFirmwareUpdate(ovsdbClient);
+            //            Row awlanNode = getAWLANNodeDbTableForFirmwareUpdate(ovsdbClient);
+            //
+            //            if (awlanNode == null) {
+            //                LOG.error("Cannot update AWLAN_Node firmware information");
+            //                return;
+            //            }
 
-            if (awlanNode == null) {
-                LOG.error("Cannot update AWLAN_Node firmware information");
-                return;
-            }
-            URL aURL = new URL(firmwareUrl);
-
-            Map<String, String> versionMap = awlanNode.getMapColumn("version_matrix");
-            versionMap.put("vendor/ipq40xx", aURL.getPath().substring(0, aURL.getPath().lastIndexOf('/')));
-            versionMap.put("FIRMWARE", firmwareVersion);
-            versionMap.put("FW_VERSION", firmwareVersion.substring(0, firmwareVersion.indexOf('-')));
-            versionMap.put("FW_BUILD",
-                    firmwareVersion.substring(firmwareVersion.indexOf('-') + 1, firmwareVersion.lastIndexOf('-')));
-            versionMap.put("FW_COMMIT", firmwareVersion.substring(firmwareVersion.lastIndexOf('-') + 1));
-            versionMap.put("HOST", aURL.getHost());
-            versionMap.put("FW_PROFILE", firmwareVersion.substring(0, firmwareVersion.indexOf('-')));
-            SimpleDateFormat sdf = new SimpleDateFormat("EEE MMM dd HH:mm:ss z yyyy");
-            versionMap.put("DATE", sdf.format(new Date()));
 
             List<Operation> operations = new ArrayList<>();
             Map<String, Value> updateColumns = new HashMap<>();
             updateColumns.put("upgrade_dl_timer", new Atom<>(upgradeDlTimerSeconds));
             updateColumns.put("firmware_pass", new Atom<>(validationCode));
             updateColumns.put("firmware_url", new Atom<>(firmwareUrl));
-            updateColumns.put("version_matrix", com.vmware.ovsdb.protocol.operation.notation.Map.of(versionMap));
+            updateColumns.put("upgrade_timer", new Atom<>(upgradeTimerSeconds));
 
             Row row = new Row(updateColumns);
             operations.add(new Update(awlanNodeDbTable, row));
@@ -2993,25 +2898,6 @@ public class OvsdbDao {
 
         } catch (Exception e) {
             LOG.error("Could not download firmware to AP", e);
-        }
-
-    }
-
-    public void flashFirmware(OvsdbClient ovsdbClient, String apId, String firmwareVersion) throws Exception {
-
-        LOG.debug("flashFirmware for {} to version {}", apId, firmwareVersion);
-        List<Operation> operations = new ArrayList<>();
-        Map<String, Value> updateColumns = new HashMap<>();
-        updateColumns.put("upgrade_timer", new Atom<>(upgradeTimerSeconds));
-
-        Row row = new Row(updateColumns);
-        operations.add(new Update(awlanNodeDbTable, row));
-
-        CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-        OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-        for (OperationResult r : result) {
-            LOG.debug("Op Result {}", r);
-
         }
 
     }

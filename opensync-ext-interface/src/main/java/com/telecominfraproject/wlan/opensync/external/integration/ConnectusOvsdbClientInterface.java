@@ -12,8 +12,6 @@ public interface ConnectusOvsdbClientInterface {
 
     String processFirmwareDownload(String apId, String firmwareUrl, String firmwareVersion, String username,
             String validationCode);
-
-    String processFlashFirmware(String apId, String firmwareVersion);
   
     String closeSession(String apId);
 }
