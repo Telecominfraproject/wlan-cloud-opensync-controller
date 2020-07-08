@@ -1953,6 +1953,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
+        boolean eqptUpdate = false;
         ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
 
         Status protocolStatus = null;
@@ -1964,19 +1965,30 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 continue;
             }
 
-            if (radioState.getAllowedChannels() != null) {
+            Set<Integer> allowedChannels = radioState.getAllowedChannels();
+            List<Integer> oldAllowedChannels = apElementConfiguration.getRadioMap().get(radioState.getFreqBand()).getAllowedChannels();
+            Set<Integer> oldAllowedChannelSet = new HashSet<>();
+            if (oldAllowedChannels != null) {
+                oldAllowedChannelSet = new HashSet<>(oldAllowedChannels);
+            }
+            if (allowedChannels != null && !allowedChannels.equals(oldAllowedChannelSet)) {
+                eqptUpdate = true;
                 apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                        .setAllowedChannels(new ArrayList<>(radioState.getAllowedChannels()));
+                        .setAllowedChannels(new ArrayList<>(allowedChannels));
 
                 LOG.debug("Updated AllowedChannels from Wifi_Radio_State table change for AP {}", apId);
-
             }
 
             if (radioState.getTxPower() > 0) {
-                apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                        .setEirpTxPower(AutoOrManualValue.createManualInstance(radioState.getTxPower()));
-
-                LOG.debug("Updated TxPower from Wifi_Radio_State table change for AP {}", apId);
+                AutoOrManualValue oldEirpTxPower = apElementConfiguration.getRadioMap().get(radioState.getFreqBand()).getEirpTxPower();
+                if (oldEirpTxPower == null || oldEirpTxPower.isAuto() ||
+                		(!oldEirpTxPower.isAuto() && Integer.valueOf(oldEirpTxPower.getValue()) != radioState.getTxPower())) {
+	                 eqptUpdate = true;
+	                 apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
+	                            .setEirpTxPower(AutoOrManualValue.createManualInstance(radioState.getTxPower()));
+	
+	                LOG.debug("Updated TxPower from Wifi_Radio_State table change for AP {}", apId);
+                }
             }
 
             StateSetting state = StateSetting.disabled;
@@ -1986,11 +1998,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             if (!apElementConfiguration.getAdvancedRadioMap().get(radioState.getFreqBand()).getRadioAdminState()
                     .equals(state)) {
+                eqptUpdate = true;
                 // only update if changed
                 apElementConfiguration.getAdvancedRadioMap().get(radioState.getFreqBand()).setRadioAdminState(state);
 
                 LOG.debug("Updated RadioAdminState from Wifi_Radio_State table change for AP {}", apId);
-
             }
 
             protocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.PROTOCOL);
@@ -2007,31 +2019,31 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     protocolStatusData = null; // no change we will ignore at
                                                // the end
                 }
-
             }
         }
 
-        ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
-        if (ce == null) {
+        Equipment ceNew = equipmentServiceInterface.getByInventoryIdOrNull(apId);
+        if (ceNew == null) {
             LOG.debug("wifiRadioStatusDbTableUpdate::Cannot get Equipment for AP {}", apId);
             return;
         }
-        ((ApElementConfiguration) ce.getDetails()).setRadioMap(apElementConfiguration.getRadioMap());
-        ((ApElementConfiguration) ce.getDetails()).setAdvancedRadioMap(apElementConfiguration.getAdvancedRadioMap());
+        if (eqptUpdate) {
+            ((ApElementConfiguration) ceNew.getDetails()).setRadioMap(apElementConfiguration.getRadioMap());
+            ((ApElementConfiguration) ceNew.getDetails()).setAdvancedRadioMap(apElementConfiguration.getAdvancedRadioMap());
 
-        try {
-            equipmentServiceInterface.update(ce);
-        } catch (DsConcurrentModificationException e) {
-            LOG.debug("Equipment reference changed, update instance and retry.", e.getMessage());
-            ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
-            ce.setDetails(apElementConfiguration);
-            ce = equipmentServiceInterface.update(ce);
+            try {
+                equipmentServiceInterface.update(ceNew);
+            } catch (DsConcurrentModificationException e) {
+                LOG.debug("Equipment reference changed, update instance and retry.", e.getMessage());
+                ceNew = equipmentServiceInterface.getByInventoryIdOrNull(apId);
+                ceNew.setDetails(apElementConfiguration);
+                ceNew = equipmentServiceInterface.update(ceNew);
+            }
         }
 
         if (protocolStatus != null) {
             statusServiceInterface.update(protocolStatus);
         }
-
     }
 
     @Override
