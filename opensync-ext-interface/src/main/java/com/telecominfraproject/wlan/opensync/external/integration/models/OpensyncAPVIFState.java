@@ -24,6 +24,9 @@ public class OpensyncAPVIFState extends BaseJsonModel {
     public Map<String, String> security;
     public String macList;
     public Set<Uuid> associatedClients;
+    public Set<String> associatedClientsByMac;
+   
+
     public boolean enabled;
     public int vlanId;
     public int btm;
@@ -267,4 +270,11 @@ public class OpensyncAPVIFState extends BaseJsonModel {
         this.version = version;
     }
 
+    public Set<String> getAssociatedClientsByMac() {
+        return associatedClientsByMac;
+    }
+
+    public void setAssociatedClientsByMac(Set<String> associatedClientsByMac) {
+        this.associatedClientsByMac = associatedClientsByMac;
+    }
 }

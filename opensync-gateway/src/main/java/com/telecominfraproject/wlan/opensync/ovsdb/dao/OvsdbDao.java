@@ -993,12 +993,11 @@ public class OvsdbDao {
                 }
 
                 wifiVifConfigInfo.macList = row.getSetColumn("mac_list");
-                
-                if (row.getColumns().get("mac_list_type") != null && 
-                               row.getColumns().get("mac_list_type").getClass()
+
+                if (row.getColumns().get("mac_list_type") != null && row.getColumns().get("mac_list_type").getClass()
                         .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                     wifiVifConfigInfo.macListType = row.getStringColumn("mac_list_type");
-               }
+                }
 
                 ret.put(wifiVifConfigInfo.ifName + '_' + wifiVifConfigInfo.ssid, wifiVifConfigInfo);
             }
@@ -1829,7 +1828,17 @@ public class OvsdbDao {
                         }
 
                         if (map.get("associated_clients") != null) {
-                            tableState.setAssociatedClients(row.getSetColumn("associated_clients"));
+                            
+                            LOG.debug("associated_clients {}", row.getSetColumn("associated_clients"));
+                            Set<Uuid> clients = row.getSetColumn("associated_clients");
+                            for (Uuid client : clients) {
+
+                            
+                                LOG.debug("Associated Client Uuid {} UUID {} ", client.toString(), client.getUuid());
+                                
+                            }
+                            
+                            tableState.setAssociatedClients(row.getSetColumn("associated_clients"));                           
                         }
 
                         if (map.get("security") != null) {
@@ -2872,13 +2881,13 @@ public class OvsdbDao {
             // waiting on AP to provide guidance wrt load naming and version
             // matrix content
             // get existing table info
-            //            Row awlanNode = getAWLANNodeDbTableForFirmwareUpdate(ovsdbClient);
+            // Row awlanNode =
+            // getAWLANNodeDbTableForFirmwareUpdate(ovsdbClient);
             //
-            //            if (awlanNode == null) {
-            //                LOG.error("Cannot update AWLAN_Node firmware information");
-            //                return;
-            //            }
-
+            // if (awlanNode == null) {
+            // LOG.error("Cannot update AWLAN_Node firmware information");
+            // return;
+            // }
 
             List<Operation> operations = new ArrayList<>();
             Map<String, Value> updateColumns = new HashMap<>();
