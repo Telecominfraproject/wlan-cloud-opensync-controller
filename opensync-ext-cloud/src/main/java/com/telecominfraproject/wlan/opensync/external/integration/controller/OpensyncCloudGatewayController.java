@@ -274,13 +274,6 @@ public class OpensyncCloudGatewayController {
             String newRedirectorAddress = ((CEGWStartDebugEngine) command).getGatewayHostname();
             tipwlanOvsdbClient.changeRedirectorAddress(inventoryId, newRedirectorAddress);
             // TODO: add support for additional commands below
-<<<<<<< HEAD
-=======
-        } else if (command instanceof CEGWFirmwareFlashRequest) {
-            String firmwareVersion = ((CEGWFirmwareFlashRequest) command).getFirmwareVersion();
-            tipwlanOvsdbClient.processFlashFirmware(inventoryId, firmwareVersion);
-
->>>>>>> Changed Java ConnectUs References
         } else if (command instanceof CEGWFirmwareDownloadRequest) {
 
             CEGWFirmwareDownloadRequest dlRequest = (CEGWFirmwareDownloadRequest)command;
