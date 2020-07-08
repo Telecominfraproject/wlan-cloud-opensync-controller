@@ -1881,7 +1881,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
 
         activeBssidsStatus.setDetails(statusDetails);
-
+        
         if (!statusDetails.equals((ActiveBSSIDs) statusServiceInterface
                 .getOrNull(customerId, equipmentId, StatusDataType.ACTIVE_BSSIDS).getDetails())) {
             activeBssidsStatus = statusServiceInterface.update(activeBssidsStatus);
@@ -1904,10 +1904,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     .getDetails();
 
             Map<RadioType, Integer> clientsPerRadioType = new EnumMap<>(RadioType.class);
+            
             statusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
             for (ActiveBSSID bssid : statusDetails.getActiveBSSIDs()) {
+                int numConnectedForBssid = bssid.getNumDevicesConnected();
+                if (clientsPerRadioType.containsKey(bssid.getRadioType()) && clientsPerRadioType.get(bssid.getRadioType()) != null) {
+                    numConnectedForBssid += clientsPerRadioType.get(bssid.getRadioType());
+                }
                 Integer numClientsPerRadioType = clientsPerRadioType.put(bssid.getRadioType(),
-                        clientsPerRadioType.get(bssid.getRadioType()) + bssid.getNumDevicesConnected());
+                        numConnectedForBssid);
                 LOG.debug("Upgrade numClients for RadioType {} to {} on AP {}", bssid.getRadioType(),
                         numClientsPerRadioType, apId);
             }
