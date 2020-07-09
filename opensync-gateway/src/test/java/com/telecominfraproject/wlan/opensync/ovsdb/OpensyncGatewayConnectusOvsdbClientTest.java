@@ -1,7 +1,5 @@
 package com.telecominfraproject.wlan.opensync.ovsdb;
 
-import static org.junit.Assert.assertTrue;
-
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -36,15 +34,17 @@ import com.vmware.ovsdb.protocol.methods.MonitorRequests;
 import com.vmware.ovsdb.protocol.methods.TableUpdates;
 import com.vmware.ovsdb.service.OvsdbClient;
 
+import io.netty.handler.ssl.SslContext;
+
 @RunWith(SpringRunner.class)
 @ActiveProfiles(profiles = { "integration_test", }) // NOTE: these profiles will
                                                     // be ADDED to the list of
                                                     // active profiles
 @SpringBootTest(webEnvironment = WebEnvironment.NONE, classes = OpensyncGatewayConnectusOvsdbClientTest.class)
 @Import(value = { OpensyncGatewayConnectusOvsdbClientTest.Config.class, ConnectusOvsdbClient.class,
-        ConnectusOvsdbRedirector.class, NettySslContextConfig.class, OvsdbListenerConfig.class,
+        ConnectusOvsdbRedirector.class, OvsdbListenerConfig.class,
         OvsdbSessionMapInterface.class, OvsdbDao.class, OpensyncExternalIntegrationInterface.class,
-        OvsdbSession.class })
+        OvsdbSession.class, SslContext.class })
 public class OpensyncGatewayConnectusOvsdbClientTest {
 
     @MockBean
@@ -55,6 +55,10 @@ public class OpensyncGatewayConnectusOvsdbClientTest {
 
     @MockBean
     private OvsdbSessionMapInterface ovsdbSessionMapInterface;
+    
+    @MockBean
+    private SslContext sslContext;
+
 
     @MockBean
     private OvsdbDao ovsdbDao;
