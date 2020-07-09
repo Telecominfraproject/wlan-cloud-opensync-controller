@@ -2,8 +2,10 @@ package com.telecominfraproject.wlan.opensync.external.integration.controller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextClosedEvent;
+import org.springframework.stereotype.Component;
 
 /**
  * Register for stop event so that we can de-register from routing service
@@ -11,14 +13,13 @@ import org.springframework.context.event.ContextClosedEvent;
  * @author yongli
  *
  */
+@Component
 public class OpensyncGatewayControllerStopListener implements ApplicationListener<ContextClosedEvent> {
-	OpensyncCloudGatewayController controller;
 
 	private static final Logger LOG = LoggerFactory.getLogger(OpensyncGatewayControllerStopListener.class);
 
-	public OpensyncGatewayControllerStopListener(OpensyncCloudGatewayController controller) {
-		this.controller = controller;
-	}
+	@Autowired
+	private OpensyncCloudGatewayController controller;
 
 	@Override
 	public void onApplicationEvent(ContextClosedEvent event) {
