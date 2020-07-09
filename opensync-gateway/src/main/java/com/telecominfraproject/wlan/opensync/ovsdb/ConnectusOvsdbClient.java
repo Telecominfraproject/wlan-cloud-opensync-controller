@@ -276,7 +276,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
     }
 
     private void monitorOvsdbStateTables(OvsdbClient ovsdbClient, String key) {
-        
+
         LOG.info("Received ovsdb table state monitor request for {}", key);
         try {
             monitorWifiRadioStateDbTable(ovsdbClient, key);
@@ -317,6 +317,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
             LOG.debug("Could not enable monitor for deletions to AWLAN_Node table. {}", e.getMessage());
 
         }
+        LOG.debug("Finished (re)setting monitors for AP {}", key);
 
     }
 
@@ -505,21 +506,21 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
     }
 
     private void monitorWifiVifStateDbTable(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
-        CompletableFuture<TableUpdates> vsCf = ovsdbClient.monitor(OvsdbDao.ovsdbName,
-                OvsdbDao.wifiVifStateDbTable + "_" + key,
-                new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiVifStateDbTable,
-                        new MonitorRequest(new MonitorSelect(true, true, false, true)))),
-                new MonitorCallback() {
-                    @Override
-                    public void update(TableUpdates tableUpdates) {
-                        LOG.info("Monitor callback received {}", tableUpdates);
+        CompletableFuture<TableUpdates> vsCf = ovsdbClient
+                .monitor(OvsdbDao.ovsdbName, OvsdbDao.wifiVifStateDbTable + "_" + key,
+                        new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiVifStateDbTable,
+                                new MonitorRequest(new MonitorSelect(true, true, false, true)))),
+                        new MonitorCallback() {
+                            @Override
+                            public void update(TableUpdates tableUpdates) {
+                                LOG.info("Monitor callback received {}", tableUpdates);
 
-                        extIntegrationInterface.wifiVIFStateDbTableUpdate(
-                                ovsdbDao.getOpensyncAPVIFState(tableUpdates, key, ovsdbClient), key);
+                                extIntegrationInterface.wifiVIFStateDbTableUpdate(
+                                        ovsdbDao.getOpensyncAPVIFState(tableUpdates, key, ovsdbClient), key);
 
-                    }
+                            }
 
-                });
+                        });
 
         extIntegrationInterface.wifiVIFStateDbTableUpdate(ovsdbDao.getOpensyncAPVIFState(vsCf.join(), key, ovsdbClient),
                 key);

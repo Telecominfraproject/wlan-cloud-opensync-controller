@@ -15,7 +15,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import javax.annotation.PostConstruct;
-import javax.swing.UIDefaults.ActiveValue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
