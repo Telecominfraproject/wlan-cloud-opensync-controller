@@ -42,13 +42,13 @@ import io.netty.handler.ssl.SslContext;
                                                     // active profiles
 @SpringBootTest(webEnvironment = WebEnvironment.NONE, classes = OpensyncGatewayTipWlanOvsdbClientTest.class)
 @Import(value = { OpensyncGatewayTipWlanOvsdbClientTest.Config.class, TipWlanOvsdbClient.class,
-		OvsdbRedirector.class, OvsdbListenerConfig.class,
+		TipWlanOvsdbRedirector.class, OvsdbListenerConfig.class,
         OvsdbSessionMapInterface.class, OvsdbDao.class, OpensyncExternalIntegrationInterface.class,
         OvsdbSession.class, SslContext.class })
 public class OpensyncGatewayTipWlanOvsdbClientTest {
 
     @MockBean
-    private OvsdbRedirector tipwlanOvsdbRedirector;
+    private TipWlanOvsdbRedirector tipwlanOvsdbRedirector;
 
     @MockBean
     private OpensyncExternalIntegrationInterface opensyncExternalIntegrationInterface;

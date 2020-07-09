@@ -20,9 +20,9 @@ import io.netty.handler.ssl.SslContext;
 
 @Profile("ovsdb_redirector")
 @Component
-public class OvsdbRedirector {
+public class TipWlanOvsdbRedirector {
 
-    private static final Logger LOG = LoggerFactory.getLogger(OvsdbRedirector.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TipWlanOvsdbRedirector.class);
     
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.redirector.listenPort:6643}")
     private int ovsdbRedirectorListenPort;
