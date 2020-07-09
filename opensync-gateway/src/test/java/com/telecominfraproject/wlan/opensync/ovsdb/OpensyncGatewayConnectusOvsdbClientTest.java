@@ -36,12 +36,6 @@ import com.vmware.ovsdb.protocol.methods.MonitorRequests;
 import com.vmware.ovsdb.protocol.methods.TableUpdates;
 import com.vmware.ovsdb.service.OvsdbClient;
 
-/**
- * @author dtoptygin
- * 
- *         Integration test for ProfileController
- *
- */
 @RunWith(SpringRunner.class)
 @ActiveProfiles(profiles = { "integration_test", }) // NOTE: these profiles will
                                                     // be ADDED to the list of
