@@ -2,7 +2,7 @@ package com.telecominfraproject.wlan.opensync.external.integration;
 
 import java.util.Set;
 
-public interface ConnectusOvsdbClientInterface {
+public interface OvsdbClientInterface {
 
     Set<String> getConnectedClientIds();
 

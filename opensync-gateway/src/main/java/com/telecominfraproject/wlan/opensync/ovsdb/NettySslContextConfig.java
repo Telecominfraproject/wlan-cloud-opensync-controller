@@ -31,16 +31,16 @@ public class NettySslContextConfig {
 
     @Bean(name="NettySslContextServer")
     public SslContext nettySslContextServer(
-            @Value("${connectus.ovsdb.trustStore:/opt/tip-wlan/certs/truststore.jks}")
+            @Value("${tip.wlan.ovsdb.trustStore:/opt/tip-wlan/certs/truststore.jks}")
             String trustStoreFileName,
             
-            @Value("${connectus.ovsdb.keyStore:/opt/tip-wlan/certs/server.pkcs12}")
+            @Value("${tip.wlan.ovsdb.keyStore:/opt/tip-wlan/certs/server.pkcs12}")
             String keyFileName,
 
-            @Value("${connectus.ovsdb.keyStorePassword:mypassword}")
+            @Value("${tip.wlan.ovsdb.keyStorePassword:mypassword}")
             String keyStorePassword,
             
-            @Value("${connectus.ovsdb.trustStorePassword:mypassword}")
+            @Value("${tip.wlan.ovsdb.trustStorePassword:mypassword}")
             String trustStorePassword            
             ){
         File trustStoreFile = new File(trustStoreFileName);

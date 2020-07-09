@@ -167,19 +167,19 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     @Autowired
     private OpensyncCloudGatewayController gatewayController;
 
-    @Value("${connectus.ovsdb.autoProvisionedCustomerId:1970}")
+    @Value("${tip.wlan.ovsdb.autoProvisionedCustomerId:1970}")
     private int autoProvisionedCustomerId;
-    @Value("${connectus.ovsdb.autoProvisionedLocationId:8}")
+    @Value("${tip.wlan.ovsdb.autoProvisionedLocationId:8}")
     private int autoProvisionedLocationId;
-    @Value("${connectus.ovsdb.autoProvisionedProfileId:1}")
+    @Value("${tip.wlan.ovsdb.autoProvisionedProfileId:1}")
     private int autoProvisionedProfileId;
-    @Value("${connectus.ovsdb.autoProvisionedSsid:DefaultSsid-}")
+    @Value("${tip.wlan.ovsdb.autoProvisionedSsid:DefaultSsid-}")
     private String autoProvisionedSsid;
-    @Value("${connectus.ovsdb.autoprovisionedSsidKey:12345678}")
+    @Value("${tip.wlan.ovsdb.autoprovisionedSsidKey:12345678}")
     private String autoprovisionedSsidKey;
-    @Value("${connectus.ovsdb.isAutoconfigEnabled:true}")
+    @Value("${tip.wlan.ovsdb.isAutoconfigEnabled:true}")
     private boolean isAutoconfigEnabled;
-    @Value("${connectus.ovsdb.defaultFwVersion:r10947-65030d81f3}")
+    @Value("${tip.wlan.ovsdb.defaultFwVersion:r10947-65030d81f3}")
     private String defaultFwVersion;
 
     @Autowired

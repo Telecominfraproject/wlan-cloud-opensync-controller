@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.ImmutableMap;
-import com.telecominfraproject.wlan.opensync.external.integration.ConnectusOvsdbClientInterface;
+import com.telecominfraproject.wlan.opensync.external.integration.OvsdbClientInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExternalIntegrationInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSession;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSessionMapInterface;
@@ -43,14 +43,14 @@ import io.netty.handler.ssl.SslContext;
 
 @Profile("ovsdb_manager")
 @Component
-public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
+public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ConnectusOvsdbClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TipWlanOvsdbClient.class);
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.listenPort:6640}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.listenPort:6640}")
     private int ovsdbListenPort;
 
-    @org.springframework.beans.factory.annotation.Value("${connectus.manager.collectionIntervalSec.deviceStats:120}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.manager.collectionIntervalSec.deviceStats:120}")
     private long collectionIntervalSecDeviceStats;
 
     @Autowired
@@ -157,6 +157,7 @@ public class ConnectusOvsdbClient implements ConnectusOvsdbClientInterface {
                 LOG.info("ovsdbClient disconnected from {} on port {} clientCn {} key {} ", remoteHost, localPort,
                         clientCn, key);
                 LOG.info("ovsdbClient connectedClients = {}", ovsdbSessionMapInterface.getNumSessions());
+
             }
 
         };

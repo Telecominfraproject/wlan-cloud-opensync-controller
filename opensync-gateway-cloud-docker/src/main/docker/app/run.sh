@@ -10,24 +10,24 @@ CLIENT_MQTT_SSL_PROPS+=" -Djavax.net.ssl.keyStore=/opt/tip-wlan/certs/client_key
 CLIENT_MQTT_SSL_PROPS+=" -Djavax.net.ssl.keyStorePassword=mypassword"
 CLIENT_MQTT_SSL_PROPS+=" -Djavax.net.ssl.trustStore=/opt/tip-wlan/certs/truststore.jks"
 CLIENT_MQTT_SSL_PROPS+=" -Djavax.net.ssl.trustStorePassword=mypassword"
-CLIENT_MQTT_SSL_PROPS+=" -Dconnectus.mqttBroker.password=admin"
+CLIENT_MQTT_SSL_PROPS+=" -Dtip.wlan.mqttBroker.password=admin"
 
 OVSDB_MANAGER_HOST=${OVSDB_MANAGER}
 MQTT_BROKER_HOST="${MQTT_SERVER}"
 BACKEND_SERVER="${BACKEND_SERVER}"
 
 OVSDB_PROPS=" "
-OVSDB_PROPS+=" -Dconnectus.ovsdb.managerAddr=$OVSDB_MANAGER_HOST"
-OVSDB_PROPS+=" -Dconnectus.ovsdb.listenPort=6640 "
-OVSDB_PROPS+=" -Dconnectus.ovsdb.redirector.listenPort=6643"
-OVSDB_PROPS+=" -Dconnectus.ovsdb.timeoutSec=30"
-OVSDB_PROPS+=" -Dconnectus.ovsdb.trustStore=/opt/tip-wlan/certs/truststore.jks"
-OVSDB_PROPS+=" -Dconnectus.ovsdb.keyStore=/opt/tip-wlan/certs/server.pkcs12"
-OVSDB_PROPS+=" -Dconnectus.ovsdb.configFileName=/app/opensync/config_2_ssids.json"
+OVSDB_PROPS+=" -Dtip.wlan.ovsdb.managerAddr=$OVSDB_MANAGER_HOST"
+OVSDB_PROPS+=" -Dtip.wlan.ovsdb.listenPort=6640 "
+OVSDB_PROPS+=" -Dtip.wlan.ovsdb.redirector.listenPort=6643"
+OVSDB_PROPS+=" -Dtip.wlan.ovsdb.timeoutSec=30"
+OVSDB_PROPS+=" -Dtip.wlan.ovsdb.trustStore=/opt/tip-wlan/certs/truststore.jks"
+OVSDB_PROPS+=" -Dtip.wlan.ovsdb.keyStore=/opt/tip-wlan/certs/server.pkcs12"
+OVSDB_PROPS+=" -Dtip.wlan.ovsdb.configFileName=/app/opensync/config_2_ssids.json"
 
 MQTT_PROPS=" "
-MQTT_PROPS+=" -Dconnectus.mqttBroker.address=$MQTT_BROKER_HOST"
-MQTT_PROPS+=" -Dconnectus.mqttBroker.listenPort=1883"
+MQTT_PROPS+=" -Dtip.wlan.mqttBroker.address=$MQTT_BROKER_HOST"
+MQTT_PROPS+=" -Dtip.wlan.mqttBroker.listenPort=1883"
 
 LOGBACK_CONFIG_FILE="${LOGBACK_CONFIG_FILE:=/app/opensync/logback.xml}"
 LOGGING_PROPS=" -Dlogging.config=file:$LOGBACK_CONFIG_FILE"
@@ -77,12 +77,12 @@ DEFAULT_LAN_NAME="${DEFAULT_LAN_NAME:=lan}"
 AUTO_PROV_CUSTOMER_ID="${AUTO_PROV_CUSTOMER_ID:=2}"
  
 PROV_PROPS=" "
-PROV_PROPS+=" -Dconnectus.ovsdb.wifi-iface.default_bridge=$DEFAULT_BRIDGE"
-PROV_PROPS+=" -Dconnectus.ovsdb.wifi-iface.default_wan_type=$DEFAULT_WAN_TYPE"
-PROV_PROPS+=" -Dconnectus.ovsdb.wifi-iface.default_lan_type=$DEFAULT_LAN_TYPE"
-PROV_PROPS+=" -Dconnectus.ovsdb.wifi-iface.default_lan_name=$DEFAULT_LAN_NAME"
+PROV_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_bridge=$DEFAULT_BRIDGE"
+PROV_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_wan_type=$DEFAULT_WAN_TYPE"
+PROV_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_lan_type=$DEFAULT_LAN_TYPE"
+PROV_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_lan_name=$DEFAULT_LAN_NAME"
 
-PROV_PROPS+=" -Dconnectus.ovsdb.autoProvisionedCustomerId=$AUTO_PROV_CUSTOMER_ID"
+PROV_PROPS+=" -Dtip.wlan.ovsdb.autoProvisionedCustomerId=$AUTO_PROV_CUSTOMER_ID"
 
 export ALL_PROPS="$PROFILES $SSL_PROPS $CLIENT_MQTT_SSL_PROPS $OVSDB_PROPS $MQTT_PROPS $LOGGING_PROPS $RESTAPI_PROPS $SPRING_EXTRA_PROPS $HOST_PROPS $PROV_PROPS"
 

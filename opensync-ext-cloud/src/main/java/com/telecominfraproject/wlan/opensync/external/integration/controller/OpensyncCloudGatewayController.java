@@ -41,7 +41,7 @@ import com.telecominfraproject.wlan.equipmentgateway.models.CEGWStartDebugEngine
 import com.telecominfraproject.wlan.equipmentgateway.models.EquipmentCommand;
 import com.telecominfraproject.wlan.equipmentgateway.models.EquipmentCommandResponse;
 import com.telecominfraproject.wlan.equipmentgateway.models.GatewayDefaults;
-import com.telecominfraproject.wlan.opensync.external.integration.ConnectusOvsdbClientInterface;
+import com.telecominfraproject.wlan.opensync.external.integration.OvsdbClientInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSession;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSessionMapInterface;
 import com.telecominfraproject.wlan.routing.RoutingServiceInterface;
@@ -75,7 +75,7 @@ public class OpensyncCloudGatewayController {
     private ServiceInstanceInformation serviceInstanceInfo;
 
     @Autowired
-    private ConnectusOvsdbClientInterface connectusOvsdbClient;
+    private OvsdbClientInterface tipwlanOvsdbClient;
 
     /**
      * Flag indicates if this gateway has registered with routing service
@@ -265,14 +265,14 @@ public class OpensyncCloudGatewayController {
                 registeredGateway.getHostname(), registeredGateway.getPort());
 
         if (command instanceof CEGWConfigChangeNotification) {
-            connectusOvsdbClient.processConfigChanged(inventoryId);
+            tipwlanOvsdbClient.processConfigChanged(inventoryId);
         } else if (command instanceof CEGWStartDebugEngine) {
             // dtop: we will be using CEGWStartDebugEngine command to deliver
             // request to
             // change redirector
             // TODO: after the demo introduce a specialized command for this!
             String newRedirectorAddress = ((CEGWStartDebugEngine) command).getGatewayHostname();
-            connectusOvsdbClient.changeRedirectorAddress(inventoryId, newRedirectorAddress);
+            tipwlanOvsdbClient.changeRedirectorAddress(inventoryId, newRedirectorAddress);
             // TODO: add support for additional commands below
         } else if (command instanceof CEGWFirmwareDownloadRequest) {
 
@@ -283,7 +283,7 @@ public class OpensyncCloudGatewayController {
             String username = dlRequest.getUsername();
             String validationCode = dlRequest.getValidationCode();
 
-            connectusOvsdbClient.processFirmwareDownload(inventoryId, filepath, firmwareVersion, username,
+            tipwlanOvsdbClient.processFirmwareDownload(inventoryId, filepath, firmwareVersion, username,
                     validationCode);
 
         } else if (command instanceof CEGWRadioResetRequest) {

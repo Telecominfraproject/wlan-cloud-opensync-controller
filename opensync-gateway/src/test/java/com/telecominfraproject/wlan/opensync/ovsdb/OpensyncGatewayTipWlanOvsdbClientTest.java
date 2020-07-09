@@ -40,15 +40,15 @@ import io.netty.handler.ssl.SslContext;
 @ActiveProfiles(profiles = { "integration_test", }) // NOTE: these profiles will
                                                     // be ADDED to the list of
                                                     // active profiles
-@SpringBootTest(webEnvironment = WebEnvironment.NONE, classes = OpensyncGatewayConnectusOvsdbClientTest.class)
-@Import(value = { OpensyncGatewayConnectusOvsdbClientTest.Config.class, ConnectusOvsdbClient.class,
-        ConnectusOvsdbRedirector.class, OvsdbListenerConfig.class,
+@SpringBootTest(webEnvironment = WebEnvironment.NONE, classes = OpensyncGatewayTipWlanOvsdbClientTest.class)
+@Import(value = { OpensyncGatewayTipWlanOvsdbClientTest.Config.class, TipWlanOvsdbClient.class,
+		TipWlanOvsdbRedirector.class, OvsdbListenerConfig.class,
         OvsdbSessionMapInterface.class, OvsdbDao.class, OpensyncExternalIntegrationInterface.class,
         OvsdbSession.class, SslContext.class })
-public class OpensyncGatewayConnectusOvsdbClientTest {
+public class OpensyncGatewayTipWlanOvsdbClientTest {
 
     @MockBean
-    private ConnectusOvsdbRedirector connectusOvsdbRedirector;
+    private TipWlanOvsdbRedirector tipwlanOvsdbRedirector;
 
     @MockBean
     private OpensyncExternalIntegrationInterface opensyncExternalIntegrationInterface;
@@ -70,7 +70,7 @@ public class OpensyncGatewayConnectusOvsdbClientTest {
     private CompletableFuture<TableUpdates> completableFuture;
 
     @Autowired
-    ConnectusOvsdbClient connectusOvsdbClient;
+    TipWlanOvsdbClient tipwlanOvsdbClient;
 
     MockitoSession mockito;
 
@@ -97,8 +97,8 @@ public class OpensyncGatewayConnectusOvsdbClientTest {
     // @PropertySource({ "classpath:persistence-${envTarget:dev}.properties" })
     static class Config {
         @Bean
-        public ConnectusOvsdbClient connectusOvsdbClient() {
-            return new ConnectusOvsdbClient();
+        public TipWlanOvsdbClient tipwlanOvsdbClient() {
+            return new TipWlanOvsdbClient();
         }
     }
 
@@ -106,7 +106,7 @@ public class OpensyncGatewayConnectusOvsdbClientTest {
     public void testGetConnectedClientIds() throws Exception {
         Set<String> connectedClientIds = new HashSet<String>();
         Mockito.when(ovsdbSessionMapInterface.getConnectedClientIds()).thenReturn(connectedClientIds);
-        assert (connectedClientIds.equals(connectusOvsdbClient.getConnectedClientIds()));
+        assert (connectedClientIds.equals(tipwlanOvsdbClient.getConnectedClientIds()));
     }
 
     @Test
@@ -115,7 +115,7 @@ public class OpensyncGatewayConnectusOvsdbClientTest {
         Mockito.when(ovsdbSession.getOvsdbClient()).thenReturn(ovsdbClient);
         Mockito.when(ovsdbSessionMapInterface.getSession("Test_Client_21P10C68818122")).thenReturn(ovsdbSession);
 
-        connectusOvsdbClient.processConfigChanged("Test_Client_21P10C68818122");
+        tipwlanOvsdbClient.processConfigChanged("Test_Client_21P10C68818122");
 
         Mockito.verify(ovsdbSessionMapInterface).getSession("Test_Client_21P10C68818122");
         Mockito.verify(ovsdbSession).getOvsdbClient();
@@ -162,7 +162,7 @@ public class OpensyncGatewayConnectusOvsdbClientTest {
 
         String expectedResult = "Initialized firmware download to Test_Client_21P10C68818122";
 
-        assert (connectusOvsdbClient.processFirmwareDownload("Test_Client_21P10C68818122",
+        assert (tipwlanOvsdbClient.processFirmwareDownload("Test_Client_21P10C68818122",
                 "http://127.0.0.1/~username/ea8300-2020-07-08-6632239/openwrt-ipq40xx-generic-linksys_ea8300-squashfs-sysupgrade.bin",
                 "openwrt-ipq40xx-generic-linksys_ea8300-squashfs-sysupgrade", "username",
                 "b0d03d8fba6b2261786ac97d49a629f2").equals(expectedResult));

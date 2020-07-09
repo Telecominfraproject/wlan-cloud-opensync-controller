@@ -18,7 +18,7 @@ public class OvsdbListenerConfig {
 
     @Bean
     public OvsdbPassiveConnectionListener ovsdbPassiveConnectionListener(
-            @org.springframework.beans.factory.annotation.Value("${connectus.ovsdb.listener.threadPoolSize:10}")
+            @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.listener.threadPoolSize:10}")
             int threadPoolSize) {
         LOG.debug("Configuring OvsdbPassiveConnectionListener with thread pool size {}", threadPoolSize);
         ScheduledExecutorService executorService = Executors.newScheduledThreadPool(threadPoolSize);    
