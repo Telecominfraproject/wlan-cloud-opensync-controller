@@ -1,0 +1,110 @@
+{
+	"vif_radio_idx": [
+		"set",
+		[
+		]
+	],
+	"if_name": "home-ap-24",
+	"state": [
+		"set",
+		[
+		]
+	],
+	"mac": "24:f5:a2:ef:2e:54",
+	"ssid": "TipWlan-cloud-3-radios",
+	"uapsd_enable": true,
+	"ap_bridge": false,
+	"wps_pbc": [
+		"set",
+		[
+		]
+	],
+	"mac_list": [
+		"set",
+		[
+		]
+	],
+	"associated_clients": [
+		"set",
+		[
+		]
+	],
+	"btm": 1,
+	"_uuid": [
+		"uuid",
+		"a007d865-fe4b-4265-a9a1-69d4b309e939"
+	],
+	"ssid_broadcast": "enabled",
+	"wps": [
+		"set",
+		[
+		]
+	],
+	"mcast2ucast": [
+		"set",
+		[
+		]
+	],
+	"mode": "ap",
+	"mac_list_type": "none",
+	"wps_pbc_key_id": "",
+	"ft_psk": 0,
+	"channel": [
+		"set",
+		[
+		]
+	],
+	"parent": [
+		"set",
+		[
+		]
+	],
+	"multi_ap": [
+		"set",
+		[
+		]
+	],
+	"ap_vlan_sta_addr": [
+		"set",
+		[
+		]
+	],
+	"security": [
+		"map",
+		[
+			[
+				"encryption",
+				"OPEN"
+			]
+		]
+	],
+	"wds": [
+		"set",
+		[
+		]
+	],
+	"enabled": true,
+	"vlan_id": 1,
+	"min_hw_mode": "11n",
+	"vif_config": [
+		"uuid",
+		"fc3de7db-ee6c-452c-859c-1be81b0b5b24"
+	],
+	"_version": [
+		"uuid",
+		"a96bff45-29bd-423b-9014-10a418683e5d"
+	],
+	"bridge": "lan",
+	"group_rekey": 0,
+	"ft_mobility_domain": [
+		"set",
+		[
+		]
+	],
+	"dynamic_beacon": [
+		"set",
+		[
+		]
+	],
+	"rrm": 1
+}
