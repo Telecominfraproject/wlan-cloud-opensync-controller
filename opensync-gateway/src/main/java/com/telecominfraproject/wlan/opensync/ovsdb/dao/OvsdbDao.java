@@ -75,7 +75,6 @@ import com.vmware.ovsdb.service.OvsdbClient;
 public class OvsdbDao {
     private static final Logger LOG = LoggerFactory.getLogger(OvsdbDao.class);
 
-
     public static final String wifiRouteStateDbTable = "Wifi_Route_State";
 
     public static final String wifiMasterStateDbTable = "Wifi_Master_State";
@@ -126,7 +125,6 @@ public class OvsdbDao {
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.awlan-node.upgrade_timer:60}")
     public long upgradeTimerSeconds;
 
-
     public static final String ovsdbName = "Open_vSwitch";
     public static final String awlanNodeDbTable = "AWLAN_Node";
     public static final String wifiStatsConfigDbTable = "Wifi_Stats_Config";
@@ -176,7 +174,7 @@ public class OvsdbDao {
             }
 
             Row row = null;
-            if ((result != null) && (result.length > 0) && !((SelectResult) result[0]).getRows().isEmpty()) {
+            if ((result != null) && (result.length > 0) && (result[0] instanceof SelectResult) && !((SelectResult) result[0]).getRows().isEmpty()) {
                 row = ((SelectResult) result[0]).getRows().iterator().next();
             }
 
@@ -235,7 +233,7 @@ public class OvsdbDao {
                 }
             }
 
-            if ((result != null) && (result.length > 0) && !((SelectResult) result[0]).getRows().isEmpty()) {
+            if ((result != null) && (result.length > 0) && (result[0] instanceof SelectResult) && !((SelectResult) result[0]).getRows().isEmpty()) {
 
                 for (Row row : ((SelectResult) result[0]).getRows()) {
                     ret.wifiRadioStates.put(getSingleValueFromSet(row, "freq_band"),
@@ -273,7 +271,7 @@ public class OvsdbDao {
                 }
             }
 
-            if ((result != null) && (result.length > 0) && !((SelectResult) result[0]).getRows().isEmpty()) {
+            if ((result != null) && (result.length > 0) && (result[0] instanceof SelectResult) && !((SelectResult) result[0]).getRows().isEmpty()) {
 
                 for (Row row : ((SelectResult) result[0]).getRows()) {
 
@@ -330,7 +328,7 @@ public class OvsdbDao {
                 }
             }
 
-            if ((result != null) && (result.length > 0) && !((SelectResult) result[0]).getRows().isEmpty()) {
+            if ((result != null) && (result.length > 0) && (result[0] instanceof SelectResult) && !((SelectResult) result[0]).getRows().isEmpty()) {
 
                 for (Row row : ((SelectResult) result[0]).getRows()) {
                     allowedChannels.put(getSingleValueFromSet(row, "freq_band"), row.getSetColumn("allowed_channels"));
@@ -418,7 +416,8 @@ public class OvsdbDao {
             }
 
             Row row = null;
-            if ((result != null) && (result.length > 0) && !((SelectResult) result[0]).getRows().isEmpty()) {
+            if ((result != null) && (result.length > 0) && (result[0] instanceof SelectResult)
+                    && !((SelectResult) result[0]).getRows().isEmpty()) {
                 row = ((SelectResult) result[0]).getRows().iterator().next();
                 connectNodeInfo.ipV4Address = getSingleValueFromSet(row, "inet_addr");
                 connectNodeInfo.ifName = row.getStringColumn("if_name");
@@ -1832,17 +1831,16 @@ public class OvsdbDao {
                         }
 
                         if (map.get("associated_clients") != null) {
-                            
+
                             LOG.debug("associated_clients {}", row.getSetColumn("associated_clients"));
                             Set<Uuid> clients = row.getSetColumn("associated_clients");
                             for (Uuid client : clients) {
 
-                            
                                 LOG.debug("Associated Client Uuid {} UUID {} ", client.toString(), client.getUuid());
-                                
+
                             }
-                            
-                            tableState.setAssociatedClients(row.getSetColumn("associated_clients"));                           
+
+                            tableState.setAssociatedClients(row.getSetColumn("associated_clients"));
                         }
 
                         if (map.get("security") != null) {
