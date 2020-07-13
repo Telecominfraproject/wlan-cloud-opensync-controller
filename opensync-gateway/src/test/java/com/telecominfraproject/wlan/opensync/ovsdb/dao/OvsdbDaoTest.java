@@ -1,6 +1,7 @@
 package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 import java.util.HashMap;
 import java.util.List;
@@ -191,10 +192,9 @@ public class OvsdbDaoTest {
         Mockito.verify(ovsdbClient, Mockito.times(4)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
 
     }
-    
+
     @Test
     public void testFailGetConnectNodeInfo() throws Exception {
-
 
         Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList())).thenReturn(futureResult);
 
@@ -214,11 +214,19 @@ public class OvsdbDaoTest {
         List<Row> awlanRows = ImmutableList.of(awlanRow);
 
         OperationResult[] awlanResult = new OperationResult[] { new SelectResult(awlanRows) };
-        
+        java.util.Map<String, Value> inetWanColumns = new HashMap<>();
+        inetWanColumns.put("inet_addr", Atom.string(WAN_IP));
+        inetWanColumns.put("hwaddr", Atom.string(WAN_MAC));
+        inetWanColumns.put("if_name", Atom.string(WAN_IF_NAME));
+        inetWanColumns.put("if_type", Atom.string(WAN_IF_TYPE));
 
-        // No 'WAN' for this test, will have an ERROR
-        OperationResult[] errorResult = new OperationResult[] { new ErrorResult("Error","Error") };
+        Row inetWanRow = new Row(inetWanColumns);
 
+        List<Row> inetWanRows = ImmutableList.of(inetWanRow);
+
+        OperationResult[] inetWanResult = new OperationResult[] { new SelectResult(inetWanRows) };
+
+        OperationResult[] errorResult = new OperationResult[] { new ErrorResult("Error", "Error") };
 
         java.util.Map<String, Value> inetLanColumns = new HashMap<>();
         inetLanColumns.put("inet_addr", Atom.string(LAN_IP));
@@ -251,23 +259,118 @@ public class OvsdbDaoTest {
 
         OperationResult[] wifiRadioStateResult = new OperationResult[] { new SelectResult(wifiRadioStateRows) };
 
-
-        Mockito.when(futureResult.get(Mockito.anyLong(),Mockito.eq(TimeUnit.SECONDS))).thenReturn(awlanResult).thenReturn(errorResult).thenReturn(errorResult).thenReturn(inetLanResult).thenReturn(wifiRadioStateResult);
-
+        // No 'WAN' for this test, will have an ERROR
+        Mockito.when(futureResult.get(Mockito.anyLong(), Mockito.eq(TimeUnit.SECONDS))).thenReturn(awlanResult)
+                .thenReturn(errorResult).thenReturn(errorResult).thenReturn(inetLanResult)
+                .thenReturn(wifiRadioStateResult);
         ConnectNodeInfo connectNodeInfo = ovsdbDao.getConnectNodeInfo(ovsdbClient);
+        assertNotNull(connectNodeInfo.firmwareVersion);
+        assertNotNull(connectNodeInfo.model);
+        assertNotNull(connectNodeInfo.skuNumber);
+        assertNotNull(connectNodeInfo.platformVersion);
+        assertNotNull(connectNodeInfo.serialNumber);
+        assertNotNull(connectNodeInfo.mqttSettings);
+        assertNotNull(connectNodeInfo.redirectorAddr);
+        assertNotNull(connectNodeInfo.managerAddr);
 
-//        System.out.println("ConnectNodeInfo " + connectNodeInfo);
-//        assert (connectNodeInfo.wifiRadioStates.entrySet().size() == 3);
-//        assert (connectNodeInfo.firmwareVersion.equals(FW_VERSION));
-//        assert (connectNodeInfo.redirectorAddr.equals(REDIRECT_ADDR));
-//        assert (connectNodeInfo.ipV4Address.equals(WAN_IP));
-//
-//        assert (connectNodeInfo.lanIfName.equals(LAN_IF_NAME));
-//        assert (connectNodeInfo.ifName.equals(WAN_IF_NAME));
+        assertNull(connectNodeInfo.ifName);
+        assertNull(connectNodeInfo.ifType);
+        assertNull(connectNodeInfo.ipV4Address);
+        assertNull(connectNodeInfo.macAddress);
 
-//        Mockito.verify(ovsdbClient, Mockito.times(4)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
+        assertNotNull(connectNodeInfo.lanIfName);
+        assertNotNull(connectNodeInfo.lanIfType);
+        assertNotNull(connectNodeInfo.lanIpV4Address);
+        assertNotNull(connectNodeInfo.lanMacAddress);
 
-    
+        assert (connectNodeInfo.wifiRadioStates.entrySet().size() == 3);
+        Mockito.verify(ovsdbClient, Mockito.times(5)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
+        Mockito.clearInvocations(ovsdbClient);
+
+        // No 'LAN' for this test, will have an ERROR
+        Mockito.when(futureResult.get(Mockito.anyLong(), Mockito.eq(TimeUnit.SECONDS))).thenReturn(awlanResult)
+                .thenReturn(inetWanResult).thenReturn(errorResult).thenReturn(wifiRadioStateResult);
+        connectNodeInfo = ovsdbDao.getConnectNodeInfo(ovsdbClient);
+        assertNotNull(connectNodeInfo.firmwareVersion);
+        assertNotNull(connectNodeInfo.model);
+        assertNotNull(connectNodeInfo.skuNumber);
+        assertNotNull(connectNodeInfo.platformVersion);
+        assertNotNull(connectNodeInfo.serialNumber);
+        assertNotNull(connectNodeInfo.mqttSettings);
+        assertNotNull(connectNodeInfo.redirectorAddr);
+        assertNotNull(connectNodeInfo.managerAddr);
+
+        assertNotNull(connectNodeInfo.ifName);
+        assertNotNull(connectNodeInfo.ifType);
+        assertNotNull(connectNodeInfo.ipV4Address);
+        assertNotNull(connectNodeInfo.macAddress);
+
+        assertNull(connectNodeInfo.lanIfName);
+        assertNull(connectNodeInfo.lanIfType);
+        assertNull(connectNodeInfo.lanIpV4Address);
+        assertNull(connectNodeInfo.lanMacAddress);
+
+        assert (connectNodeInfo.wifiRadioStates.entrySet().size() == 3);
+        Mockito.verify(ovsdbClient, Mockito.times(4)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
+        Mockito.clearInvocations(ovsdbClient);
+
+        // No 'Wifi_Radio_State data' for this test, will have an ERROR
+        Mockito.when(futureResult.get(Mockito.anyLong(), Mockito.eq(TimeUnit.SECONDS))).thenReturn(awlanResult)
+                .thenReturn(inetWanResult).thenReturn(inetLanResult).thenReturn(errorResult);
+        connectNodeInfo = ovsdbDao.getConnectNodeInfo(ovsdbClient);
+
+        assertNotNull(connectNodeInfo.firmwareVersion);
+        assertNotNull(connectNodeInfo.model);
+        assertNotNull(connectNodeInfo.skuNumber);
+        assertNotNull(connectNodeInfo.platformVersion);
+        assertNotNull(connectNodeInfo.serialNumber);
+        assertNotNull(connectNodeInfo.mqttSettings);
+        assertNotNull(connectNodeInfo.redirectorAddr);
+        assertNotNull(connectNodeInfo.managerAddr);
+
+        assertNotNull(connectNodeInfo.ifName);
+        assertNotNull(connectNodeInfo.ifType);
+        assertNotNull(connectNodeInfo.ipV4Address);
+        assertNotNull(connectNodeInfo.macAddress);
+
+        assertNotNull(connectNodeInfo.lanIfName);
+        assertNotNull(connectNodeInfo.lanIfType);
+        assertNotNull(connectNodeInfo.lanIpV4Address);
+        assertNotNull(connectNodeInfo.lanMacAddress);
+
+        assert (connectNodeInfo.wifiRadioStates.isEmpty());
+
+        Mockito.verify(ovsdbClient, Mockito.times(4)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
+        Mockito.clearInvocations(ovsdbClient);
+
+        // No 'AWLAN_Node data' for this test, will have an ERROR
+        Mockito.when(futureResult.get(Mockito.anyLong(), Mockito.eq(TimeUnit.SECONDS))).thenReturn(errorResult)
+                .thenReturn(inetWanResult).thenReturn(inetLanResult).thenReturn(wifiRadioStateResult);
+        connectNodeInfo = ovsdbDao.getConnectNodeInfo(ovsdbClient);
+        assertNull(connectNodeInfo.firmwareVersion);
+        assertNull(connectNodeInfo.model);
+        assertNull(connectNodeInfo.skuNumber);
+        assertNull(connectNodeInfo.platformVersion);
+        assertNull(connectNodeInfo.serialNumber);
+        assertNull(connectNodeInfo.mqttSettings);
+        assertNull(connectNodeInfo.redirectorAddr);
+        assertNull(connectNodeInfo.managerAddr);
+
+        assertNotNull(connectNodeInfo.ifName);
+        assertNotNull(connectNodeInfo.ifType);
+        assertNotNull(connectNodeInfo.ipV4Address);
+        assertNotNull(connectNodeInfo.macAddress);
+
+        assertNotNull(connectNodeInfo.lanIfName);
+        assertNotNull(connectNodeInfo.lanIfType);
+        assertNotNull(connectNodeInfo.lanIpV4Address);
+        assertNotNull(connectNodeInfo.lanMacAddress);
+
+        assert (connectNodeInfo.wifiRadioStates.entrySet().size() == 3);
+
+        Mockito.verify(ovsdbClient, Mockito.times(4)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
+        Mockito.clearInvocations(ovsdbClient);
+
     }
 
 }
