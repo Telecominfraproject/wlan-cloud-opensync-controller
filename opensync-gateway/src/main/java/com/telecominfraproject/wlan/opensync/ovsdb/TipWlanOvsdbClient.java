@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbClientInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExternalIntegrationInterface;
@@ -515,16 +516,18 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                             @Override
                             public void update(TableUpdates tableUpdates) {
                                 LOG.info("Monitor callback received {}", tableUpdates);
-
-                                extIntegrationInterface.wifiVIFStateDbTableUpdate(
-                                        ovsdbDao.getOpensyncAPVIFState(tableUpdates, key, ovsdbClient), key);
+                                List<OpensyncAPVIFState> vifStates = ovsdbDao.getOpensyncAPVIFState(tableUpdates, key, ovsdbClient);                              
+                                LOG.info("Calling wifiVIFStateDbTableUpdate for {}, {}", vifStates, key);
+                                extIntegrationInterface.wifiVIFStateDbTableUpdate(vifStates, key);
+                                
 
                             }
 
                         });
-
-        extIntegrationInterface.wifiVIFStateDbTableUpdate(ovsdbDao.getOpensyncAPVIFState(vsCf.join(), key, ovsdbClient),
-                key);
+        
+        List<OpensyncAPVIFState> vifStates = ovsdbDao.getOpensyncAPVIFState(vsCf.join(), key, ovsdbClient);
+        LOG.info("Calling wifiVIFStateDbTableUpdate init for {}, {}", vifStates, key);
+        extIntegrationInterface.wifiVIFStateDbTableUpdate(vifStates, key);
 
     }
 

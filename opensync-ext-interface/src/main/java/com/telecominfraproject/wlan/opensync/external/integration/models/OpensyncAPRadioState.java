@@ -3,8 +3,10 @@
  */
 package com.telecominfraproject.wlan.opensync.external.integration.models;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -46,14 +48,15 @@ public class OpensyncAPRadioState extends BaseJsonModel {
     public Map<String, String> hwParams;
     public RadioType freqBand;
     public int thermalIntegration;
-    
-    
+    public List<OpensyncAPVIFState> vifStates;
+
     public OpensyncAPRadioState() {
         super();
         allowedChannels = new HashSet<>();
         hwConfig = new HashMap<>();
         channels = new HashMap<>();
         hwParams = new HashMap<>();
+        vifStates = new ArrayList<>();
     }
 
     public String channelMode;
@@ -98,6 +101,14 @@ public class OpensyncAPRadioState extends BaseJsonModel {
 
     public void setMac(String mac) {
         this.mac = mac;
+    }
+
+    public List<OpensyncAPVIFState> getVifStates() {
+        return vifStates;
+    }
+
+    public void setVifStates(List<OpensyncAPVIFState> vifStates) {
+        this.vifStates = vifStates;
     }
 
     public int getBcnInt() {

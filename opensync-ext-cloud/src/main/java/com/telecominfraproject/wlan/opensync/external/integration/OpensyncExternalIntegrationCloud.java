@@ -4,7 +4,6 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -13,6 +12,8 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
 
@@ -1574,13 +1575,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 apSsidMetrics.getSsidStats().put(radioType, ssidStatsList);
             }
 
-            if ((statusDetails != null) && (indexOfBssid >= 0)) {
-                statusDetails.getActiveBSSIDs().get(indexOfBssid).setNumDevicesConnected(numConnectedClients);
-                activeBssidsStatus.setDetails(statusDetails);
-                activeBssidsStatus = statusServiceInterface.update(activeBssidsStatus);
-                LOG.debug("update activeBSSIDs {}", activeBssidsStatus);
-            }
-
         }
 
         LOG.debug("ApSsidMetrics {}", apSsidMetrics);
@@ -1796,141 +1790,112 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
                 StatusDataType.ACTIVE_BSSIDS);
 
-        if (activeBssidsStatus == null) {
-            activeBssidsStatus = new Status();
-            activeBssidsStatus.setCustomerId(customerId);
-            activeBssidsStatus.setEquipmentId(equipmentId);
-            activeBssidsStatus.setStatusDataType(StatusDataType.ACTIVE_BSSIDS);
+        if (activeBssidsStatus != null) {
 
-            ActiveBSSIDs statusDetails = new ActiveBSSIDs();
-            statusDetails.setActiveBSSIDs(new ArrayList<ActiveBSSID>());
+            ActiveBSSIDs statusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
 
-            activeBssidsStatus.setDetails(statusDetails);
+            for (OpensyncAPVIFState vifState : vifStateTables) {
+
+                LOG.debug("Processing vifState for interface {} on AP {}", vifState.getIfName(), apId);
+
+                String bssid = vifState.getMac();
+
+                if (bssid == null || bssid.equals("")) {
+                    LOG.warn("BSSID from AP {} interface {} is null or empty", apId, vifState.getIfName());
+                    continue;
+                }
+                String ssid = vifState.getSsid();
+
+                if (ssid == null || ssid.equals("")) {
+                    LOG.warn("SSID from AP {} interface {} is null or empty", apId, vifState.getIfName());
+                    continue;
+                }
+
+                int numClients = vifState.getAssociatedClients().size();
+
+                LOG.debug("Values from Vif State Mac (BSSID) {} SSID {} AssociatedClients {}", bssid, ssid,
+                        vifState.getAssociatedClients());
+
+                List<ActiveBSSID> bssidList = statusDetails.getActiveBSSIDs();
+                for (ActiveBSSID activeBssid : bssidList) {
+
+                    LOG.debug("Checking BSSID {} and SSID {} from BssidList against BSSID {} SSID {}",
+                            activeBssid.getBssid(), activeBssid.getSsid(), bssid, ssid);
+                    if (activeBssid.getBssid().equals(bssid) && activeBssid.getSsid().equals(ssid)) {
+                        LOG.debug("Match BSSID {} and SSID {} from BssidList against BSSID {} SSID {}",
+                                activeBssid.getBssid(), activeBssid.getSsid(), bssid, ssid);
+
+                        int idx = bssidList.indexOf(activeBssid);
+
+                        activeBssid.setNumDevicesConnected(numClients);
+                        bssidList.set(idx, activeBssid);
+                        statusDetails.setActiveBSSIDs(bssidList);
+                        activeBssidsStatus.setDetails(statusDetails);
+
+                        break;
+                    }
+
+                }
+
+            }
 
             activeBssidsStatus = statusServiceInterface.update(activeBssidsStatus);
 
-        }
-        ActiveBSSIDs statusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
-
-        for (OpensyncAPVIFState vifState : vifStateTables) {
-
-            LOG.debug("Processing vifState for interface {} on AP {}", vifState.getIfName(), apId);
-
-            String bssid = vifState.getMac();
-
-            if (bssid == null || bssid.equals("")) {
-                LOG.warn("BSSID from AP {} interface {} is null or empty", apId, vifState.getIfName());
-                continue;
-            }
-            String ssid = vifState.getSsid();
-
-            if (ssid == null || ssid.equals("")) {
-                LOG.warn("SSID from AP {} interface {} is null or empty", apId, vifState.getIfName());
-                continue;
-            }
-            int channel = vifState.getChannel();
-
-            if (channel < 1) {
-                LOG.warn("Channel from AP {} interface {} is invalid, {}", apId, vifState.getIfName(), channel);
-                continue;
-            }
-            int numClients = vifState.getAssociatedClients().size();
-
-            LOG.debug("Values from Vif State Mac (BSSID) {} SSID {} Channel {} numAssociatedClients {}", bssid, ssid,
-                    channel, numClients);
-
-            RadioType radioType = null;
-
-            ApElementConfiguration apElementConfig = (ApElementConfiguration) apNode.getDetails();
-            for (RadioType key : apElementConfig.getRadioMap().keySet()) {
-                if (apElementConfig.getRadioMap().get(key).getChannelNumber() == channel) {
-                    radioType = key;
-                    break;
-                }
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("ActiveBSSIDs {}", activeBssidsStatus.toPrettyString());
             }
 
-            if (radioType == null) {
-                continue; // we cannot determine radioType for this BSSID
-            }
-
-            List<ActiveBSSID> bssidList = statusDetails.getActiveBSSIDs();
-            boolean bssidAlreadyPresent = false;
-            for (ActiveBSSID activeBssid : bssidList) {
-
-                if (activeBssid.getBssid().equals(bssid) && activeBssid.getSsid().equals(ssid)
-                        && activeBssid.getRadioType().equals(radioType)) {
-
-                    LOG.debug(
-                            "BSSID {} is already present for radio {} on AP {} with SSID {}, update number of associated wifi clients to {}",
-                            bssid, radioType, apId, ssid, numClients);
-                    activeBssid.setNumDevicesConnected(numClients);
-                    bssidAlreadyPresent = true;
-                    break;
-                }
-
-            }
-
-            if (!bssidAlreadyPresent) {
-                LOG.debug(
-                        "Adding new active BSSID {} for radio {} on AP {} with SSID {}, with number of associated wifi clients to {}",
-                        bssid, radioType, apId, ssid, numClients);
-
-                ActiveBSSID newActiveBssid = new ActiveBSSID();
-                newActiveBssid.setBssid(bssid);
-                newActiveBssid.setSsid(ssid);
-                newActiveBssid.setRadioType(radioType);
-                newActiveBssid.setNumDevicesConnected(vifState.getAssociatedClients().size());
-                bssidList.add(newActiveBssid);
-            }
-
-            statusDetails.setActiveBSSIDs(bssidList);
+            updateClientDetailsStatus(customerId, equipmentId, (ActiveBSSIDs) activeBssidsStatus.getDetails());
 
         }
 
-        activeBssidsStatus.setDetails(statusDetails);
+        LOG.info("Finished wifiVIFStateDbTableUpdate updated {}", activeBssidsStatus);
 
-        if (!statusDetails.equals((ActiveBSSIDs) statusServiceInterface
-                .getOrNull(customerId, equipmentId, StatusDataType.ACTIVE_BSSIDS).getDetails())) {
-            activeBssidsStatus = statusServiceInterface.update(activeBssidsStatus);
-            LOG.info("Updated activeBSSIDs for AP {} to {}", apId, activeBssidsStatus);
+    }
 
-            // update clients based on all active BSSIDs per Radio Type
-            // only if the BSSIDs have changed
-            Status clientDetailsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
-                    StatusDataType.CLIENT_DETAILS);
+    private void updateClientDetailsStatus(int customerId, long equipmentId, ActiveBSSIDs statusDetails) {
+        Status clientDetailsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
+                StatusDataType.CLIENT_DETAILS);
 
-            if (clientDetailsStatus == null) {
-                clientDetailsStatus = new Status();
-                clientDetailsStatus.setCustomerId(customerId);
-                clientDetailsStatus.setEquipmentId(equipmentId);
-                clientDetailsStatus.setStatusDataType(StatusDataType.CLIENT_DETAILS);
-                clientDetailsStatus.setDetails(new ClientConnectionDetails());
-            }
+        LOG.debug("Processing updateClientDetailsStatus Status for ActiveBSSIDs {}", statusDetails);
 
-            ClientConnectionDetails clientConnectionDetails = (ClientConnectionDetails) clientDetailsStatus
-                    .getDetails();
+        if (clientDetailsStatus == null) {
+            clientDetailsStatus = new Status();
+            clientDetailsStatus.setCustomerId(customerId);
+            clientDetailsStatus.setEquipmentId(equipmentId);
+            clientDetailsStatus.setStatusDataType(StatusDataType.CLIENT_DETAILS);
+            clientDetailsStatus.setDetails(new ClientConnectionDetails());
+            clientDetailsStatus = statusServiceInterface.update(clientDetailsStatus);
 
-            Map<RadioType, Integer> clientsPerRadioType = new EnumMap<>(RadioType.class);
-
-            statusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
-            for (ActiveBSSID bssid : statusDetails.getActiveBSSIDs()) {
-                int numConnectedForBssid = bssid.getNumDevicesConnected();
-                if (clientsPerRadioType.containsKey(bssid.getRadioType())
-                        && clientsPerRadioType.get(bssid.getRadioType()) != null) {
-                    numConnectedForBssid += clientsPerRadioType.get(bssid.getRadioType());
-                }
-                Integer numClientsPerRadioType = clientsPerRadioType.put(bssid.getRadioType(), numConnectedForBssid);
-                LOG.debug("Upgrade numClients for RadioType {} to {} on AP {}", bssid.getRadioType(),
-                        numClientsPerRadioType, apId);
-            }
-
-            if (!clientConnectionDetails.getNumClientsPerRadio().equals(clientsPerRadioType)) {
-                clientConnectionDetails.setNumClientsPerRadio(clientsPerRadioType);
-                clientDetailsStatus.setDetails(clientConnectionDetails);
-                clientDetailsStatus = statusServiceInterface.update(clientDetailsStatus);
-                LOG.info("Updated clientConnectionDetails for AP {) to {}", apId, clientDetailsStatus);
-            }
+            LOG.debug("Processing updateClientDetailsStatus, new ClientDetailsStatus {}", clientDetailsStatus);
         }
+
+        ClientConnectionDetails clientConnectionDetails = (ClientConnectionDetails) clientDetailsStatus.getDetails();
+
+        Map<RadioType, Integer> clientsPerRadioType = new HashMap<>();
+
+        for (ActiveBSSID bssid : statusDetails.getActiveBSSIDs()) {
+
+            if (!clientsPerRadioType.containsKey(bssid.getRadioType())) {
+                clientsPerRadioType.put(bssid.getRadioType(), 0);
+            }
+            int numConnectedForBssid = bssid.getNumDevicesConnected();
+            int currentNumberOfClients = clientsPerRadioType.get(bssid.getRadioType());
+            clientsPerRadioType.put(bssid.getRadioType(), currentNumberOfClients + numConnectedForBssid);
+            LOG.debug("Processing updateClientDetailsStatus. Upgrade numClients for RadioType {} from {} to {}",
+                    bssid.getRadioType(), currentNumberOfClients, clientsPerRadioType.get(bssid.getRadioType()));
+        }
+
+        clientConnectionDetails.setNumClientsPerRadio(clientsPerRadioType);
+        clientDetailsStatus.setDetails(clientConnectionDetails);
+        clientDetailsStatus = statusServiceInterface.update(clientDetailsStatus);
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Processing updateClientDetailsStatus. Updated clientConnectionDetails to {}",
+                    clientDetailsStatus.toPrettyString());
+        }
+
+        LOG.info("Finished updateClientDetailsStatus updated {}", clientDetailsStatus);
 
     }
 
@@ -1965,6 +1930,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         EquipmentProtocolStatusData protocolStatusData = null;
 
         for (OpensyncAPRadioState radioState : radioStateTables) {
+            LOG.debug("Processing Wifi_Radio_State table update for AP {} {}", apId, radioState);
 
             if (radioState.getFreqBand().equals(RadioType.UNSUPPORTED)) {
                 LOG.debug("Could not get radio configuration for AP {}", apId);
@@ -2009,12 +1975,74 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         .equals(CountryCode.valueOf(radioState.getCountry().toLowerCase()))) {
                     protocolStatusData.setReportedCC(CountryCode.valueOf(radioState.getCountry().toLowerCase()));
                     protocolStatus.setDetails(protocolStatusData);
+
                 } else {
-                    protocolStatus = null; // no change we will ignore at
-                                           // the end
+                    protocolStatus = null;
                 }
 
             }
+
+            Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
+                    StatusDataType.ACTIVE_BSSIDS);
+
+            if (activeBssidsStatus == null) {
+                activeBssidsStatus = new Status();
+                activeBssidsStatus.setCustomerId(customerId);
+                activeBssidsStatus.setEquipmentId(equipmentId);
+                activeBssidsStatus.setStatusDataType(StatusDataType.ACTIVE_BSSIDS);
+
+                ActiveBSSIDs statusDetails = new ActiveBSSIDs();
+                statusDetails.setActiveBSSIDs(new ArrayList<ActiveBSSID>());
+
+                activeBssidsStatus.setDetails(statusDetails);
+
+                activeBssidsStatus = statusServiceInterface.update(activeBssidsStatus);
+                LOG.debug("Processing Wifi_Radio_State table update for AP {}, created new ACTIVE_BSSID Status {}",
+                        apId, activeBssidsStatus);
+
+            }
+
+            ActiveBSSIDs statusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
+
+            LOG.debug("Processing Wifi_Radio_State table update for AP {}, activeBSSIDs StatusDetails before update {}",
+                    apId, statusDetails);
+
+            List<ActiveBSSID> currentActiveBSSIDs = statusDetails.getActiveBSSIDs();
+            if (currentActiveBSSIDs == null) {
+                currentActiveBSSIDs = new ArrayList<>();
+            } else {
+                currentActiveBSSIDs = currentActiveBSSIDs.stream().filter(new Predicate<ActiveBSSID>() {
+                    @Override
+                    public boolean test(ActiveBSSID p) {
+                        return !(p.getRadioType().equals(radioState.getFreqBand()));
+                    }
+                }).collect(Collectors.toList());
+                LOG.debug(
+                        "Processing Wifi_Radio_State table update for AP {}, activeBSSIDs bssidList without current radio freq {}",
+                        apId, currentActiveBSSIDs);
+            }
+
+            for (OpensyncAPVIFState vifState : radioState.getVifStates()) {
+                ActiveBSSID activeBssid = new ActiveBSSID();
+                activeBssid.setBssid(vifState.getMac());
+                activeBssid.setSsid(vifState.getSsid());
+                activeBssid.setNumDevicesConnected(vifState.getAssociatedClients().size());
+                activeBssid.setRadioType(radioState.getFreqBand());
+                currentActiveBSSIDs.add(activeBssid);
+            }
+
+            statusDetails.setActiveBSSIDs(currentActiveBSSIDs);
+            activeBssidsStatus.setDetails(statusDetails);
+
+            activeBssidsStatus = statusServiceInterface.update(activeBssidsStatus);
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Processing Wifi_Radio_State table update for AP {}, updated ACTIVE_BSSID Status {}", apId,
+                        activeBssidsStatus.toPrettyString());
+            }
+
+            updateClientDetailsStatus(customerId, equipmentId, (ActiveBSSIDs) activeBssidsStatus.getDetails());
+
         }
 
         if (protocolStatus != null) {
@@ -2035,7 +2063,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 ((ApElementConfiguration) ce.getDetails())
                         .setAdvancedRadioMap(apElementConfiguration.getAdvancedRadioMap());
 
-                apElementConfiguration = (ApElementConfiguration) ce.getDetails(); 
+                apElementConfiguration = (ApElementConfiguration) ce.getDetails();
                 ce = equipmentServiceInterface.update(ce);
             }
         } catch (DsConcurrentModificationException e) {
@@ -2044,6 +2072,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             ce.setDetails(apElementConfiguration);
             ce = equipmentServiceInterface.update(ce);
         }
+        LOG.info("Finished wifiRadioStateDbTableUpdate");
 
     }
 

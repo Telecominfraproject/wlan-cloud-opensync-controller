@@ -1,7 +1,8 @@
 package com.telecominfraproject.wlan.opensync.external.integration.models;
 
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -23,9 +24,7 @@ public class OpensyncAPVIFState extends BaseJsonModel {
     public String ssid;
     public Map<String, String> security;
     public String macList;
-    public Set<Uuid> associatedClients;
-    public Set<String> associatedClientsByMac;
-   
+    public List<OpensyncWifiAssociatedClients> associatedClients;
 
     public boolean enabled;
     public int vlanId;
@@ -50,8 +49,8 @@ public class OpensyncAPVIFState extends BaseJsonModel {
     public OpensyncAPVIFState() {
         super();
         security = new HashMap<>();
-        associatedClients = new HashSet<>();
-       
+        associatedClients = new ArrayList<>();
+
     }
 
     public void setIfName(String ifName) {
@@ -138,11 +137,11 @@ public class OpensyncAPVIFState extends BaseJsonModel {
         this.macList = macList;
     }
 
-    public Set<Uuid> getAssociatedClients() {
+    public List<OpensyncWifiAssociatedClients> getAssociatedClients() {
         return associatedClients;
     }
 
-    public void setAssociatedClients(Set<Uuid> list) {
+    public void setAssociatedClients(List<OpensyncWifiAssociatedClients> list) {
         this.associatedClients = list;
     }
 
@@ -268,13 +267,5 @@ public class OpensyncAPVIFState extends BaseJsonModel {
 
     public void setVersion(Uuid version) {
         this.version = version;
-    }
-
-    public Set<String> getAssociatedClientsByMac() {
-        return associatedClientsByMac;
-    }
-
-    public void setAssociatedClientsByMac(Set<String> associatedClientsByMac) {
-        this.associatedClientsByMac = associatedClientsByMac;
     }
 }
