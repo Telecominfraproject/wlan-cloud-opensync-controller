@@ -5,7 +5,9 @@ import static org.junit.Assert.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.After;
 import org.junit.Before;
@@ -31,12 +33,15 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.telecominfraproject.wlan.alarm.AlarmServiceInterface;
 import com.telecominfraproject.wlan.client.ClientServiceInterface;
 import com.telecominfraproject.wlan.client.info.models.ClientInfoDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientSession;
 import com.telecominfraproject.wlan.client.session.models.ClientSessionDetails;
 import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherInterface;
+import com.telecominfraproject.wlan.core.model.entity.CountryCode;
+import com.telecominfraproject.wlan.core.model.equipment.EquipmentType;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.customer.models.Customer;
@@ -52,16 +57,20 @@ import com.telecominfraproject.wlan.firmware.models.CustomerFirmwareTrackSetting
 import com.telecominfraproject.wlan.location.service.LocationServiceInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.controller.OpensyncCloudGatewayController;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.telecominfraproject.wlan.routing.RoutingServiceInterface;
 import com.telecominfraproject.wlan.status.StatusServiceInterface;
+import com.telecominfraproject.wlan.status.equipment.models.EquipmentProtocolStatusData;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeStatusData;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSID;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSIDs;
+import com.telecominfraproject.wlan.status.equipment.report.models.ClientConnectionDetails;
 import com.telecominfraproject.wlan.status.models.Status;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
 
@@ -332,14 +341,196 @@ public class OpensyncExternalIntegrationCloudTest {
         // TODO: implement me when wcs stats reports supported
     }
 
-    @Ignore
+    @Test
     public void testWifiVIFStateDbTableUpdate() {
-        // TODO: implement me
+
+        String apId = "Test_Client_21P10C68818122";
+        OpensyncAPVIFState vifState1 = new OpensyncAPVIFState();
+        vifState1.setMac("24:f5:a2:ef:2e:54");
+        vifState1.setSsid("ssid-1");
+        OpensyncWifiAssociatedClients wifiClient1 = new OpensyncWifiAssociatedClients();
+        wifiClient1.setMac("C0:9A:D0:E6:EA:4D");
+        vifState1.setAssociatedClients(ImmutableList.of(wifiClient1));
+        OpensyncAPVIFState vifState2 = new OpensyncAPVIFState();
+        vifState2.setMac("24:f5:a2:ef:2e:55");
+        vifState2.setSsid("ssid-2");
+        OpensyncWifiAssociatedClients wifiClient2 = new OpensyncWifiAssociatedClients();
+        wifiClient2.setMac("7C:AB:60:E6:EA:4D");
+        vifState2.setAssociatedClients(ImmutableList.of(wifiClient2));
+        OpensyncAPVIFState vifState3 = new OpensyncAPVIFState();
+        vifState3.setMac("24:f5:a2:ef:2e:56");
+        vifState3.setSsid("ssid-3");
+        OpensyncWifiAssociatedClients wifiClient3 = new OpensyncWifiAssociatedClients();
+        wifiClient3.setMac("C0:9A:D0:76:A9:69");
+        vifState3.setAssociatedClients(ImmutableList.of(wifiClient3));
+
+        Status bssidStatus = new Status();
+        bssidStatus.setStatusDataType(StatusDataType.ACTIVE_BSSIDS);
+        bssidStatus.setCustomerId(2);
+
+        ActiveBSSIDs activeBssidsDetails = new ActiveBSSIDs();
+        activeBssidsDetails.setActiveBSSIDs(getActiveBssidList());
+        bssidStatus.setDetails(activeBssidsDetails);
+
+        Mockito.when(statusServiceInterface.getOrNull(2, 1L, StatusDataType.ACTIVE_BSSIDS)).thenReturn(bssidStatus);
+        Mockito.when(statusServiceInterface.update(bssidStatus)).thenReturn(bssidStatus);
+
+        Status clientStatus = new Status();
+        clientStatus.setCustomerId(2);
+        clientStatus.setEquipmentId(1L);
+        clientStatus.setStatusDataType(StatusDataType.CLIENT_DETAILS);
+        ClientConnectionDetails clientConnectionDetails = new ClientConnectionDetails();
+        Map<RadioType, Integer> clientsPerRadio = new HashMap<>();
+        clientConnectionDetails.setNumClientsPerRadio(clientsPerRadio);
+        clientStatus.setDetails(clientConnectionDetails);
+
+        Mockito.when(statusServiceInterface.getOrNull(2, 1L, StatusDataType.CLIENT_DETAILS)).thenReturn(clientStatus);
+        Mockito.when(statusServiceInterface.update(clientStatus)).thenReturn(clientStatus);
+
+        OvsdbSession session = Mockito.mock(OvsdbSession.class);
+        Mockito.when(session.getEquipmentId()).thenReturn(1L);
+        Mockito.when(session.getCustomerId()).thenReturn(2);
+
+        Equipment equipment = new Equipment();
+        equipment.setCustomerId(1);
+        equipment.setEquipmentType(EquipmentType.AP);
+        equipment.setInventoryId(apId);
+        equipment.setDetails(ApElementConfiguration.createWithDefaults());
+
+        Mockito.when(equipmentServiceInterface.getByInventoryIdOrNull(apId)).thenReturn(equipment);
+        Mockito.when(equipmentServiceInterface.update(equipment)).thenReturn(equipment);
+
+        Mockito.when(ovsdbSessionMapInterface.getSession(apId)).thenReturn(session);
+
+        opensyncExternalIntegrationCloud.wifiVIFStateDbTableUpdate(ImmutableList.of(vifState1, vifState2, vifState3),
+                apId);
+
+        Mockito.verify(session).getCustomerId();
+        Mockito.verify(session).getEquipmentId();
+        Mockito.verify(ovsdbSessionMapInterface).getSession(apId);
+        Mockito.verify(equipmentServiceInterface).getByInventoryIdOrNull(apId);
+        Mockito.verify(statusServiceInterface).getOrNull(2, 1L, StatusDataType.CLIENT_DETAILS);
+        Mockito.verify(statusServiceInterface).update(clientStatus);
+        Mockito.verify(statusServiceInterface).update(bssidStatus);
+
     }
 
-    @Ignore
+    @Test
     public void testWifiRadioStatusDbTableUpdate() {
-        // TODO: implement me
+
+        String apId = "Test_Client_21P10C68818122";
+        OpensyncAPVIFState vifState1 = new OpensyncAPVIFState();
+        vifState1.setMac("24:f5:a2:ef:2e:54");
+        vifState1.setSsid("ssid-1");
+        OpensyncWifiAssociatedClients wifiClient1 = new OpensyncWifiAssociatedClients();
+        wifiClient1.setMac("C0:9A:D0:E6:EA:4D");
+        vifState1.setAssociatedClients(ImmutableList.of(wifiClient1));
+
+        OpensyncAPRadioState radioState1 = new OpensyncAPRadioState();
+        radioState1.setChannel(6);
+        radioState1.setVifStates(ImmutableList.of(vifState1));
+        radioState1.setFreqBand(RadioType.is5GHzL);
+        radioState1.setAllowedChannels(ImmutableSet.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11));
+        radioState1.setTxPower(32);
+        radioState1.setEnabled(true);
+        radioState1.setCountry("CA");
+
+        OpensyncAPVIFState vifState2 = new OpensyncAPVIFState();
+        vifState2.setMac("24:f5:a2:ef:2e:55");
+        vifState2.setSsid("ssid-2");
+        OpensyncWifiAssociatedClients wifiClient2 = new OpensyncWifiAssociatedClients();
+        wifiClient2.setMac("7C:AB:60:E6:EA:4D");
+        vifState2.setAssociatedClients(ImmutableList.of(wifiClient2));
+
+        OpensyncAPRadioState radioState2 = new OpensyncAPRadioState();
+        radioState2.setChannel(36);
+        radioState2.setVifStates(ImmutableList.of(vifState2));
+        radioState2.setFreqBand(RadioType.is5GHzL);
+        radioState2.setAllowedChannels(ImmutableSet.of(36, 40, 44, 48, 52, 56, 60, 64));
+        radioState2.setTxPower(32);
+        radioState2.setEnabled(true);
+        radioState2.setCountry("CA");
+
+        OpensyncAPVIFState vifState3 = new OpensyncAPVIFState();
+        vifState3.setMac("24:f5:a2:ef:2e:56");
+        vifState3.setSsid("ssid-3");
+        OpensyncWifiAssociatedClients wifiClient3 = new OpensyncWifiAssociatedClients();
+        wifiClient3.setMac("C0:9A:D0:76:A9:69");
+        vifState3.setAssociatedClients(ImmutableList.of(wifiClient3));
+
+        OpensyncAPRadioState radioState3 = new OpensyncAPRadioState();
+        radioState3.setChannel(149);
+        radioState3.setVifStates(ImmutableList.of(vifState3));
+        radioState3.setFreqBand(RadioType.is5GHzL);
+        radioState3.setAllowedChannels(
+                ImmutableSet.of(00, 104, 108, 112, 116, 132, 136, 140, 144, 149, 153, 157, 161, 165));
+        radioState3.setTxPower(32);
+        radioState3.setEnabled(true);
+        radioState3.setCountry("CA");
+
+        Equipment equipment = new Equipment();
+        equipment.setCustomerId(1);
+        equipment.setEquipmentType(EquipmentType.AP);
+        equipment.setInventoryId(apId);
+        equipment.setDetails(ApElementConfiguration.createWithDefaults());
+
+        Mockito.when(equipmentServiceInterface.getByInventoryIdOrNull(apId)).thenReturn(equipment);
+        Mockito.when(equipmentServiceInterface.update(equipment)).thenReturn(equipment);
+
+        Status protocolStatus = new Status();
+        protocolStatus.setCustomerId(2);
+        protocolStatus.setEquipmentId(1L);
+        EquipmentProtocolStatusData protocolStatusData = new EquipmentProtocolStatusData();
+        protocolStatusData.setReportedCC(CountryCode.ca);
+        protocolStatus.setDetails(protocolStatusData);
+        protocolStatus.setStatusDataType(StatusDataType.PROTOCOL);
+
+        Mockito.when(statusServiceInterface.getOrNull(2, 1L, StatusDataType.PROTOCOL)).thenReturn(protocolStatus);
+
+        Status bssidStatus = new Status();
+        bssidStatus.setStatusDataType(StatusDataType.ACTIVE_BSSIDS);
+        bssidStatus.setCustomerId(2);
+
+        ActiveBSSIDs activeBssidsDetails = new ActiveBSSIDs();
+        activeBssidsDetails.setActiveBSSIDs(getActiveBssidList());
+        bssidStatus.setDetails(activeBssidsDetails);
+
+        Mockito.when(statusServiceInterface.getOrNull(2, 1L, StatusDataType.ACTIVE_BSSIDS)).thenReturn(bssidStatus);
+
+        Mockito.when(statusServiceInterface.update(bssidStatus)).thenReturn(bssidStatus);
+
+        Status clientStatus = new Status();
+        clientStatus.setCustomerId(2);
+        clientStatus.setEquipmentId(1L);
+        clientStatus.setStatusDataType(StatusDataType.CLIENT_DETAILS);
+        ClientConnectionDetails clientConnectionDetails = new ClientConnectionDetails();
+
+        Map<RadioType, Integer> clientsPerRadio = new HashMap<>();
+        clientConnectionDetails.setNumClientsPerRadio(clientsPerRadio);
+        clientStatus.setDetails(clientConnectionDetails);
+
+        Mockito.when(statusServiceInterface.getOrNull(2, 1L, StatusDataType.CLIENT_DETAILS)).thenReturn(clientStatus);
+        Mockito.when(statusServiceInterface.update(clientStatus)).thenReturn(clientStatus);
+
+        OvsdbSession session = Mockito.mock(OvsdbSession.class);
+        Mockito.when(session.getEquipmentId()).thenReturn(1L);
+        Mockito.when(session.getCustomerId()).thenReturn(2);
+
+        Mockito.when(ovsdbSessionMapInterface.getSession(apId)).thenReturn(session);
+
+        opensyncExternalIntegrationCloud
+                .wifiRadioStatusDbTableUpdate(ImmutableList.of(radioState1, radioState2, radioState3), apId);
+
+        Mockito.verify(session).getCustomerId();
+        Mockito.verify(session).getEquipmentId();
+
+        Mockito.verify(ovsdbSessionMapInterface).getSession(apId);
+        Mockito.verify(equipmentServiceInterface, Mockito.times(2)).getByInventoryIdOrNull(apId);
+
+        Mockito.verify(statusServiceInterface).getOrNull(2, 1L, StatusDataType.CLIENT_DETAILS);
+        Mockito.verify(statusServiceInterface).update(clientStatus);
+        Mockito.verify(statusServiceInterface, Mockito.times(3)).update(bssidStatus);
+
     }
 
     @Ignore
@@ -390,7 +581,7 @@ public class OpensyncExternalIntegrationCloudTest {
         ActiveBSSID activeBssid2 = new ActiveBSSID();
         activeBssid2.setBssid("24:f5:a2:ef:2e:55");
         activeBssid2.setSsid("ssid-2");
-        activeBssid2.setNumDevicesConnected(0);
+        activeBssid2.setNumDevicesConnected(1);
         activeBssid2.setRadioType(RadioType.is5GHzL);
         ActiveBSSID activeBssid3 = new ActiveBSSID();
         activeBssid3.setBssid("24:f5:a2:ef:2e:56");

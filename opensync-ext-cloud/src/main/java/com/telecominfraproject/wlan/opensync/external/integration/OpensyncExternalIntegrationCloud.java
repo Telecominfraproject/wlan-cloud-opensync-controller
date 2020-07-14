@@ -1780,7 +1780,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
-        Equipment apNode = equipmentServiceInterface.getOrNull(equipmentId);
+        Equipment apNode = equipmentServiceInterface.getByInventoryIdOrNull(apId);
         if (apNode == null) {
             LOG.debug("wifiVIFStateDbTableUpdate::Cannot get EquipmentId for AP {}", apId);
             return; // we don't have the required info to get the
@@ -1927,6 +1927,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
 
         Status protocolStatus = null;
+        Status activeBssidsStatus = null;
         EquipmentProtocolStatusData protocolStatusData = null;
 
         for (OpensyncAPRadioState radioState : radioStateTables) {
@@ -1982,7 +1983,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             }
 
-            Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
+            activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
                     StatusDataType.ACTIVE_BSSIDS);
 
             if (activeBssidsStatus == null) {
@@ -2041,9 +2042,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         activeBssidsStatus.toPrettyString());
             }
 
-            updateClientDetailsStatus(customerId, equipmentId, (ActiveBSSIDs) activeBssidsStatus.getDetails());
-
         }
+
+        updateClientDetailsStatus(customerId, equipmentId, (ActiveBSSIDs) activeBssidsStatus.getDetails());
 
         if (protocolStatus != null) {
             statusServiceInterface.update(protocolStatus);
