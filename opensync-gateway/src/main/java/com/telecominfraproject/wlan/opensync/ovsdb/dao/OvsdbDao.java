@@ -690,7 +690,7 @@ public class OvsdbDao {
 
         } catch (Exception e) {
 
-            LOG.error("Could not get Wifi_VIF_State for UUID {}", uuid, e);
+            LOG.info("Could not get Wifi_VIF_State for UUID {}. {}", uuid, e.getMessage());
 
         }
     }
