@@ -2205,9 +2205,9 @@ public class OvsdbDao {
         try {
             // If we are doing a NAT SSID, no bridge, else yes
             if (networkForwardMode == NetworkForwardMode.NAT) {
-                updateColumns.put("bridge", new Atom<>("no"));
+                updateColumns.put("bridge", new Atom<>("lan"));
             } else {
-                updateColumns.put("bridge", new Atom<>("yes"));
+                updateColumns.put("bridge", new Atom<>("wan"));
             }
             
             updateColumns.put("btm", new Atom<>(1));
@@ -2700,6 +2700,7 @@ public class OvsdbDao {
 
     }
 
+    @Deprecated
     public void configureWifiInet(OvsdbClient ovsdbClient, Map<String, WifiInetConfigInfo> provisionedWifiInetConfigs,
             String ifName) {
         List<Operation> operations = new ArrayList<>();
