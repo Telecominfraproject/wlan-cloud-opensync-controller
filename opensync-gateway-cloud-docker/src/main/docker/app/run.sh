@@ -68,17 +68,17 @@ fi
   HOST_PROPS+=" -Dtip.wlan.routingServiceBaseUrl=$SSC_URL"
   HOST_PROPS+=" -Dtip.wlan.alarmServiceBaseUrl=$SSC_URL"
   HOST_PROPS+=" -Dtip.wlan.systemEventServiceBaseUrl=$SSC_URL"
+  HOST_PROPS+=" -Dtip.wlan.clientServiceBaseUrl=$SSC_URL"
+  HOST_PROPS+=" -Dtip.wlan.serviceMetricServiceBaseUrl=$SSC_URL"
 
   // PROV URLs
   HOST_PROPS+=" -Dtip.wlan.customerServiceBaseUrl=$PROV_URL"
   HOST_PROPS+=" -Dtip.wlan.portalUserServiceBaseUrl=$PROV_URL"
   HOST_PROPS+=" -Dtip.wlan.firmwareServiceBaseUrl=$PROV_URL"
-  HOST_PROPS+=" -Dtip.wlan.serviceMetricServiceBaseUrl=$PROV_URL"
   HOST_PROPS+=" -Dtip.wlan.locationServiceBaseUrl=$PROV_URL"
   HOST_PROPS+=" -Dtip.wlan.manufacturerServiceBaseUrl=$PROV_URL"
   HOST_PROPS+=" -Dtip.wlan.equipmentServiceBaseUrl=$PROV_URL"
   HOST_PROPS+=" -Dtip.wlan.profileServiceBaseUrl=$PROV_URL"
-  HOST_PROPS+=" -Dtip.wlan.clientServiceBaseUrl=$PROV_URL"
 
 DEFAULT_BRIDGE="${DEFAULT_BRIDGE:=br-lan}"
 DEFAULT_WAN_TYPE="${DEFAULT_WAN_TYPE:=eth}"
