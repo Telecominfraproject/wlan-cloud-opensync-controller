@@ -24,7 +24,7 @@ public class OpensyncAPVIFState extends BaseJsonModel {
     public String ssid;
     public Map<String, String> security;
     public String macList;
-    public List<OpensyncWifiAssociatedClients> associatedClients;
+    public List<Uuid> associatedClients;
 
     public boolean enabled;
     public int vlanId;
@@ -137,11 +137,11 @@ public class OpensyncAPVIFState extends BaseJsonModel {
         this.macList = macList;
     }
 
-    public List<OpensyncWifiAssociatedClients> getAssociatedClients() {
+    public List<Uuid> getAssociatedClients() {
         return associatedClients;
     }
 
-    public void setAssociatedClients(List<OpensyncWifiAssociatedClients> list) {
+    public void setAssociatedClients(List<Uuid> list) {
         this.associatedClients = list;
     }
 
