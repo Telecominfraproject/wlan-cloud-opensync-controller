@@ -1309,29 +1309,22 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             com.telecominfraproject.wlan.client.models.Client clientInstance = clientServiceInterface
                     .getOrNull(customerId, new MacAddress(client.getMacAddress()));
+            if (clientInstance == null) {
+                clientInstance = new com.telecominfraproject.wlan.client.models.Client();
 
-            if (!client.getConnected()) {
-                if (clientInstance != null) {
-                    clientServiceInterface.delete(customerId, clientInstance.getMacAddress());
-                }
-            } else {
-                if (clientInstance == null) {
-                    clientInstance = new com.telecominfraproject.wlan.client.models.Client();
-
-                    clientInstance.setCustomerId(customerId);
-                    clientInstance.setMacAddress(new MacAddress(client.getMacAddress()));
-                    clientInstance.setDetails(new ClientInfoDetails());
-                    clientInstance = clientServiceInterface.create(clientInstance);
-                }
-                ClientInfoDetails clientDetails = (ClientInfoDetails) clientInstance.getDetails();
-
-                clientDetails.setAlias("alias " + clientInstance.getMacAddress().getAddressAsLong());
-                clientDetails.setApFingerprint("fp " + clientInstance.getMacAddress().getAddressAsString());
-                clientDetails.setHostName("hostName-" + clientInstance.getMacAddress().getAddressAsLong());
-                clientDetails.setUserName("user-" + clientInstance.getMacAddress().getAddressAsLong());
-                clientInstance.setDetails(clientDetails);
-                clientInstance = clientServiceInterface.update(clientInstance);
+                clientInstance.setCustomerId(customerId);
+                clientInstance.setMacAddress(new MacAddress(client.getMacAddress()));
+                clientInstance.setDetails(new ClientInfoDetails());
+                clientInstance = clientServiceInterface.create(clientInstance);
             }
+            ClientInfoDetails clientDetails = (ClientInfoDetails) clientInstance.getDetails();
+
+            clientDetails.setAlias("alias " + clientInstance.getMacAddress().getAddressAsLong());
+            clientDetails.setApFingerprint("fp " + clientInstance.getMacAddress().getAddressAsString());
+            clientDetails.setHostName("hostName-" + clientInstance.getMacAddress().getAddressAsLong());
+            clientDetails.setUserName("user-" + clientInstance.getMacAddress().getAddressAsLong());
+            clientInstance.setDetails(clientDetails);
+            clientInstance = clientServiceInterface.update(clientInstance);
 
             ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
                     new MacAddress(client.getMacAddress()));
@@ -1344,7 +1337,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     LOG.debug("Client session {} deleted due to disconnect", clientSession);
                 }
             } else {
-                ClientInfoDetails clientDetails = (ClientInfoDetails) clientInstance.getDetails();
+                clientDetails = (ClientInfoDetails) clientInstance.getDetails();
 
                 if (clientSession == null) {
                     LOG.debug("No session found for Client {}, creating new one.", client.getMacAddress());
@@ -1497,13 +1490,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             LOG.debug("Client Report Date is {}", new Date(clientReport.getTimestampMs()));
             int numConnectedClients = 0;
             for (Client client : clientReport.getClientListList()) {
-                if (!client.hasConnected() || !client.getConnected()) {
-                    handleClientSessionUpdate(customerId, equipmentId, apId, locationId, clientReport.getChannel(),
-                            clientReport.getBand(), clientReport.getTimestampMs(), client, report.getNodeID(),
-                            ssidStatistics.getBssid(), ssidStatistics.getSsid());
-                    continue;
-                }
-
                 numConnectedClients += 1;
 
                 if (client.hasSsid() && (client.getSsid() != null) && !client.getSsid().equals("")) {
