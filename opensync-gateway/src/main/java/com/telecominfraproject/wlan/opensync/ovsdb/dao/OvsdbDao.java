@@ -104,10 +104,6 @@ public class OvsdbDao {
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_lan_type:bridge}")
     public String defaultLanInterfaceType;
 
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_lan_name:lan}")
-
-    public String defaultLanInterfaceName;
-
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_wan_type:eth}")
     public String defaultWanInterfaceType;
 
@@ -665,7 +661,7 @@ public class OvsdbDao {
 
         return ret;
     }
-   
+
     public void getWifiVIFsForRadioByUuid(OvsdbClient ovsdbClient, List<OpensyncAPVIFState> vifList, Uuid uuid) {
         List<Operation> operations = new ArrayList<>();
         List<Condition> conditions = new ArrayList<>();
@@ -1900,20 +1896,18 @@ public class OvsdbDao {
                 for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
 
                     Row row = rowUpdate.getNew();
-                    
+
                     if (rowUpdate.getOld() != null) {
-                        
+
                         LOG.debug("Wifi_VIF_State Columns changed {}", rowUpdate.getOld().getColumns().keySet());
                     }
-                   
+
                     if (row != null) {
 
                         OpensyncAPVIFState tableState = processWifiVIFStateColumn(ovsdbClient, row);
-                        
-                        
+
                         LOG.debug("Updated table state {}", tableState.toPrettyString());
-                        
-                        
+
                         ret.add(tableState);
 
                     }
@@ -2199,7 +2193,7 @@ public class OvsdbDao {
         }
     }
 
-    public void configureSingleSsid(OvsdbClient ovsdbClient, String bridge, String ifName, String ssid,
+    public void configureSingleSsid(OvsdbClient ovsdbClient, String ifName, String ssid,
             boolean ssidBroadcast, Map<String, String> security, String radioFreqBand, int vlanId, boolean rrmEnabled,
             boolean enable80211r, String minHwMode, boolean enabled, int keyRefresh, boolean uapsdEnabled,
             boolean apBridge, NetworkForwardMode networkForwardMode, String gateway, String inet,
@@ -2209,7 +2203,13 @@ public class OvsdbDao {
         Map<String, Value> updateColumns = new HashMap<>();
 
         try {
-            updateColumns.put("bridge", new Atom<>(bridge));
+            // If we are doing a NAT SSID, no bridge, else yes
+            if (networkForwardMode == NetworkForwardMode.NAT) {
+                updateColumns.put("bridge", new Atom<>("no"));
+            } else {
+                updateColumns.put("bridge", new Atom<>("yes"));
+            }
+            
             updateColumns.put("btm", new Atom<>(1));
             updateColumns.put("enabled", new Atom<>(enabled));
             if (enable80211r) {
@@ -2532,7 +2532,7 @@ public class OvsdbDao {
                         ifName = ifName + "-" + numberOfInterfaces;
                     }
 
-                    configureSingleSsid(ovsdbClient, defaultLanInterfaceName, ifName, ssidConfig.getSsid(),
+                    configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(),
                             ssidBroadcast, security, freqBand, ssidConfig.getVlanId(), rrmEnabled, enable80211r,
                             minHwMode, enabled, keyRefresh, uapsdEnabled, apBridge, ssidConfig.getForwardMode(),
                             gateway, inet, dns, ipAssignScheme, macBlackList, macWhiteList);
