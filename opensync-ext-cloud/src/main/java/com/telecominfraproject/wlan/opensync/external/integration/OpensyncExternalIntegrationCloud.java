@@ -2120,6 +2120,53 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
+        for (OpensyncWifiAssociatedClients opensyncWifiAssociatedClients : wifiAssociatedClients) {
+            com.telecominfraproject.wlan.client.models.Client clientInstance = clientServiceInterface
+                    .getOrNull(customerId, new MacAddress(opensyncWifiAssociatedClients.getMac()));
+            if (clientInstance == null) {
+                clientInstance = new com.telecominfraproject.wlan.client.models.Client();
+
+                clientInstance.setCustomerId(customerId);
+                clientInstance.setMacAddress(new MacAddress(opensyncWifiAssociatedClients.getMac()));
+                clientInstance.setDetails(new ClientInfoDetails());
+                clientInstance = clientServiceInterface.create(clientInstance);
+            }
+            ClientInfoDetails clientDetails = (ClientInfoDetails) clientInstance.getDetails();
+
+            clientDetails.setAlias("alias " + clientInstance.getMacAddress().getAddressAsLong());
+            clientDetails.setApFingerprint("fp " + clientInstance.getMacAddress().getAddressAsString());
+            clientDetails.setHostName("hostName-" + clientInstance.getMacAddress().getAddressAsLong());
+            clientDetails.setUserName("user-" + clientInstance.getMacAddress().getAddressAsLong());
+            clientInstance.setDetails(clientDetails);
+            clientInstance = clientServiceInterface.update(clientInstance);
+
+            LOG.debug("client instance {}", clientInstance);
+
+            ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
+                    new MacAddress(opensyncWifiAssociatedClients.getMac()));
+
+            if (clientSession == null) {
+
+                if (clientSession == null) {
+                    LOG.debug("No session found for Client {}, creating new one.",
+                            opensyncWifiAssociatedClients.getMac());
+                    clientSession = new ClientSession();
+                    clientSession.setCustomerId(customerId);
+                    clientSession.setEquipmentId(equipmentId);
+                    clientSession.setMacAddress(new MacAddress(opensyncWifiAssociatedClients.getMac()));
+
+                    ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+                    clientSession.setDetails(clientSessionDetails);
+
+                    clientSession = clientServiceInterface.updateSession(clientSession);
+                }
+
+            }
+
+            LOG.debug("client session {}", clientSession);
+
+        }
+
     }
 
     @Override

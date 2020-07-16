@@ -678,7 +678,7 @@ public class OvsdbDao {
 
                 Row row = ((SelectResult) result[0]).getRows().iterator().next();
 
-                OpensyncAPVIFState tableState = processWifiVIFStateColumn(ovsdbClient, row);
+                OpensyncAPVIFState tableState = processWifiVIFStateColumn(ovsdbClient, row, false);
 
                 vifList.add(tableState);
 
@@ -686,12 +686,12 @@ public class OvsdbDao {
 
         } catch (Exception e) {
 
-            LOG.info("Could not get Wifi_VIF_State for UUID {}. {}", uuid, e.getMessage());
+            LOG.info("Could not get Wifi_VIF_State for UUID {}. {}", uuid, e);
 
         }
     }
 
-    private OpensyncAPVIFState processWifiVIFStateColumn(OvsdbClient ovsdbClient, Row row) {
+    private OpensyncAPVIFState processWifiVIFStateColumn(OvsdbClient ovsdbClient, Row row, boolean update) {
         OpensyncAPVIFState tableState = new OpensyncAPVIFState();
 
         Map<String, Value> map = row.getColumns();
@@ -755,18 +755,10 @@ public class OvsdbDao {
             tableState.setVifRadioIdx(row.getIntegerColumn("vif_radio_idx").intValue());
         }
 
+        List<Uuid> associatedClientsList = new ArrayList<>();
+
         Set<Uuid> clients = row.getSetColumn("associated_clients");
-        List<OpensyncWifiAssociatedClients> associatedClientsList = new ArrayList<>();
-
-        if (clients != null) {
-            for (Uuid client : clients) {
-
-                getWifiAssociatedClientByUuid(associatedClientsList, client, ovsdbClient);
-
-                LOG.debug("Associated Client Uuid {} UUID {} ", client.toString(), client.getUuid());
-
-            }
-        }
+        associatedClientsList.addAll(clients);
 
         tableState.setAssociatedClients(associatedClientsList);
 
@@ -1898,13 +1890,13 @@ public class OvsdbDao {
                     Row row = rowUpdate.getNew();
 
                     if (rowUpdate.getOld() != null) {
-
                         LOG.debug("Wifi_VIF_State Columns changed {}", rowUpdate.getOld().getColumns().keySet());
                     }
 
                     if (row != null) {
 
-                        OpensyncAPVIFState tableState = processWifiVIFStateColumn(ovsdbClient, row);
+                        OpensyncAPVIFState tableState = processWifiVIFStateColumn(ovsdbClient, row,
+                                (rowUpdate.getOld() != null));
 
                         LOG.debug("Updated table state {}", tableState.toPrettyString());
 
@@ -1920,55 +1912,6 @@ public class OvsdbDao {
 
         }
         return ret;
-    }
-
-    public void getWifiAssociatedClientByUuid(List<OpensyncWifiAssociatedClients> associatedClients, Uuid uuid,
-            OvsdbClient ovsdbClient) {
-
-        List<Operation> operations = new ArrayList<>();
-        List<Condition> conditions = new ArrayList<>();
-
-        conditions.add(new Condition("_uuid", Function.EQUALS, new Atom<>(uuid)));
-        operations.add(new Select(wifiAssociatedClientsDbTable, conditions));
-
-        try {
-            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
-            if ((result != null) && (result.length > 0) && result[0] instanceof SelectResult
-                    && !((SelectResult) result[0]).getRows().isEmpty()) {
-                Row row = ((SelectResult) result[0]).getRows().iterator().next();
-
-                OpensyncWifiAssociatedClients tableState = new OpensyncWifiAssociatedClients();
-                Map<String, Value> map = row.getColumns();
-
-                if ((map.get("mac") != null)
-                        && map.get("mac").getClass().equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
-                    tableState.setMac(row.getStringColumn("mac"));
-                }
-                if (row.getSetColumn("capabilities") != null) {
-                    tableState.setCapabilities(row.getSetColumn("capabilities"));
-                }
-                if ((map.get("state") != null) && map.get("state").getClass()
-                        .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
-                    tableState.setState(row.getStringColumn("state"));
-                }
-                if ((map.get("_version") != null) && map.get("_version").getClass()
-                        .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
-                    tableState.setVersion(row.getUuidColumn("_version"));
-                }
-                if ((map.get("_uuid") != null) && map.get("_uuid").getClass()
-                        .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
-                    tableState.setVersion(row.getUuidColumn("_uuid"));
-                }
-
-                associatedClients.add(tableState);
-
-            }
-        } catch (Exception e) {
-
-        }
-
     }
 
     public List<OpensyncWifiAssociatedClients> getOpensyncWifiAssociatedClients(TableUpdates tableUpdates, String apId,
@@ -2193,11 +2136,11 @@ public class OvsdbDao {
         }
     }
 
-    public void configureSingleSsid(OvsdbClient ovsdbClient, String ifName, String ssid,
-            boolean ssidBroadcast, Map<String, String> security, String radioFreqBand, int vlanId, boolean rrmEnabled,
-            boolean enable80211r, String minHwMode, boolean enabled, int keyRefresh, boolean uapsdEnabled,
-            boolean apBridge, NetworkForwardMode networkForwardMode, String gateway, String inet,
-            Map<String, String> dns, String ipAssignScheme, Set<String> macBlackList, Set<String> macWhiteList) {
+    public void configureSingleSsid(OvsdbClient ovsdbClient, String ifName, String ssid, boolean ssidBroadcast,
+            Map<String, String> security, String radioFreqBand, int vlanId, boolean rrmEnabled, boolean enable80211r,
+            String minHwMode, boolean enabled, int keyRefresh, boolean uapsdEnabled, boolean apBridge,
+            NetworkForwardMode networkForwardMode, String gateway, String inet, Map<String, String> dns,
+            String ipAssignScheme, Set<String> macBlackList, Set<String> macWhiteList) {
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
@@ -2209,7 +2152,7 @@ public class OvsdbDao {
             } else {
                 updateColumns.put("bridge", new Atom<>("wan"));
             }
-            
+
             updateColumns.put("btm", new Atom<>(1));
             updateColumns.put("enabled", new Atom<>(enabled));
             if (enable80211r) {
@@ -2532,10 +2475,10 @@ public class OvsdbDao {
                         ifName = ifName + "-" + numberOfInterfaces;
                     }
 
-                    configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(),
-                            ssidBroadcast, security, freqBand, ssidConfig.getVlanId(), rrmEnabled, enable80211r,
-                            minHwMode, enabled, keyRefresh, uapsdEnabled, apBridge, ssidConfig.getForwardMode(),
-                            gateway, inet, dns, ipAssignScheme, macBlackList, macWhiteList);
+                    configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(), ssidBroadcast, security, freqBand,
+                            ssidConfig.getVlanId(), rrmEnabled, enable80211r, minHwMode, enabled, keyRefresh,
+                            uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet, dns, ipAssignScheme,
+                            macBlackList, macWhiteList);
 
                 } catch (IllegalStateException e) {
                     // could not provision this SSID, but still can go on

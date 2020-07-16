@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.junit.After;
 import org.junit.Before;
@@ -59,7 +60,6 @@ import com.telecominfraproject.wlan.opensync.external.integration.controller.Ope
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
-import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
@@ -73,6 +73,7 @@ import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSIDs;
 import com.telecominfraproject.wlan.status.equipment.report.models.ClientConnectionDetails;
 import com.telecominfraproject.wlan.status.models.Status;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
+import com.vmware.ovsdb.protocol.operation.notation.Uuid;
 
 import sts.OpensyncStats.Client;
 import sts.OpensyncStats.ClientReport;
@@ -348,21 +349,28 @@ public class OpensyncExternalIntegrationCloudTest {
         OpensyncAPVIFState vifState1 = new OpensyncAPVIFState();
         vifState1.setMac("24:f5:a2:ef:2e:54");
         vifState1.setSsid("ssid-1");
-        OpensyncWifiAssociatedClients wifiClient1 = new OpensyncWifiAssociatedClients();
-        wifiClient1.setMac("C0:9A:D0:E6:EA:4D");
-        vifState1.setAssociatedClients(ImmutableList.of(wifiClient1));
+        // OpensyncWifiAssociatedClients wifiClient1 = new
+        // OpensyncWifiAssociatedClients();
+        // wifiClient1.setMac("C0:9A:D0:E6:EA:4D");
+        Uuid uuid1 = Uuid.of(UUID.randomUUID());
+        vifState1.setAssociatedClients(ImmutableList.of(uuid1));
         OpensyncAPVIFState vifState2 = new OpensyncAPVIFState();
         vifState2.setMac("24:f5:a2:ef:2e:55");
         vifState2.setSsid("ssid-2");
-        OpensyncWifiAssociatedClients wifiClient2 = new OpensyncWifiAssociatedClients();
-        wifiClient2.setMac("7C:AB:60:E6:EA:4D");
-        vifState2.setAssociatedClients(ImmutableList.of(wifiClient2));
+        // OpensyncWifiAssociatedClients wifiClient2 = new
+        // OpensyncWifiAssociatedClients();
+        // wifiClient2.setMac("7C:AB:60:E6:EA:4D");
+        Uuid uuid2 = Uuid.of(UUID.randomUUID());
+        vifState2.setAssociatedClients(ImmutableList.of(uuid2));
         OpensyncAPVIFState vifState3 = new OpensyncAPVIFState();
         vifState3.setMac("24:f5:a2:ef:2e:56");
         vifState3.setSsid("ssid-3");
-        OpensyncWifiAssociatedClients wifiClient3 = new OpensyncWifiAssociatedClients();
-        wifiClient3.setMac("C0:9A:D0:76:A9:69");
-        vifState3.setAssociatedClients(ImmutableList.of(wifiClient3));
+        // OpensyncWifiAssociatedClients wifiClient3 = new
+        // OpensyncWifiAssociatedClients();
+        // wifiClient3.setMac("C0:9A:D0:76:A9:69");
+        Uuid uuid3 = Uuid.of(UUID.randomUUID());
+
+        vifState3.setAssociatedClients(ImmutableList.of(uuid3));
 
         Status bssidStatus = new Status();
         bssidStatus.setStatusDataType(StatusDataType.ACTIVE_BSSIDS);
@@ -422,9 +430,9 @@ public class OpensyncExternalIntegrationCloudTest {
         OpensyncAPVIFState vifState1 = new OpensyncAPVIFState();
         vifState1.setMac("24:f5:a2:ef:2e:54");
         vifState1.setSsid("ssid-1");
-        OpensyncWifiAssociatedClients wifiClient1 = new OpensyncWifiAssociatedClients();
-        wifiClient1.setMac("C0:9A:D0:E6:EA:4D");
-        vifState1.setAssociatedClients(ImmutableList.of(wifiClient1));
+        Uuid uuid1 = Uuid.of(UUID.randomUUID());
+
+        vifState1.setAssociatedClients(ImmutableList.of(uuid1));
 
         OpensyncAPRadioState radioState1 = new OpensyncAPRadioState();
         radioState1.setChannel(6);
@@ -438,9 +446,9 @@ public class OpensyncExternalIntegrationCloudTest {
         OpensyncAPVIFState vifState2 = new OpensyncAPVIFState();
         vifState2.setMac("24:f5:a2:ef:2e:55");
         vifState2.setSsid("ssid-2");
-        OpensyncWifiAssociatedClients wifiClient2 = new OpensyncWifiAssociatedClients();
-        wifiClient2.setMac("7C:AB:60:E6:EA:4D");
-        vifState2.setAssociatedClients(ImmutableList.of(wifiClient2));
+        Uuid uuid2 = Uuid.of(UUID.randomUUID());
+
+        vifState2.setAssociatedClients(ImmutableList.of(uuid2));
 
         OpensyncAPRadioState radioState2 = new OpensyncAPRadioState();
         radioState2.setChannel(36);
@@ -454,9 +462,9 @@ public class OpensyncExternalIntegrationCloudTest {
         OpensyncAPVIFState vifState3 = new OpensyncAPVIFState();
         vifState3.setMac("24:f5:a2:ef:2e:56");
         vifState3.setSsid("ssid-3");
-        OpensyncWifiAssociatedClients wifiClient3 = new OpensyncWifiAssociatedClients();
-        wifiClient3.setMac("C0:9A:D0:76:A9:69");
-        vifState3.setAssociatedClients(ImmutableList.of(wifiClient3));
+        Uuid uuid3 = Uuid.of(UUID.randomUUID());
+
+        vifState3.setAssociatedClients(ImmutableList.of(uuid3));
 
         OpensyncAPRadioState radioState3 = new OpensyncAPRadioState();
         radioState3.setChannel(149);
