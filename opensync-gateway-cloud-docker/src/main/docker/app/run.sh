@@ -14,7 +14,9 @@ CLIENT_MQTT_SSL_PROPS+=" -Dtip.wlan.mqttBroker.password=admin"
 
 OVSDB_MANAGER_HOST=${OVSDB_MANAGER}
 MQTT_BROKER_HOST="${MQTT_SERVER}"
-BACKEND_SERVER="${BACKEND_SERVER}"
+PROV_SERVER_HOST="${PROV_SERVER}"
+SSC_SERVER_HOST="${SSC_SERVER}"
+ALL_IN_ONE_HOST="${INTEGRATED_SERVER}"
 
 OVSDB_PROPS=" "
 OVSDB_PROPS+=" -Dtip.wlan.ovsdb.managerAddr=$OVSDB_MANAGER_HOST"
@@ -50,23 +52,33 @@ then
   HOST_PROPS+=" -Dtip.wlan.internalHostName=${OVSDB_MANAGER_IP}"
 fi
 
-if [[ -n $BACKEND_SERVER ]]
+if [[ -n $PROV_SERVER_HOST && -n $SSC_SERVER_HOST ]]
 then
   echo Use specifed local host
-
-  HOST_URL=https://${BACKEND_SERVER}:9092
-  HOST_PROPS+=" -Dtip.wlan.cloudEventDispatcherBaseUrl=$HOST_URL"
-  HOST_PROPS+=" -Dtip.wlan.statusServiceBaseUrl=$HOST_URL"
-  HOST_PROPS+=" -Dtip.wlan.routingServiceBaseUrl=$HOST_URL"
-  HOST_PROPS+=" -Dtip.wlan.alarmServiceBaseUrl=$HOST_URL"
-  HOST_PROPS+=" -Dtip.wlan.customerServiceBaseUrl=$HOST_URL"
-  HOST_PROPS+=" -Dtip.wlan.locationServiceBaseUrl=$HOST_URL"
-  HOST_PROPS+=" -Dtip.wlan.equipmentServiceBaseUrl=$HOST_URL"
-  HOST_PROPS+=" -Dtip.wlan.profileServiceBaseUrl=$HOST_URL"
-  HOST_PROPS+=" -Dtip.wlan.clientServiceBaseUrl=$HOST_URL"
-  HOST_PROPS+=" -Dtip.wlan.firmwareServiceBaseUrl=$HOST_URL"
-  HOST_PROPS+=" -Dtip.wlan.manufacturerServiceBaseUrl=$HOST_URL"
+  SSC_URL=https://${SSC_SERVER_HOST}:9031
+  PROV_URL=https://${PROV_SERVER_HOST}:9091
+else
+  echo Its an Integrated server environment
+  SSC_URL=https://${ALL_IN_ONE_HOST}:9092
+  PROV_URL=https://${ALL_IN_ONE_HOST}:9092
 fi
+  // SSC URLs
+  HOST_PROPS+=" -Dtip.wlan.cloudEventDispatcherBaseUrl=$SSC_URL"
+  HOST_PROPS+=" -Dtip.wlan.statusServiceBaseUrl=$SSC_URL"
+  HOST_PROPS+=" -Dtip.wlan.routingServiceBaseUrl=$SSC_URL"
+  HOST_PROPS+=" -Dtip.wlan.alarmServiceBaseUrl=$SSC_URL"
+  HOST_PROPS+=" -Dtip.wlan.systemEventServiceBaseUrl=$SSC_URL"
+  HOST_PROPS+=" -Dtip.wlan.profileServiceBaseUrl=$SSC_URL"
+  HOST_PROPS+=" -Dtip.wlan.clientServiceBaseUrl=$SSC_URL"
+
+  // PROV URLs
+  HOST_PROPS+=" -Dtip.wlan.customerServiceBaseUrl=$PROV_URL"
+  HOST_PROPS+=" -Dtip.wlan.portalUserServiceBaseUrl=$PROV_URL"
+  HOST_PROPS+=" -Dtip.wlan.firmwareServiceBaseUrl=$PROV_URL"
+  HOST_PROPS+=" -Dtip.wlan.serviceMetricServiceBaseUrl=$PROV_URL"
+  HOST_PROPS+=" -Dtip.wlan.locationServiceBaseUrl=$PROV_URL"
+  HOST_PROPS+=" -Dtip.wlan.manufacturerServiceBaseUrl=$PROV_URL"
+  HOST_PROPS+=" -Dtip.wlan.equipmentServiceBaseUrl=$PROV_URL"
 
 DEFAULT_BRIDGE="${DEFAULT_BRIDGE:=br-lan}"
 DEFAULT_WAN_TYPE="${DEFAULT_WAN_TYPE:=eth}"
