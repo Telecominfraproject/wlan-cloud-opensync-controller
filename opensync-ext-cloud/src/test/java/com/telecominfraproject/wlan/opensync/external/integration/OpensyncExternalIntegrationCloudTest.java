@@ -4,6 +4,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -35,6 +36,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.protobuf.ByteString;
 import com.telecominfraproject.wlan.alarm.AlarmServiceInterface;
 import com.telecominfraproject.wlan.client.ClientServiceInterface;
 import com.telecominfraproject.wlan.client.info.models.ClientInfoDetails;
@@ -65,6 +67,8 @@ import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.telecominfraproject.wlan.routing.RoutingServiceInterface;
+import com.telecominfraproject.wlan.servicemetric.apnode.models.ApNodeMetrics;
+import com.telecominfraproject.wlan.servicemetric.apnode.models.StateUpDownError;
 import com.telecominfraproject.wlan.status.StatusServiceInterface;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentProtocolStatusData;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeStatusData;
@@ -77,8 +81,13 @@ import com.vmware.ovsdb.protocol.operation.notation.Uuid;
 
 import sts.OpensyncStats.Client;
 import sts.OpensyncStats.ClientReport;
+import sts.OpensyncStats.DNSProbeMetric;
+import sts.OpensyncStats.NetworkProbe;
+import sts.OpensyncStats.RADIUSMetrics;
 import sts.OpensyncStats.RadioBandType;
 import sts.OpensyncStats.Report;
+import sts.OpensyncStats.StateUpDown;
+import sts.OpensyncStats.VLANMetrics;
 
 @RunWith(SpringRunner.class)
 @ActiveProfiles(profiles = { "integration_test", })
@@ -577,6 +586,39 @@ public class OpensyncExternalIntegrationCloudTest {
     public void testWifiAssociatedClientsDbTableDelete() {
 
         opensyncExternalIntegrationCloud.wifiAssociatedClientsDbTableDelete("7C:AB:60:E6:EA:4D", "apId");
+    }
+
+    @Test
+    public void testpopulateNetworkProbeMetrics() throws Exception {
+
+        InetAddress ip = InetAddress.getByName("192.168.1.1");
+
+        DNSProbeMetric dnsProbeMetric = DNSProbeMetric.getDefaultInstance().toBuilder().setLatency(10)
+                .setState(StateUpDown.SUD_up).setServerIP(ByteString.copyFrom(ip.getAddress())).build();
+        RADIUSMetrics radiusProbeMetric = RADIUSMetrics.getDefaultInstance().toBuilder().setLatencyAve(10).build();
+        VLANMetrics vlanMetrics = VLANMetrics.getDefaultInstance().toBuilder().setDhcpLatency(10)
+                .setDhcpState(StateUpDown.SUD_up).setVlanIF("vlan-1").setObsV200RadiusLatency(15)
+                .setObsV200RadiusState(StateUpDown.SUD_up).build();
+        NetworkProbe networkProbe = NetworkProbe.getDefaultInstance().toBuilder().setVlanProbe(vlanMetrics)
+                .setDnsProbe(dnsProbeMetric).setRadiusProbe(radiusProbeMetric).build();
+
+        Report report = Report.getDefaultInstance().toBuilder().setNodeID("21P10C68818122")
+                .addNetworkProbe(networkProbe).build();
+
+        ApNodeMetrics apNodeMetrics = new ApNodeMetrics();
+
+        opensyncExternalIntegrationCloud.populateNetworkProbeMetrics(report, apNodeMetrics);
+
+        assertNotNull(apNodeMetrics.getNetworkProbeMetrics());
+
+        assert (apNodeMetrics.getNetworkProbeMetrics().get(0).getDhcpLatencyMs() == 10);
+        assert (apNodeMetrics.getNetworkProbeMetrics().get(0).getDnsLatencyMs() == 10);
+        assert (apNodeMetrics.getNetworkProbeMetrics().get(0).getRadiusState().equals(StateUpDownError.enabled));
+        assert (apNodeMetrics.getNetworkProbeMetrics().get(0).getDhcpState().equals(StateUpDownError.enabled));
+        assert (apNodeMetrics.getNetworkProbeMetrics().get(0).getDnsState().equals(StateUpDownError.enabled));
+        assert (apNodeMetrics.getNetworkProbeMetrics().get(0).getRadiusLatencyInMs() == 15);
+        assert (apNodeMetrics.getNetworkProbeMetrics().get(0).getVlanIF().equals("vlan-1"));
+
     }
 
     // Helper methods

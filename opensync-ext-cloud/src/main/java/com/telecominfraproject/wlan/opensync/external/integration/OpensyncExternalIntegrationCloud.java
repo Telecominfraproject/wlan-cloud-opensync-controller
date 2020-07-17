@@ -84,8 +84,11 @@ import com.telecominfraproject.wlan.routing.RoutingServiceInterface;
 import com.telecominfraproject.wlan.routing.models.EquipmentRoutingRecord;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.ApNodeMetrics;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.ApPerformance;
+import com.telecominfraproject.wlan.servicemetric.apnode.models.DnsProbeMetric;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.EthernetLinkState;
+import com.telecominfraproject.wlan.servicemetric.apnode.models.NetworkProbeMetrics;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.RadioUtilization;
+import com.telecominfraproject.wlan.servicemetric.apnode.models.StateUpDownError;
 import com.telecominfraproject.wlan.servicemetric.apssid.models.ApSsidMetrics;
 import com.telecominfraproject.wlan.servicemetric.apssid.models.SsidStatistics;
 import com.telecominfraproject.wlan.servicemetric.channelinfo.models.ChannelInfo;
@@ -124,15 +127,19 @@ import com.telecominfraproject.wlan.status.network.models.UserDetails;
 
 import sts.OpensyncStats.Client;
 import sts.OpensyncStats.ClientReport;
+import sts.OpensyncStats.DNSProbeMetric;
 import sts.OpensyncStats.Device;
 import sts.OpensyncStats.Device.RadioTemp;
 import sts.OpensyncStats.Neighbor;
 import sts.OpensyncStats.Neighbor.NeighborBss;
+import sts.OpensyncStats.NetworkProbe;
+import sts.OpensyncStats.RADIUSMetrics;
 import sts.OpensyncStats.RadioBandType;
 import sts.OpensyncStats.Report;
 import sts.OpensyncStats.Survey;
 import sts.OpensyncStats.Survey.SurveySample;
 import sts.OpensyncStats.SurveyType;
+import sts.OpensyncStats.VLANMetrics;
 import traffic.NetworkMetadata.FlowReport;
 import wc.stats.IpDnsTelemetry.WCStatsReport;
 
@@ -890,215 +897,319 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     private void populateApNodeMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId,
             long equipmentId) {
-        {
-            LOG.debug("populateApNodeMetrics for Customer {} Equipment {}", customerId, equipmentId);
-            ApNodeMetrics apNodeMetrics = new ApNodeMetrics();
-            ServiceMetric smr = new ServiceMetric(customerId, equipmentId);
-            metricRecordList.add(smr);
-            smr.setDetails(apNodeMetrics);
+        LOG.debug("populateApNodeMetrics for Customer {} Equipment {}", customerId, equipmentId);
+        ApNodeMetrics apNodeMetrics = new ApNodeMetrics();
+        ServiceMetric smr = new ServiceMetric(customerId, equipmentId);
+        metricRecordList.add(smr);
+        smr.setDetails(apNodeMetrics);
 
-            for (Device deviceReport : report.getDeviceList()) {
+        for (Device deviceReport : report.getDeviceList()) {
 
-                int avgRadioTemp = 0;
+            int avgRadioTemp = 0;
 
-                ApPerformance apPerformance = new ApPerformance();
-                apNodeMetrics.setApPerformance(apPerformance);
+            ApPerformance apPerformance = new ApPerformance();
+            apNodeMetrics.setApPerformance(apPerformance);
 
-                smr.setCreatedTimestamp(deviceReport.getTimestampMs());
+            smr.setCreatedTimestamp(deviceReport.getTimestampMs());
 
-                if (deviceReport.getRadioTempCount() > 0) {
-                    float cpuTemperature = 0;
-                    int numSamples = 0;
-                    for (RadioTemp r : deviceReport.getRadioTempList()) {
-                        if (r.hasValue()) {
-                            cpuTemperature += r.getValue();
-                            numSamples++;
-                        }
-                    }
-
-                    if (numSamples > 0) {
-                        avgRadioTemp = Math.round((cpuTemperature / numSamples));
-                        apPerformance.setCpuTemperature(avgRadioTemp);
+            if (deviceReport.getRadioTempCount() > 0) {
+                float cpuTemperature = 0;
+                int numSamples = 0;
+                for (RadioTemp r : deviceReport.getRadioTempList()) {
+                    if (r.hasValue()) {
+                        cpuTemperature += r.getValue();
+                        numSamples++;
                     }
                 }
 
-                if (deviceReport.hasCpuUtil() && deviceReport.getCpuUtil().hasCpuUtil()) {
-                    Integer cpuUtilization = deviceReport.getCpuUtil().getCpuUtil();
-                    apPerformance.setCpuUtilized(new byte[] { cpuUtilization.byteValue() });
-                }
-
-                apPerformance.setEthLinkState(EthernetLinkState.UP1000_FULL_DUPLEX);
-
-                if (deviceReport.hasMemUtil() && deviceReport.getMemUtil().hasMemTotal()
-                        && deviceReport.getMemUtil().hasMemUsed()) {
-                    apPerformance.setFreeMemory(
-                            deviceReport.getMemUtil().getMemTotal() - deviceReport.getMemUtil().getMemUsed());
-                }
-                apPerformance.setUpTime((long) deviceReport.getUptime());
-
-                updateDeviceStatusForReport(customerId, equipmentId, deviceReport, avgRadioTemp);
-
-            }
-
-            // statusList.add(status);
-
-            // Main Network dashboard shows Traffic and Capacity values that
-            // are calculated from
-            // ApNodeMetric properties getPeriodLengthSec, getRxBytes2G,
-            // getTxBytes2G, getRxBytes5G, getTxBytes5G
-
-            // go over all the clients to aggregate per-client tx/rx stats -
-            // we want to do this
-            // only once per batch of ApNodeMetrics - so we do not repeat
-            // values over and over again
-
-            for (ClientReport clReport : report.getClientsList()) {
-
-                long rxBytes = 0;
-                long txBytes = 0;
-                Set<String> clientMacs = new HashSet<>();
-
-                for (Client cl : clReport.getClientListList()) {
-
-                    if (!cl.hasConnected() || (cl.getConnected() != true)) {
-                        // this client is not currently connected, skip it
-                        // TODO: how come AP reports disconencted clients? What
-                        // if it is a busy coffe shop with thousands of peopele
-                        // per day, when do clients disappear from the reports?
-                        continue;
-                    }
-
-                    if (cl.hasMacAddress()) {
-                        clientMacs.add(cl.getMacAddress());
-                    }
-
-                    if (cl.getStats().hasTxBytes()) {
-                        txBytes += cl.getStats().getTxBytes();
-                    }
-                    if (cl.getStats().hasRxBytes()) {
-                        rxBytes += cl.getStats().getRxBytes();
-                    }
-
-                }
-
-                RadioType radioType = getRadioTypeFromOpensyncRadioBand(clReport.getBand());
-
-                apNodeMetrics.setRxBytes(radioType, rxBytes);
-                apNodeMetrics.setTxBytes(radioType, txBytes);
-
-                List<MacAddress> clientMacList = new ArrayList<>();
-                clientMacs.forEach(new Consumer<String>() {
-                    @Override
-                    public void accept(String macStr) {
-                        try {
-                            clientMacList.add(new MacAddress(macStr));
-                        } catch (RuntimeException e) {
-                            LOG.warn("Cannot parse mac address from MQTT ClientReport {} ", macStr);
-                        }
-                    }
-                });
-
-                apNodeMetrics.setClientMacAddresses(radioType, clientMacList);
-
-                // TODO: temporary solution as this was causing Noise Floor to
-                // disappear from Dashboard and Access Point rows
-                apNodeMetrics.setNoiseFloor(radioType, -98);
-                // TODO: Radio Utilization will be calculated when the survey is
-                // enabled
-
-                apNodeMetrics.setRadioUtilization(radioType, new ArrayList<RadioUtilization>());
-
-            }
-
-            // Status radioUtilizationStatus =
-            // statusServiceInterface.getOrNull(customerId, equipmentId,
-            // StatusDataType.RADIO_UTILIZATION);
-            //
-            // if (radioUtilizationStatus != null) {
-            // RadioUtilizationReport radioUtilizationReport =
-            // (RadioUtilizationReport) radioUtilizationStatus
-            // .getDetails();
-            // }
-
-            apNodeMetrics.setPeriodLengthSec(60);
-
-            // Now try to populate metrics for calculation of radio capacity
-            // see
-            // com.telecominfraproject.wlan.metrics.streaming.spark.equipmentreport.CapacityDStreamsConfig.toAggregatedStats(int,
-            // long, ApNodeMetric data)
-            // result.stats2g =
-            // toAggregatedRadioStats(data.getNoiseFloor2G(),data.getRadioUtilization2G());
-            // result.stats5g =
-            // toAggregatedRadioStats(data.getNoiseFloor5G(),data.getRadioUtilization5G());
-            // RadioUtilization
-            // private Integer assocClientTx;
-            // private Integer unassocClientTx;
-            // private Integer assocClientRx;
-            // private Integer unassocClientRx;
-            // private Integer nonWifi;
-            // private Integer timestampSeconds;
-
-            // populate it from report.survey
-            for (Survey survey : report.getSurveyList()) {
-
-                int oBSS = 0;
-                int iBSS = 0;
-                int totalBusy = 0;
-                int durationMs = 0;
-                for (SurveySample surveySample : survey.getSurveyListList()) {
-                    if (surveySample.getDurationMs() == 0) {
-                        continue;
-                    }
-
-                    iBSS += surveySample.getBusySelf() + surveySample.getBusyTx();
-                    oBSS += surveySample.getBusyRx();
-                    totalBusy += surveySample.getBusy();
-                    durationMs += surveySample.getDurationMs();
-
-                    RadioUtilization radioUtil = new RadioUtilization();
-                    radioUtil
-                            .setTimestampSeconds((int) ((survey.getTimestampMs() + surveySample.getOffsetMs()) / 1000));
-                    radioUtil.setAssocClientTx(100 * surveySample.getBusyTx() / surveySample.getDurationMs());
-                    radioUtil.setAssocClientRx(100 * surveySample.getBusyRx() / surveySample.getDurationMs());
-                    radioUtil.setNonWifi(
-                            100 * (surveySample.getBusy() - surveySample.getBusyTx() - surveySample.getBusyRx())
-                                    / surveySample.getDurationMs());
-
-                    RadioType radioType = RadioType.UNSUPPORTED;
-                    switch (survey.getBand()) {
-                    case BAND2G:
-                        radioType = RadioType.is2dot4GHz;
-                        break;
-                    case BAND5G:
-                        radioType = RadioType.is5GHz;
-                        break;
-                    case BAND5GL:
-                        radioType = RadioType.is5GHzL;
-                        break;
-                    case BAND5GU:
-                        radioType = RadioType.is5GHzU;
-                        break;
-                    }
-
-                    apNodeMetrics.getRadioUtilization(radioType).add(radioUtil);
-
-                }
-
-                Double totalUtilization = 100D * totalBusy / durationMs;
-                Double totalWifiUtilization = 100D * (iBSS + oBSS) / durationMs;
-                if (survey.getBand() == RadioBandType.BAND2G) { //
-                    apNodeMetrics.setChannelUtilization(RadioType.is2dot4GHz, totalUtilization.intValue());
-                } else if (survey.getBand() == RadioBandType.BAND5G) {
-                    apNodeMetrics.setChannelUtilization(RadioType.is5GHz, totalUtilization.intValue());
-                } else if (survey.getBand() == RadioBandType.BAND5GL) {
-                    apNodeMetrics.setChannelUtilization(RadioType.is5GHzL, totalUtilization.intValue());
-                } else if (survey.getBand() == RadioBandType.BAND5GU) {
-                    apNodeMetrics.setChannelUtilization(RadioType.is5GHzU, totalUtilization.intValue());
+                if (numSamples > 0) {
+                    avgRadioTemp = Math.round((cpuTemperature / numSamples));
+                    apPerformance.setCpuTemperature(avgRadioTemp);
                 }
             }
+
+            if (deviceReport.hasCpuUtil() && deviceReport.getCpuUtil().hasCpuUtil()) {
+                Integer cpuUtilization = deviceReport.getCpuUtil().getCpuUtil();
+                apPerformance.setCpuUtilized(new byte[] { cpuUtilization.byteValue() });
+            }
+
+            apPerformance.setEthLinkState(EthernetLinkState.UP1000_FULL_DUPLEX);
+
+            if (deviceReport.hasMemUtil() && deviceReport.getMemUtil().hasMemTotal()
+                    && deviceReport.getMemUtil().hasMemUsed()) {
+                apPerformance.setFreeMemory(
+                        deviceReport.getMemUtil().getMemTotal() - deviceReport.getMemUtil().getMemUsed());
+            }
+            apPerformance.setUpTime((long) deviceReport.getUptime());
+
+            updateDeviceStatusForReport(customerId, equipmentId, deviceReport, avgRadioTemp);
 
         }
 
+        // statusList.add(status);
+
+        // Main Network dashboard shows Traffic and Capacity values that
+        // are calculated from
+        // ApNodeMetric properties getPeriodLengthSec, getRxBytes2G,
+        // getTxBytes2G, getRxBytes5G, getTxBytes5G
+
+        // go over all the clients to aggregate per-client tx/rx stats -
+        // we want to do this
+        // only once per batch of ApNodeMetrics - so we do not repeat
+        // values over and over again
+
+        for (ClientReport clReport : report.getClientsList()) {
+
+            long rxBytes = 0;
+            long txBytes = 0;
+            Set<String> clientMacs = new HashSet<>();
+
+            for (Client cl : clReport.getClientListList()) {
+
+                if (!cl.hasConnected() || (cl.getConnected() != true)) {
+                    // this client is not currently connected, skip it
+                    // TODO: how come AP reports disconencted clients? What
+                    // if it is a busy coffe shop with thousands of peopele
+                    // per day, when do clients disappear from the reports?
+                    continue;
+                }
+
+                if (cl.hasMacAddress()) {
+                    clientMacs.add(cl.getMacAddress());
+                }
+
+                if (cl.getStats().hasTxBytes()) {
+                    txBytes += cl.getStats().getTxBytes();
+                }
+                if (cl.getStats().hasRxBytes()) {
+                    rxBytes += cl.getStats().getRxBytes();
+                }
+
+            }
+
+            RadioType radioType = getRadioTypeFromOpensyncRadioBand(clReport.getBand());
+
+            apNodeMetrics.setRxBytes(radioType, rxBytes);
+            apNodeMetrics.setTxBytes(radioType, txBytes);
+
+            List<MacAddress> clientMacList = new ArrayList<>();
+            clientMacs.forEach(new Consumer<String>() {
+                @Override
+                public void accept(String macStr) {
+                    try {
+                        clientMacList.add(new MacAddress(macStr));
+                    } catch (RuntimeException e) {
+                        LOG.warn("Cannot parse mac address from MQTT ClientReport {} ", macStr);
+                    }
+                }
+            });
+
+            apNodeMetrics.setClientMacAddresses(radioType, clientMacList);
+
+            // TODO: temporary solution as this was causing Noise Floor to
+            // disappear from Dashboard and Access Point rows
+            apNodeMetrics.setNoiseFloor(radioType, -98);
+            // TODO: Radio Utilization will be calculated when the survey is
+            // enabled
+
+            apNodeMetrics.setRadioUtilization(radioType, new ArrayList<RadioUtilization>());
+
+        }
+
+        // Status radioUtilizationStatus =
+        // statusServiceInterface.getOrNull(customerId, equipmentId,
+        // StatusDataType.RADIO_UTILIZATION);
+        //
+        // if (radioUtilizationStatus != null) {
+        // RadioUtilizationReport radioUtilizationReport =
+        // (RadioUtilizationReport) radioUtilizationStatus
+        // .getDetails();
+        // }
+
+        apNodeMetrics.setPeriodLengthSec(60);
+
+        // Now try to populate metrics for calculation of radio capacity
+        // see
+        // com.telecominfraproject.wlan.metrics.streaming.spark.equipmentreport.CapacityDStreamsConfig.toAggregatedStats(int,
+        // long, ApNodeMetric data)
+        // result.stats2g =
+        // toAggregatedRadioStats(data.getNoiseFloor2G(),data.getRadioUtilization2G());
+        // result.stats5g =
+        // toAggregatedRadioStats(data.getNoiseFloor5G(),data.getRadioUtilization5G());
+        // RadioUtilization
+        // private Integer assocClientTx;
+        // private Integer unassocClientTx;
+        // private Integer assocClientRx;
+        // private Integer unassocClientRx;
+        // private Integer nonWifi;
+        // private Integer timestampSeconds;
+
+        // populate it from report.survey
+        for (Survey survey : report.getSurveyList()) {
+
+            int oBSS = 0;
+            int iBSS = 0;
+            int totalBusy = 0;
+            int durationMs = 0;
+            for (SurveySample surveySample : survey.getSurveyListList()) {
+                if (surveySample.getDurationMs() == 0) {
+                    continue;
+                }
+
+                iBSS += surveySample.getBusySelf() + surveySample.getBusyTx();
+                oBSS += surveySample.getBusyRx();
+                totalBusy += surveySample.getBusy();
+                durationMs += surveySample.getDurationMs();
+
+                RadioUtilization radioUtil = new RadioUtilization();
+                radioUtil.setTimestampSeconds((int) ((survey.getTimestampMs() + surveySample.getOffsetMs()) / 1000));
+                radioUtil.setAssocClientTx(100 * surveySample.getBusyTx() / surveySample.getDurationMs());
+                radioUtil.setAssocClientRx(100 * surveySample.getBusyRx() / surveySample.getDurationMs());
+                radioUtil
+                        .setNonWifi(100 * (surveySample.getBusy() - surveySample.getBusyTx() - surveySample.getBusyRx())
+                                / surveySample.getDurationMs());
+
+                RadioType radioType = RadioType.UNSUPPORTED;
+                switch (survey.getBand()) {
+                case BAND2G:
+                    radioType = RadioType.is2dot4GHz;
+                    break;
+                case BAND5G:
+                    radioType = RadioType.is5GHz;
+                    break;
+                case BAND5GL:
+                    radioType = RadioType.is5GHzL;
+                    break;
+                case BAND5GU:
+                    radioType = RadioType.is5GHzU;
+                    break;
+                }
+
+                apNodeMetrics.getRadioUtilization(radioType).add(radioUtil);
+
+            }
+
+            Double totalUtilization = 100D * totalBusy / durationMs;
+            Double totalWifiUtilization = 100D * (iBSS + oBSS) / durationMs;
+            if (survey.getBand() == RadioBandType.BAND2G) { //
+                apNodeMetrics.setChannelUtilization(RadioType.is2dot4GHz, totalUtilization.intValue());
+            } else if (survey.getBand() == RadioBandType.BAND5G) {
+                apNodeMetrics.setChannelUtilization(RadioType.is5GHz, totalUtilization.intValue());
+            } else if (survey.getBand() == RadioBandType.BAND5GL) {
+                apNodeMetrics.setChannelUtilization(RadioType.is5GHzL, totalUtilization.intValue());
+            } else if (survey.getBand() == RadioBandType.BAND5GU) {
+                apNodeMetrics.setChannelUtilization(RadioType.is5GHzU, totalUtilization.intValue());
+            }
+        }
+
+        populateNetworkProbeMetrics(report, apNodeMetrics);
+
+    }
+
+    void populateNetworkProbeMetrics(Report report, ApNodeMetrics apNodeMetrics) {
+        List<NetworkProbeMetrics> networkProbeMetricsList = new ArrayList<>();
+
+        for (NetworkProbe networkProbe : report.getNetworkProbeList()) {
+
+            NetworkProbeMetrics networkProbeMetrics = new NetworkProbeMetrics();
+
+            if (networkProbe.hasDnsProbe()) {
+
+                DNSProbeMetric dnsProbeMetricStats = networkProbe.getDnsProbe();
+                DnsProbeMetric dnsProbeMetric = new DnsProbeMetric();
+                networkProbeMetrics.setDnsLatencyMs(dnsProbeMetricStats.getLatency());
+                dnsProbeMetric.setDnsLatencyMs(dnsProbeMetricStats.getLatency());
+
+                switch (dnsProbeMetricStats.getState()) {
+                case SUD_down:
+                    networkProbeMetrics.setDnsState(StateUpDownError.disabled);
+                    dnsProbeMetric.setDnsState(StateUpDownError.disabled);
+                    break;
+                case SUD_up:
+                    networkProbeMetrics.setDnsState(StateUpDownError.enabled);
+                    dnsProbeMetric.setDnsState(StateUpDownError.enabled);
+                    break;
+                case SUD_error:
+                    networkProbeMetrics.setDnsState(StateUpDownError.error);
+                    dnsProbeMetric.setDnsState(StateUpDownError.error);
+                    break;
+                default:
+                    networkProbeMetrics.setDnsState(StateUpDownError.UNSUPPORTED);
+                    dnsProbeMetric.setDnsState(StateUpDownError.UNSUPPORTED);
+                }
+
+                try {
+                    InetAddress ipAddress = InetAddress.getByAddress(dnsProbeMetricStats.getServerIP().toByteArray());
+                    dnsProbeMetric.setDnsServerIp(ipAddress);
+                } catch (Exception e) {
+                    LOG.error("Unable to get the DNS server IP.", e);
+                }
+
+                if (networkProbeMetrics.getDnsProbeResults() == null) {
+                    List<DnsProbeMetric> dnsProbeMetricList = new ArrayList<>();
+                    dnsProbeMetricList.add(dnsProbeMetric);
+                    networkProbeMetrics.setDnsProbeResults(dnsProbeMetricList);
+                } else {
+                    networkProbeMetrics.getDnsProbeResults().add(dnsProbeMetric);
+                }
+
+            }
+            if (networkProbe.hasRadiusProbe()) {
+
+                RADIUSMetrics radiusMetrics = networkProbe.getRadiusProbe();
+
+                if (networkProbe.hasVlanProbe()) {
+                    if (networkProbe.getVlanProbe().hasObsV200RadiusLatency()) {
+                        networkProbeMetrics.setRadiusLatencyInMs(networkProbe.getVlanProbe().getObsV200RadiusLatency());
+                    }
+                    if (networkProbe.getVlanProbe().hasObsV200RadiusState()) {
+                        switch (networkProbe.getVlanProbe().getObsV200RadiusState()) {
+                        case SUD_down:
+                            networkProbeMetrics.setRadiusState(StateUpDownError.disabled);
+                            break;
+                        case SUD_up:
+                            networkProbeMetrics.setRadiusState(StateUpDownError.enabled);
+                            break;
+                        case SUD_error:
+                            networkProbeMetrics.setRadiusState(StateUpDownError.error);
+                            break;
+                        default:
+                            networkProbeMetrics.setRadiusState(StateUpDownError.UNSUPPORTED);
+                        }
+
+                    }
+                } else {
+                    // take the average if we don't have from the VLAN Probe
+                    networkProbeMetrics.setRadiusLatencyInMs(radiusMetrics.getLatencyAve());
+                }
+
+            }
+            if (networkProbe.hasVlanProbe()) {
+                VLANMetrics vlanMetrics = networkProbe.getVlanProbe();
+                networkProbeMetrics.setVlanIF(vlanMetrics.getVlanIF());
+                networkProbeMetrics.setDhcpLatencyMs(vlanMetrics.getDhcpLatency());
+
+                switch (vlanMetrics.getDhcpState()) {
+                case SUD_down:
+                    networkProbeMetrics.setDhcpState(StateUpDownError.disabled);
+                    break;
+                case SUD_up:
+                    networkProbeMetrics.setDhcpState(StateUpDownError.enabled);
+                    break;
+                case SUD_error:
+                    networkProbeMetrics.setDhcpState(StateUpDownError.error);
+                    break;
+                default:
+                    networkProbeMetrics.setDhcpState(StateUpDownError.UNSUPPORTED);
+                }
+
+            }
+            
+            networkProbeMetricsList.add(networkProbeMetrics);
+
+        }
+        
+        apNodeMetrics.setNetworkProbeMetrics(networkProbeMetricsList);
     }
 
     private void updateDeviceStatusForReport(int customerId, long equipmentId, Device deviceReport, int avgRadioTemp) {
