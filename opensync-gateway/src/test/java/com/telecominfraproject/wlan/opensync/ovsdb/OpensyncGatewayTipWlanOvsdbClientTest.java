@@ -28,6 +28,7 @@ import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSession;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSessionMapInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.OvsdbDao;
+import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.vmware.ovsdb.callback.MonitorCallback;
 import com.vmware.ovsdb.exception.OvsdbClientException;
 import com.vmware.ovsdb.protocol.methods.MonitorRequests;
@@ -42,9 +43,8 @@ import io.netty.handler.ssl.SslContext;
                                                     // active profiles
 @SpringBootTest(webEnvironment = WebEnvironment.NONE, classes = OpensyncGatewayTipWlanOvsdbClientTest.class)
 @Import(value = { OpensyncGatewayTipWlanOvsdbClientTest.Config.class, TipWlanOvsdbClient.class,
-		TipWlanOvsdbRedirector.class, OvsdbListenerConfig.class,
-        OvsdbSessionMapInterface.class, OvsdbDao.class, OpensyncExternalIntegrationInterface.class,
-        OvsdbSession.class, SslContext.class })
+        TipWlanOvsdbRedirector.class, OvsdbListenerConfig.class, OvsdbSessionMapInterface.class, OvsdbDao.class,
+        OpensyncExternalIntegrationInterface.class, OvsdbSession.class, SslContext.class })
 public class OpensyncGatewayTipWlanOvsdbClientTest {
 
     @MockBean
@@ -55,10 +55,9 @@ public class OpensyncGatewayTipWlanOvsdbClientTest {
 
     @MockBean
     private OvsdbSessionMapInterface ovsdbSessionMapInterface;
-    
+
     @MockBean
     private SslContext sslContext;
-
 
     @MockBean
     private OvsdbDao ovsdbDao;
@@ -81,6 +80,7 @@ public class OpensyncGatewayTipWlanOvsdbClientTest {
                 .thenReturn(Mockito.mock(OvsdbSession.class, Mockito.RETURNS_DEEP_STUBS));
         Mockito.when(opensyncExternalIntegrationInterface.getApConfig(Mockito.anyString()))
                 .thenReturn(Mockito.mock(OpensyncAPConfig.class, Mockito.RETURNS_DEEP_STUBS));
+
         Mockito.when(ovsdbClient.monitor(Mockito.anyString(), Mockito.anyString(), Mockito.any(MonitorRequests.class),
                 Mockito.any(MonitorCallback.class))).thenReturn(completableFuture);
 
@@ -114,6 +114,12 @@ public class OpensyncGatewayTipWlanOvsdbClientTest {
         OvsdbSession ovsdbSession = Mockito.mock(OvsdbSession.class, Mockito.RETURNS_DEEP_STUBS);
         Mockito.when(ovsdbSession.getOvsdbClient()).thenReturn(ovsdbClient);
         Mockito.when(ovsdbSessionMapInterface.getSession("Test_Client_21P10C68818122")).thenReturn(ovsdbSession);
+
+        OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class, Mockito.RETURNS_DEEP_STUBS);
+
+        Mockito.when(apConfig.getApProfile().getDetails()).thenReturn(Mockito.mock(ApNetworkConfiguration.class));
+
+        Mockito.when(opensyncExternalIntegrationInterface.getApConfig(Mockito.anyString())).thenReturn(apConfig);
 
         tipwlanOvsdbClient.processConfigChanged("Test_Client_21P10C68818122");
 

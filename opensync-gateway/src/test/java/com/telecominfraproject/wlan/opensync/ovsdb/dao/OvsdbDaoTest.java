@@ -3,11 +3,10 @@ package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.util.HashMap;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -38,14 +37,17 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Connect
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPInetState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
+import com.vmware.ovsdb.exception.OvsdbClientException;
 import com.vmware.ovsdb.jsonrpc.v1.util.JsonUtil;
 import com.vmware.ovsdb.protocol.methods.RowUpdate;
 import com.vmware.ovsdb.protocol.methods.TableUpdate;
 import com.vmware.ovsdb.protocol.methods.TableUpdates;
 import com.vmware.ovsdb.protocol.operation.notation.Atom;
 import com.vmware.ovsdb.protocol.operation.notation.Row;
+import com.vmware.ovsdb.protocol.operation.notation.Uuid;
 import com.vmware.ovsdb.protocol.operation.notation.Value;
 import com.vmware.ovsdb.protocol.operation.result.ErrorResult;
+import com.vmware.ovsdb.protocol.operation.result.InsertResult;
 import com.vmware.ovsdb.protocol.operation.result.OperationResult;
 import com.vmware.ovsdb.protocol.operation.result.SelectResult;
 import com.vmware.ovsdb.service.OvsdbClient;
@@ -95,7 +97,7 @@ public class OvsdbDaoTest {
     @Mock(answer = Answers.RETURNS_MOCKS)
     OvsdbClient ovsdbClient;
 
-    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    @Mock
     CompletableFuture<OperationResult[]> futureResult;
 
     @Autowired
@@ -469,6 +471,52 @@ public class OvsdbDaoTest {
         List<OpensyncAPRadioState> radioStateList = ovsdbDao.getOpensyncAPRadioState(tableUpdates, "SomeAPId",
                 ovsdbClient);
         assert (radioStateList.size() == 3);
+
+    }
+
+    @Test
+    public void testObsdbDaoEnableNetworkProbe() throws Exception {
+
+        Uuid rowUuid = Uuid.of(UUID.randomUUID());
+
+        OperationResult[] wifiStatsConfigEnableNetworkProbe = new OperationResult[] { new InsertResult(rowUuid) };
+
+        Mockito.when(futureResult.get(30L, TimeUnit.SECONDS)).thenReturn(wifiStatsConfigEnableNetworkProbe);
+
+        Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList())).thenReturn(futureResult);
+
+        ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
+
+        Mockito.verify(futureResult).get(30L, TimeUnit.SECONDS);
+
+    }
+
+    @Test
+    public void testObsdbDaoEnableNetworkProbeError() throws Exception {
+
+        OperationResult[] wifiStatsConfigEnableNetworkProbeFail = new OperationResult[] { new ErrorResult(
+                "constraint violation",
+                "network_probe is not one of the allowed values ([capacity, client, device, essid, neighbor, quality, radio, rssi, steering, survey])") };
+
+        Mockito.when(futureResult.get(30L, TimeUnit.SECONDS)).thenReturn(wifiStatsConfigEnableNetworkProbeFail);
+
+        Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList())).thenReturn(futureResult);
+
+        ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
+
+        Mockito.verify(futureResult).get(30L, TimeUnit.SECONDS);
+
+    }
+
+    @Test(expected = RuntimeException.class)
+    public void testObsdbDaoEnableNetworkProbeException() throws Exception {
+
+        Mockito.when(futureResult.get(30L, TimeUnit.SECONDS))
+                .thenThrow(new OvsdbClientException("OvsdbClientException"));
+
+        Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList())).thenReturn(futureResult);
+
+        ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
 
     }
 

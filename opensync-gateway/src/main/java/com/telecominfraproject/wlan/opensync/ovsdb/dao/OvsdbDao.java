@@ -580,6 +580,51 @@ public class OvsdbDao {
 
     }
 
+    /**
+     * @param ovsdbClient
+     * @param value
+     *            of reporting_interval column for the stats_type=device from
+     *            the Wifi_Stats_Config table. If value is not provisioned then
+     *            return -1.
+     */
+    public void enableNetworkProbeForSyntheticClient(OvsdbClient ovsdbClient) {
+        LOG.debug("Enable network_probe metrics for synthetic client");
+
+        try {
+            List<Operation> operations = new ArrayList<>();
+            Map<String, Value> updateColumns = new HashMap<>();
+
+            updateColumns.put("reporting_interval", new Atom<>(60));
+            updateColumns.put("radio_type", new Atom<>("2.4G"));
+            updateColumns.put("stats_type", new Atom<>("network_probe"));
+
+            Row row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            if (LOG.isDebugEnabled()) {
+
+                for (OperationResult res : result) {
+
+                    if (res instanceof ErrorResult) {
+                        LOG.error("Could not update {}:", wifiStatsConfigDbTable);
+                        LOG.error("Error: {} Details: {}",
+                                ((ErrorResult) res).getError(), ((ErrorResult) res).getDetails());
+                    } else {
+                        LOG.debug("Updated {}:", wifiStatsConfigDbTable);
+                        LOG.debug("Op Result {}", res);
+                    }
+                }
+            }
+
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
     public void performRedirect(OvsdbClient ovsdbClient, String clientCn) {
 
         List<Operation> operations = new ArrayList<>();
@@ -2696,6 +2741,7 @@ public class OvsdbDao {
                     .of(thresholdMap);
 
             Map<String, WifiRadioConfigInfo> radioConfigs = getProvisionedWifiRadioConfigs(ovsdbClient);
+
             provisionWifiStatsConfigSurvey(getAllowedChannels(ovsdbClient), radioConfigs,
                     getProvisionedWifiStatsConfigs(ovsdbClient), operations, thresholds);
 

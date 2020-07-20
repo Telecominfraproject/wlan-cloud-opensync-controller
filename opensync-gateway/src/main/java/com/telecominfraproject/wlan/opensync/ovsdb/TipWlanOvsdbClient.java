@@ -27,6 +27,7 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.OvsdbDao;
 import com.telecominfraproject.wlan.opensync.util.SslUtil;
+import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.vmware.ovsdb.callback.ConnectionCallback;
 import com.vmware.ovsdb.callback.MonitorCallback;
 import com.vmware.ovsdb.exception.OvsdbClientException;
@@ -199,7 +200,10 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
             ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
         }
-
+        
+        if (((ApNetworkConfiguration) opensyncAPConfig.getApProfile().getDetails()).getSyntheticClientEnabled()) {
+            ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
+        }
         // ovsdbDao.configureWifiInet(ovsdbClient);
 
         LOG.debug("Client connect Done");
@@ -261,6 +265,10 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
                 if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
                     ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
+                }
+                
+                if (((ApNetworkConfiguration) opensyncAPConfig.getApProfile().getDetails()).getSyntheticClientEnabled()) {
+                    ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
                 }
 
             } catch (OvsdbClientException e) {
