@@ -158,6 +158,7 @@ public class OvsdbDao {
             columns.add("firmware_version");
             columns.add("platform_version");
             columns.add("revision");
+            columns.add("version_matrix");
 
             operations.add(new Select(awlanNodeDbTable, conditions, columns));
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
@@ -178,6 +179,7 @@ public class OvsdbDao {
             }
 
             ret.mqttSettings = row != null ? row.getMapColumn("mqtt_settings") : null;
+            ret.versionMatrix = row != null ? row.getMapColumn("version_matrix") : null;
             ret.redirectorAddr = row != null ? row.getStringColumn("redirector_addr") : null;
             ret.managerAddr = row != null ? row.getStringColumn("manager_addr") : null;
 
@@ -610,8 +612,8 @@ public class OvsdbDao {
 
                     if (res instanceof ErrorResult) {
                         LOG.error("Could not update {}:", wifiStatsConfigDbTable);
-                        LOG.error("Error: {} Details: {}",
-                                ((ErrorResult) res).getError(), ((ErrorResult) res).getDetails());
+                        LOG.error("Error: {} Details: {}", ((ErrorResult) res).getError(),
+                                ((ErrorResult) res).getDetails());
                     } else {
                         LOG.debug("Updated {}:", wifiStatsConfigDbTable);
                         LOG.debug("Op Result {}", res);

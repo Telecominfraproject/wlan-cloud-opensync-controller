@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -28,7 +27,6 @@ import org.springframework.stereotype.Component;
 import com.telecominfraproject.wlan.alarm.AlarmServiceInterface;
 import com.telecominfraproject.wlan.client.ClientServiceInterface;
 import com.telecominfraproject.wlan.client.info.models.ClientInfoDetails;
-import com.telecominfraproject.wlan.client.session.models.ClientDhcpDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientSession;
 import com.telecominfraproject.wlan.client.session.models.ClientSessionDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientSessionMetricDetails;
@@ -98,7 +96,6 @@ import com.telecominfraproject.wlan.servicemetric.models.ServiceMetric;
 import com.telecominfraproject.wlan.servicemetric.neighbourscan.models.NeighbourReport;
 import com.telecominfraproject.wlan.servicemetric.neighbourscan.models.NeighbourScanReports;
 import com.telecominfraproject.wlan.status.StatusServiceInterface;
-import com.telecominfraproject.wlan.status.dashboard.models.CustomerPortalDashboardStatus;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentAdminStatusData;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentLANStatusData;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentProtocolState;
@@ -114,17 +111,7 @@ import com.telecominfraproject.wlan.status.equipment.report.models.OperatingSyst
 import com.telecominfraproject.wlan.status.models.Status;
 import com.telecominfraproject.wlan.status.models.StatusCode;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
-import com.telecominfraproject.wlan.status.network.models.CapacityDetails;
-import com.telecominfraproject.wlan.status.network.models.ChannelUtilizationDetails;
-import com.telecominfraproject.wlan.status.network.models.CommonProbeDetails;
-import com.telecominfraproject.wlan.status.network.models.EquipmentPerformanceDetails;
 import com.telecominfraproject.wlan.status.network.models.NetworkAdminStatusData;
-import com.telecominfraproject.wlan.status.network.models.NetworkAggregateStatusData;
-import com.telecominfraproject.wlan.status.network.models.NoiseFloorDetails;
-import com.telecominfraproject.wlan.status.network.models.RadioUtilizationDetails;
-import com.telecominfraproject.wlan.status.network.models.RadiusDetails;
-import com.telecominfraproject.wlan.status.network.models.TrafficDetails;
-import com.telecominfraproject.wlan.status.network.models.UserDetails;
 
 import sts.OpensyncStats.Client;
 import sts.OpensyncStats.ClientReport;
@@ -631,14 +618,22 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     }
                 }
 
-                if (fwVersionName != null && !fwVersionName.equals(connectNodeInfo.firmwareVersion)) {
+                String fwImageName = null;
 
-                    fwUpgradeStatusData.setTargetSwVersion(fwVersionName);
+                if (connectNodeInfo.versionMatrix != null
+                        && connectNodeInfo.versionMatrix.containsKey("FW_IMAGE_NAME")) {
+                    fwImageName = connectNodeInfo.versionMatrix.get("FW_IMAGE_NAME");
+                }
+
+                if (fwVersionName != null && !fwVersionName.equals(fwImageName)) {
+                    fwUpgradeStatusData.setTargetSwVersion(fwImageName);
                     fwUpgradeStatusData.setUpgradeState(EquipmentUpgradeState.out_of_date);
                     statusRecord.setDetails(fwUpgradeStatusData);
-
-                } else {
+                } else if (fwVersionName != null && fwVersionName.equals(fwImageName)) {
                     fwUpgradeStatusData.setUpgradeState(EquipmentUpgradeState.up_to_date);
+                    statusRecord.setDetails(fwUpgradeStatusData);
+                } else {
+                    fwUpgradeStatusData.setUpgradeState(EquipmentUpgradeState.undefined);
                     statusRecord.setDetails(fwUpgradeStatusData);
                 }
 
