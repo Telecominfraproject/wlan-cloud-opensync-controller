@@ -113,6 +113,8 @@ public class OvsdbDao {
     public String ifPfx5GHzL;
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_radio0:home-ap-u50}")
     public String ifPfx5GHzU;
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_radio0:home-ap-50}")
+    public String ifPfx5GHz;
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.max:8}")
     public int maxInterfacesPerRadio;
 
@@ -1478,7 +1480,8 @@ public class OvsdbDao {
                     provisionedInterfaces, provisionedPorts, provisionedBridges);
             provisionSingleBridgePortInterface(ovsdbClient, patchW2h, defaultWanInterfaceType, "patch", patchW2hOptions,
                     provisionedInterfaces, provisionedPorts, provisionedBridges);
-
+            provisionSingleBridgePortInterface(ovsdbClient, ifPfx5GHz, bridgeNameVifInterfaces, "vif", null,
+                    provisionedInterfaces, provisionedPorts, provisionedBridges);
             provisionSingleBridgePortInterface(ovsdbClient, ifPfx5GHzU, bridgeNameVifInterfaces, "vif", null,
                     provisionedInterfaces, provisionedPorts, provisionedBridges);
             provisionSingleBridgePortInterface(ovsdbClient, ifPfx5GHzL, bridgeNameVifInterfaces, "vif", null,
@@ -2451,7 +2454,7 @@ public class OvsdbDao {
                     ifName = ifPfx5GHzU;
                     freqBand = "5GU";
                 } else if (radioType == RadioType.is5GHz) {
-                    ifName = ifPfx5GHzU;
+                    ifName = ifPfx5GHz;
                     freqBand = "5G";
                 }
 
