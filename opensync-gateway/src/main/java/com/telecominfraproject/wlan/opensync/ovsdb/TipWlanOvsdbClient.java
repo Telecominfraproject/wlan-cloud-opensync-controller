@@ -112,6 +112,11 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                     LOG.info("ovsdbClient connected from {} on port {} key {} ", remoteHost, localPort, key);
                     LOG.info("ovsdbClient connectedClients = {}", ovsdbSessionMapInterface.getNumSessions());
 
+                } catch (IllegalStateException e) {
+                    LOG.error("autoprovisioning error {}", e.getMessage(), e);
+                    // something is wrong with the SSL
+                    ovsdbClient.shutdown();
+                    return;
                 } catch (Exception e) {
                     LOG.error("ovsdbClient error", e);
                     // something is wrong with the SSL
@@ -200,7 +205,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
             ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
         }
-        
+
         if (((ApNetworkConfiguration) opensyncAPConfig.getApProfile().getDetails()).getSyntheticClientEnabled()) {
             ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
         }
@@ -266,8 +271,9 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                 if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
                     ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
                 }
-                
-                if (((ApNetworkConfiguration) opensyncAPConfig.getApProfile().getDetails()).getSyntheticClientEnabled()) {
+
+                if (((ApNetworkConfiguration) opensyncAPConfig.getApProfile().getDetails())
+                        .getSyntheticClientEnabled()) {
                     ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
                 }
 
@@ -524,15 +530,15 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                             @Override
                             public void update(TableUpdates tableUpdates) {
                                 LOG.info("Monitor callback received {}", tableUpdates);
-                                List<OpensyncAPVIFState> vifStates = ovsdbDao.getOpensyncAPVIFState(tableUpdates, key, ovsdbClient);                              
+                                List<OpensyncAPVIFState> vifStates = ovsdbDao.getOpensyncAPVIFState(tableUpdates, key,
+                                        ovsdbClient);
                                 LOG.info("Calling wifiVIFStateDbTableUpdate for {}, {}", vifStates, key);
                                 extIntegrationInterface.wifiVIFStateDbTableUpdate(vifStates, key);
-                                
 
                             }
 
                         });
-        
+
         List<OpensyncAPVIFState> vifStates = ovsdbDao.getOpensyncAPVIFState(vsCf.join(), key, ovsdbClient);
         LOG.info("Calling wifiVIFStateDbTableUpdate init for {}, {}", vifStates, key);
         extIntegrationInterface.wifiVIFStateDbTableUpdate(vifStates, key);

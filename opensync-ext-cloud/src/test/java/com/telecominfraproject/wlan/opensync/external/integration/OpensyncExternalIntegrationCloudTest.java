@@ -179,7 +179,7 @@ public class OpensyncExternalIntegrationCloudTest {
         CustomerDetails customerDetails = new CustomerDetails();
         customerDetails.setAutoProvisioning(new EquipmentAutoProvisioningSettings());
         customerDetails.getAutoProvisioning().setEnabled(true);
-        customer.setDetails(new CustomerDetails());
+        customer.setDetails(customerDetails);
 
         Profile apProfile = new Profile();
         apProfile.setDetails(ApNetworkConfiguration.createWithDefaults());
@@ -209,6 +209,26 @@ public class OpensyncExternalIntegrationCloudTest {
         opensyncExternalIntegrationCloud.apConnected("Test_Client_21P10C68818122", connectNodeInfo);
 
     }
+    
+    @Test(expected = IllegalStateException.class)
+    public void testApConnectedNoAutoprovisioning() throws Exception {
+
+        connectNodeInfo.wifiRadioStates = ImmutableMap.of("2.4G", "home-ap-24", "5GL", "home-ap-l50", "5GU",
+                "home-ap-u50");
+        Customer customer = new Customer();
+        customer.setId(2);
+        CustomerDetails customerDetails = new CustomerDetails();
+        EquipmentAutoProvisioningSettings autoprovSettings = new EquipmentAutoProvisioningSettings();
+        autoprovSettings.setEnabled(false);
+        customerDetails.setAutoProvisioning(autoprovSettings);
+        customer.setDetails(customerDetails);
+
+        Mockito.when(customerServiceInterface.getOrNull(Mockito.anyInt())).thenReturn(customer);
+
+        opensyncExternalIntegrationCloud.apConnected("Test_Client_21P10C68818122", connectNodeInfo);
+
+     
+    }
 
     @Test
     public void testApDisconnected() {
@@ -217,7 +237,18 @@ public class OpensyncExternalIntegrationCloudTest {
 
     @Test
     public void testGetApConfig() throws Exception {
+        
+        Customer customer = new Customer();
+        customer.setId(2);
+        CustomerDetails customerDetails = new CustomerDetails();
+        EquipmentAutoProvisioningSettings autoprovSettings = new EquipmentAutoProvisioningSettings();
+        autoprovSettings.setEnabled(true);
+        customerDetails.setAutoProvisioning(autoprovSettings);
+        customer.setDetails(customerDetails);
+        
+        Mockito.when(customerServiceInterface.getOrNull(Mockito.anyInt())).thenReturn(customer);
 
+        
         Equipment equipment = new Equipment();
         equipment.setDetails(ApElementConfiguration.createWithDefaults());
 
@@ -235,6 +266,24 @@ public class OpensyncExternalIntegrationCloudTest {
         assertNotNull(opensyncExternalIntegrationCloud.getApConfig("Test_Client_21P10C68818122"));
 
     }
+    
+    @Test
+    public void testGetApConfigNoAutoprovisioning() throws Exception {
+        
+        Customer customer = new Customer();
+        customer.setId(2);
+        CustomerDetails customerDetails = new CustomerDetails();
+        EquipmentAutoProvisioningSettings autoprovSettings = new EquipmentAutoProvisioningSettings();
+        autoprovSettings.setEnabled(false);
+        customerDetails.setAutoProvisioning(autoprovSettings);
+        customer.setDetails(customerDetails);
+        
+        Mockito.when(customerServiceInterface.getOrNull(Mockito.anyInt())).thenReturn(customer);
+
+        assertNull(opensyncExternalIntegrationCloud.getApConfig("Test_Client_21P10C68818122"));
+
+    }
+    
 
     @Test
     public void testExtractApIdFromTopic() {

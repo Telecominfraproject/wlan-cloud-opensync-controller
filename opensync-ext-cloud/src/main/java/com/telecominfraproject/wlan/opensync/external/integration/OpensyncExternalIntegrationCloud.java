@@ -98,6 +98,7 @@ import com.telecominfraproject.wlan.servicemetric.models.ServiceMetric;
 import com.telecominfraproject.wlan.servicemetric.neighbourscan.models.NeighbourReport;
 import com.telecominfraproject.wlan.servicemetric.neighbourscan.models.NeighbourScanReports;
 import com.telecominfraproject.wlan.status.StatusServiceInterface;
+import com.telecominfraproject.wlan.status.dashboard.models.CustomerPortalDashboardStatus;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentAdminStatusData;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentLANStatusData;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentProtocolState;
@@ -237,182 +238,173 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     @Override
     public void apConnected(String apId, ConnectNodeInfo connectNodeInfo) {
 
-        if (isAutoconfigEnabled) {
+        Customer customer = customerServiceInterface.getOrNull(autoProvisionedCustomerId);
+        if (customer == null) {
+            LOG.error("Cannot auto-provision equipment because customer with id {} is not found",
+                    autoProvisionedCustomerId);
+            throw new IllegalStateException(
+                    "Cannot auto-provision equipment because customer is not found : " + autoProvisionedCustomerId);
+        }
 
-            Equipment ce = getCustomerEquipment(apId);
+        if ((customer.getDetails() != null) && (customer.getDetails().getAutoProvisioning() != null)
+                && !customer.getDetails().getAutoProvisioning().isEnabled()) {
+            LOG.error("Cannot auto-provision equipment because customer with id {} explicitly turned that feature off",
+                    autoProvisionedCustomerId);
+            throw new IllegalStateException(
+                    "Cannot auto-provision equipment because customer explicitly turned that feature off : "
+                            + autoProvisionedCustomerId);
+        }
 
-            try {
+        Equipment ce = getCustomerEquipment(apId);
 
-                if (ce == null) {
-                    ce = new Equipment();
-                    ce.setEquipmentType(EquipmentType.AP);
-                    ce.setInventoryId(apId);
-                    try {
-                        ce.setBaseMacAddress(new MacAddress(connectNodeInfo.macAddress));
-                    } catch (RuntimeException e) {
-                        LOG.warn("Auto-provisioning: cannot parse equipment mac address {}",
-                                connectNodeInfo.macAddress);
-                    }
+        try {
 
-                    Customer customer = customerServiceInterface.getOrNull(autoProvisionedCustomerId);
-                    if (customer == null) {
-                        LOG.error("Cannot auto-provision equipment because customer with id {} is not found",
-                                autoProvisionedCustomerId);
-                        throw new IllegalStateException(
-                                "Cannot auto-provision equipment because customer is not found : "
-                                        + autoProvisionedCustomerId);
-                    }
+            if (ce == null) {
+                ce = new Equipment();
+                ce.setEquipmentType(EquipmentType.AP);
+                ce.setInventoryId(apId);
+                try {
+                    ce.setBaseMacAddress(new MacAddress(connectNodeInfo.macAddress));
+                } catch (RuntimeException e) {
+                    LOG.warn("Auto-provisioning: cannot parse equipment mac address {}", connectNodeInfo.macAddress);
+                }
 
-                    if ((customer.getDetails() != null) && (customer.getDetails().getAutoProvisioning() != null)
-                            && !customer.getDetails().getAutoProvisioning().isEnabled()) {
-                        LOG.error(
-                                "Cannot auto-provision equipment because customer with id {} explicitly turned that feature off",
-                                autoProvisionedCustomerId);
-                        throw new IllegalStateException(
-                                "Cannot auto-provision equipment because customer explicitly turned that feature off : "
-                                        + autoProvisionedCustomerId);
-                    }
+                long locationId = autoProvisionedLocationId;
+                if ((customer.getDetails() != null) && (customer.getDetails().getAutoProvisioning() != null)
+                        && customer.getDetails().getAutoProvisioning().isEnabled()) {
+                    locationId = customer.getDetails().getAutoProvisioning().getLocationId();
+                }
 
-                    long locationId = autoProvisionedLocationId;
-                    if ((customer.getDetails() != null) && (customer.getDetails().getAutoProvisioning() != null)
-                            && customer.getDetails().getAutoProvisioning().isEnabled()) {
-                        locationId = customer.getDetails().getAutoProvisioning().getLocationId();
-                    }
-
-                    try {
-                        Location location = locationServiceInterface.get(locationId);
-                        ce.setLocationId(location.getId());
-                    } catch (Exception e) {
-                        LOG.error(
-                                "Cannot auto-provision equipment because customer location with id {} cannot be found",
-                                locationId);
-                        throw new IllegalStateException(
-                                "Cannot auto-provision equipment because customer location cannot be found : "
-                                        + locationId);
-
-                    }
-
-                    ce.setSerial(connectNodeInfo.serialNumber);
-                    ce.setDetails(ApElementConfiguration.createWithDefaults());
-                    ce.setCustomerId(autoProvisionedCustomerId);
-                    ce.setName(ce.getEquipmentType().name() + "_" + ce.getSerial());
-
-                    ApElementConfiguration apElementConfig = (ApElementConfiguration) ce.getDetails();
-                    apElementConfig.setDeviceName(ce.getName());
-                    apElementConfig.setEquipmentModel(connectNodeInfo.model);
-                    Map<RadioType, RadioConfiguration> advancedRadioMap = new HashMap<>();
-                    Map<RadioType, ElementRadioConfiguration> radioMap = new HashMap<>();
-                    for (String radio : connectNodeInfo.wifiRadioStates.keySet()) {
-                        RadioConfiguration advancedRadioConfiguration = null;
-                        ElementRadioConfiguration radioConfiguration = null;
-                        RadioType radioType = RadioType.UNSUPPORTED;
-                        if (radio.equals("2.4G")) {
-                            radioType = RadioType.is2dot4GHz;
-                        } else if (radio.equals("5G")) {
-                            radioType = RadioType.is5GHz;
-                        } else if (radio.equals("5GL")) {
-                            radioType = RadioType.is5GHzL;
-                        } else if (radio.equals("5GU")) {
-                            radioType = RadioType.is5GHzU;
-                        }
-                        if (!radioType.equals(RadioType.UNSUPPORTED)) {
-                            advancedRadioConfiguration = RadioConfiguration.createWithDefaults(radioType);
-                            advancedRadioConfiguration.setAutoChannelSelection(StateSetting.disabled);
-
-                            advancedRadioMap.put(radioType, advancedRadioConfiguration);
-                            radioConfiguration = ElementRadioConfiguration.createWithDefaults(radioType);
-                            radioConfiguration.setAutoChannelSelection(false);
-                            radioMap.put(radioType, radioConfiguration);
-                        }
-                    }
-
-                    apElementConfig.setRadioMap(radioMap);
-                    apElementConfig.setAdvancedRadioMap(advancedRadioMap);
-
-                    ce.setDetails(apElementConfig);
-
-                    Long profileId = null;
-                    if ((customer.getDetails() != null) && (customer.getDetails().getAutoProvisioning() != null)
-                            && customer.getDetails().getAutoProvisioning().isEnabled()
-                            && (customer.getDetails().getAutoProvisioning().getEquipmentProfileIdPerModel() != null)) {
-
-                        // try to find auto-provisioning profile for the current
-                        // equipment model
-                        profileId = customer.getDetails().getAutoProvisioning().getEquipmentProfileIdPerModel()
-                                .get(ce.getDetails().getEquipmentModel());
-                        if (profileId == null) {
-                            // could not find profile for the equipment model,
-                            // lets try to find a default profile
-                            profileId = customer.getDetails().getAutoProvisioning().getEquipmentProfileIdPerModel()
-                                    .get(EquipmentAutoProvisioningSettings.DEFAULT_MODEL_NAME);
-                        }
-                    }
-
-                    if (profileId == null) {
-                        // create default apProfile if cannot find applicable
-                        // one:
-                        Profile apProfile = createDefaultApProfile(ce, connectNodeInfo);
-                        profileId = apProfile.getId();
-                    }
-
-                    ce.setProfileId(profileId);
-
-                    ce = equipmentServiceInterface.create(ce);
-
-                    // update the cache right away, no need to wait until the
-                    // entry expires
-                    cloudEquipmentRecordCache.put(ce.getInventoryId(), ce);
-
-                } else {
-                    // equipment already exists
-
-                    MacAddress reportedMacAddress = null;
-                    try {
-                        reportedMacAddress = new MacAddress(connectNodeInfo.macAddress);
-                    } catch (RuntimeException e) {
-                        LOG.warn("AP connect: cannot parse equipment mac address {}", connectNodeInfo.macAddress);
-                    }
-
-                    if (reportedMacAddress != null) {
-                        // check if reported mac address matches what is in the
-                        // db
-                        if (!reportedMacAddress.equals(ce.getBaseMacAddress())) {
-                            // need to update base mac address on equipment in
-                            // DB
-                            ce = equipmentServiceInterface.get(ce.getId());
-                            ce.setBaseMacAddress(reportedMacAddress);
-                            ce = equipmentServiceInterface.update(ce);
-
-                            // update the cache right away, no need to wait
-                            // until the entry expires
-                            cloudEquipmentRecordCache.put(ce.getInventoryId(), ce);
-                        }
-                    }
+                try {
+                    Location location = locationServiceInterface.get(locationId);
+                    ce.setLocationId(location.getId());
+                } catch (Exception e) {
+                    LOG.error("Cannot auto-provision equipment because customer location with id {} cannot be found",
+                            locationId);
+                    throw new IllegalStateException(
+                            "Cannot auto-provision equipment because customer location cannot be found : "
+                                    + locationId);
 
                 }
 
-                EquipmentRoutingRecord equipmentRoutingRecord = gatewayController
-                        .registerCustomerEquipment(ce.getName(), ce.getCustomerId(), ce.getId());
+                ce.setSerial(connectNodeInfo.serialNumber);
+                ce.setDetails(ApElementConfiguration.createWithDefaults());
+                ce.setCustomerId(autoProvisionedCustomerId);
+                ce.setName(ce.getEquipmentType().name() + "_" + ce.getSerial());
 
-                updateApStatus(ce, connectNodeInfo);
+                ApElementConfiguration apElementConfig = (ApElementConfiguration) ce.getDetails();
+                apElementConfig.setDeviceName(ce.getName());
+                apElementConfig.setEquipmentModel(connectNodeInfo.model);
+                Map<RadioType, RadioConfiguration> advancedRadioMap = new HashMap<>();
+                Map<RadioType, ElementRadioConfiguration> radioMap = new HashMap<>();
+                for (String radio : connectNodeInfo.wifiRadioStates.keySet()) {
+                    RadioConfiguration advancedRadioConfiguration = null;
+                    ElementRadioConfiguration radioConfiguration = null;
+                    RadioType radioType = RadioType.UNSUPPORTED;
+                    if (radio.equals("2.4G")) {
+                        radioType = RadioType.is2dot4GHz;
+                    } else if (radio.equals("5G")) {
+                        radioType = RadioType.is5GHz;
+                    } else if (radio.equals("5GL")) {
+                        radioType = RadioType.is5GHzL;
+                    } else if (radio.equals("5GU")) {
+                        radioType = RadioType.is5GHzU;
+                    }
+                    if (!radioType.equals(RadioType.UNSUPPORTED)) {
+                        advancedRadioConfiguration = RadioConfiguration.createWithDefaults(radioType);
+                        advancedRadioConfiguration.setAutoChannelSelection(StateSetting.disabled);
 
-                OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
-                ovsdbSession.setRoutingId(equipmentRoutingRecord.getId());
-                ovsdbSession.setEquipmentId(ce.getId());
-                ovsdbSession.setCustomerId(ce.getCustomerId());
+                        advancedRadioMap.put(radioType, advancedRadioConfiguration);
+                        radioConfiguration = ElementRadioConfiguration.createWithDefaults(radioType);
+                        radioConfiguration.setAutoChannelSelection(false);
+                        radioMap.put(radioType, radioConfiguration);
+                    }
+                }
 
-                LOG.debug("Equipment {}", ce);
-                LOG.info("AP {} got connected to the gateway", apId);
-                LOG.info("ConnectNodeInfo {}", connectNodeInfo);
+                apElementConfig.setRadioMap(radioMap);
+                apElementConfig.setAdvancedRadioMap(advancedRadioMap);
 
-                reconcileFwVersionToTrack(ce, connectNodeInfo);
+                ce.setDetails(apElementConfig);
 
-            } catch (Exception e) {
-                LOG.error("Could not process connection from AP {}", apId, e);
-                throw e;
+                Long profileId = null;
+                if ((customer.getDetails() != null) && (customer.getDetails().getAutoProvisioning() != null)
+                        && customer.getDetails().getAutoProvisioning().isEnabled()
+                        && (customer.getDetails().getAutoProvisioning().getEquipmentProfileIdPerModel() != null)) {
+
+                    // try to find auto-provisioning profile for the current
+                    // equipment model
+                    profileId = customer.getDetails().getAutoProvisioning().getEquipmentProfileIdPerModel()
+                            .get(ce.getDetails().getEquipmentModel());
+                    if (profileId == null) {
+                        // could not find profile for the equipment model,
+                        // lets try to find a default profile
+                        profileId = customer.getDetails().getAutoProvisioning().getEquipmentProfileIdPerModel()
+                                .get(EquipmentAutoProvisioningSettings.DEFAULT_MODEL_NAME);
+                    }
+                }
+
+                if (profileId == null) {
+                    // create default apProfile if cannot find applicable
+                    // one:
+                    Profile apProfile = createDefaultApProfile(ce, connectNodeInfo);
+                    profileId = apProfile.getId();
+                }
+
+                ce.setProfileId(profileId);
+
+                ce = equipmentServiceInterface.create(ce);
+
+                // update the cache right away, no need to wait until the
+                // entry expires
+                cloudEquipmentRecordCache.put(ce.getInventoryId(), ce);
+
+            } else {
+                // equipment already exists
+
+                MacAddress reportedMacAddress = null;
+                try {
+                    reportedMacAddress = new MacAddress(connectNodeInfo.macAddress);
+                } catch (RuntimeException e) {
+                    LOG.warn("AP connect: cannot parse equipment mac address {}", connectNodeInfo.macAddress);
+                }
+
+                if (reportedMacAddress != null) {
+                    // check if reported mac address matches what is in the
+                    // db
+                    if (!reportedMacAddress.equals(ce.getBaseMacAddress())) {
+                        // need to update base mac address on equipment in
+                        // DB
+                        ce = equipmentServiceInterface.get(ce.getId());
+                        ce.setBaseMacAddress(reportedMacAddress);
+                        ce = equipmentServiceInterface.update(ce);
+
+                        // update the cache right away, no need to wait
+                        // until the entry expires
+                        cloudEquipmentRecordCache.put(ce.getInventoryId(), ce);
+                    }
+                }
+
             }
-        } else {
-            LOG.info("Autoconfig is not enabled for this AP {}", apId);
+
+            EquipmentRoutingRecord equipmentRoutingRecord = gatewayController.registerCustomerEquipment(ce.getName(),
+                    ce.getCustomerId(), ce.getId());
+
+            updateApStatus(ce, connectNodeInfo);
+
+            OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
+            ovsdbSession.setRoutingId(equipmentRoutingRecord.getId());
+            ovsdbSession.setEquipmentId(ce.getId());
+            ovsdbSession.setCustomerId(ce.getCustomerId());
+
+            LOG.debug("Equipment {}", ce);
+            LOG.info("AP {} got connected to the gateway", apId);
+            LOG.info("ConnectNodeInfo {}", connectNodeInfo);
+
+            reconcileFwVersionToTrack(ce, connectNodeInfo);
+
+        } catch (Exception e) {
+            LOG.error("Could not process connection from AP {}", apId, e);
+            throw e;
         }
 
     }
@@ -561,13 +553,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             statusRecord.setDetails(fwUpgradeStatusData);
             statusServiceInterface.update(statusRecord);
 
-            // TODO:
-            // equipmentStatusInterface.updateNetworkAdminStatus(networkAdminStatusRecord);
-            // dtop: this one populates traffic capacity and usage dial on the
-            // main dashboard
-            // from APDemoMetric properties getPeriodLengthSec, getRxBytes2G,
-            // getTxBytes2G, getRxBytes5G, getTxBytes5G
-
             Status networkAdminStatusRec = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(),
                     StatusDataType.NETWORK_ADMIN);
             if (networkAdminStatusRec == null) {
@@ -586,31 +571,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             networkAdminStatusRec.setDetails(netAdminStatusData);
 
             networkAdminStatusRec = statusServiceInterface.update(networkAdminStatusRec);
-            Status networkAggStatusRec = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(),
-                    StatusDataType.NETWORK_AGGREGATE);
-            if (networkAggStatusRec == null) {
-                networkAggStatusRec = new Status();
-                networkAggStatusRec.setCustomerId(ce.getCustomerId());
-                networkAggStatusRec.setEquipmentId(ce.getId());
-                networkAdminStatusRec.setStatusDataType(StatusDataType.NETWORK_AGGREGATE);
-                NetworkAggregateStatusData naStatusData = new NetworkAggregateStatusData();
-                naStatusData.setApPerformanceDetails(new EquipmentPerformanceDetails());
-                naStatusData.setCapacityDetails(new CapacityDetails());
-                naStatusData.setChannelUtilizationDetails(new ChannelUtilizationDetails());
-                naStatusData.setCloudLinkDetails(new CommonProbeDetails());
-                naStatusData.setDhcpDetails(new CommonProbeDetails());
-                naStatusData.setDnsDetails(new CommonProbeDetails());
-                naStatusData.setEquipmentPerformanceDetails(new EquipmentPerformanceDetails());
-                naStatusData.setNoiseFloorDetails(new NoiseFloorDetails());
-                naStatusData.setRadioUtilizationDetails(new RadioUtilizationDetails());
-                naStatusData.setRadiusDetails(new RadiusDetails());
-                naStatusData.setTrafficDetails(new TrafficDetails());
-                naStatusData.setUserDetails(new UserDetails());
-                networkAggStatusRec.setDetails(naStatusData);
-
-                networkAggStatusRec = statusServiceInterface.update(networkAggStatusRec);
-
-            }
 
         } catch (Exception e) {
             LOG.debug("Exception in updateApStatus", e);
@@ -751,12 +711,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         OpensyncAPConfig ret = null;
 
         try {
-            if (isAutoconfigEnabled) {
-                OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
-                if (ovsdbSession == null) {
-                    throw new IllegalStateException("AP is not connected " + apId);
-                }
 
+            OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
+            if (ovsdbSession == null) {
+                throw new IllegalStateException("AP is not connected " + apId);
+            }
+            int customerId = ovsdbSession.getCustomerId();
+            Customer customer = customerServiceInterface.getOrNull(customerId);
+            if (customer != null && customer.getDetails().getAutoProvisioning().isEnabled()) {
                 Equipment equipmentConfig = getCustomerEquipment(apId);
 
                 if (equipmentConfig == null) {
@@ -1204,11 +1166,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 }
 
             }
-            
+
             networkProbeMetricsList.add(networkProbeMetrics);
 
         }
-        
+
         apNodeMetrics.setNetworkProbeMetrics(networkProbeMetricsList);
     }
 
@@ -1421,7 +1383,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             com.telecominfraproject.wlan.client.models.Client clientInstance = clientServiceInterface
                     .getOrNull(customerId, new MacAddress(client.getMacAddress()));
             if (clientInstance != null) {
-                
+
                 ClientInfoDetails clientDetails = (ClientInfoDetails) clientInstance.getDetails();
 
                 clientDetails.setAlias("alias " + clientInstance.getMacAddress().getAddressAsLong());
@@ -1430,10 +1392,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientDetails.setUserName("user-" + clientInstance.getMacAddress().getAddressAsLong());
                 clientInstance.setDetails(clientDetails);
                 clientInstance = clientServiceInterface.update(clientInstance);
-                
+
                 ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
                         new MacAddress(client.getMacAddress()));
-                // For this session if we have a disconnected client, remove, else
+                // For this session if we have a disconnected client, remove,
+                // else
                 // update
                 if (!client.getConnected()) {
                     if (clientSession != null) {
@@ -1447,19 +1410,20 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     if (clientSession != null) {
                         LOG.debug("Session found for Client {}.", client.getMacAddress());
                         ClientSessionDetails clientSessionDetails = clientSession.getDetails();
-
                         clientSessionDetails.setApFingerprint(clientDetails.getApFingerprint());
                         clientSessionDetails.setHostname(clientDetails.getHostName());
                         clientSessionDetails.setRadioType(getRadioTypeFromOpensyncRadioBand(band));
                         clientSessionDetails.setSessionId(clientSession.getMacAddress().getAddressAsLong());
                         clientSessionDetails.setSsid(ssid);
-                        clientSessionDetails.setAssocRssi(getNegativeSignedIntFromUnsigned(client.getStats().getRssi()));
+                        clientSessionDetails
+                                .setAssocRssi(getNegativeSignedIntFromUnsigned(client.getStats().getRssi()));
                         clientSessionDetails.setLastRxTimestamp(timestamp);
-                        
-                        // update the client metrics, based on what we see from the MQTT data
-                        
+
+                        // update the client metrics, based on what we see from
+                        // the MQTT data
+
                         clientSessionDetails.setMetricDetails(calculateClientSessionMetricDetails(client));
-                        
+
                         clientSession.setDetails(clientSessionDetails);
 
                         clientSession = clientServiceInterface.updateSession(clientSession);
@@ -1467,12 +1431,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         LOG.info("Updated clientSession {}", clientSession);
                     }
 
-                    
                 }
             }
-           
-
-            
 
         } catch (Exception e) {
             LOG.error("Error while attempting to create ClientSession and Info", e);
