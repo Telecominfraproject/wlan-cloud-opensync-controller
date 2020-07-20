@@ -1388,45 +1388,57 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientInstance.setDetails(clientDetails);
                 clientInstance = clientServiceInterface.update(clientInstance);
 
+                clientDetails = (ClientInfoDetails) clientInstance.getDetails();
+
                 ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
                         new MacAddress(client.getMacAddress()));
-                // For this session if we have a disconnected client, remove,
-                // else
-                // update
-                if (!client.getConnected()) {
-                    if (clientSession != null) {
-                        clientSession = clientServiceInterface.deleteSession(customerId, equipmentId,
-                                clientSession.getMacAddress());
-                        LOG.debug("Client session {} deleted due to disconnect", clientSession);
+
+                if (clientSession != null) {
+                    LOG.debug("Session found for Client {}.", client.getMacAddress());
+
+                    ClientSessionDetails clientSessionDetails = clientSession.getDetails();
+                    clientSessionDetails.setRadioType(getRadioTypeFromOpensyncRadioBand(band));
+                    clientSessionDetails.setSsid(ssid);
+                    clientSessionDetails.setAssocRssi(getNegativeSignedIntFromUnsigned(client.getStats().getRssi()));
+
+                    if (client.getConnected()) {
+                        if (client.hasConnectCount()) {
+                            if (client.hasConnectOffsetMs()) {
+                                clientSessionDetails.setAssocTimestamp(timestamp + client.getConnectOffsetMs());
+                            } else {
+                                clientSessionDetails.setAssocTimestamp(timestamp);
+                            }
+                        } else {
+                            clientSessionDetails.setFirstDataRcvdTimestamp(timestamp);
+                            clientSessionDetails.setFirstDataSentTimestamp(timestamp);
+                            clientSessionDetails.setLastRxTimestamp(client.getDurationMs() + timestamp);
+                            clientSessionDetails.setLastTxTimestamp(client.getDurationMs() + timestamp);
+                        }
+                    } else {
+                        if (client.hasDisconnectCount()) {
+                            if (client.hasDisconnectOffsetMs()) {
+                                clientSessionDetails
+                                        .setDisconnectByClientTimestamp(timestamp + client.getDisconnectOffsetMs());
+                            } else {
+                                clientSessionDetails.setDisconnectByClientTimestamp(timestamp);
+                            }
+                        } else {
+                            clientSessionDetails.setDisconnectByClientTimestamp(timestamp);
+                        }
                     }
-                } else {
-                    clientDetails = (ClientInfoDetails) clientInstance.getDetails();
 
-                    if (clientSession != null) {
-                        LOG.debug("Session found for Client {}.", client.getMacAddress());
-                        ClientSessionDetails clientSessionDetails = clientSession.getDetails();
-                        clientSessionDetails.setApFingerprint(clientDetails.getApFingerprint());
-                        clientSessionDetails.setHostname(clientDetails.getHostName());
-                        clientSessionDetails.setRadioType(getRadioTypeFromOpensyncRadioBand(band));
-                        clientSessionDetails.setSessionId(clientSession.getMacAddress().getAddressAsLong());
-                        clientSessionDetails.setSsid(ssid);
-                        clientSessionDetails
-                                .setAssocRssi(getNegativeSignedIntFromUnsigned(client.getStats().getRssi()));
-                        clientSessionDetails.setLastRxTimestamp(timestamp);
+                    // update the client metrics, based on what we see from
+                    // the MQTT data
 
-                        // update the client metrics, based on what we see from
-                        // the MQTT data
+                    clientSessionDetails.setMetricDetails(calculateClientSessionMetricDetails(client, timestamp));
 
-                        clientSessionDetails.setMetricDetails(calculateClientSessionMetricDetails(client));
+                    clientSession.setDetails(clientSessionDetails);
 
-                        clientSession.setDetails(clientSessionDetails);
+                    clientSession = clientServiceInterface.updateSession(clientSession);
 
-                        clientSession = clientServiceInterface.updateSession(clientSession);
-
-                        LOG.info("Updated clientSession {}", clientSession);
-                    }
-
+                    LOG.info("Updated clientSession {}", clientSession);
                 }
+
             }
 
         } catch (Exception e) {
@@ -1455,7 +1467,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         return radioType;
     }
 
-    private ClientSessionMetricDetails calculateClientSessionMetricDetails(sts.OpensyncStats.Client client) {
+    private ClientSessionMetricDetails calculateClientSessionMetricDetails(sts.OpensyncStats.Client client,
+            long timestamp) {
         ClientSessionMetricDetails metricDetails = new ClientSessionMetricDetails();
         metricDetails.setRssi(getNegativeSignedIntFromUnsigned(client.getStats().getRssi()));
         metricDetails.setRxBytes(client.getStats().getRxBytes());
@@ -1469,6 +1482,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         metricDetails.setTxMbps((float) (client.getStats().getTxRate() / 1000));
         metricDetails.setRxRateKbps((long) client.getStats().getRxRate());
         metricDetails.setTxRateKbps((long) client.getStats().getTxRate());
+
         return metricDetails;
     }
 
@@ -2168,6 +2182,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         for (OpensyncWifiAssociatedClients opensyncWifiAssociatedClients : wifiAssociatedClients) {
             com.telecominfraproject.wlan.client.models.Client clientInstance = clientServiceInterface
                     .getOrNull(customerId, new MacAddress(opensyncWifiAssociatedClients.getMac()));
+
+            boolean isReassociation = true;
             if (clientInstance == null) {
                 clientInstance = new com.telecominfraproject.wlan.client.models.Client();
 
@@ -2175,6 +2191,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientInstance.setMacAddress(new MacAddress(opensyncWifiAssociatedClients.getMac()));
                 clientInstance.setDetails(new ClientInfoDetails());
                 clientInstance = clientServiceInterface.create(clientInstance);
+                isReassociation = false; // this is a new client
             }
             ClientInfoDetails clientDetails = (ClientInfoDetails) clientInstance.getDetails();
 
@@ -2191,22 +2208,22 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     new MacAddress(opensyncWifiAssociatedClients.getMac()));
 
             if (clientSession == null) {
+                LOG.debug("No session found for Client {}, creating new one.", opensyncWifiAssociatedClients.getMac());
+                clientSession = new ClientSession();
+                clientSession.setCustomerId(customerId);
+                clientSession.setEquipmentId(equipmentId);
+                clientSession.setMacAddress(new MacAddress(opensyncWifiAssociatedClients.getMac()));
 
-                if (clientSession == null) {
-                    LOG.debug("No session found for Client {}, creating new one.",
-                            opensyncWifiAssociatedClients.getMac());
-                    clientSession = new ClientSession();
-                    clientSession.setCustomerId(customerId);
-                    clientSession.setEquipmentId(equipmentId);
-                    clientSession.setMacAddress(new MacAddress(opensyncWifiAssociatedClients.getMac()));
-
-                    ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
-                    clientSession.setDetails(clientSessionDetails);
-
-                    clientSession = clientServiceInterface.updateSession(clientSession);
-                }
-
+                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+                clientSession.setDetails(clientSessionDetails);
+                clientSession = clientServiceInterface.updateSession(clientSession);
             }
+            ClientSessionDetails clientSessionDetails = clientSession.getDetails();
+            clientSessionDetails.setHostname(clientDetails.getHostName());
+            clientSessionDetails.setIsReassociation(isReassociation);
+            clientSessionDetails.setApFingerprint(clientDetails.getApFingerprint());
+            clientSession.setDetails(clientSessionDetails);
+            clientSession = clientServiceInterface.updateSession(clientSession);
 
             LOG.debug("client session {}", clientSession);
 
