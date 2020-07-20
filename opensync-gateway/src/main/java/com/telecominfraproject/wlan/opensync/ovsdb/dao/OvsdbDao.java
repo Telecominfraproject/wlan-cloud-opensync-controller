@@ -2190,7 +2190,7 @@ public class OvsdbDao {
             Map<String, String> security, String radioFreqBand, int vlanId, boolean rrmEnabled, boolean enable80211r,
             String minHwMode, boolean enabled, int keyRefresh, boolean uapsdEnabled, boolean apBridge,
             NetworkForwardMode networkForwardMode, String gateway, String inet, Map<String, String> dns,
-            String ipAssignScheme, Set<String> macBlackList, Set<String> macWhiteList) {
+            String ipAssignScheme, Set<String> macBlockList, Set<String> macAllowList) {
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
@@ -2239,11 +2239,11 @@ public class OvsdbDao {
             updateColumns.put("security", securityMap);
 
             Set<String> macList = new HashSet<>();
-            if (macBlackList != null && !macBlackList.isEmpty()) {
-                macList = macBlackList;
+            if (macBlockList != null && !macBlockList.isEmpty()) {
+                macList = macBlockList;
                 updateColumns.put("mac_list_type", new Atom<>("blacklist"));
-            } else if (macWhiteList != null && !macWhiteList.isEmpty()) {
-                macList = macWhiteList;
+            } else if (macAllowList != null && !macAllowList.isEmpty()) {
+                macList = macAllowList;
                 updateColumns.put("mac_list_type", new Atom<>("whitelist"));
             } else {
                 updateColumns.put("mac_list_type", new Atom<>("none"));
@@ -2483,8 +2483,8 @@ public class OvsdbDao {
                 }
 
                 // TODO fill from NBI
-                Set<String> macBlackList = new HashSet<>();
-                Set<String> macWhiteList = new HashSet<>();
+                Set<String> macBlockList = new HashSet<>();
+                Set<String> macAllowList = new HashSet<>();
 
                 boolean enabled = ssidConfig.getSsidAdminState().equals(StateSetting.enabled);
 
@@ -2528,7 +2528,7 @@ public class OvsdbDao {
                     configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(), ssidBroadcast, security, freqBand,
                             ssidConfig.getVlanId(), rrmEnabled, enable80211r, minHwMode, enabled, keyRefresh,
                             uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet, dns, ipAssignScheme,
-                            macBlackList, macWhiteList);
+                            macBlockList, macAllowList);
 
                 } catch (IllegalStateException e) {
                     // could not provision this SSID, but still can go on
