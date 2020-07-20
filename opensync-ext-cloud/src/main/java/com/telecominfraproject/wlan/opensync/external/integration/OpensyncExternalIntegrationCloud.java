@@ -1420,80 +1420,59 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             com.telecominfraproject.wlan.client.models.Client clientInstance = clientServiceInterface
                     .getOrNull(customerId, new MacAddress(client.getMacAddress()));
-            if (clientInstance == null) {
-                clientInstance = new com.telecominfraproject.wlan.client.models.Client();
+            if (clientInstance != null) {
+                
+                ClientInfoDetails clientDetails = (ClientInfoDetails) clientInstance.getDetails();
 
-                clientInstance.setCustomerId(customerId);
-                clientInstance.setMacAddress(new MacAddress(client.getMacAddress()));
-                clientInstance.setDetails(new ClientInfoDetails());
-                clientInstance = clientServiceInterface.create(clientInstance);
-            }
-            ClientInfoDetails clientDetails = (ClientInfoDetails) clientInstance.getDetails();
+                clientDetails.setAlias("alias " + clientInstance.getMacAddress().getAddressAsLong());
+                clientDetails.setApFingerprint("fp " + clientInstance.getMacAddress().getAddressAsString());
+                clientDetails.setHostName("hostName-" + clientInstance.getMacAddress().getAddressAsLong());
+                clientDetails.setUserName("user-" + clientInstance.getMacAddress().getAddressAsLong());
+                clientInstance.setDetails(clientDetails);
+                clientInstance = clientServiceInterface.update(clientInstance);
+                
+                ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
+                        new MacAddress(client.getMacAddress()));
+                // For this session if we have a disconnected client, remove, else
+                // update
+                if (!client.getConnected()) {
+                    if (clientSession != null) {
+                        clientSession = clientServiceInterface.deleteSession(customerId, equipmentId,
+                                clientSession.getMacAddress());
+                        LOG.debug("Client session {} deleted due to disconnect", clientSession);
+                    }
+                } else {
+                    clientDetails = (ClientInfoDetails) clientInstance.getDetails();
 
-            clientDetails.setAlias("alias " + clientInstance.getMacAddress().getAddressAsLong());
-            clientDetails.setApFingerprint("fp " + clientInstance.getMacAddress().getAddressAsString());
-            clientDetails.setHostName("hostName-" + clientInstance.getMacAddress().getAddressAsLong());
-            clientDetails.setUserName("user-" + clientInstance.getMacAddress().getAddressAsLong());
-            clientInstance.setDetails(clientDetails);
-            clientInstance = clientServiceInterface.update(clientInstance);
+                    if (clientSession != null) {
+                        LOG.debug("Session found for Client {}.", client.getMacAddress());
+                        ClientSessionDetails clientSessionDetails = clientSession.getDetails();
 
-            ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                    new MacAddress(client.getMacAddress()));
-            // For this session if we have a disconnected client, remove, else
-            // update
-            if (!client.getConnected()) {
-                if (clientSession != null) {
-                    clientSession = clientServiceInterface.deleteSession(customerId, equipmentId,
-                            clientSession.getMacAddress());
-                    LOG.debug("Client session {} deleted due to disconnect", clientSession);
+                        clientSessionDetails.setApFingerprint(clientDetails.getApFingerprint());
+                        clientSessionDetails.setHostname(clientDetails.getHostName());
+                        clientSessionDetails.setRadioType(getRadioTypeFromOpensyncRadioBand(band));
+                        clientSessionDetails.setSessionId(clientSession.getMacAddress().getAddressAsLong());
+                        clientSessionDetails.setSsid(ssid);
+                        clientSessionDetails.setAssocRssi(getNegativeSignedIntFromUnsigned(client.getStats().getRssi()));
+                        clientSessionDetails.setLastRxTimestamp(timestamp);
+                        
+                        // update the client metrics, based on what we see from the MQTT data
+                        
+                        clientSessionDetails.setMetricDetails(calculateClientSessionMetricDetails(client));
+                        
+                        clientSession.setDetails(clientSessionDetails);
+
+                        clientSession = clientServiceInterface.updateSession(clientSession);
+
+                        LOG.info("Updated clientSession {}", clientSession);
+                    }
+
+                    
                 }
-            } else {
-                clientDetails = (ClientInfoDetails) clientInstance.getDetails();
-
-                if (clientSession == null) {
-                    LOG.debug("No session found for Client {}, creating new one.", client.getMacAddress());
-                    clientSession = new ClientSession();
-                    clientSession.setCustomerId(customerId);
-                    clientSession.setEquipmentId(equipmentId);
-                    clientSession.setLocationId(locationId);
-                    clientSession.setMacAddress(new MacAddress(client.getMacAddress()));
-
-                    ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
-                    clientSessionDetails.setAssocTimestamp(timestamp - client.getConnectOffsetMs());
-                    clientSessionDetails.setAuthTimestamp(timestamp - client.getConnectOffsetMs());
-
-                    clientSessionDetails.setFirstDataSentTimestamp(timestamp - client.getDurationMs());
-                    clientSessionDetails.setFirstDataRcvdTimestamp(timestamp - client.getDurationMs());
-
-                    ClientDhcpDetails dhcpDetails = new ClientDhcpDetails(clientSessionDetails.getAuthTimestamp());
-                    dhcpDetails.setLeaseStartTimestamp(clientSessionDetails.getAuthTimestamp());
-                    dhcpDetails.setLeaseTimeInSeconds((int) TimeUnit.HOURS.toSeconds(4));
-
-                    clientSessionDetails.setDhcpDetails(dhcpDetails);
-
-                    clientSession.setDetails(clientSessionDetails);
-
-                    clientSession = clientServiceInterface.updateSession(clientSession);
-                }
-
-                ClientSessionDetails clientSessionDetails = clientSession.getDetails();
-
-                clientSessionDetails.setApFingerprint(clientDetails.getApFingerprint());
-                clientSessionDetails.setHostname(clientDetails.getHostName());
-                clientSessionDetails.setRadioType(getRadioTypeFromOpensyncRadioBand(band));
-                clientSessionDetails.setSessionId(clientSession.getMacAddress().getAddressAsLong());
-                clientSessionDetails.setSsid(ssid);
-                clientSessionDetails.setAssocRssi(getNegativeSignedIntFromUnsigned(client.getStats().getRssi()));
-                clientSessionDetails.setLastRxTimestamp(timestamp);
-
-                clientSessionDetails.setMetricDetails(calculateClientSessionMetricDetails(client));
-                clientSession.setDetails(clientSessionDetails);
-
-                clientSession = clientServiceInterface.updateSession(clientSession);
-
-                LOG.info("CreatedOrUpdated clientSession {}", clientSession);
-
             }
+           
+
+            
 
         } catch (Exception e) {
             LOG.error("Error while attempting to create ClientSession and Info", e);
