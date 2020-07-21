@@ -17,7 +17,6 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Answers;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoSession;
 import org.mockito.quality.Strictness;
@@ -57,6 +56,9 @@ import com.telecominfraproject.wlan.equipment.models.Equipment;
 import com.telecominfraproject.wlan.firmware.FirmwareServiceInterface;
 import com.telecominfraproject.wlan.firmware.models.CustomerFirmwareTrackRecord;
 import com.telecominfraproject.wlan.firmware.models.CustomerFirmwareTrackSettings;
+import com.telecominfraproject.wlan.location.models.Location;
+import com.telecominfraproject.wlan.location.models.LocationDetails;
+import com.telecominfraproject.wlan.location.models.LocationType;
 import com.telecominfraproject.wlan.location.service.LocationServiceInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.controller.OpensyncCloudGatewayController;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
@@ -98,33 +100,30 @@ import sts.OpensyncStats.VLANMetrics;
 })
 public class OpensyncExternalIntegrationCloudTest {
 
-    @MockBean(answer = Answers.RETURNS_MOCKS)
+    @MockBean
     AlarmServiceInterface alarmServiceInterface;
-    @MockBean(answer = Answers.RETURNS_MOCKS)
+    @MockBean
     CustomerServiceInterface customerServiceInterface;
-    @MockBean(answer = Answers.RETURNS_MOCKS)
+    @MockBean
     LocationServiceInterface locationServiceInterface;
     @MockBean(answer = Answers.RETURNS_MOCKS)
     OvsdbSessionMapInterface ovsdbSessionMapInterface;
-    @MockBean(answer = Answers.RETURNS_MOCKS)
+    @MockBean
     CloudEventDispatcherInterface equipmentMetricsCollectorInterface;
     @MockBean
     EquipmentServiceInterface equipmentServiceInterface;
-    @MockBean(answer = Answers.RETURNS_MOCKS)
+    @MockBean
     RoutingServiceInterface routingServiceInterface;
     @MockBean
     ProfileServiceInterface profileServiceInterface;
-    @MockBean(answer = Answers.RETURNS_MOCKS)
+    @MockBean
     StatusServiceInterface statusServiceInterface;
-    @MockBean(answer = Answers.RETURNS_MOCKS)
+    @MockBean
     ClientServiceInterface clientServiceInterface;
-    @MockBean(answer = Answers.RETURNS_MOCKS)
+    @MockBean
     FirmwareServiceInterface firmwareServiceInterface;
     @MockBean(answer = Answers.RETURNS_MOCKS)
     OpensyncCloudGatewayController gatewayController;
-
-    @Mock(answer = Answers.RETURNS_MOCKS)
-    ConnectNodeInfo connectNodeInfo;
 
     @Autowired
     OpensyncExternalIntegrationCloud opensyncExternalIntegrationCloud;
@@ -142,6 +141,7 @@ public class OpensyncExternalIntegrationCloudTest {
         public CacheManager cacheManager() {
             return new CaffeineCacheManager();
         }
+
     }
 
     @Before
@@ -172,14 +172,24 @@ public class OpensyncExternalIntegrationCloudTest {
 
     @Test
     public void testApConnected() {
-        connectNodeInfo.wifiRadioStates = ImmutableMap.of("2.4G", "home-ap-24", "5GL", "home-ap-l50", "5GU",
-                "home-ap-u50");
+
+        Location location = new Location();
+        location.setId(8L);
+        location.setCustomerId(2);
+        location.setDetails(LocationDetails.createWithDefaults());
+        location.setName("Location-UT");
+        location.setLocationType(LocationType.BUILDING);
+
         Customer customer = new Customer();
         customer.setId(2);
         CustomerDetails customerDetails = new CustomerDetails();
         customerDetails.setAutoProvisioning(new EquipmentAutoProvisioningSettings());
         customerDetails.getAutoProvisioning().setEnabled(true);
+        customerDetails.getAutoProvisioning().setLocationId(location.getId());
+
         customer.setDetails(customerDetails);
+
+        Mockito.when(customerServiceInterface.getOrNull(Mockito.anyInt())).thenReturn(customer);
 
         Profile apProfile = new Profile();
         apProfile.setDetails(ApNetworkConfiguration.createWithDefaults());
@@ -187,11 +197,10 @@ public class OpensyncExternalIntegrationCloudTest {
         Profile ssidProfile = new Profile();
         ssidProfile.setDetails(SsidConfiguration.createWithDefaults());
 
-        Mockito.when(profileServiceInterface.create(Mockito.any(Profile.class))).thenReturn(apProfile)
-                .thenReturn(ssidProfile);
-        Mockito.when(profileServiceInterface.update(Mockito.any(Profile.class))).thenReturn(apProfile);
-
-        Mockito.when(customerServiceInterface.getOrNull(Mockito.anyInt())).thenReturn(customer);
+        apProfile.setChildProfileIds(ImmutableSet.of(ssidProfile.getId()));
+        Mockito.when(profileServiceInterface.create(Mockito.any(Profile.class))).thenAnswer(i -> i.getArguments()[0]);
+        // .thenReturn(ssidProfile);
+        Mockito.when(profileServiceInterface.update(Mockito.any(Profile.class))).thenAnswer(i -> i.getArguments()[0]);
 
         Status fwStatus = new Status();
         fwStatus.setDetails(new EquipmentUpgradeStatusData());
@@ -206,15 +215,123 @@ public class OpensyncExternalIntegrationCloudTest {
         fwTrackRecord.setCustomerId(2);
         Mockito.when(firmwareServiceInterface.getCustomerFirmwareTrackRecord(Mockito.anyInt()))
                 .thenReturn(fwTrackRecord);
-        opensyncExternalIntegrationCloud.apConnected("Test_Client_21P10C68818122", connectNodeInfo);
+
+        Equipment equipment = new Equipment();
+        equipment.setCustomerId(2);
+        equipment.setEquipmentType(EquipmentType.AP);
+        equipment.setInventoryId("Test_Client_21P10C68818122");
+        equipment.setLocationId(location.getId());
+        equipment.setId(1L);
+        equipment.setProfileId(apProfile.getId());
+        equipment.setDetails(ApElementConfiguration.createWithDefaults());
+
+        Mockito.when(equipmentServiceInterface.get(1L)).thenReturn(equipment);
+        Mockito.when(equipmentServiceInterface.getByInventoryIdOrNull(Mockito.eq("Test_Client_21P10C68818122")))
+                .thenReturn(equipment);
+
+        Mockito.when(equipmentServiceInterface.create(Mockito.any(Equipment.class)))
+                .thenAnswer(i -> i.getArguments()[0]);
+        Mockito.when(equipmentServiceInterface.update(Mockito.any(Equipment.class)))
+                .thenAnswer(i -> i.getArguments()[0]);
+
+        OvsdbSession session = Mockito.mock(OvsdbSession.class);
+
+        Mockito.when(ovsdbSessionMapInterface.getSession("Test_Client_21P10C68818122")).thenReturn(session);
+
+        opensyncExternalIntegrationCloud.apConnected("Test_Client_21P10C68818122", createConnectNodeInfo());
+
+        Mockito.verify(customerServiceInterface).getOrNull(Mockito.anyInt());
+        Mockito.verify(equipmentServiceInterface).getByInventoryIdOrNull(Mockito.anyString());
+        Mockito.verify(equipmentServiceInterface).update(Mockito.any(Equipment.class));
+
+        Mockito.verify(firmwareServiceInterface).getDefaultCustomerTrackSetting();
+        Mockito.verifyNoInteractions(locationServiceInterface);
 
     }
-    
+
+    @Test
+    public void testApConnectedNewAp() throws Exception {
+        Location location = new Location();
+        location.setId(8L);
+        location.setCustomerId(2);
+        location.setDetails(LocationDetails.createWithDefaults());
+        location.setName("Location-UT");
+        location.setLocationType(LocationType.BUILDING);
+
+        Mockito.when(locationServiceInterface.get(8L)).thenReturn(location);
+
+        Customer customer = new Customer();
+        customer.setId(2);
+        CustomerDetails customerDetails = new CustomerDetails();
+        customerDetails.setAutoProvisioning(new EquipmentAutoProvisioningSettings());
+        customerDetails.getAutoProvisioning().setEnabled(true);
+        customerDetails.getAutoProvisioning().setLocationId(location.getId());
+
+        customer.setDetails(customerDetails);
+
+        Mockito.when(customerServiceInterface.getOrNull(Mockito.anyInt())).thenReturn(customer);
+
+        Profile apProfile = new Profile();
+        apProfile.setDetails(ApNetworkConfiguration.createWithDefaults());
+
+        Profile ssidProfile = new Profile();
+        ssidProfile.setDetails(SsidConfiguration.createWithDefaults());
+
+        apProfile.setChildProfileIds(ImmutableSet.of(ssidProfile.getId()));
+
+        Mockito.when(profileServiceInterface.create(Mockito.any(Profile.class))).thenReturn(apProfile)
+                .thenReturn(ssidProfile);
+        Mockito.when(profileServiceInterface.update(Mockito.any(Profile.class))).thenReturn(apProfile);
+
+        Equipment equipment = new Equipment();
+        equipment.setCustomerId(2);
+        equipment.setEquipmentType(EquipmentType.AP);
+        equipment.setInventoryId("Test_Client_21P10C68818122");
+        equipment.setLocationId(location.getId());
+        equipment.setId(1L);
+        equipment.setProfileId(apProfile.getId());
+        equipment.setDetails(ApElementConfiguration.createWithDefaults());
+
+        Mockito.when(equipmentServiceInterface.get(1L)).thenReturn(equipment);
+
+        Mockito.when(equipmentServiceInterface.create(Mockito.any(Equipment.class)))
+                .thenAnswer(i -> i.getArguments()[0]);
+        Mockito.when(equipmentServiceInterface.update(Mockito.any(Equipment.class)))
+                .thenAnswer(i -> i.getArguments()[0]);
+        Mockito.when(equipmentServiceInterface.getByInventoryIdOrNull(Mockito.eq("Test_Client_21P10C68818122")))
+                .thenReturn(null);
+
+        Status fwStatus = new Status();
+        fwStatus.setDetails(new EquipmentUpgradeStatusData());
+        Mockito.when(statusServiceInterface.getOrNull(Mockito.anyInt(), Mockito.anyLong(),
+                Mockito.eq(StatusDataType.FIRMWARE))).thenReturn(fwStatus);
+
+        Mockito.when(firmwareServiceInterface.getDefaultCustomerTrackSetting())
+                .thenReturn(new CustomerFirmwareTrackSettings());
+        CustomerFirmwareTrackRecord fwTrackRecord = new CustomerFirmwareTrackRecord();
+        fwTrackRecord.setSettings(new CustomerFirmwareTrackSettings());
+        fwTrackRecord.setTrackRecordId(3);
+        fwTrackRecord.setCustomerId(2);
+        Mockito.when(firmwareServiceInterface.getCustomerFirmwareTrackRecord(Mockito.anyInt()))
+                .thenReturn(fwTrackRecord);
+
+        OvsdbSession session = Mockito.mock(OvsdbSession.class);
+
+        Mockito.when(ovsdbSessionMapInterface.getSession("Test_Client_21P10C68818122")).thenReturn(session);
+
+        // Mockito.when(locationServiceInterface.get(Mockito.anyLong())).thenReturn(value);
+        opensyncExternalIntegrationCloud.apConnected("Test_Client_21P10C68818122", createConnectNodeInfo());
+
+        Mockito.verify(customerServiceInterface).getOrNull(Mockito.anyInt());
+        Mockito.verify(equipmentServiceInterface).getByInventoryIdOrNull("Test_Client_21P10C68818122");
+        Mockito.verify(firmwareServiceInterface).getDefaultCustomerTrackSetting();
+        Mockito.verify(locationServiceInterface).get(Mockito.anyLong());
+
+    }
+
     @Test(expected = IllegalStateException.class)
     public void testApConnectedNoAutoprovisioning() throws Exception {
 
-        connectNodeInfo.wifiRadioStates = ImmutableMap.of("2.4G", "home-ap-24", "5GL", "home-ap-l50", "5GU",
-                "home-ap-u50");
         Customer customer = new Customer();
         customer.setId(2);
         CustomerDetails customerDetails = new CustomerDetails();
@@ -225,9 +342,8 @@ public class OpensyncExternalIntegrationCloudTest {
 
         Mockito.when(customerServiceInterface.getOrNull(Mockito.anyInt())).thenReturn(customer);
 
-        opensyncExternalIntegrationCloud.apConnected("Test_Client_21P10C68818122", connectNodeInfo);
+        opensyncExternalIntegrationCloud.apConnected("Test_Client_21P10C68818122", createConnectNodeInfo());
 
-     
     }
 
     @Test
@@ -237,7 +353,7 @@ public class OpensyncExternalIntegrationCloudTest {
 
     @Test
     public void testGetApConfig() throws Exception {
-        
+
         Customer customer = new Customer();
         customer.setId(2);
         CustomerDetails customerDetails = new CustomerDetails();
@@ -245,10 +361,9 @@ public class OpensyncExternalIntegrationCloudTest {
         autoprovSettings.setEnabled(true);
         customerDetails.setAutoProvisioning(autoprovSettings);
         customer.setDetails(customerDetails);
-        
+
         Mockito.when(customerServiceInterface.getOrNull(Mockito.anyInt())).thenReturn(customer);
 
-        
         Equipment equipment = new Equipment();
         equipment.setDetails(ApElementConfiguration.createWithDefaults());
 
@@ -266,10 +381,10 @@ public class OpensyncExternalIntegrationCloudTest {
         assertNotNull(opensyncExternalIntegrationCloud.getApConfig("Test_Client_21P10C68818122"));
 
     }
-    
+
     @Test
     public void testGetApConfigNoAutoprovisioning() throws Exception {
-        
+
         Customer customer = new Customer();
         customer.setId(2);
         CustomerDetails customerDetails = new CustomerDetails();
@@ -277,13 +392,12 @@ public class OpensyncExternalIntegrationCloudTest {
         autoprovSettings.setEnabled(false);
         customerDetails.setAutoProvisioning(autoprovSettings);
         customer.setDetails(customerDetails);
-        
+
         Mockito.when(customerServiceInterface.getOrNull(Mockito.anyInt())).thenReturn(customer);
 
         assertNull(opensyncExternalIntegrationCloud.getApConfig("Test_Client_21P10C68818122"));
 
     }
-    
 
     @Test
     public void testExtractApIdFromTopic() {
@@ -464,6 +578,7 @@ public class OpensyncExternalIntegrationCloudTest {
         equipment.setDetails(ApElementConfiguration.createWithDefaults());
 
         Mockito.when(equipmentServiceInterface.getByInventoryIdOrNull(apId)).thenReturn(equipment);
+        Mockito.when(equipmentServiceInterface.get(equipment.getId())).thenReturn(equipment);
         Mockito.when(equipmentServiceInterface.update(equipment)).thenReturn(equipment);
 
         Mockito.when(ovsdbSessionMapInterface.getSession(apId)).thenReturn(session);
@@ -475,6 +590,7 @@ public class OpensyncExternalIntegrationCloudTest {
         Mockito.verify(session).getEquipmentId();
         Mockito.verify(ovsdbSessionMapInterface).getSession(apId);
         Mockito.verify(equipmentServiceInterface).getByInventoryIdOrNull(apId);
+
         Mockito.verify(statusServiceInterface).getOrNull(2, 1L, StatusDataType.CLIENT_DETAILS);
         Mockito.verify(statusServiceInterface).update(clientStatus);
         Mockito.verify(statusServiceInterface).update(bssidStatus);
@@ -716,6 +832,56 @@ public class OpensyncExternalIntegrationCloudTest {
         clients.add(clientReport5gl);
         clients.add(clientReport5gu);
         return clients;
+    }
+
+    private ConnectNodeInfo createConnectNodeInfo() {
+        ConnectNodeInfo connectNodeInfo = new ConnectNodeInfo();
+        connectNodeInfo.macAddress = "24:f5:a2:ef:2e:53";
+        connectNodeInfo.ifType = "eth";
+        connectNodeInfo.ifName = "eth1";
+        connectNodeInfo.ipV4Address = "10.0.0.129";
+
+        connectNodeInfo.lanMacAddress = "24:f5:a2:ef:2e:52";
+        connectNodeInfo.lanIfType = "bridge";
+        connectNodeInfo.lanIfName = "br-lan";
+        connectNodeInfo.lanIpV4Address = "192.168.1.1";
+
+        connectNodeInfo.managerAddr = "ssl:192.168.1.101:6640";
+        connectNodeInfo.firmwareVersion = "0.1.0";
+        connectNodeInfo.model = "EA8300-CA";
+        connectNodeInfo.revision = "1";
+        connectNodeInfo.serialNumber = "21P10C68818122";
+        connectNodeInfo.skuNumber = "connectus.ai_21P10C68818122";
+        connectNodeInfo.redirectorAddr = "ssl:opensync.zone1.art2wave.com:6643";
+        connectNodeInfo.platformVersion = "OPENWRT_EA8300";
+        connectNodeInfo.wifiRadioStates = ImmutableMap.of("2.4G", "home-ap-24", "5GL", "home-ap-l50", "5GU",
+                "home-ap-u50");
+
+        Map<String, String> versionMatrix = new HashMap<>();
+        versionMatrix.put("DATE", "Thu Jul 16 18:52:06 UTC 2020");
+        versionMatrix.put("FIRMWARE", "0.1.0-0-notgit-development");
+        versionMatrix.put("FW_BUILD", "0");
+        versionMatrix.put("FW_COMMIT", "notgit");
+        versionMatrix.put("FW_PROFILE", "development");
+        versionMatrix.put("FW_VERSION", "0.1.0");
+        versionMatrix.put("HOST", "runner@26793cf70348");
+        versionMatrix.put("OPENSYNC", "2.0.5.0");
+        versionMatrix.put("core", "2.0.5.0/0/notgit");
+        versionMatrix.put("vendor/ipq40xx", "0.1.0/0/notgit");
+        connectNodeInfo.versionMatrix = versionMatrix;
+
+        Map<String, String> mqttSettings = new HashMap<>();
+
+        mqttSettings.put("broker", "192.168.1.101");
+        mqttSettings.put("compress", "zlib");
+        mqttSettings.put("port", "1883");
+        mqttSettings.put("qos", "0");
+        mqttSettings.put("remote_log", "1");
+        mqttSettings.put("topics", "/ap/Test_Client_21P10C68818122/opensync");
+
+        connectNodeInfo.mqttSettings = mqttSettings;
+
+        return connectNodeInfo;
     }
 
 }

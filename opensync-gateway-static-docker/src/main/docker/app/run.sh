@@ -31,14 +31,12 @@ OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_lan_name=$OVSDB_DEVICE_DEFAUL
 OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_radio0=$OVSDB_IF_DEFAULT_RADIO_0"
 OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_radio1=$OVSDB_IF_DEFAULT_RADIO_1"
 OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_radio2=$OVSDB_IF_DEFAULT_RADIO_2"
-OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-device.radio0=$OVSDB_DEVICE_RADIO_0"
-OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-device.radio1=$OVSDB_DEVICE_RADIO_1"
-OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-device.radio2=$OVSDB_DEVICE_RADIO_2"
 
 echo OVSDB_PROPS $OVSDB_PROPS
 
 MQTT_PROPS=" "
-MQTT_PROPS+=" -Dtip.wlan.mqttBroker.address=tip-wlan-opensync-mqtt-broker"
+MQTT_PROPS+=" -Dtip.wlan.mqttBroker.address.internal=tip-wlan-opensync-mqtt-broker-internal"
+MQTT_PROPS+=" -Dtip.wlan.mqttBroker.address.external=tip-wlan-opensync-mqtt-broker-external"
 MQTT_PROPS+=" -Dtip.wlan.mqttBroker.listenPort=1883"
 
 LOGGING_PROPS=" -Dlogging.config=file:/app/opensync/logback.xml"

@@ -89,7 +89,7 @@ public class OvsdbDao {
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.listenPort:6640}")
     private int ovsdbListenPort;
 
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.mqttBroker.address:testportal.123wlan.com}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.mqttBroker.address.external:testportal.123wlan.com}")
     private String mqttBrokerAddress;
 
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.mqttBroker.listenPort:1883}")

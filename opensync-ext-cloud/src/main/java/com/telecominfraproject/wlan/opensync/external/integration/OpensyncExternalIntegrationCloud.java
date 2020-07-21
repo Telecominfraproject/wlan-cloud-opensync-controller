@@ -225,28 +225,29 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     @Override
     public void apConnected(String apId, ConnectNodeInfo connectNodeInfo) {
 
-        Customer customer = customerServiceInterface.getOrNull(autoProvisionedCustomerId);
-        if (customer == null) {
-            LOG.error("Cannot auto-provision equipment because customer with id {} is not found",
-                    autoProvisionedCustomerId);
-            throw new IllegalStateException(
-                    "Cannot auto-provision equipment because customer is not found : " + autoProvisionedCustomerId);
-        }
-
-        if ((customer.getDetails() != null) && (customer.getDetails().getAutoProvisioning() != null)
-                && !customer.getDetails().getAutoProvisioning().isEnabled()) {
-            LOG.error("Cannot auto-provision equipment because customer with id {} explicitly turned that feature off",
-                    autoProvisionedCustomerId);
-            throw new IllegalStateException(
-                    "Cannot auto-provision equipment because customer explicitly turned that feature off : "
-                            + autoProvisionedCustomerId);
-        }
-
         Equipment ce = getCustomerEquipment(apId);
-
-        try {
-
+        
+        try {           
             if (ce == null) {
+               
+                Customer customer = customerServiceInterface.getOrNull(autoProvisionedCustomerId);
+                if (customer == null) {
+                    LOG.error("Cannot auto-provision equipment because customer with id {} is not found",
+                            autoProvisionedCustomerId);
+                    throw new IllegalStateException("Cannot auto-provision equipment because customer is not found : "
+                            + autoProvisionedCustomerId);
+                }
+
+                if ((customer.getDetails() != null) && (customer.getDetails().getAutoProvisioning() != null)
+                        && !customer.getDetails().getAutoProvisioning().isEnabled()) {
+                    LOG.error(
+                            "Cannot auto-provision equipment because customer with id {} explicitly turned that feature off",
+                            autoProvisionedCustomerId);
+                    throw new IllegalStateException(
+                            "Cannot auto-provision equipment because customer explicitly turned that feature off : "
+                                    + autoProvisionedCustomerId);
+                }
+
                 ce = new Equipment();
                 ce.setEquipmentType(EquipmentType.AP);
                 ce.setInventoryId(apId);
@@ -713,10 +714,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             }
             int customerId = ovsdbSession.getCustomerId();
             Customer customer = customerServiceInterface.getOrNull(customerId);
-            if (customer != null 
-            		&& customer.getDetails()!=null 
-            		&& customer.getDetails().getAutoProvisioning()!=null 
-            		&& customer.getDetails().getAutoProvisioning().isEnabled()) {
+            if (customer != null && customer.getDetails() != null && customer.getDetails().getAutoProvisioning() != null
+                    && customer.getDetails().getAutoProvisioning().isEnabled()) {
                 Equipment equipmentConfig = getCustomerEquipment(apId);
 
                 if (equipmentConfig == null) {

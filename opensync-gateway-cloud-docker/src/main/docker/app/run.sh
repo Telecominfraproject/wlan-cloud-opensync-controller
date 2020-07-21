@@ -13,7 +13,8 @@ CLIENT_MQTT_SSL_PROPS+=" -Djavax.net.ssl.trustStorePassword=mypassword"
 CLIENT_MQTT_SSL_PROPS+=" -Dtip.wlan.mqttBroker.password=admin"
 
 OVSDB_MANAGER_HOST=${OVSDB_MANAGER}
-MQTT_BROKER_HOST="${MQTT_SERVER}"
+MQTT_BROKER_HOST_INTERNAL="${MQTT_SERVER_INTERNAL}"
+MQTT_BROKER_HOST_EXTERNAL="${MQTT_SERVER_EXTERNAL}"
 PROV_SERVER_HOST="${PROV_SERVER}"
 SSC_SERVER_HOST="${SSC_SERVER}"
 ALL_IN_ONE_HOST="${INTEGRATED_SERVER}"
@@ -28,7 +29,8 @@ OVSDB_PROPS+=" -Dtip.wlan.ovsdb.keyStore=/opt/tip-wlan/certs/server.pkcs12"
 OVSDB_PROPS+=" -Dtip.wlan.ovsdb.configFileName=/app/opensync/config_2_ssids.json"
 
 MQTT_PROPS=" "
-MQTT_PROPS+=" -Dtip.wlan.mqttBroker.address=$MQTT_BROKER_HOST"
+MQTT_PROPS+=" -Dtip.wlan.mqttBroker.address.internal=$MQTT_BROKER_HOST_INTERNAL"
+MQTT_PROPS+=" -Dtip.wlan.mqttBroker.address.external=$MQTT_BROKER_HOST_EXTERNAL"
 MQTT_PROPS+=" -Dtip.wlan.mqttBroker.listenPort=1883"
 
 LOGBACK_CONFIG_FILE="${LOGBACK_CONFIG_FILE:=/app/opensync/logback.xml}"
