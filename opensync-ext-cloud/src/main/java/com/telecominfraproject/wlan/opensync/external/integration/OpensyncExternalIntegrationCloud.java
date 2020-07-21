@@ -713,7 +713,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             }
             int customerId = ovsdbSession.getCustomerId();
             Customer customer = customerServiceInterface.getOrNull(customerId);
-            if (customer != null && customer.getDetails().getAutoProvisioning().isEnabled()) {
+            if (customer != null 
+            		&& customer.getDetails()!=null 
+            		&& customer.getDetails().getAutoProvisioning()!=null 
+            		&& customer.getDetails().getAutoProvisioning().isEnabled()) {
                 Equipment equipmentConfig = getCustomerEquipment(apId);
 
                 if (equipmentConfig == null) {
