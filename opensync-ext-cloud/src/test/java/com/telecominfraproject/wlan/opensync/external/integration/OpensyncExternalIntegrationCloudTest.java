@@ -240,9 +240,6 @@ public class OpensyncExternalIntegrationCloudTest {
 
         opensyncExternalIntegrationCloud.apConnected("Test_Client_21P10C68818122", createConnectNodeInfo());
 
-        Mockito.verify(customerServiceInterface).getOrNull(Mockito.anyInt());
-        Mockito.verify(equipmentServiceInterface).getByInventoryIdOrNull(Mockito.anyString());
-        Mockito.verify(equipmentServiceInterface).update(Mockito.any(Equipment.class));
 
         Mockito.verify(firmwareServiceInterface).getDefaultCustomerTrackSetting();
         Mockito.verifyNoInteractions(locationServiceInterface);
@@ -329,9 +326,56 @@ public class OpensyncExternalIntegrationCloudTest {
 
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test
     public void testApConnectedNoAutoprovisioning() throws Exception {
+        Profile apProfile = new Profile();
+        apProfile.setDetails(ApNetworkConfiguration.createWithDefaults());
 
+        Profile ssidProfile = new Profile();
+        ssidProfile.setDetails(SsidConfiguration.createWithDefaults());
+
+        apProfile.setChildProfileIds(ImmutableSet.of(ssidProfile.getId()));
+        Mockito.when(profileServiceInterface.create(Mockito.any(Profile.class))).thenAnswer(i -> i.getArguments()[0]);
+        // .thenReturn(ssidProfile);
+        Mockito.when(profileServiceInterface.update(Mockito.any(Profile.class))).thenAnswer(i -> i.getArguments()[0]);
+
+        Location location = new Location();
+        location.setId(8L);
+        location.setCustomerId(2);
+        location.setDetails(LocationDetails.createWithDefaults());
+        location.setName("Location-UT");
+        location.setLocationType(LocationType.BUILDING);
+        
+        Equipment equipment = new Equipment();
+        equipment.setCustomerId(2);
+        equipment.setEquipmentType(EquipmentType.AP);
+        equipment.setInventoryId("Test_Client_21P10C68818122");
+        equipment.setLocationId(location.getId());
+        equipment.setId(1L);
+        equipment.setProfileId(apProfile.getId());
+        equipment.setDetails(ApElementConfiguration.createWithDefaults());
+        Status fwStatus = new Status();
+        fwStatus.setDetails(new EquipmentUpgradeStatusData());
+        Mockito.when(statusServiceInterface.getOrNull(Mockito.anyInt(), Mockito.anyLong(),
+                Mockito.eq(StatusDataType.FIRMWARE))).thenReturn(fwStatus);
+
+        Mockito.when(firmwareServiceInterface.getDefaultCustomerTrackSetting())
+                .thenReturn(new CustomerFirmwareTrackSettings());
+        CustomerFirmwareTrackRecord fwTrackRecord = new CustomerFirmwareTrackRecord();
+        fwTrackRecord.setSettings(new CustomerFirmwareTrackSettings());
+        fwTrackRecord.setTrackRecordId(3);
+        fwTrackRecord.setCustomerId(2);
+        Mockito.when(firmwareServiceInterface.getCustomerFirmwareTrackRecord(Mockito.anyInt()))
+                .thenReturn(fwTrackRecord);
+        Mockito.when(equipmentServiceInterface.get(1L)).thenReturn(equipment);
+
+        Mockito.when(equipmentServiceInterface.create(Mockito.any(Equipment.class)))
+                .thenAnswer(i -> i.getArguments()[0]);
+        Mockito.when(equipmentServiceInterface.update(Mockito.any(Equipment.class)))
+                .thenAnswer(i -> i.getArguments()[0]);
+        Mockito.when(equipmentServiceInterface.getByInventoryIdOrNull(Mockito.eq("Test_Client_21P10C68818122")))
+                .thenReturn(equipment);
+        
         Customer customer = new Customer();
         customer.setId(2);
         CustomerDetails customerDetails = new CustomerDetails();
