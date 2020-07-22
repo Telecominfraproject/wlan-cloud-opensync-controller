@@ -626,7 +626,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     fwImageName = connectNodeInfo.versionMatrix.get("FW_IMAGE_NAME");
                 }
 
-                if (fwVersionName != null && !fwVersionName.equals(fwImageName)) {
+                if (fwImageName != null && fwVersionName != null && !fwVersionName.equals(fwImageName)) {
                     fwUpgradeStatusData.setTargetSwVersion(fwImageName);
                     fwUpgradeStatusData.setUpgradeState(EquipmentUpgradeState.out_of_date);
                     statusRecord.setDetails(fwUpgradeStatusData);
@@ -739,12 +739,19 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         profileContainer.getChildrenOfType(equipmentConfig.getProfileId(), ProfileType.ssid));
 
                 Set<Profile> radiusSet = new HashSet<>();
+                Set<Long> captiveProfileIds = new HashSet<>();
                 for (Profile ssidProfile : ret.getSsidProfile()) {
 
                     radiusSet.addAll(profileContainer.getChildrenOfType(ssidProfile.getId(), ProfileType.radius));
-
+                    if (ssidProfile.getDetails() != null) {
+	                    Long captivePortId = ((SsidConfiguration)ssidProfile.getDetails()).getCaptivePortalId();
+	                    if (captivePortId != null) {
+	                        captiveProfileIds.add(captivePortId);
+	                    }
+                    }
                 }
                 ret.setRadiusProfiles(new ArrayList<>(radiusSet));
+                ret.setCaptiveProfiles(profileServiceInterface.get(captiveProfileIds));
 
                 LOG.debug("ApConfig {}", ret.toString());
             } else {
