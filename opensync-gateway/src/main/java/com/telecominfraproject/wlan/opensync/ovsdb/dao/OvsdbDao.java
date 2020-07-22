@@ -2188,9 +2188,9 @@ public class OvsdbDao {
 
     public void configureSingleSsid(OvsdbClient ovsdbClient, String ifName, String ssid, boolean ssidBroadcast,
             Map<String, String> security, String radioFreqBand, int vlanId, boolean rrmEnabled, boolean enable80211r,
-            String minHwMode, boolean enabled, int keyRefresh, boolean uapsdEnabled, boolean apBridge,
-            NetworkForwardMode networkForwardMode, String gateway, String inet, Map<String, String> dns,
-            String ipAssignScheme, Set<String> macBlockList, Set<String> macAllowList) {
+            boolean enable80211v, String minHwMode, boolean enabled, int keyRefresh, boolean uapsdEnabled,
+            boolean apBridge, NetworkForwardMode networkForwardMode, String gateway, String inet,
+            Map<String, String> dns, String ipAssignScheme, Set<String> macBlockList, Set<String> macAllowList) {
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
@@ -2203,7 +2203,11 @@ public class OvsdbDao {
                 updateColumns.put("bridge", new Atom<>("wan"));
             }
 
-            updateColumns.put("btm", new Atom<>(1));
+            if (enable80211v) {
+                updateColumns.put("btm", new Atom<>(1));
+            } else {
+                updateColumns.put("btm", new Atom<>(0));
+            }
             updateColumns.put("enabled", new Atom<>(enabled));
             if (enable80211r) {
                 updateColumns.put("ft_psk", new Atom<>(1));
@@ -2424,12 +2428,16 @@ public class OvsdbDao {
 
                 boolean apBridge = radioConfiguration.getStationIsolation() == StateSetting.enabled; // stationIsolation
                 boolean enable80211r = false;
+                boolean enable80211v = false;
 
                 if (ssidConfig.getRadioBasedConfigs() != null) {
                     if (ssidConfig.getRadioBasedConfigs().containsKey(radioType)
                             && (ssidConfig.getRadioBasedConfigs().get(radioType) != null)) {
                         if (ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211r() != null) {
                             enable80211r = ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211r();
+                        }
+                        if (ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211r() != null) {
+                            enable80211v = ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211v();
                         }
                     }
                 }
@@ -2526,9 +2534,9 @@ public class OvsdbDao {
                     }
 
                     configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(), ssidBroadcast, security, freqBand,
-                            ssidConfig.getVlanId(), rrmEnabled, enable80211r, minHwMode, enabled, keyRefresh,
-                            uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet, dns, ipAssignScheme,
-                            macBlockList, macAllowList);
+                            ssidConfig.getVlanId(), rrmEnabled, enable80211r, enable80211v, minHwMode, enabled,
+                            keyRefresh, uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet, dns,
+                            ipAssignScheme, macBlockList, macAllowList);
 
                 } catch (IllegalStateException e) {
                     // could not provision this SSID, but still can go on
