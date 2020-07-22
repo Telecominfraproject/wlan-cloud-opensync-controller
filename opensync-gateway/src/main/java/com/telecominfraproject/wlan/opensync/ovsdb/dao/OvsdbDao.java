@@ -735,7 +735,7 @@ public class OvsdbDao {
 
         } catch (Exception e) {
 
-            LOG.info("Could not get Wifi_VIF_State for UUID {}. {}", uuid, e);
+            LOG.info("Could not get Wifi_VIF_State for UUID {}. {}", uuid, e.getMessage());
 
         }
     }
@@ -2436,7 +2436,7 @@ public class OvsdbDao {
                         if (ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211r() != null) {
                             enable80211r = ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211r();
                         }
-                        if (ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211r() != null) {
+                        if (ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211v() != null) {
                             enable80211v = ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211v();
                         }
                     }
