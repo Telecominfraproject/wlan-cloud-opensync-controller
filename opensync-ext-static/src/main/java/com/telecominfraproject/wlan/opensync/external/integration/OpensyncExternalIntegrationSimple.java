@@ -126,7 +126,7 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 	}
 
 	public void processMqttMessage(String topic, Report report) {
-		LOG.info("LYNN Received PlumeStatsReport on topic {} for ap {}\n{}", topic, report.getNodeID(), report);
+		LOG.info("Received PlumeStatsReport on topic {} for ap {}\n{}", topic, report.getNodeID(), report);
 	}
 
 	public void processMqttMessage(String topic, FlowReport flowReport) {
