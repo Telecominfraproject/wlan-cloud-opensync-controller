@@ -756,7 +756,7 @@ public class OvsdbDao {
         if ((map.get("btm") != null)
                 && map.get("btm").getClass().equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
             tableState.setBtm(row.getIntegerColumn("btm").intValue());
-        }
+        } 
 
         if ((map.get("channel") != null)
                 && map.get("channel").getClass().equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
@@ -767,6 +767,16 @@ public class OvsdbDao {
                 && map.get("enabled").getClass().equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
             tableState.setEnabled(row.getBooleanColumn("enabled"));
         }
+        
+        Long ftPsk = getSingleValueFromSet(row, "ft_psk");
+        if (ftPsk != null) {
+            tableState.setFtPsk(ftPsk.intValue());
+        } 
+        
+        Long ftMobilityDomain = getSingleValueFromSet(row, "ft_mobility_domain");
+        if (ftMobilityDomain != null) {
+            tableState.setFtMobilityDomain(ftMobilityDomain.intValue());
+        } 
 
         if ((map.get("group_rekey") != null)
                 && map.get("group_rekey").getClass().equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
@@ -2427,8 +2437,10 @@ public class OvsdbDao {
                 boolean uapsdEnabled = radioConfiguration.getUapsdState() == StateSetting.enabled;
 
                 boolean apBridge = radioConfiguration.getStationIsolation() == StateSetting.enabled; // stationIsolation
+                // off by default
                 boolean enable80211r = false;
-                boolean enable80211v = false;
+                // on by default
+                boolean enable80211v = true;
 
                 if (ssidConfig.getRadioBasedConfigs() != null) {
                     if (ssidConfig.getRadioBasedConfigs().containsKey(radioType)

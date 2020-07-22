@@ -226,10 +226,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     public void apConnected(String apId, ConnectNodeInfo connectNodeInfo) {
 
         Equipment ce = getCustomerEquipment(apId);
-        
-        try {           
+
+        try {
             if (ce == null) {
-               
+
                 Customer customer = customerServiceInterface.getOrNull(autoProvisionedCustomerId);
                 if (customer == null) {
                     LOG.error("Cannot auto-provision equipment because customer with id {} is not found",
@@ -621,18 +621,20 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 String fwImageName = null;
 
-                if (connectNodeInfo.versionMatrix != null
+                if (fwVersionName != null && connectNodeInfo.versionMatrix != null
                         && connectNodeInfo.versionMatrix.containsKey("FW_IMAGE_NAME")) {
                     fwImageName = connectNodeInfo.versionMatrix.get("FW_IMAGE_NAME");
-                }
+                    if (fwImageName != null) {
+                        if (fwVersionName != null && !fwVersionName.equals(fwImageName)) {
+                            fwUpgradeStatusData.setTargetSwVersion(fwImageName);
+                            fwUpgradeStatusData.setUpgradeState(EquipmentUpgradeState.out_of_date);
+                            statusRecord.setDetails(fwUpgradeStatusData);
+                        } else if (fwVersionName != null && fwVersionName.equals(fwImageName)) {
+                            fwUpgradeStatusData.setUpgradeState(EquipmentUpgradeState.up_to_date);
+                            statusRecord.setDetails(fwUpgradeStatusData);
+                        }
+                    }
 
-                if (fwImageName != null && fwVersionName != null && !fwVersionName.equals(fwImageName)) {
-                    fwUpgradeStatusData.setTargetSwVersion(fwImageName);
-                    fwUpgradeStatusData.setUpgradeState(EquipmentUpgradeState.out_of_date);
-                    statusRecord.setDetails(fwUpgradeStatusData);
-                } else if (fwVersionName != null && fwVersionName.equals(fwImageName)) {
-                    fwUpgradeStatusData.setUpgradeState(EquipmentUpgradeState.up_to_date);
-                    statusRecord.setDetails(fwUpgradeStatusData);
                 } else {
                     fwUpgradeStatusData.setUpgradeState(EquipmentUpgradeState.undefined);
                     statusRecord.setDetails(fwUpgradeStatusData);
@@ -744,10 +746,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                     radiusSet.addAll(profileContainer.getChildrenOfType(ssidProfile.getId(), ProfileType.radius));
                     if (ssidProfile.getDetails() != null) {
-	                    Long captivePortId = ((SsidConfiguration)ssidProfile.getDetails()).getCaptivePortalId();
-	                    if (captivePortId != null) {
-	                        captiveProfileIds.add(captivePortId);
-	                    }
+                        Long captivePortId = ((SsidConfiguration) ssidProfile.getDetails()).getCaptivePortalId();
+                        if (captivePortId != null) {
+                            captiveProfileIds.add(captivePortId);
+                        }
                     }
                 }
                 ret.setRadiusProfiles(new ArrayList<>(radiusSet));
