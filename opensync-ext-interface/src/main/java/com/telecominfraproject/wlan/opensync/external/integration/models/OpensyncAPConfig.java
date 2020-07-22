@@ -33,6 +33,7 @@ public class OpensyncAPConfig extends BaseJsonModel {
 	private Location equipmentLocation;
 	private EquipmentRoutingRecord equipmentRouting;
 	private EquipmentGatewayRecord equipmentGateway;
+	private List<Profile> captiveProfiles;
 
 	// Handle Legacy Config Support
 	public void setRadioConfig(OpensyncAPRadioConfig radioConfig) {
@@ -180,22 +181,20 @@ public class OpensyncAPConfig extends BaseJsonModel {
 			ret.equipmentRouting = equipmentRouting.clone();
 		if (equipmentGateway != null)
 			ret.equipmentGateway = equipmentGateway.clone();
+		if (radiusProfiles != null) {
+            ret.radiusProfiles = new ArrayList<>();
+            for (Profile cpConfig : this.radiusProfiles) {
+                ret.radiusProfiles.add(cpConfig);
+            }
+        }
+		if (captiveProfiles != null) {
+			ret.captiveProfiles = new ArrayList<>();
+			for (Profile cpConfig : this.captiveProfiles) {
+                ret.captiveProfiles.add(cpConfig);
+            }
+        }
 
 		return ret;
-	}
-
-	@Override
-	public String toString() {
-		StringBuffer sb = new StringBuffer();
-		sb.append(customerEquipment.toString());
-		sb.append(apProfile.toString());
-		for (Profile ssid : ssidProfile) {
-			sb.append(ssid.toString());
-		}
-		sb.append(equipmentLocation.toString());
-
-		return sb.toString();
-
 	}
 
 	public List<Profile> getRadiusProfiles() {
@@ -205,5 +204,12 @@ public class OpensyncAPConfig extends BaseJsonModel {
 	public void setRadiusProfiles(List<Profile> radiusProfiles) {
 		this.radiusProfiles = radiusProfiles;
 	}
+	
+	public List<Profile> getCaptiveProfiles() {
+	    return captiveProfiles;
+	}
 
+	public void setCaptiveProfiles(List<Profile>  captiveProfiles) {
+		this.captiveProfiles = captiveProfiles;
+	}
 }
