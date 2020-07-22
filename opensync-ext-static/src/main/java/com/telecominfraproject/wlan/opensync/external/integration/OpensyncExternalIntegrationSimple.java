@@ -1,5 +1,7 @@
 package com.telecominfraproject.wlan.opensync.external.integration;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.List;
 
@@ -42,6 +44,9 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 
 	@Value("${tip.wlan.ovsdb.radiusProfileFileName:/app/config/ProfileRadius.json}")
 	private String radiusProfileFileName;
+	
+	@Value("${tip.wlan.ovsdb.captiveProfileFileName:/app/config/ProfileCaptive.json}")
+	private String captiveProfileFileName;
 
 	@Value("${tip.wlan.ovsdb.locationFileName:/app/config/LocationBuildingExample.json}")
 	private String locationFileName;
@@ -86,6 +91,16 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 
 			List<com.telecominfraproject.wlan.profile.models.Profile> radiusProfiles = com.telecominfraproject.wlan.profile.models.Profile
 					.listFromFile(radiusProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
+			
+			
+			List<com.telecominfraproject.wlan.profile.models.Profile> captiveProfiles = null;
+			File captiveFile = new File(captiveProfileFileName);
+			if (captiveFile.exists()) {
+				captiveProfiles = com.telecominfraproject.wlan.profile.models.Profile
+					.listFromFile(captiveProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
+			} else {
+				LOG.info("Captive file is not provided");
+			}
 
 			equipment.setProfileId(apProfile.getId());
 
@@ -99,6 +114,7 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 			ret.setSsidProfile(ssidProfiles);
 			ret.setRadiusProfiles(radiusProfiles);
 			ret.setEquipmentLocation(location);
+			ret.setCaptiveProfiles(captiveProfiles);
 
 		} catch (IOException e) {
 			LOG.error("Cannot read config file", e);
