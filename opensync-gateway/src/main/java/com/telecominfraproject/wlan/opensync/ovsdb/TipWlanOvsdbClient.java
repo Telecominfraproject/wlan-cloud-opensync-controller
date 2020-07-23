@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbClientInterface;
+import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExternalIntegrationInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSession;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSessionMapInterface;
@@ -289,6 +290,29 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         }
 
         LOG.debug("Finished processConfigChanged for {}", apId);
+    }
+    
+    @Override
+    public void processClientBlocklistChange(String apId, List<MacAddress> blockList) {
+        LOG.debug("Starting processClientBlocklistChange for {} on blockList {}", apId, blockList);
+
+        OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
+        if (ovsdbSession == null) {
+            throw new IllegalStateException("AP with id " + apId + " is not connected");
+        }
+
+        OvsdbClient ovsdbClient = ovsdbSession.getOvsdbClient();
+
+        OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
+
+        if (opensyncAPConfig != null) {
+            ovsdbDao.configureBlockList(ovsdbClient, opensyncAPConfig, blockList);
+
+        } else {
+            LOG.warn("Could not get provisioned configuration for AP {}", apId);
+        }
+
+        LOG.debug("Finished processClientBlocklistChange for {}", apId);
     }
 
     private void monitorOvsdbStateTables(OvsdbClient ovsdbClient, String key) {

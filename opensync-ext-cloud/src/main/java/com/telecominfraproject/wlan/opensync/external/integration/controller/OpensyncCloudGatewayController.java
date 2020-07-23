@@ -30,6 +30,7 @@ import com.telecominfraproject.wlan.core.model.service.ServiceInstanceInformatio
 import com.telecominfraproject.wlan.core.server.container.ConnectorProperties;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWBaseCommand;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWBlinkRequest;
+import com.telecominfraproject.wlan.equipmentgateway.models.CEGWClientBlocklistChangeNotification;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWCloseSessionRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWCommandResultCode;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWConfigChangeNotification;
@@ -173,7 +174,9 @@ public class OpensyncCloudGatewayController {
                 case RadioReset:
                     ret.add(processRadioReset(session, (CEGWRadioResetRequest) command));
                     break;
-
+                case ClientBlocklistChangeNotification:
+                    ret.add(sendClientBlocklistChangeNotification(session, (CEGWClientBlocklistChangeNotification) command));
+                    break;    
                 default:
                     LOG.warn("[{}] Failed to deliver command {}, unsupported command type", inventoryId, command);
                     ret.add(new EquipmentCommandResponse(
@@ -247,6 +250,11 @@ public class OpensyncCloudGatewayController {
                 registeredGateway.getPort());
 
     }
+    
+    private EquipmentCommandResponse sendClientBlocklistChangeNotification(OvsdbSession session,
+    		CEGWClientBlocklistChangeNotification command) {
+        return sendMessage(session, command.getInventoryId(), command);
+    }
 
     /**
      * Deliver a message in payload to the CE
@@ -266,6 +274,9 @@ public class OpensyncCloudGatewayController {
 
         if (command instanceof CEGWConfigChangeNotification) {
             tipwlanOvsdbClient.processConfigChanged(inventoryId);
+        } else if (command instanceof CEGWClientBlocklistChangeNotification) {
+            tipwlanOvsdbClient.processClientBlocklistChange(inventoryId, 
+            		((CEGWClientBlocklistChangeNotification)command).getBlockList());    
         } else if (command instanceof CEGWStartDebugEngine) {
             // dtop: we will be using CEGWStartDebugEngine command to deliver
             // request to

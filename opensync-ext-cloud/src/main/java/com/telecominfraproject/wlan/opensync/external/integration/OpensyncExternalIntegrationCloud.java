@@ -24,6 +24,7 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
 
+import com.google.common.collect.Lists;
 import com.telecominfraproject.wlan.alarm.AlarmServiceInterface;
 import com.telecominfraproject.wlan.client.ClientServiceInterface;
 import com.telecominfraproject.wlan.client.info.models.ClientInfoDetails;
@@ -776,6 +777,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 }
                 ret.setRadiusProfiles(new ArrayList<>(radiusSet));
                 ret.setCaptiveProfiles(profileServiceInterface.get(captiveProfileIds));
+                
+                List<com.telecominfraproject.wlan.client.models.Client> blockedClients = 
+                		clientServiceInterface.getBlockedClients(customerId);
+                List<MacAddress> blockList = Lists.newArrayList();
+                if (blockedClients != null && !blockedClients.isEmpty()) {
+                	blockedClients.forEach(client -> blockList.add(client.getMacAddress()));
+                }
+                ret.setBlockedClients(blockList);
 
                 LOG.debug("ApConfig {}", ret);
             } else {
@@ -2280,7 +2289,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientInstance.setCustomerId(customerId);
                 clientInstance.setMacAddress(new MacAddress(opensyncWifiAssociatedClients.getMac()));
                 clientInstance.setDetails(new ClientInfoDetails());
-                clientInstance = clientServiceInterface.create(clientInstance);
                 isReassociation = false; // this is a new client
             }
             ClientInfoDetails clientDetails = (ClientInfoDetails) clientInstance.getDetails();
@@ -2290,7 +2298,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             clientDetails.setHostName("hostName-" + clientInstance.getMacAddress().getAddressAsLong());
             clientDetails.setUserName("user-" + clientInstance.getMacAddress().getAddressAsLong());
             clientInstance.setDetails(clientDetails);
-            clientInstance = clientServiceInterface.update(clientInstance);
+            if (isReassociation) {
+            	clientInstance = clientServiceInterface.update(clientInstance);
+            } else {
+            	clientInstance = clientServiceInterface.create(clientInstance);
+            }
 
             LOG.debug("client instance {}", clientInstance);
 

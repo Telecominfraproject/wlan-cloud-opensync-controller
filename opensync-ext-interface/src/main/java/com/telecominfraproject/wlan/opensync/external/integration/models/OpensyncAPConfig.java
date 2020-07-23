@@ -7,6 +7,7 @@ import java.util.Set;
 
 import com.telecominfraproject.wlan.core.model.entity.CountryCode;
 import com.telecominfraproject.wlan.core.model.equipment.EquipmentType;
+import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.core.model.json.BaseJsonModel;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
@@ -34,6 +35,7 @@ public class OpensyncAPConfig extends BaseJsonModel {
 	private EquipmentRoutingRecord equipmentRouting;
 	private EquipmentGatewayRecord equipmentGateway;
 	private List<Profile> captiveProfiles;
+	private List<MacAddress> blockedClients;
 
 	// Handle Legacy Config Support
 	public void setRadioConfig(OpensyncAPRadioConfig radioConfig) {
@@ -193,6 +195,12 @@ public class OpensyncAPConfig extends BaseJsonModel {
                 ret.captiveProfiles.add(cpConfig);
             }
         }
+		if (blockedClients != null) {
+			ret.blockedClients = new ArrayList<MacAddress>();
+			for (MacAddress blockedClient : this.blockedClients) {
+                ret.blockedClients.add(blockedClient);
+            }
+        }
 
 		return ret;
 	}
@@ -209,7 +217,15 @@ public class OpensyncAPConfig extends BaseJsonModel {
 	    return captiveProfiles;
 	}
 
-	public void setCaptiveProfiles(List<Profile>  captiveProfiles) {
+	public void setCaptiveProfiles(List<Profile> captiveProfiles) {
 		this.captiveProfiles = captiveProfiles;
+	}
+	
+	public List<MacAddress> getBlockedClients() {
+	    return blockedClients;
+	}
+
+	public void setBlockedClients(List<MacAddress> blockedClients) {
+		this.blockedClients = blockedClients;
 	}
 }

@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import com.telecominfraproject.wlan.core.model.equipment.ChannelBandwidth;
+import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.ElementRadioConfiguration;
@@ -2203,7 +2204,7 @@ public class OvsdbDao {
             Map<String, String> security, String radioFreqBand, int vlanId, boolean rrmEnabled, boolean enable80211r,
             boolean enable80211v, String minHwMode, boolean enabled, int keyRefresh, boolean uapsdEnabled,
             boolean apBridge, NetworkForwardMode networkForwardMode, String gateway, String inet,
-            Map<String, String> dns, String ipAssignScheme, Set<String> macBlockList, Set<String> macAllowList) {
+            Map<String, String> dns, String ipAssignScheme, List<MacAddress> macBlockList) {
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
@@ -2255,28 +2256,7 @@ public class OvsdbDao {
                     .of(security);
             updateColumns.put("security", securityMap);
 
-            Set<String> macList = new HashSet<>();
-            if (macBlockList != null && !macBlockList.isEmpty()) {
-                macList = macBlockList;
-                updateColumns.put("mac_list_type", new Atom<>("blacklist"));
-            } else if (macAllowList != null && !macAllowList.isEmpty()) {
-                macList = macAllowList;
-                updateColumns.put("mac_list_type", new Atom<>("whitelist"));
-            } else {
-                updateColumns.put("mac_list_type", new Atom<>("none"));
-            }
-
-            if (!macList.isEmpty()) {
-                Set<Atom<String>> atomMacList = new HashSet<>();
-                for (String mac : macList) {
-                    atomMacList.add(new Atom<>(mac));
-                }
-                com.vmware.ovsdb.protocol.operation.notation.Set macListSet = com.vmware.ovsdb.protocol.operation.notation.Set
-                        .of(atomMacList);
-                updateColumns.put("mac_list", macListSet);
-            } else {
-                updateColumns.put("mac_list", new com.vmware.ovsdb.protocol.operation.notation.Set());
-            }
+            updateBlockList(updateColumns, macBlockList);
 
             Row row = new Row(updateColumns);
             operations.add(new Insert(wifiVifConfigDbTable, row));
@@ -2315,6 +2295,53 @@ public class OvsdbDao {
             }
 
             LOG.info("Provisioned SSID {} on interface {} / {}", ssid, ifName, radioFreqBand);
+
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            LOG.error("Error in configureSingleSsid", e);
+            throw new RuntimeException(e);
+        }
+    }
+    
+    private void updateBlockList(Map<String, Value> updateColumns, List<MacAddress> macBlockList) {
+    	
+        if (macBlockList != null && !macBlockList.isEmpty()) {
+        	updateColumns.put("mac_list_type", new Atom<>("blacklist"));
+            Set<Atom<String>> atomMacList = new HashSet<>();
+            for (MacAddress mac : macBlockList) {
+                atomMacList.add(new Atom<>(mac.getAddressAsString()));
+            }
+            com.vmware.ovsdb.protocol.operation.notation.Set macListSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                    .of(atomMacList);
+            updateColumns.put("mac_list", macListSet);
+        } else {
+        	updateColumns.put("mac_list_type", new Atom<>("none"));
+            updateColumns.put("mac_list", new com.vmware.ovsdb.protocol.operation.notation.Set());
+        }
+    }
+    
+    public void configureBlockList(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig,
+    		List<MacAddress> macBlockList) {
+
+    	LOG.debug("Starting configureBlockList {}", macBlockList);
+
+        List<Operation> operations = new ArrayList<>();
+        Map<String, Value> updateColumns = new HashMap<>();
+
+        try {
+        	updateBlockList(updateColumns, macBlockList);
+
+            Row row = new Row(updateColumns);
+            List<Condition> conditions = new ArrayList<>(); //No condition, apply all ssid
+            operations.add(new Update(wifiVifConfigDbTable, conditions, row));
+
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+            
+            for (OperationResult res : result) {
+                LOG.debug("Op Result {}", res);
+            }
+
+            LOG.debug("Provisioned blockList {}", macBlockList);
 
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             LOG.error("Error in configureSingleSsid", e);
@@ -2382,6 +2409,8 @@ public class OvsdbDao {
                 && (opensyncApConfig.getEquipmentLocation().getDetails() != null)) {
             rrmEnabled = opensyncApConfig.getEquipmentLocation().getDetails().isRrmEnabled();
         }
+        List<MacAddress> macBlockList = opensyncApConfig.getBlockedClients();
+        LOG.debug("configureSsids with blockList {}", macBlockList);
 
         List<RadioType> enabledRadiosFromAp = new ArrayList<>();
         getEnabledRadios(ovsdbClient, enabledRadiosFromAp);
@@ -2505,10 +2534,6 @@ public class OvsdbDao {
                     }
                 }
 
-                // TODO fill from NBI
-                Set<String> macBlockList = new HashSet<>();
-                Set<String> macAllowList = new HashSet<>();
-
                 boolean enabled = ssidConfig.getSsidAdminState().equals(StateSetting.enabled);
 
                 String ifName = null;
@@ -2551,7 +2576,7 @@ public class OvsdbDao {
                     configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(), ssidBroadcast, security, freqBand,
                             ssidConfig.getVlanId(), rrmEnabled, enable80211r, enable80211v, minHwMode, enabled,
                             keyRefresh, uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet, dns,
-                            ipAssignScheme, macBlockList, macAllowList);
+                            ipAssignScheme, macBlockList);
 
                 } catch (IllegalStateException e) {
                     // could not provision this SSID, but still can go on
