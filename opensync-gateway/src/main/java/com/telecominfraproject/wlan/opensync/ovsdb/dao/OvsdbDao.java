@@ -97,6 +97,9 @@ public class OvsdbDao {
 
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.timeoutSec:30}")
     private int ovsdbTimeoutSec;
+    
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.fwDownloadTimeoutSec:120}")
+    private int ovsdbFwDownloadTimeoutSec;
 
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_bridge:defaultBridgeForEAPOL}")
     public String bridgeNameVifInterfaces;
@@ -118,9 +121,9 @@ public class OvsdbDao {
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.max:8}")
     public int maxInterfacesPerRadio;
 
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.awlan-node.upgrade_dl_timer:60}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.awlan-node.upgrade_dl_timer:30}")
     public long upgradeDlTimerSeconds;
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.awlan-node.upgrade_timer:60}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.awlan-node.upgrade_timer:30}")
     public long upgradeTimerSeconds;
 
     public static final String ovsdbName = "Open_vSwitch";

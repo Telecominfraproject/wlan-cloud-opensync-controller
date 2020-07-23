@@ -859,7 +859,7 @@ public class OpensyncExternalIntegrationCloudTest {
         int rssi = Long.valueOf(4294967239L).intValue();
 
         Client.Stats clientStats = Client.Stats.getDefaultInstance().toBuilder().setRssi(rssi).setRxBytes(225554786)
-                .setRxRate(24000.0).setTxBytes(1208133026).setTxRate(433300.0).build();
+                .setRxRate(24000.0).setTxBytes(1208133026).setTxRate(433300.0).setRssi(758722570).setRxFrames(10000).setTxFrames(10000).setTxRate(24000.0).build();
         Client client2g = Client.getDefaultInstance().toBuilder().setMacAddress("7C:AB:60:E6:EA:4D").setSsid("ssid-1")
                 .setConnected(true).setDurationMs(59977).setStats(clientStats).build();
         Client client5gu = Client.getDefaultInstance().toBuilder().setMacAddress("C0:9A:D0:76:A9:69").setSsid("ssid-3")
@@ -868,9 +868,10 @@ public class OpensyncExternalIntegrationCloudTest {
         ClientReport clientReport2g = ClientReport.getDefaultInstance().toBuilder().setBand(RadioBandType.BAND2G)
                 .setChannel(6).addAllClientList(ImmutableList.of(client2g)).build();
         ClientReport clientReport5gl = ClientReport.getDefaultInstance().toBuilder().setBand(RadioBandType.BAND5GL)
-                .setChannel(36).build();
+                .setChannel(36).addAllClientList(new ArrayList<Client>()).build();
         ClientReport clientReport5gu = ClientReport.getDefaultInstance().toBuilder().setBand(RadioBandType.BAND5GU)
                 .setChannel(157).addAllClientList(ImmutableList.of(client5gu)).build();
+        
         List<ClientReport> clients = new ArrayList<ClientReport>();
         clients.add(clientReport2g);
         clients.add(clientReport5gl);
