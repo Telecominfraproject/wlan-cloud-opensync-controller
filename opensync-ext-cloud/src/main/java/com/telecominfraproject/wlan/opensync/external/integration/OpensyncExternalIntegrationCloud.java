@@ -2312,8 +2312,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     customerId, equipmentId, apId);
             return;
         }
+        
+        Equipment ce = getCustomerEquipment(apId);
+        
+        if (ce == null) {
+            LOG.debug("Cannot get customer Equipment for {}", apId);
+            return;
+        }
 
-        if ((wifiAssociatedClients == null) || wifiAssociatedClients.isEmpty() || (apId == null)) {
+        if ((wifiAssociatedClients == null) || wifiAssociatedClients.isEmpty()) {
             return;
         }
 
@@ -2353,12 +2360,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientSession = new ClientSession();
                 clientSession.setCustomerId(customerId);
                 clientSession.setEquipmentId(equipmentId);
+                clientSession.setLocationId(ce.getLocationId());
                 clientSession.setMacAddress(new MacAddress(opensyncWifiAssociatedClients.getMac()));
 
                 ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
                 clientSession.setDetails(clientSessionDetails);
                 clientSession = clientServiceInterface.updateSession(clientSession);
             }
+            
+            clientSession.setLocationId(ce.getLocationId());
             ClientSessionDetails clientSessionDetails = clientSession.getDetails();
             clientSessionDetails.setHostname(clientDetails.getHostName());
             clientSessionDetails.setIsReassociation(isReassociation);

@@ -602,17 +602,28 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
     @Override
     public String processFirmwareFlash(String apId, String firmwareVersion, String username) {
+        OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
+        OvsdbClient ovsdbClient = session.getOvsdbClient();
         try {
-            OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
+
+            ovsdbClient.cancelMonitor(OvsdbDao.awlanNodeDbTable + "_" + apId).join();
+            ovsdbClient.cancelMonitor(OvsdbDao.wifiRadioStateDbTable + "_" + apId).join();
+            ovsdbClient.cancelMonitor(OvsdbDao.wifiVifStateDbTable + "_" + apId).join();
+            ovsdbClient.cancelMonitor(OvsdbDao.wifiVifStateDbTable + "_delete_" + apId).join();
+            ovsdbClient.cancelMonitor(OvsdbDao.wifiInetStateDbTable + "_" + apId).join();
+            ovsdbClient.cancelMonitor(OvsdbDao.wifiAssociatedClientsDbTable + "_" + apId).join();
+            ovsdbClient.cancelMonitor(OvsdbDao.wifiAssociatedClientsDbTable + "_delete_" + apId).join();
 
             ovsdbDao.configureFirmwareFlash(session.getOvsdbClient(), apId, firmwareVersion, username);
         } catch (Exception e) {
-            LOG.error("Failed to initialize firmware download to " + apId + " " + e.getLocalizedMessage());
-            return "Failed to initialize firmware download to " + apId + " " + e.getLocalizedMessage();
+            LOG.error("Failed to flash firmware for " + apId + " " + e.getLocalizedMessage());
+            return "Failed to flash firmware for " + apId + " " + e.getLocalizedMessage();
 
+        } finally {
+            monitorOvsdbStateTables(ovsdbClient, apId);
         }
-        LOG.debug("Initialized firmware download to " + apId);
-        return "Initialized firmware download to " + apId;
+        LOG.debug("Flashed Firmware for AP {} to {} ", apId, firmwareVersion);
+        return "Flashed Firmware for AP " + apId + " to " + firmwareVersion;
     }
 
 }

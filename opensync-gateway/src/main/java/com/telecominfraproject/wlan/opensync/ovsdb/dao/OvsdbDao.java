@@ -3074,7 +3074,7 @@ public class OvsdbDao {
             operations.add(new Delete(wifiStatsConfigDbTable));
 
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+            OperationResult[] result = fResult.get(240, TimeUnit.SECONDS);
 
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Removed all existing config from {}:", wifiStatsConfigDbTable);
