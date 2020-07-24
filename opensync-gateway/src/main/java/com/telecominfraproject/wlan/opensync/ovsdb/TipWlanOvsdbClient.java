@@ -291,7 +291,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
         LOG.debug("Finished processConfigChanged for {}", apId);
     }
-    
+
     @Override
     public void processClientBlocklistChange(String apId, List<MacAddress> blockList) {
         LOG.debug("Starting processClientBlocklistChange for {} on blockList {}", apId, blockList);
@@ -591,6 +591,21 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
             ovsdbDao.configureFirmwareDownload(session.getOvsdbClient(), apId, firmwareUrl, firmwareVersion, username,
                     validationCode);
+        } catch (Exception e) {
+            LOG.error("Failed to initialize firmware download to " + apId + " " + e.getLocalizedMessage());
+            return "Failed to initialize firmware download to " + apId + " " + e.getLocalizedMessage();
+
+        }
+        LOG.debug("Initialized firmware download to " + apId);
+        return "Initialized firmware download to " + apId;
+    }
+
+    @Override
+    public String processFirmwareFlash(String apId, String firmwareVersion, String username) {
+        try {
+            OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
+
+            ovsdbDao.configureFirmwareFlash(session.getOvsdbClient(), apId, firmwareVersion, username);
         } catch (Exception e) {
             LOG.error("Failed to initialize firmware download to " + apId + " " + e.getLocalizedMessage());
             return "Failed to initialize firmware download to " + apId + " " + e.getLocalizedMessage();

@@ -98,9 +98,6 @@ public class OvsdbDao {
 
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.timeoutSec:30}")
     private int ovsdbTimeoutSec;
-    
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.fwDownloadTimeoutSec:120}")
-    private int ovsdbFwDownloadTimeoutSec;
 
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_bridge:defaultBridgeForEAPOL}")
     public String bridgeNameVifInterfaces;
@@ -111,20 +108,20 @@ public class OvsdbDao {
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_wan_type:eth}")
     public String defaultWanInterfaceType;
 
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_radio1:home-ap-24}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_radio2g:home-ap-24}")
     public String ifPfx2pt4GHz;
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_radio2:home-ap-l50}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_radio5gl:home-ap-l50}")
     public String ifPfx5GHzL;
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_radio0:home-ap-u50}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_radio5gu:home-ap-u50}")
     public String ifPfx5GHzU;
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_radio0:home-ap-50}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_radio5g:home-ap-50}")
     public String ifPfx5GHz;
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.max:8}")
     public int maxInterfacesPerRadio;
 
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.awlan-node.upgrade_dl_timer:30}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.awlan-node.upgrade_dl_timer:120}")
     public long upgradeDlTimerSeconds;
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.awlan-node.upgrade_timer:30}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.awlan-node.upgrade_timer:60}")
     public long upgradeTimerSeconds;
 
     public static final String ovsdbName = "Open_vSwitch";
@@ -760,7 +757,7 @@ public class OvsdbDao {
         if ((map.get("btm") != null)
                 && map.get("btm").getClass().equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
             tableState.setBtm(row.getIntegerColumn("btm").intValue());
-        } 
+        }
 
         if ((map.get("channel") != null)
                 && map.get("channel").getClass().equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
@@ -771,16 +768,16 @@ public class OvsdbDao {
                 && map.get("enabled").getClass().equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
             tableState.setEnabled(row.getBooleanColumn("enabled"));
         }
-        
+
         Long ftPsk = getSingleValueFromSet(row, "ft_psk");
         if (ftPsk != null) {
             tableState.setFtPsk(ftPsk.intValue());
-        } 
-        
+        }
+
         Long ftMobilityDomain = getSingleValueFromSet(row, "ft_mobility_domain");
         if (ftMobilityDomain != null) {
             tableState.setFtMobilityDomain(ftMobilityDomain.intValue());
-        } 
+        }
 
         if ((map.get("group_rekey") != null)
                 && map.get("group_rekey").getClass().equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
@@ -2301,11 +2298,11 @@ public class OvsdbDao {
             throw new RuntimeException(e);
         }
     }
-    
+
     private void updateBlockList(Map<String, Value> updateColumns, List<MacAddress> macBlockList) {
-    	
+
         if (macBlockList != null && !macBlockList.isEmpty()) {
-        	updateColumns.put("mac_list_type", new Atom<>("blacklist"));
+            updateColumns.put("mac_list_type", new Atom<>("blacklist"));
             Set<Atom<String>> atomMacList = new HashSet<>();
             for (MacAddress mac : macBlockList) {
                 atomMacList.add(new Atom<>(mac.getAddressAsString()));
@@ -2314,29 +2311,30 @@ public class OvsdbDao {
                     .of(atomMacList);
             updateColumns.put("mac_list", macListSet);
         } else {
-        	updateColumns.put("mac_list_type", new Atom<>("none"));
+            updateColumns.put("mac_list_type", new Atom<>("none"));
             updateColumns.put("mac_list", new com.vmware.ovsdb.protocol.operation.notation.Set());
         }
     }
-    
-    public void configureBlockList(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig,
-    		List<MacAddress> macBlockList) {
 
-    	LOG.debug("Starting configureBlockList {}", macBlockList);
+    public void configureBlockList(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig,
+            List<MacAddress> macBlockList) {
+
+        LOG.debug("Starting configureBlockList {}", macBlockList);
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
 
         try {
-        	updateBlockList(updateColumns, macBlockList);
+            updateBlockList(updateColumns, macBlockList);
 
             Row row = new Row(updateColumns);
-            List<Condition> conditions = new ArrayList<>(); //No condition, apply all ssid
+            List<Condition> conditions = new ArrayList<>(); // No condition,
+                                                            // apply all ssid
             operations.add(new Update(wifiVifConfigDbTable, conditions, row));
 
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-            
+
             for (OperationResult res : result) {
                 LOG.debug("Op Result {}", res);
             }
@@ -3022,24 +3020,11 @@ public class OvsdbDao {
         try {
             LOG.debug("configureFirmwareDownload for {} to version {} url {} validationCode {} username {}", apId,
                     firmwareVersion, firmwareUrl, validationCode, username);
-            // TODO: version matrix update
-            // waiting on AP to provide guidance wrt load naming and version
-            // matrix content
-            // get existing table info
-            // Row awlanNode =
-            // getAWLANNodeDbTableForFirmwareUpdate(ovsdbClient);
-            //
-            // if (awlanNode == null) {
-            // LOG.error("Cannot update AWLAN_Node firmware information");
-            // return;
-            // }
-
             List<Operation> operations = new ArrayList<>();
             Map<String, Value> updateColumns = new HashMap<>();
             updateColumns.put("upgrade_dl_timer", new Atom<>(upgradeDlTimerSeconds));
             updateColumns.put("firmware_pass", new Atom<>(validationCode));
             updateColumns.put("firmware_url", new Atom<>(firmwareUrl));
-            updateColumns.put("upgrade_timer", new Atom<>(upgradeTimerSeconds));
 
             Row row = new Row(updateColumns);
             operations.add(new Update(awlanNodeDbTable, row));
@@ -3052,9 +3037,32 @@ public class OvsdbDao {
             }
 
         } catch (Exception e) {
-            LOG.error("Could not download firmware to AP", e);
+            LOG.error("Could not download firmware {} to AP {}", firmwareVersion, apId, e);
         }
 
+    }
+
+    public void configureFirmwareFlash(OvsdbClient ovsdbClient, String apId, String firmwareVersion, String username) {
+        try {
+            LOG.debug("configureFirmwareFlash on AP {} to load {} setting timer for {} seconds.", apId, firmwareVersion,
+                    upgradeTimerSeconds);
+
+            List<Operation> operations = new ArrayList<>();
+            Map<String, Value> updateColumns = new HashMap<>();
+            updateColumns.put("upgrade_timer", new Atom<>(upgradeTimerSeconds));
+
+            Row row = new Row(updateColumns);
+            operations.add(new Update(awlanNodeDbTable, row));
+
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+            for (OperationResult r : result) {
+                LOG.debug("Op Result {}", r);
+            }
+
+        } catch (Exception e) {
+            LOG.error("Could not configure timer for flashing firmware {} on AP {}", firmwareVersion, apId, e);
+        }
     }
 
     public void removeAllStatsConfigs(OvsdbClient ovsdbClient) {

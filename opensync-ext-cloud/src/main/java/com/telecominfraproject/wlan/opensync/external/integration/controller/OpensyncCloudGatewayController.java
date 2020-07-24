@@ -168,15 +168,16 @@ public class OpensyncCloudGatewayController {
                 case FirmwareDownloadRequest:
                     ret.add(processFirmwareDownload(session, (CEGWFirmwareDownloadRequest) command));
                     break;
-//                case FirmwareFlashRequest:
-//                    ret.add(processFirmwareFlash(session, (CEGWFirmwareFlashRequest) command));
-//                    break;
+                case FirmwareFlashRequest:
+                    ret.add(processFirmwareFlash(session, (CEGWFirmwareFlashRequest) command));
+                    break;
                 case RadioReset:
                     ret.add(processRadioReset(session, (CEGWRadioResetRequest) command));
                     break;
                 case ClientBlocklistChangeNotification:
-                    ret.add(sendClientBlocklistChangeNotification(session, (CEGWClientBlocklistChangeNotification) command));
-                    break;    
+                    ret.add(sendClientBlocklistChangeNotification(session,
+                            (CEGWClientBlocklistChangeNotification) command));
+                    break;
                 default:
                     LOG.warn("[{}] Failed to deliver command {}, unsupported command type", inventoryId, command);
                     ret.add(new EquipmentCommandResponse(
@@ -193,6 +194,10 @@ public class OpensyncCloudGatewayController {
 
     private EquipmentCommandResponse processFirmwareDownload(OvsdbSession session,
             CEGWFirmwareDownloadRequest command) {
+        return sendMessage(session, command.getInventoryId(), command);
+    }
+
+    private EquipmentCommandResponse processFirmwareFlash(OvsdbSession session, CEGWFirmwareFlashRequest command) {
         return sendMessage(session, command.getInventoryId(), command);
     }
 
@@ -250,9 +255,9 @@ public class OpensyncCloudGatewayController {
                 registeredGateway.getPort());
 
     }
-    
+
     private EquipmentCommandResponse sendClientBlocklistChangeNotification(OvsdbSession session,
-    		CEGWClientBlocklistChangeNotification command) {
+            CEGWClientBlocklistChangeNotification command) {
         return sendMessage(session, command.getInventoryId(), command);
     }
 
@@ -275,8 +280,8 @@ public class OpensyncCloudGatewayController {
         if (command instanceof CEGWConfigChangeNotification) {
             tipwlanOvsdbClient.processConfigChanged(inventoryId);
         } else if (command instanceof CEGWClientBlocklistChangeNotification) {
-            tipwlanOvsdbClient.processClientBlocklistChange(inventoryId, 
-            		((CEGWClientBlocklistChangeNotification)command).getBlockList());    
+            tipwlanOvsdbClient.processClientBlocklistChange(inventoryId,
+                    ((CEGWClientBlocklistChangeNotification) command).getBlockList());
         } else if (command instanceof CEGWStartDebugEngine) {
             // dtop: we will be using CEGWStartDebugEngine command to deliver
             // request to
@@ -287,8 +292,8 @@ public class OpensyncCloudGatewayController {
             // TODO: add support for additional commands below
         } else if (command instanceof CEGWFirmwareDownloadRequest) {
 
-            CEGWFirmwareDownloadRequest dlRequest = (CEGWFirmwareDownloadRequest)command;
-            
+            CEGWFirmwareDownloadRequest dlRequest = (CEGWFirmwareDownloadRequest) command;
+
             String filepath = dlRequest.getFilePath();
             String firmwareVersion = dlRequest.getFirmwareVersion();
             String username = dlRequest.getUsername();
@@ -296,6 +301,15 @@ public class OpensyncCloudGatewayController {
 
             tipwlanOvsdbClient.processFirmwareDownload(inventoryId, filepath, firmwareVersion, username,
                     validationCode);
+        } else if (command instanceof CEGWFirmwareFlashRequest) {
+
+            CEGWFirmwareFlashRequest flashRequest = (CEGWFirmwareFlashRequest) command;
+
+            flashRequest.getFirmwareVersion();
+            flashRequest.getInventoryId();
+            flashRequest.getUsername();
+
+            tipwlanOvsdbClient.processFirmwareFlash(flashRequest.getInventoryId(), flashRequest.getFirmwareVersion(), flashRequest.getUsername());
 
         } else if (command instanceof CEGWRadioResetRequest) {
             response = new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
