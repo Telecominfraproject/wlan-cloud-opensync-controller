@@ -52,9 +52,7 @@ import com.telecominfraproject.wlan.equipment.models.Equipment;
 import com.telecominfraproject.wlan.equipment.models.RadioConfiguration;
 import com.telecominfraproject.wlan.equipment.models.StateSetting;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWBaseCommand;
-import com.telecominfraproject.wlan.equipmentgateway.models.CEGWCommandType;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWFirmwareDownloadRequest;
-import com.telecominfraproject.wlan.equipmentgateway.models.CEGWFirmwareFlashRequest;
 import com.telecominfraproject.wlan.firmware.FirmwareServiceInterface;
 import com.telecominfraproject.wlan.firmware.models.CustomerFirmwareTrackRecord;
 import com.telecominfraproject.wlan.firmware.models.CustomerFirmwareTrackSettings;
@@ -546,6 +544,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             EquipmentUpgradeStatusData fwUpgradeStatusData = (EquipmentUpgradeStatusData) statusRecord.getDetails();
             if (connectNodeInfo.versionMatrix.containsKey(fwImageNameKey)) {
                 fwUpgradeStatusData.setActiveSwVersion(connectNodeInfo.versionMatrix.get(fwImageNameKey));
+                fwUpgradeStatusData.setAlternateSwVersion(connectNodeInfo.versionMatrix.get(fwImageNameKey));
             }
             fwUpgradeStatusData.setUpgradeState(EquipmentUpgradeState.undefined);
             statusRecord.setDetails(fwUpgradeStatusData);
@@ -711,35 +710,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
     }
 
-    private void triggerFwFlash(Equipment ce, String fwVersion) {
-        LOG.debug("triggerFwFlash to load {} for AP {}.", fwVersion, ce.getInventoryId());
-
-        try {
-
-            if (fwVersion != null) {
-                OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(ce.getInventoryId());
-                if (ovsdbSession == null) {
-                    throw new IllegalStateException("AP is not connected " + ce.getInventoryId());
-                }
-
-                CEGWFirmwareFlashRequest fwFlashRequest = new CEGWFirmwareFlashRequest();
-                fwFlashRequest.setFirmwareVersion(fwVersion);
-                fwFlashRequest.setCommandType(CEGWCommandType.FirmwareFlashRequest);
-                fwFlashRequest.setInventoryId(ce.getInventoryId());
-
-                List<CEGWBaseCommand> commands = new ArrayList<>();
-                commands.add(fwFlashRequest);
-
-                gatewayController.updateActiveCustomer(ce.getCustomerId());
-                ListOfEquipmentCommandResponses responses = gatewayController.sendCommands(commands);
-                LOG.debug("FW Flash Response {}", responses);
-
-            }
-        } catch (Exception e) {
-            LOG.error("Cannot trigger FW flash {}", e);
-        }
-    }
-
     @Override
     public void apDisconnected(String apId) {
         LOG.info("AP {} got disconnected from the gateway", apId);
@@ -778,7 +748,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             }
             int customerId = ovsdbSession.getCustomerId();
             Customer customer = customerServiceInterface.getOrNull(customerId);
-            if (customer != null && customer.getDetails() != null && customer.getDetails().getAutoProvisioning() != null
+            if ((customer != null) && (customer.getDetails() != null)
+                    && (customer.getDetails().getAutoProvisioning() != null)
                     && customer.getDetails().getAutoProvisioning().isEnabled()) {
                 Equipment equipmentConfig = getCustomerEquipment(apId);
 
@@ -820,8 +791,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 List<com.telecominfraproject.wlan.client.models.Client> blockedClients = clientServiceInterface
                         .getBlockedClients(customerId);
                 List<MacAddress> blockList = Lists.newArrayList();
-                if (blockedClients != null && !blockedClients.isEmpty()) {
-                    blockedClients.forEach(client -> blockList.add(client.getMacAddress()));
+                if ((blockedClients != null) && !blockedClients.isEmpty()) {
+                    blockedClients.forEach(new Consumer<com.telecominfraproject.wlan.client.models.Client>() {
+                        @Override
+                        public void accept(com.telecominfraproject.wlan.client.models.Client client) {
+                            blockList.add(client.getMacAddress());
+                        }
+                    });
                 }
                 ret.setBlockedClients(blockList);
 
@@ -1005,10 +981,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             long rxFrames = 0;
             int txRetries = 0;
             int rxRetries = 0;
-            int txErrors = 0;
             int rxErrors = 0;
-            int txRate = 0;
-            int rxRate = 0;
             int rssi = 0;
 
             Set<String> clientMacs = new HashSet<>();
@@ -1049,16 +1022,16 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     rxRetries += cl.getStats().getRxRetries();
                 }
                 if (cl.getStats().hasTxErrors()) {
-                    txErrors += cl.getStats().getTxErrors();
+                    cl.getStats().getTxErrors();
                 }
                 if (cl.getStats().hasRxErrors()) {
                     rxErrors += cl.getStats().getRxErrors();
                 }
                 if (cl.getStats().hasTxRate()) {
-                    txRate += cl.getStats().getTxRate();
+                    cl.getStats().getTxRate();
                 }
                 if (cl.getStats().hasRxRate()) {
-                    rxRate += cl.getStats().getRxRate();
+                    cl.getStats().getRxRate();
                 }
 
             }
@@ -1157,10 +1130,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 RadioUtilization radioUtil = new RadioUtilization();
                 radioUtil.setTimestampSeconds((int) ((survey.getTimestampMs() + surveySample.getOffsetMs()) / 1000));
-                radioUtil.setAssocClientTx(100 * surveySample.getBusyTx() / surveySample.getDurationMs());
-                radioUtil.setAssocClientRx(100 * surveySample.getBusyRx() / surveySample.getDurationMs());
-                radioUtil
-                        .setNonWifi(100 * (surveySample.getBusy() - surveySample.getBusyTx() - surveySample.getBusyRx())
+                radioUtil.setAssocClientTx((100 * surveySample.getBusyTx()) / surveySample.getDurationMs());
+                radioUtil.setAssocClientRx((100 * surveySample.getBusyRx()) / surveySample.getDurationMs());
+                radioUtil.setNonWifi(
+                        (100 * (surveySample.getBusy() - surveySample.getBusyTx() - surveySample.getBusyRx()))
                                 / surveySample.getDurationMs());
 
                 RadioType radioType = RadioType.UNSUPPORTED;
@@ -1183,8 +1156,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             }
 
-            Double totalUtilization = 100D * totalBusy / durationMs;
-            Double totalWifiUtilization = 100D * (iBSS + oBSS) / durationMs;
+            Double totalUtilization = (100D * totalBusy) / durationMs;
             if (survey.getBand() == RadioBandType.BAND2G) { //
                 apNodeMetrics.setChannelUtilization(RadioType.is2dot4GHz, totalUtilization.intValue());
             } else if (survey.getBand() == RadioBandType.BAND5G) {
@@ -1196,7 +1168,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             }
         }
 
-        RadioStatistics radioStatistics = new RadioStatistics();
+        new RadioStatistics();
 
         populateNetworkProbeMetrics(report, apNodeMetrics);
 
@@ -1671,7 +1643,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
                     StatusDataType.ACTIVE_BSSIDS);
             ActiveBSSIDs statusDetails = null;
-            int indexOfBssid = -1;
             if (activeBssidsStatus != null) {
                 statusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
                 for (ActiveBSSID activeBSSID : ((ActiveBSSIDs) activeBssidsStatus.getDetails()).getActiveBSSIDs()) {
@@ -1680,7 +1651,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         // ssid value, in case not in stats, else will take
                         // stats value after
                         ssid = activeBSSID.getSsid();
-                        indexOfBssid = statusDetails.getActiveBSSIDs().indexOf(activeBSSID);
+                        statusDetails.getActiveBSSIDs().indexOf(activeBSSID);
                     }
                 }
             }
@@ -1983,13 +1954,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 String bssid = vifState.getMac();
 
-                if (bssid == null || bssid.equals("")) {
+                if ((bssid == null) || bssid.equals("")) {
                     LOG.warn("BSSID from AP {} interface {} is null or empty", apId, vifState.getIfName());
                     continue;
                 }
                 String ssid = vifState.getSsid();
 
-                if (ssid == null || ssid.equals("")) {
+                if ((ssid == null) || ssid.equals("")) {
                     LOG.warn("SSID from AP {} interface {} is null or empty", apId, vifState.getIfName());
                     continue;
                 }
@@ -2241,7 +2212,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         try {
 
-            if (!apElementConfiguration.equals(((ApElementConfiguration) ce.getDetails()))) {
+            if (!apElementConfiguration.equals((ce.getDetails()))) {
 
                 ((ApElementConfiguration) ce.getDetails()).setRadioMap(apElementConfiguration.getRadioMap());
                 ((ApElementConfiguration) ce.getDetails())
@@ -2312,9 +2283,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     customerId, equipmentId, apId);
             return;
         }
-        
+
         Equipment ce = getCustomerEquipment(apId);
-        
+
         if (ce == null) {
             LOG.debug("Cannot get customer Equipment for {}", apId);
             return;
@@ -2367,7 +2338,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientSession.setDetails(clientSessionDetails);
                 clientSession = clientServiceInterface.updateSession(clientSession);
             }
-            
+
             clientSession.setLocationId(ce.getLocationId());
             ClientSessionDetails clientSessionDetails = clientSession.getDetails();
             clientSessionDetails.setHostname(clientDetails.getHostName());
@@ -2531,7 +2502,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         if (reportedFwImageName != null) {
             protocolStatusData.setReportedSwVersion(reportedFwImageName);
         }
-        protocolStatusData.setReportedSwAltVersion("");
+        protocolStatusData.setReportedSwAltVersion(reportedFwImageName);
         protocolStatusData.setReportedHwVersion(opensyncAPState.getPlatformVersion());
         protocolStatusData.setSystemName(opensyncAPState.getModel());
 
@@ -2559,45 +2530,27 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         if (ce != null) {
             if (fwUpgradeState.equals(EquipmentUpgradeState.up_to_date)) {
                 LOG.info("Firmware load is up to date.");
-                
+
                 EquipmentUpgradeStatusData firmwareStatusData = (EquipmentUpgradeStatusData) firmwareStatus
                         .getDetails();
                 if (reportedFwImageName != null) {
-                    firmwareStatusData.setActiveSwVersion(reportedFwImageName);
-                    firmwareStatusData.setUpgradeState(fwUpgradeState);
+                    if (!firmwareStatusData.getActiveSwVersion().equals(reportedFwImageName)
+                            || !firmwareStatusData.getUpgradeState().equals(fwUpgradeState)) {
+                        firmwareStatusData.setActiveSwVersion(reportedFwImageName);
+                        firmwareStatusData.setUpgradeState(fwUpgradeState);
+                        firmwareStatus.setDetails(firmwareStatusData);
+                        updates.add(firmwareStatus);
+                    }
+
                 }
 
-                firmwareStatus.setDetails(firmwareStatusData);
-                updates.add(firmwareStatus);
-                
-                
-                if (!updates.isEmpty()) {
-                    updates = statusServiceInterface.update(updates);
-                }
-                
-                
-            } else if (fwUpgradeState.equals(EquipmentUpgradeState.download_complete)) {
-                LOG.info("Firmware download has completed, configure FW flash.");
-
-                
-                EquipmentUpgradeStatusData firmwareStatusData = (EquipmentUpgradeStatusData) firmwareStatus
-                        .getDetails();
-                if (reportedFwImageName != null) {
-                    firmwareStatusData.setActiveSwVersion(reportedFwImageName);
-                    firmwareStatusData.setUpgradeState(fwUpgradeState);
-                }
-
-                firmwareStatus.setDetails(firmwareStatusData);
-                updates.add(firmwareStatus);
-                
-                
-                if (!updates.isEmpty()) {
+                if (!updates.isEmpty()) { // may be some updates from protocol
+                                          // status
                     updates = statusServiceInterface.update(updates);
                 }
 
-                triggerFwFlash(ce, firmwareStatusData.getTargetSwVersion());
-
-            } else if (fwUpgradeState.equals(EquipmentUpgradeState.apply_complete)
+            } else if (fwUpgradeState.equals(EquipmentUpgradeState.download_complete)
+                    || fwUpgradeState.equals(EquipmentUpgradeState.apply_complete)
                     || fwUpgradeState.equals(EquipmentUpgradeState.apply_initiated)
                     || fwUpgradeState.equals(EquipmentUpgradeState.applying)
                     || fwUpgradeState.equals(EquipmentUpgradeState.downloading)
@@ -2607,47 +2560,88 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 LOG.info("Firmware upgrade is in state {}", fwUpgradeState);
 
-            } else {
-
-                if (fwUpgradeState.equals(EquipmentUpgradeState.apply_failed)
-                        || fwUpgradeState.equals(EquipmentUpgradeState.download_failed)
-                        || fwUpgradeState.equals(EquipmentUpgradeState.reboot_failed)) {
-                    LOG.warn("Firmware upgrade is in a failed state {} due to {}", fwUpgradeState,
-                            fwUpgradeFailureReason);
-                    
-                    EquipmentUpgradeStatusData firmwareStatusData = (EquipmentUpgradeStatusData) firmwareStatus
-                            .getDetails();
-                    if (reportedFwImageName != null) {
+                EquipmentUpgradeStatusData firmwareStatusData = (EquipmentUpgradeStatusData) firmwareStatus
+                        .getDetails();
+                if (reportedFwImageName != null) {
+                    if (!firmwareStatusData.getActiveSwVersion().equals(reportedFwImageName)
+                            || !firmwareStatusData.getUpgradeState().equals(fwUpgradeState)) {
                         firmwareStatusData.setActiveSwVersion(reportedFwImageName);
                         firmwareStatusData.setUpgradeState(fwUpgradeState);
-                        firmwareStatusData.setReason(fwUpgradeFailureReason);
+                        if (fwUpgradeState.equals(EquipmentUpgradeState.apply_initiated)) {
+                            firmwareStatusData.setUpgradeStartTime(System.currentTimeMillis());
+                        } else if (fwUpgradeState.equals(EquipmentUpgradeState.reboot_initiated)
+                                || fwUpgradeState.equals(EquipmentUpgradeState.rebooting)) {
+                            firmwareStatusData.setRebooted(true);
+                        }
+                        firmwareStatus.setDetails(firmwareStatusData);
+                        updates.add(firmwareStatus);
                     }
+                }
 
-                    firmwareStatus.setDetails(firmwareStatusData);
-                    updates.add(firmwareStatus);
+                if (!updates.isEmpty()) {// may be some updates from protocol
+                                         // status
+                    updates = statusServiceInterface.update(updates);
+                }
 
-                    if (!updates.isEmpty()) {
-                        updates = statusServiceInterface.update(updates);
-                    }
-                    
-                    reconcileFwVersionToTrack(ce, reportedFwImageName, opensyncAPState.getModel());
+                // no other action here, these are just transient states
 
-                } else if (fwUpgradeState.equals(EquipmentUpgradeState.out_of_date)) {
-                    LOG.info("Firmware upgrade state is {}", fwUpgradeState);
-                    EquipmentUpgradeStatusData firmwareStatusData = (EquipmentUpgradeStatusData) firmwareStatus
-                            .getDetails();
-                    if (reportedFwImageName != null) {
+            } else if (fwUpgradeState.equals(EquipmentUpgradeState.apply_failed)
+                    || fwUpgradeState.equals(EquipmentUpgradeState.download_failed)
+                    || fwUpgradeState.equals(EquipmentUpgradeState.reboot_failed)) {
+                LOG.warn("Firmware upgrade is in a failed state {} due to {}", fwUpgradeState, fwUpgradeFailureReason);
+
+                EquipmentUpgradeStatusData firmwareStatusData = (EquipmentUpgradeStatusData) firmwareStatus
+                        .getDetails();
+                if (reportedFwImageName != null) {
+                    if (!firmwareStatusData.getActiveSwVersion().equals(reportedFwImageName)
+                            || !firmwareStatusData.getUpgradeState().equals(fwUpgradeState)
+                            || !firmwareStatusData.getReason().equals(fwUpgradeFailureReason)) {
                         firmwareStatusData.setActiveSwVersion(reportedFwImageName);
+                        firmwareStatusData.setUpgradeState(fwUpgradeState, fwUpgradeFailureReason);
+                        firmwareStatus.setDetails(firmwareStatusData);
+                        updates.add(firmwareStatus);
+                        updates = statusServiceInterface.update(updates);
+                        reconcileFwVersionToTrack(ce, reportedFwImageName, opensyncAPState.getModel());
+                    } else {
+                        if (!updates.isEmpty()) {
+                            updates = statusServiceInterface.update(updates);
+                        }
                     }
 
-                    firmwareStatus.setDetails(firmwareStatusData);
-                    updates.add(firmwareStatus);
-                    
-                    if (!updates.isEmpty()) {
+                } else {
+                    if (!updates.isEmpty()) {// may be some updates from
+                                             // protocol
+                        // status
                         updates = statusServiceInterface.update(updates);
                     }
-                    
-                    reconcileFwVersionToTrack(ce, reportedFwImageName, opensyncAPState.getModel());
+                }
+
+            } else {
+                LOG.info("Firmware upgrade state is {}", fwUpgradeState);
+                EquipmentUpgradeStatusData firmwareStatusData = (EquipmentUpgradeStatusData) firmwareStatus
+                        .getDetails();
+                if (reportedFwImageName != null) {
+                    if (!firmwareStatusData.getActiveSwVersion().equals(reportedFwImageName)
+                            || !firmwareStatusData.getUpgradeState().equals(fwUpgradeState)) {
+                        firmwareStatusData.setActiveSwVersion(reportedFwImageName);
+                        firmwareStatusData.setUpgradeState(fwUpgradeState);
+                        firmwareStatus.setDetails(firmwareStatusData);
+                        updates.add(firmwareStatus);
+                        updates = statusServiceInterface.update(updates);
+                    } else {
+                        if (!updates.isEmpty()) {// may be some updates from
+                                                 // protocol
+                            // status
+                            updates = statusServiceInterface.update(updates);
+                        }
+                    }
+                } else {
+                    if (!updates.isEmpty()) {// may be some updates from
+                                             // protocol
+                        // status
+                        updates = statusServiceInterface.update(updates);
+                    }
+
                 }
             }
         }

@@ -299,8 +299,11 @@ public class OpensyncCloudGatewayController {
             String username = dlRequest.getUsername();
             String validationCode = dlRequest.getValidationCode();
 
-            tipwlanOvsdbClient.processFirmwareDownload(inventoryId, filepath, firmwareVersion, username,
-                    validationCode);
+            String resultDetails = tipwlanOvsdbClient.processFirmwareDownload(inventoryId, filepath, firmwareVersion,
+                    username, validationCode);
+
+            response.setResultDetail(resultDetails);
+
         } else if (command instanceof CEGWFirmwareFlashRequest) {
 
             CEGWFirmwareFlashRequest flashRequest = (CEGWFirmwareFlashRequest) command;
@@ -309,7 +312,10 @@ public class OpensyncCloudGatewayController {
             flashRequest.getInventoryId();
             flashRequest.getUsername();
 
-            tipwlanOvsdbClient.processFirmwareFlash(flashRequest.getInventoryId(), flashRequest.getFirmwareVersion(), flashRequest.getUsername());
+            String resultDetails = tipwlanOvsdbClient.processFirmwareFlash(flashRequest.getInventoryId(),
+                    flashRequest.getFirmwareVersion(), flashRequest.getUsername());
+
+            response.setResultDetail(resultDetails);
 
         } else if (command instanceof CEGWRadioResetRequest) {
             response = new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,

@@ -605,25 +605,15 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
         OvsdbClient ovsdbClient = session.getOvsdbClient();
         try {
-
-            ovsdbClient.cancelMonitor(OvsdbDao.awlanNodeDbTable + "_" + apId).join();
-            ovsdbClient.cancelMonitor(OvsdbDao.wifiRadioStateDbTable + "_" + apId).join();
-            ovsdbClient.cancelMonitor(OvsdbDao.wifiVifStateDbTable + "_" + apId).join();
-            ovsdbClient.cancelMonitor(OvsdbDao.wifiVifStateDbTable + "_delete_" + apId).join();
-            ovsdbClient.cancelMonitor(OvsdbDao.wifiInetStateDbTable + "_" + apId).join();
-            ovsdbClient.cancelMonitor(OvsdbDao.wifiAssociatedClientsDbTable + "_" + apId).join();
-            ovsdbClient.cancelMonitor(OvsdbDao.wifiAssociatedClientsDbTable + "_delete_" + apId).join();
-
             ovsdbDao.configureFirmwareFlash(session.getOvsdbClient(), apId, firmwareVersion, username);
         } catch (Exception e) {
             LOG.error("Failed to flash firmware for " + apId + " " + e.getLocalizedMessage());
+            monitorOvsdbStateTables(ovsdbClient, apId); // turn back on so we can go forward and recover
             return "Failed to flash firmware for " + apId + " " + e.getLocalizedMessage();
 
-        } finally {
-            monitorOvsdbStateTables(ovsdbClient, apId);
-        }
-        LOG.debug("Flashed Firmware for AP {} to {} ", apId, firmwareVersion);
-        return "Flashed Firmware for AP " + apId + " to " + firmwareVersion;
+        } 
+        LOG.debug("Initiated firmware flash for AP {} to {} ", apId, firmwareVersion);
+        return "Initiated firmware flash for AP " + apId + " to " + firmwareVersion;
     }
 
 }

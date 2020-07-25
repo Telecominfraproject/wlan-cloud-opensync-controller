@@ -119,9 +119,9 @@ public class OvsdbDao {
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.max:8}")
     public int maxInterfacesPerRadio;
 
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.awlan-node.upgrade_dl_timer:120}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.awlan-node.upgrade_dl_timer:60}")
     public long upgradeDlTimerSeconds;
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.awlan-node.upgrade_timer:60}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.awlan-node.upgrade_timer:90}")
     public long upgradeTimerSeconds;
 
     public static final String ovsdbName = "Open_vSwitch";
@@ -2974,46 +2974,6 @@ public class OvsdbDao {
         return newRedirectorAddress;
     }
 
-    private Row getAWLANNodeDbTableForFirmwareUpdate(OvsdbClient ovsdbClient) {
-        Row row = null;
-
-        try {
-            List<Operation> operations = new ArrayList<>();
-            List<Condition> conditions = new ArrayList<>();
-            List<String> columns = new ArrayList<>();
-            columns.add("firmware_version");
-            columns.add("firmware_pass");
-            columns.add("firmware_url");
-            columns.add("version_matrix");
-            columns.add("upgrade_timer");
-            columns.add("upgrade_status");
-            columns.add("upgrade_dl_timer");
-
-            operations.add(new Select(awlanNodeDbTable, conditions, columns));
-            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Select from {}:", awlanNodeDbTable);
-
-                for (OperationResult res : result) {
-                    LOG.debug("Op Result {}", res);
-                }
-            }
-
-            if ((result != null) && (result.length > 0) && !((SelectResult) result[0]).getRows().isEmpty()) {
-                row = ((SelectResult) result[0]).getRows().iterator().next();
-            }
-
-        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-
-        LOG.debug("AWLAN_Node {}", row);
-
-        return row;
-    }
-
     public void configureFirmwareDownload(OvsdbClient ovsdbClient, String apId, String firmwareUrl,
             String firmwareVersion, String username, String validationCode) throws Exception {
 
@@ -3025,6 +2985,7 @@ public class OvsdbDao {
             updateColumns.put("upgrade_dl_timer", new Atom<>(upgradeDlTimerSeconds));
             updateColumns.put("firmware_pass", new Atom<>(validationCode));
             updateColumns.put("firmware_url", new Atom<>(firmwareUrl));
+            updateColumns.put("upgrade_timer", new Atom<>(upgradeTimerSeconds));
 
             Row row = new Row(updateColumns);
             operations.add(new Update(awlanNodeDbTable, row));
@@ -3055,7 +3016,8 @@ public class OvsdbDao {
             operations.add(new Update(awlanNodeDbTable, row));
 
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+           
+            OperationResult[] result = fResult.join();
             for (OperationResult r : result) {
                 LOG.debug("Op Result {}", r);
             }
@@ -3074,7 +3036,7 @@ public class OvsdbDao {
             operations.add(new Delete(wifiStatsConfigDbTable));
 
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-            OperationResult[] result = fResult.get(240, TimeUnit.SECONDS);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Removed all existing config from {}:", wifiStatsConfigDbTable);
