@@ -28,10 +28,9 @@ OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_bridge=$OVSDB_IF_DEFAULT_BRID
 OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_wan_type=$OVSDB_DEVICE_DEFAULT_WAN_TYPE"
 OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_lan_type=$OVSDB_DEVICE_DEFAULT_LAN_TYPE"
 OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_lan_name=$OVSDB_DEVICE_DEFAULT_LAN_NAME"
-OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_radio5g=$OVSDB_IF_DEFAULT_RADIO_5G"
-OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_radio5gu=$OVSDB_IF_DEFAULT_RADIO_5GU"
-OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_radio2g=$OVSDB_IF_DEFAULT_RADIO_2G"
-OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_radio5gl=$OVSDB_IF_DEFAULT_RADIO_5GL"
+OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_radio0=$OVSDB_IF_DEFAULT_RADIO_0"
+OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_radio1=$OVSDB_IF_DEFAULT_RADIO_1"
+OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_radio2=$OVSDB_IF_DEFAULT_RADIO_2"
 
 echo OVSDB_PROPS $OVSDB_PROPS
 

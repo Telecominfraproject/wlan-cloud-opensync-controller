@@ -1601,8 +1601,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         // values reported in Kbps, convert to Mbps
         metricDetails.setRxMbps((float) (client.getStats().getRxRate() / 1000));
         metricDetails.setTxMbps((float) (client.getStats().getTxRate() / 1000));
-        metricDetails.setRxRateKbps((long) client.getStats().getRxRate());
-        metricDetails.setTxRateKbps((long) client.getStats().getTxRate());
+        // Throughput, do rate / duration
+        if (client.getDurationMs() > 0) {
+            metricDetails.setRxRateKbps((long) client.getStats().getRxRate() / client.getDurationMs());
+            metricDetails.setTxRateKbps((long) client.getStats().getTxRate() / client.getDurationMs());
+        } else {
+            LOG.info("Cannot calculate tx/rx throughput for Client {} based on duration of {} Ms",
+                    client.getMacAddress(), client.getDurationMs());
+        }
 
         return metricDetails;
     }

@@ -21,18 +21,21 @@ public class OvsdbSessionMap implements OvsdbSessionMapInterface {
     private final ConcurrentHashMap<String, OvsdbSession> connectedClients = new ConcurrentHashMap<>();
 
     @Override
-    public OvsdbSession getSession(String apId) {        
+    public OvsdbSession getSession(String apId) {
+        LOG.info("Get session for AP {}", apId);
         return connectedClients.get(apId);
     }
 
     @Override
-    public OvsdbSession removeSession(String apId) {        
+    public OvsdbSession removeSession(String apId) { 
+        LOG.info("Removing session for AP {}", apId);
         return connectedClients.remove(apId);
     }
 
     @Override
     public void closeSession(String apId) {
         try {
+            LOG.info("Close session for AP {}", apId);
             connectedClients.get(apId).getOvsdbClient().shutdown();
             connectedClients.remove(apId);
             LOG.info("Closed ovsdb session for {}", apId);

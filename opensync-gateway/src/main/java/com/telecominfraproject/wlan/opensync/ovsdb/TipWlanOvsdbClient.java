@@ -16,11 +16,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.telecominfraproject.wlan.opensync.external.integration.OvsdbClientInterface;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExternalIntegrationInterface;
+import com.telecominfraproject.wlan.opensync.external.integration.OvsdbClientInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSession;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSessionMapInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
@@ -110,7 +109,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
                     monitorOvsdbStateTables(ovsdbClient, key);
 
-                    LOG.info("ovsdbClient connected from {} on port {} key {} ", remoteHost, localPort, key);
+                    LOG.info("ovsdbClient connected from {} on port {} AP {} ", remoteHost, localPort, key);
                     LOG.info("ovsdbClient connectedClients = {}", ovsdbSessionMapInterface.getNumSessions());
 
                 } catch (IllegalStateException e) {
@@ -162,7 +161,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                     }
                 }
 
-                LOG.info("ovsdbClient disconnected from {} on port {} clientCn {} key {} ", remoteHost, localPort,
+                LOG.info("ovsdbClient disconnected from {} on port {} clientCn {} AP {} ", remoteHost, localPort,
                         clientCn, key);
                 LOG.info("ovsdbClient connectedClients = {}", ovsdbSessionMapInterface.getNumSessions());
 
@@ -182,6 +181,9 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         connectNodeInfo = ovsdbDao.updateConnectNodeInfoOnConnect(ovsdbClient, clientCn, connectNodeInfo);
 
         String apId = clientCn + "_" + connectNodeInfo.serialNumber;
+        
+        LOG.debug("Client connect for AP {}", apId);
+
         OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
 
         try {
@@ -608,10 +610,12 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             ovsdbDao.configureFirmwareFlash(session.getOvsdbClient(), apId, firmwareVersion, username);
         } catch (Exception e) {
             LOG.error("Failed to flash firmware for " + apId + " " + e.getLocalizedMessage());
-            monitorOvsdbStateTables(ovsdbClient, apId); // turn back on so we can go forward and recover
+            monitorOvsdbStateTables(ovsdbClient, apId); // turn back on so we
+                                                        // can go forward and
+                                                        // recover
             return "Failed to flash firmware for " + apId + " " + e.getLocalizedMessage();
 
-        } 
+        }
         LOG.debug("Initiated firmware flash for AP {} to {} ", apId, firmwareVersion);
         return "Initiated firmware flash for AP " + apId + " to " + firmwareVersion;
     }
