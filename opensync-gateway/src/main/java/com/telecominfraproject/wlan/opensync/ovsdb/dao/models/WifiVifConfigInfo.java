@@ -28,6 +28,7 @@ public class WifiVifConfigInfo implements Cloneable{
 	public String minHwMode;
 	public Set<String> macList;
 	public String macListType;
+    public int ftMobilityDomain;
     
     @Override
     public WifiVifConfigInfo clone() {
@@ -46,8 +47,8 @@ public class WifiVifConfigInfo implements Cloneable{
     @Override
     public String toString() {
         return String.format(
-                "WifiVifConfigInfo [bridge=%s, ap_bridge=%s, btm=%s, enabled=%s, ftPsk=%s, groupRekey=%s, ifName=%s, minHwMode=%s, mode=%s, rrm=%s, ssid=%s, ssidBroadcast=%s, uapsdEnable=%s, vifRadioIdx=%s, security=%s, uuid=%s, vlanId=%s, macList=%s, macListType=%s]",
-                bridge, apBridge, btm, enabled, ftPsk, groupRekey, ifName, minHwMode, mode, rrm, ssid, ssidBroadcast, uapsdEnable,
+                "WifiVifConfigInfo [bridge=%s, ap_bridge=%s, btm=%s, enabled=%s, ftPsk=%s, ftMobilityDomain=%s, groupRekey=%s, ifName=%s, minHwMode=%s, mode=%s, rrm=%s, ssid=%s, ssidBroadcast=%s, uapsdEnable=%s, vifRadioIdx=%s, security=%s, uuid=%s, vlanId=%s, macList=%s, macListType=%s]",
+                bridge, apBridge, btm, enabled, ftPsk, ftMobilityDomain, groupRekey, ifName, minHwMode, mode, rrm, ssid, ssidBroadcast, uapsdEnable,
                 vifRadioIdx, security, uuid, vlanId, macList, macListType);
     }
     

@@ -1084,6 +1084,7 @@ public class OvsdbDao {
         columns.add("btm");
         columns.add("enabled");
         columns.add("ft_psk");
+        columns.add("ft_mobility_domain");
         columns.add("group_rekey");
         columns.add("if_name");
         columns.add("min_hw_mode");
@@ -1138,6 +1139,11 @@ public class OvsdbDao {
                 Long ftPsk = getSingleValueFromSet(row, "ft_psk");
                 if (ftPsk != null) {
                     wifiVifConfigInfo.ftPsk = ftPsk.intValue();
+                }
+                
+                Long ftMobilityDomain = getSingleValueFromSet(row, "ft_mobility_domain");
+                if (ftMobilityDomain != null) {
+                    wifiVifConfigInfo.ftMobilityDomain = ftMobilityDomain.intValue();
                 }
 
                 Long groupRekey = getSingleValueFromSet(row, "group_rekey");
@@ -2214,7 +2220,7 @@ public class OvsdbDao {
     }
 
     public void configureSingleSsid(OvsdbClient ovsdbClient, String ifName, String ssid, boolean ssidBroadcast,
-            Map<String, String> security, String radioFreqBand, int vlanId, boolean rrmEnabled, boolean enable80211r,
+            Map<String, String> security, String radioFreqBand, int vlanId, boolean rrmEnabled, boolean enable80211r, int mobilityDomain,
             boolean enable80211v, String minHwMode, boolean enabled, int keyRefresh, boolean uapsdEnabled,
             boolean apBridge, NetworkForwardMode networkForwardMode, String gateway, String inet,
             Map<String, String> dns, String ipAssignScheme, List<MacAddress> macBlockList) {
@@ -2238,7 +2244,7 @@ public class OvsdbDao {
             updateColumns.put("enabled", new Atom<>(enabled));
             if (enable80211r) {
                 updateColumns.put("ft_psk", new Atom<>(1));
-                updateColumns.put("ft_mobility_domain", new Atom<>(17911));
+                updateColumns.put("ft_mobility_domain", new Atom<>(mobilityDomain));
             } else {
                 updateColumns.put("ft_psk", new Atom<>(0));
                 updateColumns.put("ft_mobility_domain", new com.vmware.ovsdb.protocol.operation.notation.Set());
@@ -2533,6 +2539,7 @@ public class OvsdbDao {
                 boolean apBridge = radioConfiguration.getStationIsolation() == StateSetting.enabled; // stationIsolation
                 // off by default
                 boolean enable80211r = false;
+                int mobilityDomain = 0;
                 // on by default
                 boolean enable80211v = true;
 
@@ -2541,6 +2548,9 @@ public class OvsdbDao {
                             && (ssidConfig.getRadioBasedConfigs().get(radioType) != null)) {
                         if (ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211r() != null) {
                             enable80211r = ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211r();
+                            if (enable80211r) {
+                                mobilityDomain = opensyncApConfig.getCustomerEquipment().getCustomerId(); // for uniqueness, mobility domain is per customer
+                            }
                         }
                         if (ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211v() != null) {
                             enable80211v = ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211v();
@@ -2617,7 +2627,7 @@ public class OvsdbDao {
                     }
 
                     configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(), ssidBroadcast, security, freqBand,
-                            ssidConfig.getVlanId(), rrmEnabled, enable80211r, enable80211v, minHwMode, enabled,
+                            ssidConfig.getVlanId(), rrmEnabled, enable80211r, mobilityDomain, enable80211v, minHwMode, enabled,
                             keyRefresh, uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet, dns,
                             ipAssignScheme, macBlockList);
 
