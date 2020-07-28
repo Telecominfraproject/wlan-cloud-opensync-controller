@@ -46,6 +46,8 @@ import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiInetConfigInfo
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiRadioConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiStatsConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiVifConfigInfo;
+import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalConfiguration;
+import com.telecominfraproject.wlan.profile.captiveportal.models.ManagedFileInfo;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusProfile;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusServer;
@@ -129,6 +131,12 @@ public class OvsdbDao {
     public long upgradeDlTimerSeconds;
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.awlan-node.upgrade_timer:90}")
     public long upgradeTimerSeconds;
+    
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.fileStoreDirectory:/tmp/tip-wlan-filestore}")
+    private String fileStoreDirectory;
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.externalFileStoreURL:https://localhost:9096}")
+    private String externalFileStoreURL;
+    public static final String HTTP = "http";
 
     public static final String ovsdbName = "Open_vSwitch";
     public static final String awlanNodeDbTable = "AWLAN_Node";
@@ -2576,6 +2584,11 @@ public class OvsdbDao {
                         security.put("mode", "1");
                     }
                 }
+                
+                // TODO put into AP captive parameter
+                Map<String, String> captiveMap = new HashMap<>();
+                List<String> walledGardenAllowlist = new ArrayList<>();
+                getCaptiveConfiguration(opensyncApConfig, ssidConfig, captiveMap, walledGardenAllowlist);
 
                 boolean enabled = ssidConfig.getSsidAdminState().equals(StateSetting.enabled);
 
@@ -2637,6 +2650,50 @@ public class OvsdbDao {
                 security.put("radius_server_secret", rServer.getSecret());
             }
         }
+    }
+    
+    private void getCaptiveConfiguration(OpensyncAPConfig opensyncApConfig, SsidConfiguration ssidConfig,
+                Map<String, String> captiveMap, List<String> walledGardenAllowlist) {
+        if (ssidConfig.getCaptivePortalId() != null && opensyncApConfig.getCaptiveProfiles() != null) {
+            for (Profile profileCaptive : opensyncApConfig.getCaptiveProfiles()) {
+                if (ssidConfig.getCaptivePortalId() == profileCaptive.getId() &&
+                		profileCaptive.getDetails() != null) {
+                    CaptivePortalConfiguration captiveProfileDetails = ((CaptivePortalConfiguration) profileCaptive.getDetails());
+                    captiveMap.put("sessionTimeoutInMinutes", String.valueOf(captiveProfileDetails.getSessionTimeoutInMinutes()));
+                    captiveMap.put("redirectURL", captiveProfileDetails.getRedirectURL());
+                    captiveMap.put("browserTitle", captiveProfileDetails.getBrowserTitle());
+                    captiveMap.put("headerContent", captiveProfileDetails.getHeaderContent());
+                    captiveMap.put("userAcceptancePolicy", captiveProfileDetails.getUserAcceptancePolicy());
+                    captiveMap.put("successPageMarkdownText", captiveProfileDetails.getSuccessPageMarkdownText());
+                    captiveMap.put("externalCaptivePortalURL", captiveProfileDetails.getExternalCaptivePortalURL());
+                    captiveMap.put("backgroundPosition", captiveProfileDetails.getBackgroundPosition().toString());
+                    captiveMap.put("backgroundRepeat", captiveProfileDetails.getBackgroundRepeat().toString());
+                    walledGardenAllowlist.addAll(captiveProfileDetails.getWalledGardenAllowlist());
+
+                    captiveMap.put("logoFileURL", getCaptiveFileUrl("logoFileURL", captiveProfileDetails.getLogoFile()));
+                    captiveMap.put("backgroundFileURL", getCaptiveFileUrl("backgroundFileURL", captiveProfileDetails.getBackgroundFile()));
+
+                    LOG.debug("captiveMap {}", captiveMap);
+                }
+            }
+        }
+    }
+    
+    private String getCaptiveFileUrl(String fileDesc, ManagedFileInfo fileInfo) {
+        if (fileInfo == null || fileInfo.getApExportUrl() == null) {
+           return "";
+        }
+        if (fileInfo.getApExportUrl().startsWith(HTTP)) {
+            return fileInfo.getApExportUrl();
+        }
+        if (externalFileStoreURL == null || fileStoreDirectory == null) {
+            LOG.error("Missing externalFileStoreURL or fileStoreDirectory)");
+            return "";
+        }
+        LOG.debug("Captive file {}: {}", fileDesc, externalFileStoreURL + fileStoreDirectory + "/" +
+                       fileInfo.getApExportUrl());
+
+        return externalFileStoreURL + fileStoreDirectory + "/" + fileInfo.getApExportUrl();
     }
 
     private void updateWifiInetConfig(OvsdbClient ovsdbClient, int vlanId, String ifName, boolean enabled,
