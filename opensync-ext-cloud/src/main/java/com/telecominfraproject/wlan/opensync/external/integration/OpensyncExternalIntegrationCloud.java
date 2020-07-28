@@ -877,7 +877,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     public void processMqttMessage(String topic, Report report) {
         LOG.info("Received report on topic {} for ap {}", topic, report.getNodeID());
         int customerId = extractCustomerIdFromTopic(topic);
-
+        String apId = extractApIdFromTopic(topic);
         long equipmentId = extractEquipmentIdFromTopic(topic);
         if ((equipmentId <= 0) || (customerId <= 0)) {
             LOG.warn("Cannot determine equipment ids from topic {} - customerId {} equipmentId {}", topic, customerId,
@@ -887,17 +887,25 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         gatewayController.updateActiveCustomer(customerId);
 
+        Equipment ce = getCustomerEquipment(apId);
+        if(ce == null) {
+            LOG.warn("Cannot read equipment {}", apId);
+            return;
+        }
+
+        long locationId = ce.getLocationId();
+
         List<ServiceMetric> metricRecordList = new ArrayList<>();
 
-        populateApClientMetrics(metricRecordList, report, customerId, equipmentId);
-        populateApNodeMetrics(metricRecordList, report, customerId, equipmentId);
-        populateNeighbourScanReports(metricRecordList, report, customerId, equipmentId);
+        populateApClientMetrics(metricRecordList, report, customerId, equipmentId, locationId);
+        populateApNodeMetrics(metricRecordList, report, customerId, equipmentId, locationId);
+        populateNeighbourScanReports(metricRecordList, report, customerId, equipmentId, locationId);
         try {
             // TODO: depends on survey
-            populateChannelInfoReports(metricRecordList, report, customerId, equipmentId);
-            populateApSsidMetrics(metricRecordList, report, customerId, equipmentId, extractApIdFromTopic(topic));
+            populateChannelInfoReports(metricRecordList, report, customerId, equipmentId, locationId);
+            populateApSsidMetrics(metricRecordList, report, customerId, equipmentId, apId, locationId);
             // handleRssiMetrics(metricRecordList, report, customerId,
-            // equipmentId);
+            // equipmentId, locationId);
 
         } catch (Exception e) {
             LOG.error("Exception when processing populateApSsidMetrics", e);
@@ -910,10 +918,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     }
 
     private void populateApNodeMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId,
-            long equipmentId) {
+            long equipmentId, long locationId) {
         LOG.debug("populateApNodeMetrics for Customer {} Equipment {}", customerId, equipmentId);
         ApNodeMetrics apNodeMetrics = new ApNodeMetrics();
         ServiceMetric smr = new ServiceMetric(customerId, equipmentId);
+        smr.setLocationId(locationId);
         metricRecordList.add(smr);
         smr.setDetails(apNodeMetrics);
 
@@ -1318,7 +1327,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     }
 
     private void populateApClientMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId,
-            long equipmentId) {
+            long equipmentId, long locationId) {
         LOG.debug("populateApClientMetrics for Customer {} Equipment {}", customerId, equipmentId);
 
         for (ClientReport clReport : report.getClientsList()) {
@@ -1336,6 +1345,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 LOG.debug("Processing ClientReport from AP {}", clReport);
 
                 ServiceMetric smr = new ServiceMetric(customerId, equipmentId, new MacAddress(cl.getMacAddress()));
+                smr.setLocationId(locationId);
                 metricRecordList.add(smr);
 
                 smr.setCreatedTimestamp(clReport.getTimestampMs());
@@ -1418,12 +1428,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     }
 
     private void populateNeighbourScanReports(List<ServiceMetric> metricRecordList, Report report, int customerId,
-            long equipmentId) {
+            long equipmentId, long locationId) {
         LOG.debug("populateNeighbourScanReports for Customer {} Equipment {}", customerId, equipmentId);
 
         for (Neighbor neighbor : report.getNeighborsList()) {
 
             ServiceMetric smr = new ServiceMetric(customerId, equipmentId);
+            smr.setLocationId(locationId);
             metricRecordList.add(smr);
             NeighbourScanReports neighbourScanReports = new NeighbourScanReports();
             smr.setDetails(neighbourScanReports);
@@ -1597,17 +1608,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     }
 
     private void populateApSsidMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId,
-            long equipmentId, String apId) {
+            long equipmentId, String apId, long locationId) {
 
         LOG.debug("populateApSsidMetrics for Customer {} Equipment {}", customerId, equipmentId);
         ServiceMetric smr = new ServiceMetric(customerId, equipmentId);
+        smr.setLocationId(locationId);
         ApSsidMetrics apSsidMetrics = new ApSsidMetrics();
-
-        // we need to populate location Id on the client sessions, that's why
-        // we're
-        // getting equipment object in here (from the cache)
-        Equipment equipment = getCustomerEquipment(apId);
-        long locationId = (equipment != null) ? equipment.getLocationId() : 0;
 
         smr.setDetails(apSsidMetrics);
         metricRecordList.add(smr);
@@ -1741,12 +1747,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     }
 
     private void populateChannelInfoReports(List<ServiceMetric> metricRecordList, Report report, int customerId,
-            long equipmentId) {
+            long equipmentId, long locationId) {
 
         LOG.debug("populateChannelInfoReports for Customer {} Equipment {}", customerId, equipmentId);
         ServiceMetric smr = new ServiceMetric();
         smr.setCustomerId(customerId);
         smr.setEquipmentId(equipmentId);
+        smr.setLocationId(locationId);
 
         ChannelInfoReports channelInfoReports = new ChannelInfoReports();
 
