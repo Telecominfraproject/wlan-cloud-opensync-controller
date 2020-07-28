@@ -565,9 +565,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
                         });
 
-        List<OpensyncAPVIFState> vifStates = ovsdbDao.getOpensyncAPVIFState(vsCf.join(), key, ovsdbClient);
-        LOG.info("Calling wifiVIFStateDbTableUpdate init for {}, {}", vifStates, key);
-        extIntegrationInterface.wifiVIFStateDbTableUpdate(vifStates, key);
+        extIntegrationInterface.wifiVIFStateDbTableUpdate(ovsdbDao.getOpensyncAPVIFState(vsCf.join(), key, ovsdbClient), key);
 
     }
 
