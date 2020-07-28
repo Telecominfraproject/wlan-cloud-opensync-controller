@@ -39,12 +39,12 @@ LOGBACK_CONFIG_FILE="${LOGBACK_CONFIG_FILE:=/app/opensync/logback.xml}"
 LOGGING_PROPS=" -Dlogging.config=file:$LOGBACK_CONFIG_FILE"
 
 RESTAPI_PROPS=" "
-RESTAPI_PROPS+=" -Dserver.port=443 -Dtip.wlan.secondaryPort=444"
+RESTAPI_PROPS+=" -Dserver.port=9096 -Dtip.wlan.secondaryPort=9097"
 
 SPRING_EXTRA_PROPS=" --add-opens java.base/java.lang=ALL-UNNAMED"
 
 HOST_PROPS=" "
-HOST_PROPS+=" -Dtip.wlan.introspectTokenApi.host=${OVSDB_MANAGER_HOST}:444"
+HOST_PROPS+=" -Dtip.wlan.introspectTokenApi.host=${OVSDB_MANAGER_HOST}:9096"
 
 ## These properties are used by the Routing Service and the values will be
 ## overridden in Helm chart to the IP-Address of running opensync-gw pod
