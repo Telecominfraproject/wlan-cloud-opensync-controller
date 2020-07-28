@@ -26,6 +26,7 @@ OVSDB_PROPS+=" -Dtip.wlan.ovsdb.radiusProfileFileName=$OVSDB_RADIUSPROFILE_CONFI
 OVSDB_PROPS+=" -Dtip.wlan.ovsdb.locationFileName=$OVSDB_LOCATION_CONFIG_FILE"
 OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_bridge=$OVSDB_IF_DEFAULT_BRIDGE"
 OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_wan_type=$OVSDB_DEVICE_DEFAULT_WAN_TYPE"
+OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_wan_name=$OVSDB_DEVICE_DEFAULT_WAN_NAME"
 OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_lan_type=$OVSDB_DEVICE_DEFAULT_LAN_TYPE"
 OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_lan_name=$OVSDB_DEVICE_DEFAULT_LAN_NAME"
 OVSDB_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_radio0=$OVSDB_IF_DEFAULT_RADIO_0"

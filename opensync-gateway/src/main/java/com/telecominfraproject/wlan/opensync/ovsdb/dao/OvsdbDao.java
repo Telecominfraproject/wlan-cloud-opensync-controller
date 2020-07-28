@@ -106,10 +106,14 @@ public class OvsdbDao {
 
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_lan_type:bridge}")
     public String defaultLanInterfaceType;
-
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_lan_type:lan}")
+    public String defaultLanInterfaceName;
+    
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_wan_type:eth}")
     public String defaultWanInterfaceType;
-
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_wan_name:eth1}")
+    public String defaultWanInterfaceName;
+    
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_radio0:home-ap-24}")
     public String defaultRadio0;
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_radio1:home-ap-l50}")
