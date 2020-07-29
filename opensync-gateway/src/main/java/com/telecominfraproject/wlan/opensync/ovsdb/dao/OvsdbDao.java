@@ -139,10 +139,10 @@ public class OvsdbDao {
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.awlan-node.upgrade_timer:90}")
     public long upgradeTimerSeconds;
 
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.fileStore:/filestore}")
-    private String fileStore;
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.externalFileStoreURL:https://localhost:9096}")
     private String externalFileStoreURL;
+    
+    public static final String FILESTORE = "/filestore";
     public static final String HTTP = "http";
 
     public static final String ovsdbName = "Open_vSwitch";
@@ -2656,8 +2656,8 @@ public class OvsdbDao {
                     captiveMap.put("backgroundRepeat", captiveProfileDetails.getBackgroundRepeat().toString());
                     walledGardenAllowlist.addAll(captiveProfileDetails.getWalledGardenAllowlist());
 
-                    captiveMap.put("logoFileURL", getCaptiveFileUrl("logoFileURL", captiveProfileDetails.getLogoFile()));
-                    captiveMap.put("backgroundFileURL", getCaptiveFileUrl("backgroundFileURL", captiveProfileDetails.getBackgroundFile()));
+                    captiveMap.put("logoFileURL", getCaptiveManagedFileUrl("logoFileURL", captiveProfileDetails.getLogoFile()));
+                    captiveMap.put("backgroundFileURL", getCaptiveManagedFileUrl("backgroundFileURL", captiveProfileDetails.getBackgroundFile()));
 
                     LOG.debug("captiveMap {}", captiveMap);
                 }
@@ -2665,21 +2665,21 @@ public class OvsdbDao {
         }
     }
 
-    private String getCaptiveFileUrl(String fileDesc, ManagedFileInfo fileInfo) {
+    private String getCaptiveManagedFileUrl(String fileDesc, ManagedFileInfo fileInfo) {
         if (fileInfo == null || fileInfo.getApExportUrl() == null) {
             return "";
         }
         if (fileInfo.getApExportUrl().startsWith(HTTP)) {
             return fileInfo.getApExportUrl();
         }
-        if (externalFileStoreURL == null || fileStore == null) {
-            LOG.error("Missing externalFileStoreURL or fileStoreDirectory)");
+        if (externalFileStoreURL == null) {
+            LOG.error("Missing externalFileStoreURL)");
             return "";
         }
-        LOG.debug("Captive file {}: {}", fileDesc, externalFileStoreURL + fileStore + "/" +
+        LOG.debug("Captive file {}: {}", fileDesc, externalFileStoreURL + FILESTORE + "/" +
                 fileInfo.getApExportUrl());
 
-        return externalFileStoreURL + fileStore + "/" + fileInfo.getApExportUrl();
+        return externalFileStoreURL + FILESTORE + "/" + fileInfo.getApExportUrl();
     }
 
     private void updateWifiInetConfig(OvsdbClient ovsdbClient, int vlanId, String ifName, boolean enabled,
