@@ -1529,7 +1529,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 if (clientSession != null) {
                     LOG.debug("Session found for Client {}.", client.getMacAddress());
 
-                    ClientSessionDetails clientSessionDetails = clientSession.getDetails();
+                    ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
                     clientSessionDetails.setRadioType(getRadioTypeFromOpensyncRadioBand(band));
                     clientSessionDetails.setSsid(ssid);
                     clientSessionDetails.setAssocRssi(getNegativeSignedIntFromUnsigned(client.getStats().getRssi()));
@@ -1563,10 +1563,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     // update the client metrics, based on what we see from
                     // the MQTT data
 
-                    clientSessionDetails.setMetricDetails(calculateClientSessionMetricDetails(client, timestamp));
-
-                    clientSession.setDetails(clientSessionDetails);
-
+                    if (client.getDurationMs() > 0) {
+                        clientSessionDetails.setMetricDetails(calculateClientSessionMetricDetails(client, timestamp));
+                        
+                    }
+                    clientSession.getDetails().mergeSession(clientSessionDetails);
                     clientSession = clientServiceInterface.updateSession(clientSession);
 
                     LOG.info("Updated clientSession {}", clientSession);
@@ -1602,6 +1603,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     private ClientSessionMetricDetails calculateClientSessionMetricDetails(sts.OpensyncStats.Client client,
             long timestamp) {
+        
+        LOG.debug("calculateClientSessionMetricDetails for Client {} at timestamp {}", client, timestamp);
+        
         ClientSessionMetricDetails metricDetails = new ClientSessionMetricDetails();
         metricDetails.setRssi(getNegativeSignedIntFromUnsigned(client.getStats().getRssi()));
         metricDetails.setRxBytes(client.getStats().getRxBytes());
