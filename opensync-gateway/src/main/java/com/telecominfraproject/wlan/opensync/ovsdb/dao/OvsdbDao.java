@@ -107,12 +107,12 @@ public class OvsdbDao {
 
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_lan_type:bridge}")
     public String defaultLanInterfaceType;
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_lan_type:lan}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_lan_name:br-lan}")
     public String defaultLanInterfaceName;
 
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_wan_type:eth}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_wan_type:bridge}")
     public String defaultWanInterfaceType;
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_wan_name:eth1}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_wan_name:br-wan}")
     public String defaultWanInterfaceName;
 
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_radio2g:home-ap-24}")
@@ -218,11 +218,10 @@ public class OvsdbDao {
 
             // now populate macAddress, ipV4Address from Wifi_Inet_State
             // first look them up for if_name = br-wan
-            fillInWanIpAddressAndMac(ovsdbClient, ret, defaultWanInterfaceType);
+            fillInWanIpAddressAndMac(ovsdbClient, ret, defaultWanInterfaceType, defaultWanInterfaceName);
             if ((ret.ipV4Address == null) || (ret.macAddress == null)) {
                 // when not found - look them up for if_name = br-lan
-                fillInWanIpAddressAndMac(ovsdbClient, ret, defaultLanInterfaceType);
-
+                fillInWanIpAddressAndMac(ovsdbClient, ret, defaultLanInterfaceType, defaultLanInterfaceName);
             }
             fillInLanIpAddressAndMac(ovsdbClient, ret, defaultLanInterfaceType);
 
@@ -385,6 +384,7 @@ public class OvsdbDao {
             columns.add("if_name");
 
             conditions.add(new Condition("if_type", Function.EQUALS, new Atom<>(ifType)));
+            conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(defaultLanInterfaceName)));
 
             operations.add(new Select(wifiInetStateDbTable, conditions, columns));
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
@@ -417,7 +417,7 @@ public class OvsdbDao {
 
     }
 
-    public void fillInWanIpAddressAndMac(OvsdbClient ovsdbClient, ConnectNodeInfo connectNodeInfo, String ifType) {
+    public void fillInWanIpAddressAndMac(OvsdbClient ovsdbClient, ConnectNodeInfo connectNodeInfo, String ifType, String ifName) {
         try {
             List<Operation> operations = new ArrayList<>();
             List<Condition> conditions = new ArrayList<>();
@@ -430,6 +430,8 @@ public class OvsdbDao {
             columns.add("if_type");
 
             conditions.add(new Condition("if_type", Function.EQUALS, new Atom<>(ifType)));
+            conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(ifName)));
+
 
             operations.add(new Select(wifiInetStateDbTable, conditions, columns));
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
@@ -2226,7 +2228,7 @@ public class OvsdbDao {
         }
     }
 
-    public void configureSingleSsid(OvsdbClient ovsdbClient, String ifName, String ssid, boolean ssidBroadcast,
+    public void configureSingleSsid(OvsdbClient ovsdbClient, String ifName,String ssid, boolean ssidBroadcast,
             Map<String, String> security, String radioFreqBand, int vlanId, boolean rrmEnabled, boolean enable80211r, int mobilityDomain,
             boolean enable80211v, String minHwMode, boolean enabled, int keyRefresh, boolean uapsdEnabled,
             boolean apBridge, NetworkForwardMode networkForwardMode, String gateway, String inet,
@@ -2241,8 +2243,7 @@ public class OvsdbDao {
                 updateColumns.put("bridge", new Atom<>("lan"));
             } else {
                 updateColumns.put("bridge", new Atom<>("wan"));
-            }
-
+            }            
             if (enable80211v) {
                 updateColumns.put("btm", new Atom<>(1));
             } else {
@@ -2441,7 +2442,7 @@ public class OvsdbDao {
 
         List<RadioType> enabledRadiosFromAp = new ArrayList<>();
         getEnabledRadios(ovsdbClient, enabledRadiosFromAp);
-
+              
         for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
 
             SsidConfiguration ssidConfig = (SsidConfiguration) ssidProfile.getDetails();
@@ -2597,6 +2598,8 @@ public class OvsdbDao {
                         // '-2' etc.
                         ifName = ifName + "-" + numberOfInterfaces;
                     }
+                    
+      
 
                     configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(), ssidBroadcast, security, freqBand,
                             ssidConfig.getVlanId(), rrmEnabled, enable80211r, mobilityDomain, enable80211v, minHwMode, enabled,

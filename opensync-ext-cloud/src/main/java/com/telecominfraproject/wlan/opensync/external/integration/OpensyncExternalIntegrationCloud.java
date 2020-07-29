@@ -888,7 +888,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         gatewayController.updateActiveCustomer(customerId);
 
         Equipment ce = getCustomerEquipment(apId);
-        if(ce == null) {
+        if (ce == null) {
             LOG.warn("Cannot read equipment {}", apId);
             return;
         }
@@ -897,11 +897,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         List<ServiceMetric> metricRecordList = new ArrayList<>();
 
-        populateApClientMetrics(metricRecordList, report, customerId, equipmentId, locationId);
-        populateApNodeMetrics(metricRecordList, report, customerId, equipmentId, locationId);
-        populateNeighbourScanReports(metricRecordList, report, customerId, equipmentId, locationId);
         try {
-            // TODO: depends on survey
+            populateApClientMetrics(metricRecordList, report, customerId, equipmentId, locationId);
+            populateApNodeMetrics(metricRecordList, report, customerId, equipmentId, locationId);
+            populateNeighbourScanReports(metricRecordList, report, customerId, equipmentId, locationId);
             populateChannelInfoReports(metricRecordList, report, customerId, equipmentId, locationId);
             populateApSsidMetrics(metricRecordList, report, customerId, equipmentId, apId, locationId);
             // handleRssiMetrics(metricRecordList, report, customerId,
@@ -912,6 +911,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
 
         if (!metricRecordList.isEmpty()) {
+            LOG.debug("Publishing Metrics {}", metricRecordList);
             equipmentMetricsCollectorInterface.publishMetrics(metricRecordList);
         }
 
@@ -1082,9 +1082,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             apNodeMetrics.setClientMacAddresses(radioType, clientMacList);
 
-            // TODO: temporary solution as this was causing Noise Floor to
-            // disappear from Dashboard and Access Point rows
-            apNodeMetrics.setNoiseFloor(radioType, -98);
             // TODO: Radio Utilization will be calculated when the survey is
             // enabled
 
@@ -1127,6 +1124,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             int iBSS = 0;
             int totalBusy = 0;
             int durationMs = 0;
+            int noise = 0;
+            RadioType radioType = RadioType.UNSUPPORTED;
+
             for (SurveySample surveySample : survey.getSurveyListList()) {
                 if (surveySample.getDurationMs() == 0) {
                     continue;
@@ -1136,7 +1136,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 oBSS += surveySample.getBusyRx();
                 totalBusy += surveySample.getBusy();
                 durationMs += surveySample.getDurationMs();
-
+                noise += surveySample.getNoise();
                 RadioUtilization radioUtil = new RadioUtilization();
                 radioUtil.setTimestampSeconds((int) ((survey.getTimestampMs() + surveySample.getOffsetMs()) / 1000));
                 radioUtil.setAssocClientTx((100 * surveySample.getBusyTx()) / surveySample.getDurationMs());
@@ -1145,7 +1145,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         (100 * (surveySample.getBusy() - surveySample.getBusyTx() - surveySample.getBusyRx()))
                                 / surveySample.getDurationMs());
 
-                RadioType radioType = RadioType.UNSUPPORTED;
                 switch (survey.getBand()) {
                 case BAND2G:
                     radioType = RadioType.is2dot4GHz;
@@ -1161,10 +1160,23 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     break;
                 }
 
-                apNodeMetrics.getRadioUtilization(radioType).add(radioUtil);
+                if (radioType != RadioType.UNSUPPORTED) {
+
+                    if (!apNodeMetrics.getRadioUtilizationPerRadio().containsKey(radioType)) {
+                        List<RadioUtilization> radioUtilizationList = new ArrayList<>();
+                        radioUtilizationList.add(radioUtil);
+                        apNodeMetrics.getRadioUtilizationPerRadio().put(radioType, radioUtilizationList);
+                    } else {
+                        apNodeMetrics.getRadioUtilizationPerRadio().get(radioType).add(radioUtil);
+                    }
+
+                }
 
             }
 
+            if (survey.getSurveyListCount() > 0 && radioType != RadioType.UNSUPPORTED) {
+                apNodeMetrics.setNoiseFloor(radioType, noise / survey.getSurveyListCount());
+            }
             Double totalUtilization = (100D * totalBusy) / durationMs;
             if (survey.getBand() == RadioBandType.BAND2G) { //
                 apNodeMetrics.setChannelUtilization(RadioType.is2dot4GHz, totalUtilization.intValue());
@@ -1829,7 +1841,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         channelInfoList = new ArrayList<>();
                     }
                     channelInfoList.add(channelInfo);
-                    channelInfoReports.getChannelInformationReportsPerRadio().put(radioType, channelInfoList);
+                    Map<RadioType,List<ChannelInfo>> channelInfoMap = channelInfoReports.getChannelInformationReportsPerRadio();
+                    channelInfoMap.put(radioType, channelInfoList);
+                    channelInfoReports.setChannelInformationReportsPerRadio(channelInfoMap);
                 }
 
             } else {
@@ -1837,13 +1851,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 List<SurveySample> surveySampleList = survey.getSurveyListList();
 
                 ChannelInfo channelInfo = createChannelInfo(equipmentId, radioType, surveySampleList, channelBandwidth);
-
+                LOG.debug("ChannelInfo for Survey {}", channelInfo.toPrettyString());
                 List<ChannelInfo> channelInfoList = channelInfoReports.getRadioInfo(radioType);
                 if (channelInfoList == null) {
                     channelInfoList = new ArrayList<>();
                 }
                 channelInfoList.add(channelInfo);
-                channelInfoReports.getChannelInformationReportsPerRadio().put(radioType, channelInfoList);
+                Map<RadioType,List<ChannelInfo>> channelInfoMap = channelInfoReports.getChannelInformationReportsPerRadio();
+                channelInfoMap.put(radioType, channelInfoList);
+                channelInfoReports.setChannelInformationReportsPerRadio(channelInfoMap);
             }
 
         }
@@ -1858,13 +1874,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         int busySelf = 0; /* Rx_self (derived from succesful Rx frames) */
         int busy = 0; /* Busy = Rx + Tx + Interference */
         ChannelInfo channelInfo = new ChannelInfo();
+        int noise = 0;
 
         for (SurveySample sample : surveySampleList) {
-
+            
             busyTx += sample.getBusyTx();
             busySelf += sample.getBusySelf();
             busy += sample.getBusy();
             channelInfo.setChanNumber(sample.getChannel());
+            noise += sample.getNoise();
         }
 
         int iBSS = busyTx + busySelf;
@@ -1874,9 +1892,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         channelInfo.setTotalUtilization(busy);
         channelInfo.setWifiUtilization(totalWifi);
         channelInfo.setBandwidth(channelBandwidth);
-        channelInfo.setNoiseFloor(-84); // TODO: when this
-                                        // becomes available
-                                        // add
+        if (surveySampleList.size() > 0) {
+            channelInfo.setNoiseFloor(noise / surveySampleList.size());
+        }
         return channelInfo;
     }
 
