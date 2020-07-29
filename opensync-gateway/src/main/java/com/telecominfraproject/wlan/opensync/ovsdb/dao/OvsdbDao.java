@@ -28,6 +28,7 @@ import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.ElementRadioConfiguration;
 import com.telecominfraproject.wlan.equipment.models.GettingDNS;
 import com.telecominfraproject.wlan.equipment.models.GettingIP;
+import com.telecominfraproject.wlan.equipment.models.ManagementRate;
 import com.telecominfraproject.wlan.equipment.models.NetworkForwardMode;
 import com.telecominfraproject.wlan.equipment.models.RadioConfiguration;
 import com.telecominfraproject.wlan.equipment.models.RadioMode;
@@ -138,8 +139,8 @@ public class OvsdbDao {
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.awlan-node.upgrade_timer:90}")
     public long upgradeTimerSeconds;
 
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.fileStoreDirectory:/tmp/tip-wlan-filestore}")
-    private String fileStoreDirectory;
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.fileStore:/filestore}")
+    private String fileStore;
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.externalFileStoreURL:https://localhost:9096}")
     private String externalFileStoreURL;
     public static final String HTTP = "http";
@@ -162,6 +163,8 @@ public class OvsdbDao {
     public static final String wifiInetStateDbTable = "Wifi_Inet_State";
 
     public static final String wifiAssociatedClientsDbTable = "Wifi_Associated_Clients";
+    
+    public static final String rrmConfigDbTable = "RRM_Config";
 
     public ConnectNodeInfo getConnectNodeInfo(OvsdbClient ovsdbClient) {
         ConnectNodeInfo ret = new ConnectNodeInfo();
@@ -2669,14 +2672,14 @@ public class OvsdbDao {
         if (fileInfo.getApExportUrl().startsWith(HTTP)) {
             return fileInfo.getApExportUrl();
         }
-        if (externalFileStoreURL == null || fileStoreDirectory == null) {
+        if (externalFileStoreURL == null || fileStore == null) {
             LOG.error("Missing externalFileStoreURL or fileStoreDirectory)");
             return "";
         }
-        LOG.debug("Captive file {}: {}", fileDesc, externalFileStoreURL + fileStoreDirectory + "/" +
+        LOG.debug("Captive file {}: {}", fileDesc, externalFileStoreURL + fileStore + "/" +
                 fileInfo.getApExportUrl());
 
-        return externalFileStoreURL + fileStoreDirectory + "/" + fileInfo.getApExportUrl();
+        return externalFileStoreURL + fileStore + "/" + fileInfo.getApExportUrl();
     }
 
     private void updateWifiInetConfig(OvsdbClient ovsdbClient, int vlanId, String ifName, boolean enabled,
@@ -3119,6 +3122,119 @@ public class OvsdbDao {
             throw new RuntimeException(e);
         }
 
+    }
+    
+    public void configureRrm(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
+
+        Map<String, WifiRadioConfigInfo> radioConfigs = getProvisionedWifiRadioConfigs(ovsdbClient);
+        Map<String, String> radioIfNameMap = new HashMap<>();
+        
+        radioConfigs.entrySet().stream().forEach(e -> radioIfNameMap.put(e.getValue().freqBand, e.getKey()));
+        
+        ApElementConfiguration apElementConfig = (ApElementConfiguration) opensyncApConfig.getCustomerEquipment()
+                .getDetails();
+        for (RadioType radioType : apElementConfig.getRadioMap().keySet()) {
+            String freqBand = null;
+            String ifName = null;
+            if (radioType == RadioType.is2dot4GHz) {
+                freqBand = "2.4G";
+            } else if (radioType == RadioType.is5GHzL) {
+                freqBand = "5GL";
+            } else if (radioType == RadioType.is5GHzU) {
+                freqBand = "5GU";
+            } else if (radioType == RadioType.is5GHz) {
+                freqBand = "5G";
+            }
+            ifName = radioIfNameMap.get(freqBand);
+            
+            ElementRadioConfiguration elementRadioConfig = apElementConfig.getRadioMap().get(radioType);
+            if (elementRadioConfig == null) {
+                continue; // don't have a radio of this kind in the map
+            }
+
+            int rxCellSize = 0;
+            if (!elementRadioConfig.getRxCellSizeDb().isAuto()) {
+            	rxCellSize = elementRadioConfig.getRxCellSizeDb().getValue();
+            }
+            
+            int probeResponseThreshold = 0;
+            if (!elementRadioConfig.getProbeResponseThresholdDb().isAuto()) {
+            	probeResponseThreshold = elementRadioConfig.getProbeResponseThresholdDb().getValue();
+            }
+            
+            int clientDisconnectThreshold = 0;
+            if (!elementRadioConfig.getClientDisconnectThresholdDb().isAuto()) {
+            	clientDisconnectThreshold = elementRadioConfig.getClientDisconnectThresholdDb().getValue();
+            }
+            
+            RadioConfiguration radioConfig = apElementConfig.getAdvancedRadioMap().get(radioType);
+
+            ManagementRate managementRate = radioConfig.getManagementRate();
+            
+            if (ifName != null) {
+            	try {
+            		configureRrm(ovsdbClient, ifName, rxCellSize, probeResponseThreshold, clientDisconnectThreshold, managementRate);
+                } catch (OvsdbClientException e) {
+                    LOG.error("configureRrm failed with OvsdbClient exception.", e);
+                } catch (TimeoutException e) {
+                    LOG.error("configureRrm failed with Timeout.", e);
+
+                } catch (ExecutionException e) {
+                    LOG.error("configureRrm excecution failed.", e);
+
+                } catch (InterruptedException e) {
+                    LOG.error("configureRrm interrupted.", e);
+                }
+
+            }
+        }
+    }
+    
+    public void configureRrm(OvsdbClient ovsdbClient, String ifName, int rxCellSize, int probeResponseThreshold,
+            int clientDisconnectThreshold, ManagementRate managementRate)
+                    throws OvsdbClientException, TimeoutException, ExecutionException, InterruptedException {
+
+        List<Operation> operations = new ArrayList<>();
+        Map<String, Value> updateColumns = new HashMap<>();
+        List<Condition> conditions = new ArrayList<>();
+        conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(ifName)));
+
+        if (rxCellSize > 0) {
+        	updateColumns.put("cell_size", new Atom<>(rxCellSize));
+        } else {
+        	updateColumns.put("cell_size", new com.vmware.ovsdb.protocol.operation.notation.Set());
+        }
+        
+        if (probeResponseThreshold > 0) {
+        	updateColumns.put("cell_size", new Atom<>(probeResponseThreshold));
+        } else {
+        	updateColumns.put("cell_size", new com.vmware.ovsdb.protocol.operation.notation.Set());
+        }
+        
+        if (clientDisconnectThreshold > 0) {
+        	updateColumns.put("cell_size", new Atom<>(clientDisconnectThreshold));
+        } else {
+        	updateColumns.put("cell_size", new com.vmware.ovsdb.protocol.operation.notation.Set());
+        }
+        
+        //TODO AP defined 0-1
+//        if (managementRate != ManagementRate.auto) {
+//        	updateColumns.put("basic_rate", new Atom<>(managementRate.getId()));
+//        } else {
+//        	updateColumns.put("basic_rate", new com.vmware.ovsdb.protocol.operation.notation.Set());
+//        }
+        
+        Row row = new Row(updateColumns);
+        operations.add(new Update(rrmConfigDbTable, conditions, row));
+
+        CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+        OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+        LOG.debug("Provisioned rrm config {} for {}", rxCellSize, ifName);
+
+        for (OperationResult res : result) {
+            LOG.debug("Op Result {}", res);
+        }
     }
 
 }
