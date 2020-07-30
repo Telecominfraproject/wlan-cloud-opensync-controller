@@ -96,7 +96,7 @@ AUTO_PROV_CUSTOMER_ID="${AUTO_PROV_CUSTOMER_ID:=2}"
 PROV_PROPS=" "
 PROV_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_bridge=$DEFAULT_BRIDGE"
 PROV_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_wan_type=$DEFAULT_WAN_TYPE"
-PROV_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_wan_type=$DEFAULT_WAN_NAME"
+PROV_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_wan_name=$DEFAULT_WAN_NAME"
 PROV_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_lan_type=$DEFAULT_LAN_TYPE"
 PROV_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_lan_name=$DEFAULT_LAN_NAME"
 
