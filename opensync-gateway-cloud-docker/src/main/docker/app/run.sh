@@ -44,7 +44,6 @@ RESTAPI_PROPS+=" -Dserver.port=9096 -Dtip.wlan.secondaryPort=9097"
 SPRING_EXTRA_PROPS=" --add-opens java.base/java.lang=ALL-UNNAMED"
 
 HOST_PROPS=" "
-HOST_PROPS+=" -Dtip.wlan.introspectTokenApi.host=${OVSDB_MANAGER_HOST}:9096"
 
 ## These properties are used by the Routing Service and the values will be
 ## overridden in Helm chart to the IP-Address of running opensync-gw pod
@@ -54,6 +53,7 @@ if [[ -n ${OVSDB_MANAGER_IP} ]]
 then
   HOST_PROPS+=" -Dtip.wlan.externalHostName=${OVSDB_MANAGER_IP}"
   HOST_PROPS+=" -Dtip.wlan.internalHostName=${OVSDB_MANAGER_IP}"
+  HOST_PROPS+=" -Dtip.wlan.introspectTokenApi.host=${OVSDB_MANAGER_IP}:9096"
 fi
 
 if [[ -n $PROV_SERVER_HOST && -n $SSC_SERVER_HOST ]]
@@ -85,10 +85,10 @@ fi
   HOST_PROPS+=" -Dtip.wlan.profileServiceBaseUrl=$PROV_URL"
 
 DEFAULT_BRIDGE="${DEFAULT_BRIDGE:=br-lan}"
-DEFAULT_WAN_TYPE="${DEFAULT_WAN_TYPE:=eth}"
+DEFAULT_WAN_TYPE="${DEFAULT_WAN_TYPE:=bridge}"
 DEFAULT_LAN_TYPE="${DEFAULT_LAN_TYPE:=bridge}"
-DEFAULT_LAN_NAME="${DEFAULT_LAN_NAME:=lan}"
-DEFAULT_WAN_NAME="${DEFAULT_WAN_NAME:=wan}"
+DEFAULT_LAN_NAME="${DEFAULT_LAN_NAME:=br-lan}"
+DEFAULT_WAN_NAME="${DEFAULT_WAN_NAME:=br-wan}"
 
 
 AUTO_PROV_CUSTOMER_ID="${AUTO_PROV_CUSTOMER_ID:=2}"
