@@ -125,36 +125,12 @@ public class OpensyncGatewayTipWlanOvsdbClientTest {
 
         Mockito.verify(ovsdbSessionMapInterface).getSession("Test_Client_21P10C68818122");
         Mockito.verify(ovsdbSession).getOvsdbClient();
-        Mockito.verify(ovsdbClient).cancelMonitor(OvsdbDao.awlanNodeDbTable + "_Test_Client_21P10C68818122");
-        Mockito.verify(ovsdbClient).monitor(Mockito.eq(OvsdbDao.ovsdbName),
-                Mockito.eq(OvsdbDao.awlanNodeDbTable + "_Test_Client_21P10C68818122"),
-                Mockito.any(MonitorRequests.class), Mockito.any(MonitorCallback.class));
-        Mockito.verify(ovsdbClient).cancelMonitor(OvsdbDao.wifiRadioStateDbTable + "_Test_Client_21P10C68818122");
-        Mockito.verify(ovsdbClient).monitor(Mockito.eq(OvsdbDao.ovsdbName),
-                Mockito.eq(OvsdbDao.wifiRadioStateDbTable + "_Test_Client_21P10C68818122"),
-                Mockito.any(MonitorRequests.class), Mockito.any(MonitorCallback.class));
-        Mockito.verify(ovsdbClient).cancelMonitor(OvsdbDao.wifiVifStateDbTable + "_Test_Client_21P10C68818122");
-        Mockito.verify(ovsdbClient).monitor(Mockito.eq(OvsdbDao.ovsdbName),
-                Mockito.eq(OvsdbDao.wifiVifStateDbTable + "_Test_Client_21P10C68818122"),
-                Mockito.any(MonitorRequests.class), Mockito.any(MonitorCallback.class));
-        Mockito.verify(ovsdbClient).cancelMonitor(OvsdbDao.wifiVifStateDbTable + "_delete_Test_Client_21P10C68818122");
-        Mockito.verify(ovsdbClient).monitor(Mockito.eq(OvsdbDao.ovsdbName),
-                Mockito.eq(OvsdbDao.wifiVifStateDbTable + "_delete_Test_Client_21P10C68818122"),
-                Mockito.any(MonitorRequests.class), Mockito.any(MonitorCallback.class));
-        Mockito.verify(ovsdbClient).cancelMonitor(OvsdbDao.wifiInetStateDbTable + "_Test_Client_21P10C68818122");
-        Mockito.verify(ovsdbClient).monitor(Mockito.eq(OvsdbDao.ovsdbName),
-                Mockito.eq(OvsdbDao.wifiInetStateDbTable + "_Test_Client_21P10C68818122"),
-                Mockito.any(MonitorRequests.class), Mockito.any(MonitorCallback.class));
-        Mockito.verify(ovsdbClient)
-                .cancelMonitor(OvsdbDao.wifiAssociatedClientsDbTable + "_delete_Test_Client_21P10C68818122");
-        Mockito.verify(ovsdbClient).monitor(Mockito.eq(OvsdbDao.ovsdbName),
-                Mockito.eq(OvsdbDao.wifiAssociatedClientsDbTable + "_delete_Test_Client_21P10C68818122"),
-                Mockito.any(MonitorRequests.class), Mockito.any(MonitorCallback.class));
-        Mockito.verify(ovsdbClient)
-                .cancelMonitor(OvsdbDao.wifiAssociatedClientsDbTable + "_Test_Client_21P10C68818122");
-        Mockito.verify(ovsdbClient).monitor(Mockito.eq(OvsdbDao.ovsdbName),
-                Mockito.eq(OvsdbDao.wifiAssociatedClientsDbTable + "_Test_Client_21P10C68818122"),
-                Mockito.any(MonitorRequests.class), Mockito.any(MonitorCallback.class));
+        Mockito.verify(opensyncExternalIntegrationInterface).getApConfig("Test_Client_21P10C68818122");
+        Mockito.verify(ovsdbDao).removeAllSsids(ovsdbClient);
+        Mockito.verify(ovsdbDao).removeAllStatsConfigs(ovsdbClient);
+        Mockito.verify(ovsdbDao).configureWifiRadios(ovsdbClient, apConfig);
+        Mockito.verify(ovsdbDao).configureSsids(ovsdbClient, apConfig);
+        Mockito.verify(ovsdbDao).configureStats(ovsdbClient);
 
     }
 

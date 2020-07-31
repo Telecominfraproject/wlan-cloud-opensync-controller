@@ -22,6 +22,8 @@
     "captivePortalId": null,
     "bandwidthLimitDown": 0,
     "bandwidthLimitUp": 0,
+    "clientBandwidthLimitDown": 0,
+    "clientBandwidthLimitUp": 0,
     "videoTrafficOnly": false,
     "radioBasedConfigs": {
       "is5GHz": {

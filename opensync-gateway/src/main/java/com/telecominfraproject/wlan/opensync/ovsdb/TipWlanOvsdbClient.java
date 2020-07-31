@@ -2,6 +2,7 @@ package com.telecominfraproject.wlan.opensync.ovsdb;
 
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -181,7 +182,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         connectNodeInfo = ovsdbDao.updateConnectNodeInfoOnConnect(ovsdbClient, clientCn, connectNodeInfo);
 
         String apId = clientCn + "_" + connectNodeInfo.serialNumber;
-        
+
         LOG.debug("Client connect for AP {}", apId);
 
         OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
@@ -243,7 +244,6 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
     @Override
     public void processConfigChanged(String apId) {
         LOG.debug("Starting processConfigChanged for {}", apId);
-
         OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
         if (ovsdbSession == null) {
             throw new IllegalStateException("AP with id " + apId + " is not connected");
@@ -253,45 +253,30 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
         OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
 
-        if (opensyncAPConfig != null) {
-            try {
-                ovsdbClient.cancelMonitor(OvsdbDao.awlanNodeDbTable + "_" + apId).join();
-                ovsdbClient.cancelMonitor(OvsdbDao.wifiRadioStateDbTable + "_" + apId).join();
-                ovsdbClient.cancelMonitor(OvsdbDao.wifiVifStateDbTable + "_" + apId).join();
-                ovsdbClient.cancelMonitor(OvsdbDao.wifiVifStateDbTable + "_delete_" + apId).join();
-                ovsdbClient.cancelMonitor(OvsdbDao.wifiInetStateDbTable + "_" + apId).join();
-                ovsdbClient.cancelMonitor(OvsdbDao.wifiAssociatedClientsDbTable + "_" + apId).join();
-                ovsdbClient.cancelMonitor(OvsdbDao.wifiAssociatedClientsDbTable + "_delete_" + apId).join();
-
-                ovsdbDao.removeAllSsids(ovsdbClient);
-
-                ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
-                ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
-
-                ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
-                ovsdbDao.configureStats(ovsdbClient);
-
-                if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
-                    ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
-                }
-
-                if (((ApNetworkConfiguration) opensyncAPConfig.getApProfile().getDetails())
-                        .getSyntheticClientEnabled()) {
-                    ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
-                }
-
-            } catch (OvsdbClientException e) {
-                LOG.error("Could not enable/disable table state monitors, cannot proccess config change for AP {}",
-                        apId);
-            } finally {
-                monitorOvsdbStateTables(ovsdbClient, apId);
-            }
-
-        } else {
-            LOG.warn("Could not get provisioned configuration for AP {}", apId);
+        if (opensyncAPConfig == null) {
+            LOG.warn("AP with id " + apId + " does not have a config to apply.");
+            return;
         }
 
+        ovsdbDao.removeAllSsids(ovsdbClient); // always
+        ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
+
+        ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
+        ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
+        ovsdbDao.configureStats(ovsdbClient);
+
+        // Check if device stats is configured in Wifi_Stats_Config table,
+        // provision it
+        // if needed
+        if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
+            ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
+        }
+
+        if (((ApNetworkConfiguration) opensyncAPConfig.getApProfile().getDetails()).getSyntheticClientEnabled()) {
+            ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
+        }
         LOG.debug("Finished processConfigChanged for {}", apId);
+
     }
 
     @Override
@@ -565,7 +550,8 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
                         });
 
-        extIntegrationInterface.wifiVIFStateDbTableUpdate(ovsdbDao.getOpensyncAPVIFState(vsCf.join(), key, ovsdbClient), key);
+        extIntegrationInterface.wifiVIFStateDbTableUpdate(ovsdbDao.getOpensyncAPVIFState(vsCf.join(), key, ovsdbClient),
+                key);
 
     }
 
