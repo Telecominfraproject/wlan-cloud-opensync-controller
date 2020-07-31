@@ -41,6 +41,7 @@ import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.NeighborScanPacketType;
 import com.telecominfraproject.wlan.core.model.equipment.NetworkType;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
+import com.telecominfraproject.wlan.core.model.utils.DecibelUtils;
 import com.telecominfraproject.wlan.customer.models.Customer;
 import com.telecominfraproject.wlan.customer.models.EquipmentAutoProvisioningSettings;
 import com.telecominfraproject.wlan.customer.service.CustomerServiceInterface;
@@ -109,7 +110,10 @@ import com.telecominfraproject.wlan.status.equipment.models.VLANStatusData;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSID;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSIDs;
 import com.telecominfraproject.wlan.status.equipment.report.models.ClientConnectionDetails;
+import com.telecominfraproject.wlan.status.equipment.report.models.EquipmentCapacityDetails;
+import com.telecominfraproject.wlan.status.equipment.report.models.EquipmentPerRadioUtilizationDetails;
 import com.telecominfraproject.wlan.status.equipment.report.models.OperatingSystemPerformance;
+import com.telecominfraproject.wlan.status.equipment.report.models.RadioUtilizationReport;
 import com.telecominfraproject.wlan.status.models.Status;
 import com.telecominfraproject.wlan.status.models.StatusCode;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
@@ -1116,6 +1120,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         // private Integer unassocClientRx;
         // private Integer nonWifi;
         // private Integer timestampSeconds;
+        Map<RadioType, Integer> avgNoiseFloor = new HashMap<>();
+        Map<RadioType, EquipmentPerRadioUtilizationDetails> radioUtilization = new HashMap<>();
+        Map<RadioType, EquipmentCapacityDetails> capacityDetails = new HashMap<>();
+        RadioUtilizationReport radioUtilizationReport = new RadioUtilizationReport();
 
         // populate it from report.survey
         for (Survey survey : report.getSurveyList()) {
@@ -1124,9 +1132,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             int iBSS = 0;
             int totalBusy = 0;
             int durationMs = 0;
-            int noise = 0;
             RadioType radioType = RadioType.UNSUPPORTED;
 
+            List<Integer> noiseList = new ArrayList<>();
             for (SurveySample surveySample : survey.getSurveyListList()) {
                 if (surveySample.getDurationMs() == 0) {
                     continue;
@@ -1136,7 +1144,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 oBSS += surveySample.getBusyRx();
                 totalBusy += surveySample.getBusy();
                 durationMs += surveySample.getDurationMs();
-                noise += surveySample.getNoise();
+                noiseList.add(getNegativeSignedIntFrom8BitUnsigned(surveySample.getNoise()));
                 RadioUtilization radioUtil = new RadioUtilization();
                 radioUtil.setTimestampSeconds((int) ((survey.getTimestampMs() + surveySample.getOffsetMs()) / 1000));
                 radioUtil.setAssocClientTx((100 * surveySample.getBusyTx()) / surveySample.getDurationMs());
@@ -1175,25 +1183,47 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             }
 
             if (survey.getSurveyListCount() > 0 && radioType != RadioType.UNSUPPORTED) {
-                apNodeMetrics.setNoiseFloor(radioType, noise / survey.getSurveyListCount());
+            	int noiseAvg = (int) Math.round(DecibelUtils.getAverageDecibel(toIntArray(noiseList)));
+            	avgNoiseFloor.put(radioType, noiseAvg);
+            	apNodeMetrics.setNoiseFloor(radioType, noiseAvg);
             }
             Double totalUtilization = (100D * totalBusy) / durationMs;
-            if (survey.getBand() == RadioBandType.BAND2G) { //
-                apNodeMetrics.setChannelUtilization(RadioType.is2dot4GHz, totalUtilization.intValue());
-            } else if (survey.getBand() == RadioBandType.BAND5G) {
-                apNodeMetrics.setChannelUtilization(RadioType.is5GHz, totalUtilization.intValue());
-            } else if (survey.getBand() == RadioBandType.BAND5GL) {
-                apNodeMetrics.setChannelUtilization(RadioType.is5GHzL, totalUtilization.intValue());
-            } else if (survey.getBand() == RadioBandType.BAND5GU) {
-                apNodeMetrics.setChannelUtilization(RadioType.is5GHzU, totalUtilization.intValue());
+            EquipmentCapacityDetails cap = new EquipmentCapacityDetails();
+            cap.setTotalCapacity(totalUtilization.intValue());
+            if (radioType != RadioType.UNSUPPORTED) {
+            	apNodeMetrics.setChannelUtilization(radioType, totalUtilization.intValue());
+            	capacityDetails.put(radioType, cap);
             }
         }
 
         new RadioStatistics();
 
         populateNetworkProbeMetrics(report, apNodeMetrics);
-
+        
+        radioUtilizationReport.setAvgNoiseFloor(avgNoiseFloor);
+        radioUtilizationReport.setCapacityDetails(capacityDetails);
+        
+        updateDeviceStatusRadioUtilizationReport(customerId, equipmentId, radioUtilizationReport);
     }
+    
+    private void updateDeviceStatusRadioUtilizationReport(int customerId, long equipmentId, RadioUtilizationReport radioUtilizationReport) {
+    	LOG.debug("Processing updateDeviceStatusRadioUtilizationReport for equipmentId {} with RadioUtilizationReport {}",
+    			equipmentId, radioUtilizationReport);
+      
+    	Status radioUtilizationStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.RADIO_UTILIZATION);
+    	
+    	if (radioUtilizationStatus == null) {
+    	    LOG.debug("Create new radioUtilizationStatus");
+    	    radioUtilizationStatus = new Status();
+    	    radioUtilizationStatus.setCustomerId(customerId);
+    	    radioUtilizationStatus.setEquipmentId(equipmentId);
+    	    radioUtilizationStatus.setStatusDataType(StatusDataType.RADIO_UTILIZATION);
+    	}
+    	
+    	radioUtilizationStatus.setDetails(radioUtilizationReport);
+    	
+    	statusServiceInterface.update(radioUtilizationStatus);
+    } 
 
     void populateNetworkProbeMetrics(Report report, ApNodeMetrics apNodeMetrics) {
         List<NetworkProbeMetrics> networkProbeMetricsList = new ArrayList<>();
@@ -1763,9 +1793,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     }
 
+    //TODO replace this with getNegativeSignedIntFrom8BitUnsigned
     int getNegativeSignedIntFromUnsigned(int unsignedValue) {
         int negSignedValue = (unsignedValue << 1) >> 1;
         return negSignedValue;
+    }
+    
+    int getNegativeSignedIntFrom8BitUnsigned(int unsignedValue) {
+        byte b = (byte) Integer.parseInt(Integer.toHexString(unsignedValue), 16);
+        return b;
     }
 
     private void populateChannelInfoReports(List<ServiceMetric> metricRecordList, Report report, int customerId,
@@ -1878,16 +1914,16 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         int busySelf = 0; /* Rx_self (derived from succesful Rx frames) */
         int busy = 0; /* Busy = Rx + Tx + Interference */
         ChannelInfo channelInfo = new ChannelInfo();
-        int noise = 0;
 
+        int[] noiseArray = new int[surveySampleList.size()];
+        int index = 0;
         for (SurveySample sample : surveySampleList) {
             
             busyTx += sample.getBusyTx();
             busySelf += sample.getBusySelf();
             busy += sample.getBusy();
             channelInfo.setChanNumber(sample.getChannel());
-            noise += sample.getNoise();
-        }
+            noiseArray[index++] = getNegativeSignedIntFrom8BitUnsigned(sample.getNoise());        }
 
         int iBSS = busyTx + busySelf;
 
@@ -1897,7 +1933,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         channelInfo.setWifiUtilization(totalWifi);
         channelInfo.setBandwidth(channelBandwidth);
         if (surveySampleList.size() > 0) {
-            channelInfo.setNoiseFloor(noise / surveySampleList.size());
+        	channelInfo.setNoiseFloor((int) Math.round(DecibelUtils.getAverageDecibel(noiseArray)));
         }
         return channelInfo;
     }
@@ -2747,6 +2783,20 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
+    }
+    
+    private static int[] toIntArray(List<Integer> values) {
+    	if (values != null) {
+    		int returnValue[] = new int[values.size()];
+    		int index = 0;
+
+    	    for (Integer value : values) {
+    		    returnValue[index++] = value;
+    	    }
+
+    	    return returnValue;
+    	}
+        return null;
     }
 
 }
