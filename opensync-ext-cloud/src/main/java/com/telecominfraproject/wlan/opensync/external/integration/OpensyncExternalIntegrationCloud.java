@@ -1149,6 +1149,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 radioUtil.setTimestampSeconds((int) ((survey.getTimestampMs() + surveySample.getOffsetMs()) / 1000));
                 radioUtil.setAssocClientTx((100 * surveySample.getBusyTx()) / surveySample.getDurationMs());
                 radioUtil.setAssocClientRx((100 * surveySample.getBusyRx()) / surveySample.getDurationMs());
+                //TODO not totally correct, NonWifi = totalBusy - iBSS - oBSS
                 radioUtil.setNonWifi(
                         (100 * (surveySample.getBusy() - surveySample.getBusyTx() - surveySample.getBusyRx()))
                                 / surveySample.getDurationMs());
@@ -1177,9 +1178,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     } else {
                         apNodeMetrics.getRadioUtilizationPerRadio().get(radioType).add(radioUtil);
                     }
-
                 }
-
             }
 
             if (survey.getSurveyListCount() > 0 && radioType != RadioType.UNSUPPORTED) {
@@ -1188,8 +1187,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             	apNodeMetrics.setNoiseFloor(radioType, noiseAvg);
             }
             Double totalUtilization = (100D * totalBusy) / durationMs;
+            Double totalNonWifi = (100D * (totalBusy - iBSS - oBSS)) / durationMs;
+            
             EquipmentCapacityDetails cap = new EquipmentCapacityDetails();
-            cap.setTotalCapacity(totalUtilization.intValue());
+            cap.setUnavailableCapacity(totalNonWifi.intValue());
+            int avaiCapacity = 100 - totalNonWifi.intValue();
+            cap.setAvailableCapacity(avaiCapacity);
+            cap.setUsedCapacity(totalUtilization.intValue());
+            cap.setUnusedCapacity(avaiCapacity - totalUtilization.intValue());
+            
             if (radioType != RadioType.UNSUPPORTED) {
             	apNodeMetrics.setChannelUtilization(radioType, totalUtilization.intValue());
             	capacityDetails.put(radioType, cap);
