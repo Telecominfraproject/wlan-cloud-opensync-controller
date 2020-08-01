@@ -803,7 +803,7 @@ public class OpensyncExternalIntegrationCloudTest {
         InetAddress ip = InetAddress.getByName("192.168.1.1");
 
         DNSProbeMetric dnsProbeMetric = DNSProbeMetric.getDefaultInstance().toBuilder().setLatency(10)
-                .setState(StateUpDown.SUD_up).setServerIP(ByteString.copyFrom(ip.getAddress())).build();
+                .setState(StateUpDown.SUD_up).setServerIP(ip.toString()).build();
         RADIUSMetrics radiusProbeMetric = RADIUSMetrics.getDefaultInstance().toBuilder().setLatencyAve(10).build();
         VLANMetrics vlanMetrics = VLANMetrics.getDefaultInstance().toBuilder().setDhcpLatency(10)
                 .setDhcpState(StateUpDown.SUD_up).setVlanIF("vlan-1").setObsV200RadiusLatency(15)

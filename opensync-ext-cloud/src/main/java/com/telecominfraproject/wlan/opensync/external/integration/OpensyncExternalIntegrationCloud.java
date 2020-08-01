@@ -1264,7 +1264,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 }
 
                 try {
-                    InetAddress ipAddress = InetAddress.getByAddress(dnsProbeMetricStats.getServerIP().toByteArray());
+                    InetAddress ipAddress = InetAddress.getByName(dnsProbeMetricStats.getServerIP());
                     dnsProbeMetric.setDnsServerIp(ipAddress);
                 } catch (Exception e) {
                     LOG.error("Unable to get the DNS server IP.", e);
