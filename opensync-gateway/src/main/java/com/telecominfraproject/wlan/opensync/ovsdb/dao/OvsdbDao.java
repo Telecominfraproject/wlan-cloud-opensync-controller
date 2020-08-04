@@ -608,10 +608,7 @@ public class OvsdbDao {
 
     /**
      * @param ovsdbClient
-     * @param value
-     *            of reporting_interval column for the stats_type=device from
-     *            the Wifi_Stats_Config table. If value is not provisioned then
-     *            return -1.
+     *
      */
     public void enableNetworkProbeForSyntheticClient(OvsdbClient ovsdbClient) {
         LOG.debug("Enable network_probe metrics for synthetic client");
@@ -733,35 +730,6 @@ public class OvsdbDao {
         T ret = (set != null) && !set.isEmpty() ? set.iterator().next() : null;
 
         return ret;
-    }
-
-    public void getWifiVIFsForRadioByUuid(OvsdbClient ovsdbClient, List<OpensyncAPVIFState> vifList, Uuid uuid) {
-        List<Operation> operations = new ArrayList<>();
-        List<Condition> conditions = new ArrayList<>();
-
-        conditions.add(new Condition("_uuid", Function.EQUALS, new Atom<>(uuid)));
-        operations.add(new Select(wifiVifStateDbTable, conditions));
-
-        try {
-            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
-            if ((result != null) && (result.length > 0) && result[0] instanceof SelectResult
-                    && !((SelectResult) result[0]).getRows().isEmpty()) {
-
-                Row row = ((SelectResult) result[0]).getRows().iterator().next();
-
-                OpensyncAPVIFState tableState = processWifiVIFStateColumn(ovsdbClient, row, false);
-
-                vifList.add(tableState);
-
-            }
-
-        } catch (Exception e) {
-
-            LOG.info("Could not get Wifi_VIF_State for UUID {}. {}", uuid, e.getMessage());
-
-        }
     }
 
     private OpensyncAPVIFState processWifiVIFStateColumn(OvsdbClient ovsdbClient, Row row, boolean update) {
@@ -1201,7 +1169,7 @@ public class OvsdbDao {
 
                 wifiVifConfigInfo.macList = row.getSetColumn("mac_list");
 
-                if (row.getColumns().get("mac_list_type") != null && row.getColumns().get("mac_list_type").getClass()
+                if ((row.getColumns().get("mac_list_type") != null) && row.getColumns().get("mac_list_type").getClass()
                         .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                     wifiVifConfigInfo.macListType = row.getStringColumn("mac_list_type");
                 }
@@ -1623,7 +1591,7 @@ public class OvsdbDao {
                     LOG.debug("Op Result {}", res);
                 }
             }
-            
+
             operations = new ArrayList<>();
             List<Condition> conditions = new ArrayList<>();
             conditions.add(new Condition("if_type", Function.EQUALS, new Atom<>("vif")));
@@ -1639,7 +1607,6 @@ public class OvsdbDao {
                     LOG.debug("Op Result {}", res);
                 }
             }
-
 
             // Now clean up references in the vif_configs columns
             operations = new ArrayList<>();
@@ -1770,14 +1737,20 @@ public class OvsdbDao {
                             enabled, ht_mode, txPower);
                 } catch (OvsdbClientException e) {
                     LOG.error("ConfigureWifiRadios failed with OvsdbClient exception.", e);
+                    throw new RuntimeException(e);
+
                 } catch (TimeoutException e) {
                     LOG.error("ConfigureWifiRadios failed with Timeout.", e);
+                    throw new RuntimeException(e);
 
                 } catch (ExecutionException e) {
                     LOG.error("ConfigureWifiRadios excecution failed.", e);
+                    throw new RuntimeException(e);
 
                 } catch (InterruptedException e) {
                     LOG.error("ConfigureWifiRadios interrupted.", e);
+                    throw new RuntimeException(e);
+
                 }
 
             }
@@ -1882,14 +1855,7 @@ public class OvsdbDao {
                         }
 
                         Set<Uuid> vifStates = row.getSetColumn("vif_states");
-                        List<OpensyncAPVIFState> vifStatesList = new ArrayList<>();
-                        if (vifStates != null) {
-                            for (Uuid uuid : vifStates) {
-                                getWifiVIFsForRadioByUuid(ovsdbClient, vifStatesList, uuid);
-                            }
-                        }
-
-                        tableState.setVifStates(vifStatesList);
+                        tableState.setVifStates(vifStates);
 
                         ret.add(tableState);
                     }
@@ -1905,6 +1871,8 @@ public class OvsdbDao {
 
         } catch (Exception e) {
             LOG.error("Could not parse update for Wifi_Radio_State", e);
+            throw new RuntimeException(e);
+
         }
 
         return ret;
@@ -1979,6 +1947,8 @@ public class OvsdbDao {
 
         } catch (Exception e) {
             LOG.error("Could not parse update for Wifi_Inet_State", e);
+            throw new RuntimeException(e);
+
         }
         return ret;
     }
@@ -2014,6 +1984,7 @@ public class OvsdbDao {
 
         } catch (Exception e) {
             LOG.error("Could not parse update for Wifi_VIF_State", e);
+            throw new RuntimeException(e);
 
         }
         return ret;
@@ -2069,6 +2040,8 @@ public class OvsdbDao {
             });
         } catch (Exception e) {
             LOG.error("Could not get Wifi_Associated_Clients list from table update", e);
+            throw new RuntimeException(e);
+
         }
 
         return ret;
@@ -2194,6 +2167,8 @@ public class OvsdbDao {
             }
         } catch (Exception e) {
             LOG.error("Failed to handle AWLAN_Node update", e);
+            throw new RuntimeException(e);
+
         }
 
         return tableState;
@@ -2357,7 +2332,7 @@ public class OvsdbDao {
 
     private void updateBlockList(Map<String, Value> updateColumns, List<MacAddress> macBlockList) {
 
-        if (macBlockList != null && !macBlockList.isEmpty()) {
+        if ((macBlockList != null) && !macBlockList.isEmpty()) {
             updateColumns.put("mac_list_type", new Atom<>("blacklist"));
             Set<Atom<String>> atomMacList = new HashSet<>();
             for (MacAddress mac : macBlockList) {
@@ -2495,8 +2470,8 @@ public class OvsdbDao {
                 int clientDlLimit = 0;
                 int clientUlLimit = 0;
 
-                if ((ssidConfig.getBandwidthLimitDown() != null && ssidConfig.getBandwidthLimitUp() > 0)
-                        || (ssidConfig.getBandwidthLimitUp() != null && ssidConfig.getBandwidthLimitUp() > 0)) {
+                if (((ssidConfig.getBandwidthLimitDown() != null) && (ssidConfig.getBandwidthLimitUp() > 0))
+                        || ((ssidConfig.getBandwidthLimitUp() != null) && (ssidConfig.getBandwidthLimitUp() > 0))) {
                     rateLimitEnable = true;
                     ssidUlLimit = ssidConfig.getBandwidthLimitUp();
                     ssidDlLimit = ssidConfig.getBandwidthLimitDown();
@@ -2509,25 +2484,25 @@ public class OvsdbDao {
                 String ifName = null;
                 String radioName = null;
                 for (Entry<String, WifiRadioConfigInfo> entry : provisionedRadioConfigs.entrySet()) {
-                    if (radioType == RadioType.is2dot4GHz && entry.getValue().freqBand.equals("2.4G")) {
+                    if ((radioType == RadioType.is2dot4GHz) && entry.getValue().freqBand.equals("2.4G")) {
                         freqBand = "2.4G";
                         radioName = entry.getKey();
                         break;
-                    } else if (radioType == RadioType.is5GHzL && entry.getValue().freqBand.equals("5GL")) {
+                    } else if ((radioType == RadioType.is5GHzL) && entry.getValue().freqBand.equals("5GL")) {
                         freqBand = "5GL";
                         radioName = entry.getKey();
                         break;
-                    } else if (radioType == RadioType.is5GHzU && entry.getValue().freqBand.equals("5GU")) {
+                    } else if ((radioType == RadioType.is5GHzU) && entry.getValue().freqBand.equals("5GU")) {
                         freqBand = "5GU";
                         radioName = entry.getKey();
                         break;
-                    } else if (radioType == RadioType.is5GHz && entry.getValue().freqBand.equals("5G")) {
+                    } else if ((radioType == RadioType.is5GHz) && entry.getValue().freqBand.equals("5G")) {
                         freqBand = "5G";
                         radioName = entry.getKey();
                         break;
                     }
                 }
-                if (radioName == null || freqBand == null) {
+                if ((radioName == null) || (freqBand == null)) {
                     LOG.debug("Cannot provision SSID with radio if_name {} and freqBand {}", radioName, freqBand);
                     continue;
                 }
@@ -2726,9 +2701,10 @@ public class OvsdbDao {
 
     private void getCaptiveConfiguration(OpensyncAPConfig opensyncApConfig, SsidConfiguration ssidConfig,
             Map<String, String> captiveMap, List<String> walledGardenAllowlist) {
-        if (ssidConfig.getCaptivePortalId() != null && opensyncApConfig.getCaptiveProfiles() != null) {
+        if ((ssidConfig.getCaptivePortalId() != null) && (opensyncApConfig.getCaptiveProfiles() != null)) {
             for (Profile profileCaptive : opensyncApConfig.getCaptiveProfiles()) {
-                if (ssidConfig.getCaptivePortalId() == profileCaptive.getId() && profileCaptive.getDetails() != null) {
+                if ((ssidConfig.getCaptivePortalId() == profileCaptive.getId())
+                        && (profileCaptive.getDetails() != null)) {
                     CaptivePortalConfiguration captiveProfileDetails = ((CaptivePortalConfiguration) profileCaptive
                             .getDetails());
                     captiveMap.put("sessionTimeoutInMinutes",
@@ -2755,7 +2731,7 @@ public class OvsdbDao {
     }
 
     private String getCaptiveManagedFileUrl(String fileDesc, ManagedFileInfo fileInfo) {
-        if (fileInfo == null || fileInfo.getApExportUrl() == null) {
+        if ((fileInfo == null) || (fileInfo.getApExportUrl() == null)) {
             return "";
         }
         if (fileInfo.getApExportUrl().startsWith(HTTP)) {
@@ -3158,6 +3134,8 @@ public class OvsdbDao {
 
         } catch (Exception e) {
             LOG.error("Could not download firmware {} to AP {}", firmwareVersion, apId, e);
+            throw new RuntimeException(e);
+
         }
 
     }
@@ -3183,6 +3161,8 @@ public class OvsdbDao {
 
         } catch (Exception e) {
             LOG.error("Could not configure timer for flashing firmware {} on AP {}", firmwareVersion, apId, e);
+            throw new RuntimeException(e);
+
         }
     }
 
@@ -3217,7 +3197,12 @@ public class OvsdbDao {
         Map<String, WifiRadioConfigInfo> radioConfigs = getProvisionedWifiRadioConfigs(ovsdbClient);
         Map<String, String> radioIfNameMap = new HashMap<>();
 
-        radioConfigs.entrySet().stream().forEach(e -> radioIfNameMap.put(e.getValue().freqBand, e.getKey()));
+        radioConfigs.entrySet().stream().forEach(new Consumer<Entry<String, WifiRadioConfigInfo>>() {
+            @Override
+            public void accept(Entry<String, WifiRadioConfigInfo> e) {
+                radioIfNameMap.put(e.getValue().freqBand, e.getKey());
+            }
+        });
 
         ApElementConfiguration apElementConfig = (ApElementConfiguration) opensyncApConfig.getCustomerEquipment()
                 .getDetails();
@@ -3265,14 +3250,19 @@ public class OvsdbDao {
                             managementRate);
                 } catch (OvsdbClientException e) {
                     LOG.error("configureRrm failed with OvsdbClient exception.", e);
+                    throw new RuntimeException(e);
                 } catch (TimeoutException e) {
                     LOG.error("configureRrm failed with Timeout.", e);
+                    throw new RuntimeException(e);
 
                 } catch (ExecutionException e) {
                     LOG.error("configureRrm excecution failed.", e);
+                    throw new RuntimeException(e);
 
                 } catch (InterruptedException e) {
                     LOG.error("configureRrm interrupted.", e);
+                    throw new RuntimeException(e);
+
                 }
 
             }

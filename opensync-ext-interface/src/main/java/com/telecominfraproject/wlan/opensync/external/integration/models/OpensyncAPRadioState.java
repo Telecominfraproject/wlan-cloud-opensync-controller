@@ -48,7 +48,7 @@ public class OpensyncAPRadioState extends BaseJsonModel {
     public Map<String, String> hwParams;
     public RadioType freqBand;
     public int thermalIntegration;
-    public List<OpensyncAPVIFState> vifStates;
+    public Set<Uuid> vifStates;
 
     public OpensyncAPRadioState() {
         super();
@@ -56,7 +56,7 @@ public class OpensyncAPRadioState extends BaseJsonModel {
         hwConfig = new HashMap<>();
         channels = new HashMap<>();
         hwParams = new HashMap<>();
-        vifStates = new ArrayList<>();
+        vifStates = new HashSet<>();
     }
 
     public String channelMode;
@@ -103,11 +103,11 @@ public class OpensyncAPRadioState extends BaseJsonModel {
         this.mac = mac;
     }
 
-    public List<OpensyncAPVIFState> getVifStates() {
+    public Set<Uuid> getVifStates() {
         return vifStates;
     }
 
-    public void setVifStates(List<OpensyncAPVIFState> vifStates) {
+    public void setVifStates(Set<Uuid> vifStates) {
         this.vifStates = vifStates;
     }
 

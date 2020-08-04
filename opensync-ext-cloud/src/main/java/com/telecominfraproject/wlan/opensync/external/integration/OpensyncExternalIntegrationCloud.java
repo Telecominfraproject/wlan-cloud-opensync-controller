@@ -111,7 +111,6 @@ import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSID;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSIDs;
 import com.telecominfraproject.wlan.status.equipment.report.models.ClientConnectionDetails;
 import com.telecominfraproject.wlan.status.equipment.report.models.EquipmentCapacityDetails;
-import com.telecominfraproject.wlan.status.equipment.report.models.EquipmentPerRadioUtilizationDetails;
 import com.telecominfraproject.wlan.status.equipment.report.models.OperatingSystemPerformance;
 import com.telecominfraproject.wlan.status.equipment.report.models.RadioUtilizationReport;
 import com.telecominfraproject.wlan.status.models.Status;
@@ -1121,7 +1120,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         // private Integer nonWifi;
         // private Integer timestampSeconds;
         Map<RadioType, Integer> avgNoiseFloor = new HashMap<>();
-        Map<RadioType, EquipmentPerRadioUtilizationDetails> radioUtilization = new HashMap<>();
+        new HashMap<>();
         Map<RadioType, EquipmentCapacityDetails> capacityDetails = new HashMap<>();
         RadioUtilizationReport radioUtilizationReport = new RadioUtilizationReport();
 
@@ -1149,7 +1148,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 radioUtil.setTimestampSeconds((int) ((survey.getTimestampMs() + surveySample.getOffsetMs()) / 1000));
                 radioUtil.setAssocClientTx((100 * surveySample.getBusyTx()) / surveySample.getDurationMs());
                 radioUtil.setAssocClientRx((100 * surveySample.getBusyRx()) / surveySample.getDurationMs());
-                //TODO not totally correct, NonWifi = totalBusy - iBSS - oBSS
+                // TODO not totally correct, NonWifi = totalBusy - iBSS - oBSS
                 radioUtil.setNonWifi(
                         (100 * (surveySample.getBusy() - surveySample.getBusyTx() - surveySample.getBusyRx()))
                                 / surveySample.getDurationMs());
@@ -1181,55 +1180,58 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 }
             }
 
-            if (survey.getSurveyListCount() > 0 && radioType != RadioType.UNSUPPORTED) {
-            	int noiseAvg = (int) Math.round(DecibelUtils.getAverageDecibel(toIntArray(noiseList)));
-            	avgNoiseFloor.put(radioType, noiseAvg);
-            	apNodeMetrics.setNoiseFloor(radioType, noiseAvg);
+            if ((survey.getSurveyListCount() > 0) && (radioType != RadioType.UNSUPPORTED)) {
+                int noiseAvg = (int) Math.round(DecibelUtils.getAverageDecibel(toIntArray(noiseList)));
+                avgNoiseFloor.put(radioType, noiseAvg);
+                apNodeMetrics.setNoiseFloor(radioType, noiseAvg);
             }
             Double totalUtilization = (100D * totalBusy) / durationMs;
             Double totalNonWifi = (100D * (totalBusy - iBSS - oBSS)) / durationMs;
-            
+
             EquipmentCapacityDetails cap = new EquipmentCapacityDetails();
             cap.setUnavailableCapacity(totalNonWifi.intValue());
             int avaiCapacity = 100 - totalNonWifi.intValue();
             cap.setAvailableCapacity(avaiCapacity);
             cap.setUsedCapacity(totalUtilization.intValue());
             cap.setUnusedCapacity(avaiCapacity - totalUtilization.intValue());
-            
+
             if (radioType != RadioType.UNSUPPORTED) {
-            	apNodeMetrics.setChannelUtilization(radioType, totalUtilization.intValue());
-            	capacityDetails.put(radioType, cap);
+                apNodeMetrics.setChannelUtilization(radioType, totalUtilization.intValue());
+                capacityDetails.put(radioType, cap);
             }
         }
 
         new RadioStatistics();
 
         populateNetworkProbeMetrics(report, apNodeMetrics);
-        
+
         radioUtilizationReport.setAvgNoiseFloor(avgNoiseFloor);
         radioUtilizationReport.setCapacityDetails(capacityDetails);
-        
+
         updateDeviceStatusRadioUtilizationReport(customerId, equipmentId, radioUtilizationReport);
     }
-    
-    private void updateDeviceStatusRadioUtilizationReport(int customerId, long equipmentId, RadioUtilizationReport radioUtilizationReport) {
-    	LOG.debug("Processing updateDeviceStatusRadioUtilizationReport for equipmentId {} with RadioUtilizationReport {}",
-    			equipmentId, radioUtilizationReport);
-      
-    	Status radioUtilizationStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.RADIO_UTILIZATION);
-    	
-    	if (radioUtilizationStatus == null) {
-    	    LOG.debug("Create new radioUtilizationStatus");
-    	    radioUtilizationStatus = new Status();
-    	    radioUtilizationStatus.setCustomerId(customerId);
-    	    radioUtilizationStatus.setEquipmentId(equipmentId);
-    	    radioUtilizationStatus.setStatusDataType(StatusDataType.RADIO_UTILIZATION);
-    	}
-    	
-    	radioUtilizationStatus.setDetails(radioUtilizationReport);
-    	
-    	statusServiceInterface.update(radioUtilizationStatus);
-    } 
+
+    private void updateDeviceStatusRadioUtilizationReport(int customerId, long equipmentId,
+            RadioUtilizationReport radioUtilizationReport) {
+        LOG.debug(
+                "Processing updateDeviceStatusRadioUtilizationReport for equipmentId {} with RadioUtilizationReport {}",
+                equipmentId, radioUtilizationReport);
+
+        Status radioUtilizationStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
+                StatusDataType.RADIO_UTILIZATION);
+
+        if (radioUtilizationStatus == null) {
+            LOG.debug("Create new radioUtilizationStatus");
+            radioUtilizationStatus = new Status();
+            radioUtilizationStatus.setCustomerId(customerId);
+            radioUtilizationStatus.setEquipmentId(equipmentId);
+            radioUtilizationStatus.setStatusDataType(StatusDataType.RADIO_UTILIZATION);
+        }
+
+        radioUtilizationStatus.setDetails(radioUtilizationReport);
+
+        statusServiceInterface.update(radioUtilizationStatus);
+    }
 
     void populateNetworkProbeMetrics(Report report, ApNodeMetrics apNodeMetrics) {
         List<NetworkProbeMetrics> networkProbeMetricsList = new ArrayList<>();
@@ -1238,51 +1240,62 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             NetworkProbeMetrics networkProbeMetrics = new NetworkProbeMetrics();
 
+            List<DnsProbeMetric> dnsProbeResults = new ArrayList<>();
             if (networkProbe.hasDnsProbe()) {
 
-                DNSProbeMetric dnsProbeMetricStats = networkProbe.getDnsProbe();
+                DNSProbeMetric dnsProbeMetricFromAp = networkProbe.getDnsProbe();
+
+                LOG.debug("DNSProbeMetric from AP {}", dnsProbeMetricFromAp);
+
                 DnsProbeMetric dnsProbeMetric = new DnsProbeMetric();
-                networkProbeMetrics.setDnsLatencyMs(dnsProbeMetricStats.getLatency());
-                dnsProbeMetric.setDnsLatencyMs(dnsProbeMetricStats.getLatency());
 
-                switch (dnsProbeMetricStats.getState()) {
-                case SUD_down:
-                    networkProbeMetrics.setDnsState(StateUpDownError.disabled);
-                    dnsProbeMetric.setDnsState(StateUpDownError.disabled);
-                    break;
-                case SUD_up:
-                    networkProbeMetrics.setDnsState(StateUpDownError.enabled);
-                    dnsProbeMetric.setDnsState(StateUpDownError.enabled);
-                    break;
-                case SUD_error:
-                    networkProbeMetrics.setDnsState(StateUpDownError.error);
-                    dnsProbeMetric.setDnsState(StateUpDownError.error);
-                    break;
-                default:
-                    networkProbeMetrics.setDnsState(StateUpDownError.UNSUPPORTED);
-                    dnsProbeMetric.setDnsState(StateUpDownError.UNSUPPORTED);
+                if (dnsProbeMetricFromAp.hasLatency()) {
+                    networkProbeMetrics.setDnsLatencyMs(dnsProbeMetricFromAp.getLatency());
+                    dnsProbeMetric.setDnsLatencyMs(dnsProbeMetricFromAp.getLatency());
                 }
 
-                try {
-                    InetAddress ipAddress = InetAddress.getByName(dnsProbeMetricStats.getServerIP());
-                    dnsProbeMetric.setDnsServerIp(ipAddress);
-                } catch (Exception e) {
-                    LOG.error("Unable to get the DNS server IP.", e);
+                if (dnsProbeMetricFromAp.hasState()) {
+                    switch (dnsProbeMetricFromAp.getState()) {
+                    case SUD_down:
+                        networkProbeMetrics.setDnsState(StateUpDownError.disabled);
+                        dnsProbeMetric.setDnsState(StateUpDownError.disabled);
+                        break;
+                    case SUD_up:
+                        networkProbeMetrics.setDnsState(StateUpDownError.enabled);
+                        dnsProbeMetric.setDnsState(StateUpDownError.enabled);
+                        break;
+                    case SUD_error:
+                        networkProbeMetrics.setDnsState(StateUpDownError.error);
+                        dnsProbeMetric.setDnsState(StateUpDownError.error);
+                        break;
+                    default:
+                        networkProbeMetrics.setDnsState(StateUpDownError.UNSUPPORTED);
+                        dnsProbeMetric.setDnsState(StateUpDownError.UNSUPPORTED);
+                    }
                 }
 
-                if (networkProbeMetrics.getDnsProbeResults() == null) {
-                    List<DnsProbeMetric> dnsProbeMetricList = new ArrayList<>();
-                    dnsProbeMetricList.add(dnsProbeMetric);
-                    networkProbeMetrics.setDnsProbeResults(dnsProbeMetricList);
-                } else {
-                    networkProbeMetrics.getDnsProbeResults().add(dnsProbeMetric);
+                if (dnsProbeMetricFromAp.hasServerIP()) {
+                    InetAddress ipAddress;
+                    try {
+                        ipAddress = InetAddress.getByName(dnsProbeMetricFromAp.getServerIP());
+                        dnsProbeMetric.setDnsServerIp(ipAddress);
+
+                    } catch (UnknownHostException e) {
+                        LOG.error("Could not get DNS Server IP from network_probe metrics", e);
+                    }
                 }
+
+                dnsProbeResults.add(dnsProbeMetric);
 
             }
+
+            networkProbeMetrics.setDnsProbeResults(dnsProbeResults);
+
             if (networkProbe.hasRadiusProbe()) {
 
                 RADIUSMetrics radiusMetrics = networkProbe.getRadiusProbe();
 
+                LOG.debug("Network Probe Radius Metrics {}", radiusMetrics);
                 if (networkProbe.hasVlanProbe()) {
                     if (networkProbe.getVlanProbe().hasObsV200RadiusLatency()) {
                         networkProbeMetrics.setRadiusLatencyInMs(networkProbe.getVlanProbe().getObsV200RadiusLatency());
@@ -1305,27 +1318,36 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     }
                 } else {
                     // take the average if we don't have from the VLAN Probe
-                    networkProbeMetrics.setRadiusLatencyInMs(radiusMetrics.getLatencyAve());
+                    if (radiusMetrics.hasLatencyAve()) {
+                        networkProbeMetrics.setRadiusLatencyInMs(radiusMetrics.getLatencyAve());
+                    }
                 }
 
             }
             if (networkProbe.hasVlanProbe()) {
                 VLANMetrics vlanMetrics = networkProbe.getVlanProbe();
-                networkProbeMetrics.setVlanIF(vlanMetrics.getVlanIF());
-                networkProbeMetrics.setDhcpLatencyMs(vlanMetrics.getDhcpLatency());
 
-                switch (vlanMetrics.getDhcpState()) {
-                case SUD_down:
-                    networkProbeMetrics.setDhcpState(StateUpDownError.disabled);
-                    break;
-                case SUD_up:
-                    networkProbeMetrics.setDhcpState(StateUpDownError.enabled);
-                    break;
-                case SUD_error:
-                    networkProbeMetrics.setDhcpState(StateUpDownError.error);
-                    break;
-                default:
-                    networkProbeMetrics.setDhcpState(StateUpDownError.UNSUPPORTED);
+                LOG.debug("NetworkProbe Vlan Metrics {}", vlanMetrics);
+                if (vlanMetrics.hasVlanIF()) {
+                    networkProbeMetrics.setVlanIF(vlanMetrics.getVlanIF());
+                }
+                if (vlanMetrics.hasDhcpLatency()) {
+                    networkProbeMetrics.setDhcpLatencyMs(vlanMetrics.getDhcpLatency());
+                }
+                if (vlanMetrics.hasDhcpState()) {
+                    switch (vlanMetrics.getDhcpState()) {
+                    case SUD_down:
+                        networkProbeMetrics.setDhcpState(StateUpDownError.disabled);
+                        break;
+                    case SUD_up:
+                        networkProbeMetrics.setDhcpState(StateUpDownError.enabled);
+                        break;
+                    case SUD_error:
+                        networkProbeMetrics.setDhcpState(StateUpDownError.error);
+                        break;
+                    default:
+                        networkProbeMetrics.setDhcpState(StateUpDownError.UNSUPPORTED);
+                    }
                 }
 
             }
@@ -1601,7 +1623,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                     if (client.getDurationMs() > 0) {
                         clientSessionDetails.setMetricDetails(calculateClientSessionMetricDetails(client, timestamp));
-                        
+
                     }
                     clientSession.getDetails().mergeSession(clientSessionDetails);
                     clientSession = clientServiceInterface.updateSession(clientSession);
@@ -1639,9 +1661,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     private ClientSessionMetricDetails calculateClientSessionMetricDetails(sts.OpensyncStats.Client client,
             long timestamp) {
-        
+
         LOG.debug("calculateClientSessionMetricDetails for Client {} at timestamp {}", client, timestamp);
-        
+
         ClientSessionMetricDetails metricDetails = new ClientSessionMetricDetails();
         metricDetails.setRssi(getNegativeSignedIntFromUnsigned(client.getStats().getRssi()));
         metricDetails.setRxBytes(client.getStats().getRxBytes());
@@ -1799,12 +1821,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     }
 
-    //TODO replace this with getNegativeSignedIntFrom8BitUnsigned
+    // TODO replace this with getNegativeSignedIntFrom8BitUnsigned
     int getNegativeSignedIntFromUnsigned(int unsignedValue) {
         int negSignedValue = (unsignedValue << 1) >> 1;
         return negSignedValue;
     }
-    
+
     int getNegativeSignedIntFrom8BitUnsigned(int unsignedValue) {
         byte b = (byte) Integer.parseInt(Integer.toHexString(unsignedValue), 16);
         return b;
@@ -1887,7 +1909,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         channelInfoList = new ArrayList<>();
                     }
                     channelInfoList.add(channelInfo);
-                    Map<RadioType,List<ChannelInfo>> channelInfoMap = channelInfoReports.getChannelInformationReportsPerRadio();
+                    Map<RadioType, List<ChannelInfo>> channelInfoMap = channelInfoReports
+                            .getChannelInformationReportsPerRadio();
                     channelInfoMap.put(radioType, channelInfoList);
                     channelInfoReports.setChannelInformationReportsPerRadio(channelInfoMap);
                 }
@@ -1903,7 +1926,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     channelInfoList = new ArrayList<>();
                 }
                 channelInfoList.add(channelInfo);
-                Map<RadioType,List<ChannelInfo>> channelInfoMap = channelInfoReports.getChannelInformationReportsPerRadio();
+                Map<RadioType, List<ChannelInfo>> channelInfoMap = channelInfoReports
+                        .getChannelInformationReportsPerRadio();
                 channelInfoMap.put(radioType, channelInfoList);
                 channelInfoReports.setChannelInformationReportsPerRadio(channelInfoMap);
             }
@@ -1924,12 +1948,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         int[] noiseArray = new int[surveySampleList.size()];
         int index = 0;
         for (SurveySample sample : surveySampleList) {
-            
+
             busyTx += sample.getBusyTx();
             busySelf += sample.getBusySelf();
             busy += sample.getBusy();
             channelInfo.setChanNumber(sample.getChannel());
-            noiseArray[index++] = getNegativeSignedIntFrom8BitUnsigned(sample.getNoise());        }
+            noiseArray[index++] = getNegativeSignedIntFrom8BitUnsigned(sample.getNoise());
+        }
 
         int iBSS = busyTx + busySelf;
 
@@ -1939,7 +1964,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         channelInfo.setWifiUtilization(totalWifi);
         channelInfo.setBandwidth(channelBandwidth);
         if (surveySampleList.size() > 0) {
-        	channelInfo.setNoiseFloor((int) Math.round(DecibelUtils.getAverageDecibel(noiseArray)));
+            channelInfo.setNoiseFloor((int) Math.round(DecibelUtils.getAverageDecibel(noiseArray)));
         }
         return channelInfo;
     }
@@ -2254,13 +2279,22 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         apId, currentActiveBSSIDs);
             }
 
-            for (OpensyncAPVIFState vifState : radioState.getVifStates()) {
-                ActiveBSSID activeBssid = new ActiveBSSID();
-                activeBssid.setBssid(vifState.getMac());
-                activeBssid.setSsid(vifState.getSsid());
-                activeBssid.setNumDevicesConnected(vifState.getAssociatedClients().size());
-                activeBssid.setRadioType(radioState.getFreqBand());
-                currentActiveBSSIDs.add(activeBssid);
+            ProfileContainer profileContainer = new ProfileContainer(
+                    profileServiceInterface.getProfileWithChildren(ce.getProfileId()));
+
+            List<Profile> ssidProfiles = profileContainer.getChildrenOfType(ce.getProfileId(), ProfileType.ssid);
+
+            for (Profile ssidProfile : ssidProfiles) {
+
+                SsidConfiguration ssidConfig = (SsidConfiguration) ssidProfile.getDetails();
+                if (ssidConfig.getAppliedRadios().contains(radioState.freqBand)) {
+                    ActiveBSSID activeBssid = new ActiveBSSID();
+                    activeBssid.setBssid(radioState.getMac());
+                    activeBssid.setSsid(ssidConfig.getSsid());
+                    activeBssid.setRadioType(radioState.getFreqBand());
+                    currentActiveBSSIDs.add(activeBssid);
+                }
+
             }
 
             statusDetails.setActiveBSSIDs(currentActiveBSSIDs);
@@ -2605,6 +2639,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         Equipment ce = getCustomerEquipment(apId);
         if (ce != null) {
+            ce.getDetails();
+
             if (fwUpgradeState.equals(EquipmentUpgradeState.up_to_date)) {
                 LOG.info("Firmware load is up to date.");
 
@@ -2614,7 +2650,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     if (!firmwareStatusData.getActiveSwVersion().equals(reportedFwImageName)
                             || !firmwareStatusData.getUpgradeState().equals(fwUpgradeState)) {
                         firmwareStatusData.setActiveSwVersion(reportedFwImageName);
-                        firmwareStatusData.setUpgradeState(fwUpgradeState);
+                        firmwareStatusData.setUpgradeState(fwUpgradeState, fwUpgradeFailureReason);
                         firmwareStatus.setDetails(firmwareStatusData);
                         updates.add(firmwareStatus);
                     }
@@ -2643,7 +2679,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     if (!firmwareStatusData.getActiveSwVersion().equals(reportedFwImageName)
                             || !firmwareStatusData.getUpgradeState().equals(fwUpgradeState)) {
                         firmwareStatusData.setActiveSwVersion(reportedFwImageName);
-                        firmwareStatusData.setUpgradeState(fwUpgradeState);
+                        firmwareStatusData.setUpgradeState(fwUpgradeState, fwUpgradeFailureReason);
                         if (fwUpgradeState.equals(EquipmentUpgradeState.apply_initiated)) {
                             firmwareStatusData.setUpgradeStartTime(System.currentTimeMillis());
                         } else if (fwUpgradeState.equals(EquipmentUpgradeState.reboot_initiated)
@@ -2678,6 +2714,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         firmwareStatus.setDetails(firmwareStatusData);
                         updates.add(firmwareStatus);
                         updates = statusServiceInterface.update(updates);
+
                         reconcileFwVersionToTrack(ce, reportedFwImageName, opensyncAPState.getModel());
                     } else {
                         if (!updates.isEmpty()) {
@@ -2701,7 +2738,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     if (!firmwareStatusData.getActiveSwVersion().equals(reportedFwImageName)
                             || !firmwareStatusData.getUpgradeState().equals(fwUpgradeState)) {
                         firmwareStatusData.setActiveSwVersion(reportedFwImageName);
-                        firmwareStatusData.setUpgradeState(fwUpgradeState);
+                        firmwareStatusData.setUpgradeState(fwUpgradeState, fwUpgradeFailureReason);
                         firmwareStatus.setDetails(firmwareStatusData);
                         updates.add(firmwareStatus);
                         updates = statusServiceInterface.update(updates);
@@ -2728,6 +2765,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     @Override
     public void wifiVIFStateDbTableDelete(List<OpensyncAPVIFState> vifStateTables, String apId) {
 
+        LOG.info("wifiVIFStateDbTableDelete for AP {} rows {}", apId, vifStateTables);
         OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
 
         if (ovsdbSession == null) {
@@ -2760,8 +2798,20 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         ActiveBSSIDs statusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
 
         List<ActiveBSSID> bssidList = statusDetails.getActiveBSSIDs();
+        List<ActiveBSSID> toBeDeleted = new ArrayList<>();
+        for (OpensyncAPVIFState vifState : vifStateTables) {
 
-        bssidList.clear();
+            if (bssidList != null) {
+                for (ActiveBSSID activeBSSID : bssidList) {
+                    if (activeBSSID.getBssid().equals(vifState.getMac())
+                            && activeBSSID.getSsid().equals(vifState.getSsid())) {
+                        toBeDeleted.add(activeBSSID);
+                    }
+                }
+            }
+        }
+
+        bssidList.removeAll(toBeDeleted);
 
         statusDetails.setActiveBSSIDs(bssidList);
 
@@ -2790,18 +2840,18 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
 
     }
-    
+
     private static int[] toIntArray(List<Integer> values) {
-    	if (values != null) {
-    		int returnValue[] = new int[values.size()];
-    		int index = 0;
+        if (values != null) {
+            int returnValue[] = new int[values.size()];
+            int index = 0;
 
-    	    for (Integer value : values) {
-    		    returnValue[index++] = value;
-    	    }
+            for (Integer value : values) {
+                returnValue[index++] = value;
+            }
 
-    	    return returnValue;
-    	}
+            return returnValue;
+        }
         return null;
     }
 

@@ -645,48 +645,27 @@ public class OpensyncExternalIntegrationCloudTest {
     public void testWifiRadioStatusDbTableUpdate() {
 
         String apId = "Test_Client_21P10C68818122";
-        OpensyncAPVIFState vifState1 = new OpensyncAPVIFState();
-        vifState1.setMac("24:f5:a2:ef:2e:54");
-        vifState1.setSsid("ssid-1");
-        Uuid uuid1 = Uuid.of(UUID.randomUUID());
-
-        vifState1.setAssociatedClients(ImmutableList.of(uuid1));
-
         OpensyncAPRadioState radioState1 = new OpensyncAPRadioState();
         radioState1.setChannel(6);
-        radioState1.setVifStates(ImmutableList.of(vifState1));
+        radioState1.setVifStates(ImmutableSet.of(new Uuid(UUID.randomUUID())));
         radioState1.setFreqBand(RadioType.is5GHzL);
         radioState1.setAllowedChannels(ImmutableSet.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11));
         radioState1.setTxPower(32);
         radioState1.setEnabled(true);
         radioState1.setCountry("CA");
 
-        OpensyncAPVIFState vifState2 = new OpensyncAPVIFState();
-        vifState2.setMac("24:f5:a2:ef:2e:55");
-        vifState2.setSsid("ssid-2");
-        Uuid uuid2 = Uuid.of(UUID.randomUUID());
-
-        vifState2.setAssociatedClients(ImmutableList.of(uuid2));
-
         OpensyncAPRadioState radioState2 = new OpensyncAPRadioState();
         radioState2.setChannel(36);
-        radioState2.setVifStates(ImmutableList.of(vifState2));
+        radioState2.setVifStates(ImmutableSet.of(new Uuid(UUID.randomUUID())));
         radioState2.setFreqBand(RadioType.is5GHzL);
         radioState2.setAllowedChannels(ImmutableSet.of(36, 40, 44, 48, 52, 56, 60, 64));
         radioState2.setTxPower(32);
         radioState2.setEnabled(true);
         radioState2.setCountry("CA");
 
-        OpensyncAPVIFState vifState3 = new OpensyncAPVIFState();
-        vifState3.setMac("24:f5:a2:ef:2e:56");
-        vifState3.setSsid("ssid-3");
-        Uuid uuid3 = Uuid.of(UUID.randomUUID());
-
-        vifState3.setAssociatedClients(ImmutableList.of(uuid3));
-
         OpensyncAPRadioState radioState3 = new OpensyncAPRadioState();
         radioState3.setChannel(149);
-        radioState3.setVifStates(ImmutableList.of(vifState3));
+        radioState3.setVifStates(ImmutableSet.of(new Uuid(UUID.randomUUID())));
         radioState3.setFreqBand(RadioType.is5GHzL);
         radioState3.setAllowedChannels(
                 ImmutableSet.of(00, 104, 108, 112, 116, 132, 136, 140, 144, 149, 153, 157, 161, 165));
