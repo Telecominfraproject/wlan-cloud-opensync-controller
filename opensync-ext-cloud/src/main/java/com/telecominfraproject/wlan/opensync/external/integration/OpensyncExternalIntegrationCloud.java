@@ -24,6 +24,7 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.telecominfraproject.wlan.alarm.AlarmServiceInterface;
 import com.telecominfraproject.wlan.client.ClientServiceInterface;
@@ -41,6 +42,8 @@ import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.NeighborScanPacketType;
 import com.telecominfraproject.wlan.core.model.equipment.NetworkType;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
+import com.telecominfraproject.wlan.core.model.pagination.PaginationContext;
+import com.telecominfraproject.wlan.core.model.pagination.PaginationResponse;
 import com.telecominfraproject.wlan.core.model.utils.DecibelUtils;
 import com.telecominfraproject.wlan.customer.models.Customer;
 import com.telecominfraproject.wlan.customer.models.EquipmentAutoProvisioningSettings;
@@ -925,6 +928,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         LOG.debug("populateApNodeMetrics for Customer {} Equipment {}", customerId, equipmentId);
         ApNodeMetrics apNodeMetrics = new ApNodeMetrics();
         ServiceMetric smr = new ServiceMetric(customerId, equipmentId);
+        
         smr.setLocationId(locationId);
         metricRecordList.add(smr);
         smr.setDetails(apNodeMetrics);
@@ -1419,6 +1423,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 metricRecordList.add(smr);
 
                 smr.setCreatedTimestamp(clReport.getTimestampMs());
+                smr.setClientMac(new MacAddress(cl.getMacAddress()).getAddressAsLong());
 
                 // clReport.getChannel();
                 ClientMetrics cMetrics = new ClientMetrics();
@@ -1508,7 +1513,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             metricRecordList.add(smr);
             NeighbourScanReports neighbourScanReports = new NeighbourScanReports();
             smr.setDetails(neighbourScanReports);
-
             smr.setCreatedTimestamp(neighbor.getTimestampMs());
 
             List<NeighbourReport> neighbourReports = new ArrayList<>();
@@ -2395,7 +2399,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
-        Equipment ce = getCustomerEquipment(apId);
+        Equipment ce = equipmentServiceInterface.getOrNull(equipmentId);
 
         if (ce == null) {
             LOG.debug("Cannot get customer Equipment for {}", apId);
@@ -2783,7 +2787,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
 
         if (equipmentId < 0L) {
-            LOG.debug("Cannot get equipmentId {} for session {}", equipmentId);
+            LOG.debug("wifiVIFStateDbTableDelete Cannot get equipmentId {} for session {}", equipmentId);
             return;
         }
 
@@ -2799,6 +2803,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         List<ActiveBSSID> bssidList = statusDetails.getActiveBSSIDs();
         List<ActiveBSSID> toBeDeleted = new ArrayList<>();
+        Equipment ce = equipmentServiceInterface.getOrNull(equipmentId);
+        List<ClientSession> clientSessionsForCustomerAndEquipment = new ArrayList<>();
+        List<ClientSession> clientSessionsToDisconnect = new ArrayList<>();
+        if (ce != null) {
+            PaginationResponse<ClientSession> clientSessions = clientServiceInterface.getSessionsForCustomer(customerId,
+                    ImmutableSet.of(equipmentId), ImmutableSet.of(ce.getLocationId()), null,
+                    new PaginationContext<ClientSession>());
+            clientSessionsForCustomerAndEquipment.addAll(clientSessions.getItems());
+        }
         for (OpensyncAPVIFState vifState : vifStateTables) {
 
             if (bssidList != null) {
@@ -2806,9 +2819,28 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     if (activeBSSID.getBssid().equals(vifState.getMac())
                             && activeBSSID.getSsid().equals(vifState.getSsid())) {
                         toBeDeleted.add(activeBSSID);
+                        for (ClientSession session : clientSessionsForCustomerAndEquipment) {
+
+                            ClientSessionDetails clientSessionDetails = session.getDetails();
+
+                            if (clientSessionDetails.getSsid().equals(vifState.ssid)
+                                    && clientSessionDetails.getRadioType().equals(activeBSSID.getRadioType())) {
+                                clientSessionDetails.setDisconnectByApTimestamp(System.currentTimeMillis());
+                                session.setDetails(clientSessionDetails);
+                                clientSessionsToDisconnect.add(session);
+                            }
+
+                        }
                     }
                 }
             }
+
+        }
+
+        if (!clientSessionsToDisconnect.isEmpty()) {
+            List<ClientSession> disconnectedSessionsUpdate = clientServiceInterface
+                    .updateSessions(clientSessionsToDisconnect);
+            LOG.debug("wifiVIFStateDbTableDelete Disconnect clients {}", disconnectedSessionsUpdate);
         }
 
         bssidList.removeAll(toBeDeleted);
@@ -2817,7 +2849,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         activeBssidsStatus.setDetails(statusDetails);
 
-        statusServiceInterface.update(activeBssidsStatus);
+        activeBssidsStatus = statusServiceInterface.update(activeBssidsStatus);
+
+        LOG.debug("wifiVIFStateDbTableDelete Updated activeBSSIDs {}", activeBssidsStatus);
+
     }
 
     @Override
@@ -2837,6 +2872,20 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             LOG.debug("wifiAssociatedClientsDbTableDelete::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
                     customerId, equipmentId, apId);
             return;
+        }
+
+        Set<MacAddress> macAddressSet = new HashSet<>();
+        macAddressSet.add(new MacAddress(deletedClientMac));
+        List<ClientSession> clientSessionList = clientServiceInterface.getSessions(customerId, macAddressSet);
+
+        for (ClientSession session : clientSessionList) {
+
+            ClientSessionDetails clientSessionDetails = session.getDetails();
+            clientSessionDetails.setDisconnectByClientTimestamp(System.currentTimeMillis());
+
+            session.setDetails(clientSessionDetails);
+            clientServiceInterface.updateSession(session);
+
         }
 
     }
