@@ -1825,7 +1825,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     }
 
-    // TODO replace this with getNegativeSignedIntFrom8BitUnsigned
     int getNegativeSignedIntFromUnsigned(int unsignedValue) {
         int negSignedValue = (unsignedValue << 1) >> 1;
         return negSignedValue;

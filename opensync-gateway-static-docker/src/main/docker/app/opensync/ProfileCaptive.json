@@ -1,0 +1,38 @@
+[
+  {
+	"model_type": "Profile",
+	"id": 2,
+	"customerId": 2,
+	"profileType": "captive_portal",
+	"name": "Captive-portal",
+      "details": {
+        "model_type": "CaptivePortalConfiguration",
+        "name": "Captive-portal",
+        "browserTitle": "Access the network as Guest",
+        "headerContent": "Captive Portal",
+        "userAcceptancePolicy": "Use this network at your own risk. No warranty of any kind.",
+        "successPageMarkdownText": "Welcome to the network",
+        "redirectURL": "",
+        "externalCaptivePortalURL": null,
+        "sessionTimeoutInMinutes": 60,
+        "logoFile": null,
+        "backgroundFile": null,
+        "walledGardenAllowlist": [],
+        "usernamePasswordFile": null,
+        "authenticationType": "guest",
+        "radiusAuthMethod": "CHAP",
+        "maxUsersWithSameCredentials": 42,
+        "externalPolicyFile": null,
+        "backgroundPosition": "left_top",
+        "backgroundRepeat": "no_repeat",
+        "radiusServiceName": null,
+        "expiryType": "unlimited",
+        "userList": [],
+        "macAllowList": [],
+        "profileType": "captive_portal"
+      },
+      "createdTimestamp": 1595341820188,
+      "lastModifiedTimestamp": 1595341820188,
+      "childProfileIds": []
+    }
+]

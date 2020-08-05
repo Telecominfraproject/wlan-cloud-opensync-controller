@@ -2707,21 +2707,22 @@ public class OvsdbDao {
                         && (profileCaptive.getDetails() != null)) {
                     CaptivePortalConfiguration captiveProfileDetails = ((CaptivePortalConfiguration) profileCaptive
                             .getDetails());
-                    captiveMap.put("sessionTimeoutInMinutes",
+                    captiveMap.put("sessiontimeout",
                             String.valueOf(captiveProfileDetails.getSessionTimeoutInMinutes()));
-                    captiveMap.put("redirectURL", captiveProfileDetails.getRedirectURL());
-                    captiveMap.put("browserTitle", captiveProfileDetails.getBrowserTitle());
-                    captiveMap.put("headerContent", captiveProfileDetails.getHeaderContent());
-                    captiveMap.put("userAcceptancePolicy", captiveProfileDetails.getUserAcceptancePolicy());
-                    captiveMap.put("successPageMarkdownText", captiveProfileDetails.getSuccessPageMarkdownText());
-                    captiveMap.put("externalCaptivePortalURL", captiveProfileDetails.getExternalCaptivePortalURL());
-                    captiveMap.put("backgroundPosition", captiveProfileDetails.getBackgroundPosition().toString());
-                    captiveMap.put("backgroundRepeat", captiveProfileDetails.getBackgroundRepeat().toString());
+                    captiveMap.put("redirect_url", captiveProfileDetails.getRedirectURL());
+                    captiveMap.put("browser_title", captiveProfileDetails.getBrowserTitle());
+                    captiveMap.put("splash_page_title", captiveProfileDetails.getHeaderContent());
+                    
+//                    captiveMap.put("userAcceptancePolicy", captiveProfileDetails.getUserAcceptancePolicy());
+//                    captiveMap.put("successPageMarkdownText", captiveProfileDetails.getSuccessPageMarkdownText());
+//                    captiveMap.put("externalCaptivePortalURL", captiveProfileDetails.getExternalCaptivePortalURL());
+//                    captiveMap.put("backgroundPosition", captiveProfileDetails.getBackgroundPosition().toString());
+//                    captiveMap.put("backgroundRepeat", captiveProfileDetails.getBackgroundRepeat().toString());
                     walledGardenAllowlist.addAll(captiveProfileDetails.getWalledGardenAllowlist());
 
-                    captiveMap.put("logoFileURL",
+                    captiveMap.put("splash_page_logo",
                             getCaptiveManagedFileUrl("logoFileURL", captiveProfileDetails.getLogoFile()));
-                    captiveMap.put("backgroundFileURL",
+                    captiveMap.put("splash_page_background",
                             getCaptiveManagedFileUrl("backgroundFileURL", captiveProfileDetails.getBackgroundFile()));
 
                     LOG.debug("captiveMap {}", captiveMap);
