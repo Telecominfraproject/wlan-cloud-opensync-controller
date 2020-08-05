@@ -21,8 +21,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import com.telecominfraproject.wlan.core.model.equipment.AutoOrManualValue;
 import com.telecominfraproject.wlan.core.model.equipment.ChannelBandwidth;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
+import com.telecominfraproject.wlan.core.model.equipment.RadioBestApSettings;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.ElementRadioConfiguration;
@@ -162,7 +164,7 @@ public class OvsdbDao {
 
     public static final String wifiAssociatedClientsDbTable = "Wifi_Associated_Clients";
 
-    public static final String rrmConfigDbTable = "RRM_Config";
+    public static final String wifiRrmConfigDbTable = "Wifi_RRM_Config";
 
     public ConnectNodeInfo getConnectNodeInfo(OvsdbClient ovsdbClient) {
         ConnectNodeInfo ret = new ConnectNodeInfo();
@@ -3193,23 +3195,12 @@ public class OvsdbDao {
 
     }
 
-    public void configureRrm(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
-
-        Map<String, WifiRadioConfigInfo> radioConfigs = getProvisionedWifiRadioConfigs(ovsdbClient);
-        Map<String, String> radioIfNameMap = new HashMap<>();
-
-        radioConfigs.entrySet().stream().forEach(new Consumer<Entry<String, WifiRadioConfigInfo>>() {
-            @Override
-            public void accept(Entry<String, WifiRadioConfigInfo> e) {
-                radioIfNameMap.put(e.getValue().freqBand, e.getKey());
-            }
-        });
+    public void configureWifiRrm(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
 
         ApElementConfiguration apElementConfig = (ApElementConfiguration) opensyncApConfig.getCustomerEquipment()
                 .getDetails();
         for (RadioType radioType : apElementConfig.getRadioMap().keySet()) {
             String freqBand = null;
-            String ifName = null;
             if (radioType == RadioType.is2dot4GHz) {
                 freqBand = "2.4G";
             } else if (radioType == RadioType.is5GHzL) {
@@ -3219,36 +3210,25 @@ public class OvsdbDao {
             } else if (radioType == RadioType.is5GHz) {
                 freqBand = "5G";
             }
-            ifName = radioIfNameMap.get(freqBand);
 
             ElementRadioConfiguration elementRadioConfig = apElementConfig.getRadioMap().get(radioType);
             if (elementRadioConfig == null) {
                 continue; // don't have a radio of this kind in the map
             }
-
-            int rxCellSize = 0;
-            if (!elementRadioConfig.getRxCellSizeDb().isAuto()) {
-                rxCellSize = elementRadioConfig.getRxCellSizeDb().getValue();
-            }
-
-            int probeResponseThreshold = 0;
-            if (!elementRadioConfig.getProbeResponseThresholdDb().isAuto()) {
-                probeResponseThreshold = elementRadioConfig.getProbeResponseThresholdDb().getValue();
-            }
-
-            int clientDisconnectThreshold = 0;
-            if (!elementRadioConfig.getClientDisconnectThresholdDb().isAuto()) {
-                clientDisconnectThreshold = elementRadioConfig.getClientDisconnectThresholdDb().getValue();
-            }
-
+            
             RadioConfiguration radioConfig = apElementConfig.getAdvancedRadioMap().get(radioType);
+            ManagementRate managementRate = null;
+            RadioBestApSettings bestApSettings = null;
+            if (radioConfig != null) {
+            	managementRate = radioConfig.getManagementRate();
+            	bestApSettings = radioConfig.getBestApSettings();
+            }
 
-            ManagementRate managementRate = radioConfig.getManagementRate();
-
-            if (ifName != null) {
+            if (freqBand != null) {
                 try {
-                    configureRrm(ovsdbClient, ifName, rxCellSize, probeResponseThreshold, clientDisconnectThreshold,
-                            managementRate);
+                    configureWifiRrm(ovsdbClient, freqBand, elementRadioConfig.getBackupChannelNumber(), elementRadioConfig.getRxCellSizeDb(), 
+                    		elementRadioConfig.getProbeResponseThresholdDb(), elementRadioConfig.getClientDisconnectThresholdDb(), 
+                    		managementRate, bestApSettings);
                 } catch (OvsdbClientException e) {
                     LOG.error("configureRrm failed with OvsdbClient exception.", e);
                     throw new RuntimeException(e);
@@ -3270,51 +3250,97 @@ public class OvsdbDao {
         }
     }
 
-    public void configureRrm(OvsdbClient ovsdbClient, String ifName, int rxCellSize, int probeResponseThreshold,
-            int clientDisconnectThreshold, ManagementRate managementRate)
+    private void configureWifiRrm(OvsdbClient ovsdbClient, String freqBand, int backupChannel, AutoOrManualValue rxCellSize,
+    		AutoOrManualValue probeResponseThreshold, AutoOrManualValue clientDisconnectThreshold, ManagementRate managementRate,
+    		RadioBestApSettings bestApSettings)
             throws OvsdbClientException, TimeoutException, ExecutionException, InterruptedException {
 
-        List<Operation> operations = new ArrayList<>();
-        Map<String, Value> updateColumns = new HashMap<>();
-        List<Condition> conditions = new ArrayList<>();
-        conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(ifName)));
-
-        if (rxCellSize > 0) {
-            updateColumns.put("cell_size", new Atom<>(rxCellSize));
-        } else {
-            updateColumns.put("cell_size", new com.vmware.ovsdb.protocol.operation.notation.Set());
+    	List<Operation> operations = new ArrayList<>();
+    	Map<String, Value> updateColumns = new HashMap<>();
+    	
+        updateColumns.put("freq_band", new Atom<>(freqBand));
+        updateColumns.put("backup_channel", new Atom<>(backupChannel));
+        
+        if (rxCellSize == null || rxCellSize.isAuto()) {
+        	updateColumns.put("cell_size", new com.vmware.ovsdb.protocol.operation.notation.Set());
+        } else { 	
+            updateColumns.put("cell_size", new Atom<>(rxCellSize.getValue()));
         }
 
-        if (probeResponseThreshold > 0) {
-            updateColumns.put("cell_size", new Atom<>(probeResponseThreshold));
-        } else {
-            updateColumns.put("cell_size", new com.vmware.ovsdb.protocol.operation.notation.Set());
+        if (probeResponseThreshold == null || probeResponseThreshold.isAuto()) {
+        	updateColumns.put("probe_resp_threshold", new com.vmware.ovsdb.protocol.operation.notation.Set());
+        } else {	
+            updateColumns.put("probe_resp_threshold", new Atom<>(probeResponseThreshold.getValue()));
         }
 
-        if (clientDisconnectThreshold > 0) {
-            updateColumns.put("cell_size", new Atom<>(clientDisconnectThreshold));
-        } else {
-            updateColumns.put("cell_size", new com.vmware.ovsdb.protocol.operation.notation.Set());
+        if (probeResponseThreshold == null || clientDisconnectThreshold.isAuto()) {
+        	updateColumns.put("client_disconnect_threshold", new com.vmware.ovsdb.protocol.operation.notation.Set());
+        } else {	
+            updateColumns.put("client_disconnect_threshold", new Atom<>(clientDisconnectThreshold.getValue()));
         }
-
-        // TODO AP defined 0-1
-        // if (managementRate != ManagementRate.auto) {
-        // updateColumns.put("basic_rate", new Atom<>(managementRate.getId()));
-        // } else {
-        // updateColumns.put("basic_rate", new
-        // com.vmware.ovsdb.protocol.operation.notation.Set());
-        // }
+        
+        if (managementRate == null || managementRate == ManagementRate.auto) {
+        	updateColumns.put("basic_rate", new
+					 com.vmware.ovsdb.protocol.operation.notation.Set());
+        } else {	
+			updateColumns.put("basic_rate", new Atom<>(managementRate.getId() * 10));
+		}
+        
+        if (bestApSettings == null) {
+        	updateColumns.put("min_load", new
+					 com.vmware.ovsdb.protocol.operation.notation.Set());
+        	updateColumns.put("snr_percentage_drop", new
+					 com.vmware.ovsdb.protocol.operation.notation.Set());
+        } else {
+        	if (bestApSettings.getDropInSnrPercentage() == null) {
+        		updateColumns.put("snr_percentage_drop", new
+   					 com.vmware.ovsdb.protocol.operation.notation.Set());
+        	} else {
+        		updateColumns.put("snr_percentage_drop", new Atom<>(bestApSettings.getDropInSnrPercentage()));
+        	}
+        	if (bestApSettings.getMinLoadFactor() == null) {
+        		updateColumns.put("min_load", new
+   					 com.vmware.ovsdb.protocol.operation.notation.Set());
+        	} else {
+        		updateColumns.put("min_load", new Atom<>(bestApSettings.getMinLoadFactor()));
+        	}
+        }
 
         Row row = new Row(updateColumns);
-        operations.add(new Update(rrmConfigDbTable, conditions, row));
+        operations.add(new Insert(wifiRrmConfigDbTable, row));
 
         CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
         OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
-        LOG.debug("Provisioned rrm config {} for {}", rxCellSize, ifName);
+        LOG.debug("Provisioned rrm config {} for {}", rxCellSize, freqBand);
 
         for (OperationResult res : result) {
             LOG.debug("Op Result {}", res);
+        }
+    }
+    
+    public void removeWifiRrm(OvsdbClient ovsdbClient) {
+        try {
+            List<Operation> operations = new ArrayList<>();
+
+            operations.add(new Delete(wifiRrmConfigDbTable));
+
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Removed rrm from {}:", wifiVifConfigDbTable);
+
+                for (OperationResult res : result) {
+                    LOG.debug("Op Result {}", res);
+                }
+            }
+
+            LOG.info("Removed Wifi_RRM_Config");
+
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            LOG.error("Error in removeRrm", e);
+            throw new RuntimeException(e);
         }
     }
 
