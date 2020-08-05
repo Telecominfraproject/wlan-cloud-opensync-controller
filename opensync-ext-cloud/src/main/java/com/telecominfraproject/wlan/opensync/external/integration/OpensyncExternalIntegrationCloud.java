@@ -1457,7 +1457,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     }
 
                     if (cl.getStats().hasRxRate()) {
-                        cMetrics.setAverageRxRate(cl.getStats().getTxRate() / 1000);
+                        cMetrics.setAverageRxRate(cl.getStats().getRxRate() / 1000);
                     }
 
                     if (cl.getStats().hasRxErrors()) {
@@ -1696,6 +1696,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     // update the client metrics, based on what we see from
                     // the MQTT data
 
+                    
                     if (client.getDurationMs() > 0) {
                         clientSessionDetails.setMetricDetails(calculateClientSessionMetricDetails(client, timestamp));
                     }
@@ -1746,15 +1747,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             long timestamp) {
 
         LOG.debug("calculateClientSessionMetricDetails for Client {} at timestamp {}", client, timestamp);
-
+       
         ClientSessionMetricDetails metricDetails = new ClientSessionMetricDetails();
         metricDetails.setRssi(getNegativeSignedIntFromUnsigned(client.getStats().getRssi()));
         metricDetails.setRxBytes(client.getStats().getRxBytes());
         metricDetails.setTxBytes(client.getStats().getTxBytes());
         metricDetails.setTotalTxPackets(client.getStats().getTxFrames());
         metricDetails.setTotalRxPackets(client.getStats().getRxFrames());
-        metricDetails.setTxDataFrames((int) ((int) client.getStats().getTxFrames() - client.getStats().getTxRetries()));
-        metricDetails.setRxDataFrames((int) ((int) client.getStats().getRxFrames() - client.getStats().getRxRetries()));
+        metricDetails.setTxDataFrames((int)client.getStats().getTxFrames());
+        metricDetails.setRxDataFrames((int)client.getStats().getRxFrames());
         // values reported in Kbps, convert to Mbps
         metricDetails.setRxMbps((float) (client.getStats().getRxRate() / 1000));
         metricDetails.setTxMbps((float) (client.getStats().getTxRate() / 1000));
@@ -1766,6 +1767,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             LOG.info("Cannot calculate tx/rx throughput for Client {} based on duration of {} Ms",
                     client.getMacAddress(), client.getDurationMs());
         }
+        metricDetails.setLastMetricTimestamp(timestamp);
 
         return metricDetails;
     }
@@ -1827,7 +1829,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             LOG.debug("Client Report Date is {}", new Date(clientReport.getTimestampMs()));
             int numConnectedClients = 0;
             for (Client client : clientReport.getClientListList()) {
-                numConnectedClients += 1;
+                if (client.getConnected()) {
+                    numConnectedClients += 1;
+                }
 
                 if (client.hasSsid() && (client.getSsid() != null) && !client.getSsid().equals("")) {
                     ssid = client.getSsid();
