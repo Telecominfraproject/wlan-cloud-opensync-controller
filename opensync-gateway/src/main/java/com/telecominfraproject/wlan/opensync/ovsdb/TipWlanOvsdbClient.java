@@ -193,14 +193,12 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         }
 
         ovsdbDao.removeAllSsids(ovsdbClient); // always
-        //TODO turn on when RRM is ready
-//        ovsdbDao.removeWifiRrm(ovsdbClient);
+        ovsdbDao.removeWifiRrm(ovsdbClient);
 
         if (opensyncAPConfig != null) {
             ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
-            //TODO turn on when RRM is ready
-//            ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
+            ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
         }
 
         ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
@@ -262,14 +260,12 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         }
 
         ovsdbDao.removeAllSsids(ovsdbClient); // always
-        //TODO turn on when RRM is ready
-//        ovsdbDao.removeWifiRrm(ovsdbClient);
+        ovsdbDao.removeWifiRrm(ovsdbClient);
         ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
 
         ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
-        //TODO turn on when RRM is ready
-//        ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
+        ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureStats(ovsdbClient);
 
         // Check if device stats is configured in Wifi_Stats_Config table,
