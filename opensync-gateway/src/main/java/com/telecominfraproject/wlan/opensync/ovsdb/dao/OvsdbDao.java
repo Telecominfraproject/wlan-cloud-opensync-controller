@@ -3248,17 +3248,12 @@ public class OvsdbDao {
                 } catch (TimeoutException e) {
                     LOG.error("configureRrm failed with Timeout.", e);
                     throw new RuntimeException(e);
-
                 } catch (ExecutionException e) {
                     LOG.error("configureRrm excecution failed.", e);
-                    throw new RuntimeException(e);
-
                 } catch (InterruptedException e) {
                     LOG.error("configureRrm interrupted.", e);
                     throw new RuntimeException(e);
-
                 }
-
             }
         }
     }
@@ -3347,7 +3342,9 @@ public class OvsdbDao {
 
             LOG.info("Removed Wifi_RRM_Config");
 
-        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+        } catch (ExecutionException  e) {
+            LOG.error("Error in removeRrm", e);
+        } catch (OvsdbClientException | TimeoutException | InterruptedException e) {
             LOG.error("Error in removeRrm", e);
             throw new RuntimeException(e);
         }
