@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.fusesource.mqtt.client.BlockingConnection;
+import org.fusesource.mqtt.client.FutureConnection;
 import org.fusesource.mqtt.client.MQTT;
 import org.fusesource.mqtt.client.Message;
 import org.fusesource.mqtt.client.QoS;
@@ -130,8 +131,10 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
 
                         // TODO: revisit this blocking connection, change it to
                         // futureConnection
-                        connection = mqtt.blockingConnection();
-                        connection.connect();
+                        FutureConnection futureConnection = mqtt.futureConnection();
+                        futureConnection.connect();
+//                        connection = mqtt.blockingConnection();
+//                        connection.connect();
                         LOG.info("Connected to MQTT broker at {}", mqtt.getHost());
 
                         // Subscribe to topics:
@@ -140,9 +143,9 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                         // new Topic("#", QoS.AT_LEAST_ONCE),
                         // new Topic("test/#", QoS.EXACTLY_ONCE),
                         // new Topic("foo/+/bar", QoS.AT_LEAST_ONCE)
-                        Topic[] topics = { new Topic("#", QoS.AT_LEAST_ONCE), };
+                        Topic[] topics = { new Topic("/ap/+/opensync", QoS.AT_LEAST_ONCE), };
 
-                        connection.subscribe(topics);
+                        futureConnection.subscribe(topics);
                         LOG.info("Subscribed to mqtt topics {}", Arrays.asList(topics));
 
                         // prepare a JSONPrinter to format protobuf messages as
@@ -157,11 +160,14 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
 
                         // main loop - receive messages
                         while (true) {
-                            Message mqttMsg = connection.receive(5, TimeUnit.SECONDS);
+                            Message mqttMsg = futureConnection.receive().await();
+//                            Message mqttMsg = connection.receive(5, TimeUnit.SECONDS);
 
                             if (mqttMsg == null) {
                                 continue;
                             }
+                            
+                            LOG.debug("MQTT Topic {}", mqttMsg.getTopic());
 
                             byte payload[] = mqttMsg.getPayload();
                             // we acknowledge right after receive because:

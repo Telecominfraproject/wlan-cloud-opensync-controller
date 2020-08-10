@@ -1610,28 +1610,6 @@ public class OvsdbDao {
                 }
             }
 
-            // Now clean up references in the vif_configs columns
-            operations = new ArrayList<>();
-            Map<String, Value> updateColumns = new HashMap<>();
-            Set<Uuid> vifConfigsSet = new HashSet<>();
-            com.vmware.ovsdb.protocol.operation.notation.Set vifConfigs = com.vmware.ovsdb.protocol.operation.notation.Set
-                    .of(vifConfigsSet);
-            updateColumns.put("vif_configs", vifConfigs);
-
-            Row row = new Row(updateColumns);
-            operations.add(new Update(wifiRadioConfigDbTable, row));
-
-            fResult = ovsdbClient.transact(ovsdbName, operations);
-            result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Updated WifiRadioConfig ");
-
-                for (OperationResult res : result) {
-                    LOG.debug("Op Result {}", res);
-                }
-            }
-
             LOG.info("Removed all ssids");
 
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
@@ -1687,6 +1665,32 @@ public class OvsdbDao {
             if (!elementRadioConfig.getEirpTxPower().isAuto()) {
                 txPower = elementRadioConfig.getEirpTxPower().getValue();
             }
+
+            String hwMode = null;
+            switch (radioConfig.getRadioMode()) {
+            case modeA:
+                hwMode = "11a";
+                break;
+            case modeAB:
+                hwMode = "11ab";
+                break;
+            case modeAC:
+                hwMode = "11ac";
+                break;
+            case modeB:
+                hwMode = "11b";
+                break;
+            case modeG:
+                hwMode = "11g";
+                break;
+            case modeX:
+                hwMode = "11ax";
+                break;          
+            case modeN:
+                hwMode = "11n";
+                break;
+            default:
+            }
             String freqBand = null;
             switch (radioType) {
             case is2dot4GHz:
@@ -1736,7 +1740,7 @@ public class OvsdbDao {
             if (freqBand != null) {
                 try {
                     configureWifiRadios(ovsdbClient, freqBand, channel, hwConfig, country.toUpperCase(), beaconInterval,
-                            enabled, ht_mode, txPower);
+                            enabled, hwMode, ht_mode, txPower);
                 } catch (OvsdbClientException e) {
                     LOG.error("ConfigureWifiRadios failed with OvsdbClient exception.", e);
                     throw new RuntimeException(e);
@@ -2178,7 +2182,7 @@ public class OvsdbDao {
     }
 
     public void configureWifiRadios(OvsdbClient ovsdbClient, String freqBand, int channel, Map<String, String> hwConfig,
-            String country, int beaconInterval, boolean enabled, String ht_mode, int txPower)
+            String country, int beaconInterval, boolean enabled, String hwMode, String ht_mode, int txPower)
             throws OvsdbClientException, TimeoutException, ExecutionException, InterruptedException {
 
         List<Operation> operations = new ArrayList<>();
@@ -2203,6 +2207,9 @@ public class OvsdbDao {
             updateColumns.put("tx_power", new Atom<>(txPower));
         } else {
             updateColumns.put("tx_power", new com.vmware.ovsdb.protocol.operation.notation.Set());
+        }
+        if (hwMode != null) {
+            updateColumns.put("hw_mode", new Atom<>(hwMode));
         }
 
         Row row = new Row(updateColumns);
@@ -2231,9 +2238,9 @@ public class OvsdbDao {
         try {
             // If we are doing a NAT SSID, no bridge, else yes
             if (networkForwardMode == NetworkForwardMode.NAT) {
-                updateColumns.put("bridge", new Atom<>("lan"));
+                updateColumns.put("bridge", new Atom<>(defaultLanInterfaceName));
             } else {
-                updateColumns.put("bridge", new Atom<>("wan"));
+                updateColumns.put("bridge", new Atom<>(defaultWanInterfaceName));
             }
             if (enable80211v) {
                 updateColumns.put("btm", new Atom<>(1));
@@ -2253,9 +2260,8 @@ public class OvsdbDao {
             updateColumns.put("rrm", new Atom<>(rrmEnabled ? 1 : 0));
             updateColumns.put("ssid", new Atom<>(ssid));
             updateColumns.put("ssid_broadcast", new Atom<>(ssidBroadcast ? "enabled" : "disabled"));
-            updateColumns.put("uapsd_enable", new Atom<>(true));
-            // updateColumns.put("vif_radio_idx", new
-            // Atom<Integer>(vifRadioIdx));
+            updateColumns.put("uapsd_enable", new Atom<>(uapsdEnabled));
+            
             updateColumns.put("min_hw_mode", new Atom<>(minHwMode));
             if (vlanId > 0) {
                 updateColumns.put("vlan_id", new Atom<>(vlanId));
@@ -2654,6 +2660,8 @@ public class OvsdbDao {
                         throw new IllegalStateException(
                                 "Cannot provision more than " + maxInterfacesPerRadio + " interfaces per Wifi Radio");
                     }
+                    
+                   
                     if (numberOfInterfaces > 0) {
                         // 1st interface has no number, 2nd has '-1', 3rd has
                         // '-2' etc.
@@ -2714,12 +2722,17 @@ public class OvsdbDao {
                     captiveMap.put("redirect_url", captiveProfileDetails.getRedirectURL());
                     captiveMap.put("browser_title", captiveProfileDetails.getBrowserTitle());
                     captiveMap.put("splash_page_title", captiveProfileDetails.getHeaderContent());
-                    
-//                    captiveMap.put("userAcceptancePolicy", captiveProfileDetails.getUserAcceptancePolicy());
-//                    captiveMap.put("successPageMarkdownText", captiveProfileDetails.getSuccessPageMarkdownText());
-//                    captiveMap.put("externalCaptivePortalURL", captiveProfileDetails.getExternalCaptivePortalURL());
-//                    captiveMap.put("backgroundPosition", captiveProfileDetails.getBackgroundPosition().toString());
-//                    captiveMap.put("backgroundRepeat", captiveProfileDetails.getBackgroundRepeat().toString());
+
+                    // captiveMap.put("userAcceptancePolicy",
+                    // captiveProfileDetails.getUserAcceptancePolicy());
+                    // captiveMap.put("successPageMarkdownText",
+                    // captiveProfileDetails.getSuccessPageMarkdownText());
+                    // captiveMap.put("externalCaptivePortalURL",
+                    // captiveProfileDetails.getExternalCaptivePortalURL());
+                    // captiveMap.put("backgroundPosition",
+                    // captiveProfileDetails.getBackgroundPosition().toString());
+                    // captiveMap.put("backgroundRepeat",
+                    // captiveProfileDetails.getBackgroundRepeat().toString());
                     walledGardenAllowlist.addAll(captiveProfileDetails.getWalledGardenAllowlist());
 
                     captiveMap.put("splash_page_logo",
@@ -3215,20 +3228,20 @@ public class OvsdbDao {
             if (elementRadioConfig == null) {
                 continue; // don't have a radio of this kind in the map
             }
-            
+
             RadioConfiguration radioConfig = apElementConfig.getAdvancedRadioMap().get(radioType);
             ManagementRate managementRate = null;
             RadioBestApSettings bestApSettings = null;
             if (radioConfig != null) {
-            	managementRate = radioConfig.getManagementRate();
-            	bestApSettings = radioConfig.getBestApSettings();
+                managementRate = radioConfig.getManagementRate();
+                bestApSettings = radioConfig.getBestApSettings();
             }
 
             if (freqBand != null) {
                 try {
-                    configureWifiRrm(ovsdbClient, freqBand, elementRadioConfig.getBackupChannelNumber(), elementRadioConfig.getRxCellSizeDb(), 
-                    		elementRadioConfig.getProbeResponseThresholdDb(), elementRadioConfig.getClientDisconnectThresholdDb(), 
-                    		managementRate, bestApSettings);
+                    configureWifiRrm(ovsdbClient, freqBand, elementRadioConfig.getBackupChannelNumber(),
+                            elementRadioConfig.getRxCellSizeDb(), elementRadioConfig.getProbeResponseThresholdDb(),
+                            elementRadioConfig.getClientDisconnectThresholdDb(), managementRate, bestApSettings);
                 } catch (OvsdbClientException e) {
                     LOG.error("configureRrm failed with OvsdbClient exception.", e);
                     throw new RuntimeException(e);
@@ -3250,60 +3263,56 @@ public class OvsdbDao {
         }
     }
 
-    private void configureWifiRrm(OvsdbClient ovsdbClient, String freqBand, int backupChannel, AutoOrManualValue rxCellSize,
-    		AutoOrManualValue probeResponseThreshold, AutoOrManualValue clientDisconnectThreshold, ManagementRate managementRate,
-    		RadioBestApSettings bestApSettings)
+    private void configureWifiRrm(OvsdbClient ovsdbClient, String freqBand, int backupChannel,
+            AutoOrManualValue rxCellSize, AutoOrManualValue probeResponseThreshold,
+            AutoOrManualValue clientDisconnectThreshold, ManagementRate managementRate,
+            RadioBestApSettings bestApSettings)
             throws OvsdbClientException, TimeoutException, ExecutionException, InterruptedException {
 
-    	List<Operation> operations = new ArrayList<>();
-    	Map<String, Value> updateColumns = new HashMap<>();
-    	
+        List<Operation> operations = new ArrayList<>();
+        Map<String, Value> updateColumns = new HashMap<>();
+
         updateColumns.put("freq_band", new Atom<>(freqBand));
         updateColumns.put("backup_channel", new Atom<>(backupChannel));
-        
+
         if (rxCellSize == null || rxCellSize.isAuto()) {
-        	updateColumns.put("cell_size", new com.vmware.ovsdb.protocol.operation.notation.Set());
-        } else { 	
+            updateColumns.put("cell_size", new com.vmware.ovsdb.protocol.operation.notation.Set());
+        } else {
             updateColumns.put("cell_size", new Atom<>(rxCellSize.getValue()));
         }
 
         if (probeResponseThreshold == null || probeResponseThreshold.isAuto()) {
-        	updateColumns.put("probe_resp_threshold", new com.vmware.ovsdb.protocol.operation.notation.Set());
-        } else {	
+            updateColumns.put("probe_resp_threshold", new com.vmware.ovsdb.protocol.operation.notation.Set());
+        } else {
             updateColumns.put("probe_resp_threshold", new Atom<>(probeResponseThreshold.getValue()));
         }
 
         if (probeResponseThreshold == null || clientDisconnectThreshold.isAuto()) {
-        	updateColumns.put("client_disconnect_threshold", new com.vmware.ovsdb.protocol.operation.notation.Set());
-        } else {	
+            updateColumns.put("client_disconnect_threshold", new com.vmware.ovsdb.protocol.operation.notation.Set());
+        } else {
             updateColumns.put("client_disconnect_threshold", new Atom<>(clientDisconnectThreshold.getValue()));
         }
-        
+
         if (managementRate == null || managementRate == ManagementRate.auto) {
-        	updateColumns.put("basic_rate", new
-					 com.vmware.ovsdb.protocol.operation.notation.Set());
-        } else {	
-			updateColumns.put("basic_rate", new Atom<>(managementRate.getId() * 10));
-		}
-        
-        if (bestApSettings == null) {
-        	updateColumns.put("min_load", new
-					 com.vmware.ovsdb.protocol.operation.notation.Set());
-        	updateColumns.put("snr_percentage_drop", new
-					 com.vmware.ovsdb.protocol.operation.notation.Set());
+            updateColumns.put("basic_rate", new com.vmware.ovsdb.protocol.operation.notation.Set());
         } else {
-        	if (bestApSettings.getDropInSnrPercentage() == null) {
-        		updateColumns.put("snr_percentage_drop", new
-   					 com.vmware.ovsdb.protocol.operation.notation.Set());
-        	} else {
-        		updateColumns.put("snr_percentage_drop", new Atom<>(bestApSettings.getDropInSnrPercentage()));
-        	}
-        	if (bestApSettings.getMinLoadFactor() == null) {
-        		updateColumns.put("min_load", new
-   					 com.vmware.ovsdb.protocol.operation.notation.Set());
-        	} else {
-        		updateColumns.put("min_load", new Atom<>(bestApSettings.getMinLoadFactor()));
-        	}
+            updateColumns.put("basic_rate", new Atom<>(managementRate.getId() * 10));
+        }
+
+        if (bestApSettings == null) {
+            updateColumns.put("min_load", new com.vmware.ovsdb.protocol.operation.notation.Set());
+            updateColumns.put("snr_percentage_drop", new com.vmware.ovsdb.protocol.operation.notation.Set());
+        } else {
+            if (bestApSettings.getDropInSnrPercentage() == null) {
+                updateColumns.put("snr_percentage_drop", new com.vmware.ovsdb.protocol.operation.notation.Set());
+            } else {
+                updateColumns.put("snr_percentage_drop", new Atom<>(bestApSettings.getDropInSnrPercentage()));
+            }
+            if (bestApSettings.getMinLoadFactor() == null) {
+                updateColumns.put("min_load", new com.vmware.ovsdb.protocol.operation.notation.Set());
+            } else {
+                updateColumns.put("min_load", new Atom<>(bestApSettings.getMinLoadFactor()));
+            }
         }
 
         Row row = new Row(updateColumns);
@@ -3318,7 +3327,7 @@ public class OvsdbDao {
             LOG.debug("Op Result {}", res);
         }
     }
-    
+
     public void removeWifiRrm(OvsdbClient ovsdbClient) {
         try {
             List<Operation> operations = new ArrayList<>();

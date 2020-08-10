@@ -2143,7 +2143,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 String bssid = vifState.getMac();
 
                 if ((bssid == null) || bssid.equals("")) {
-                    LOG.warn("BSSID from AP {} interface {} is null or empty", apId, vifState.getIfName());
+                    LOG.warn("BSSID from AP {} for vif {} is null or empty", apId, vifState.getIfName());
                     continue;
                 }
                 String ssid = vifState.getSsid();
