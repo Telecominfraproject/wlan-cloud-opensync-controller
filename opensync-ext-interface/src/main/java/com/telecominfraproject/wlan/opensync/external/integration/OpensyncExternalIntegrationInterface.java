@@ -33,6 +33,8 @@ public interface OpensyncExternalIntegrationInterface {
 
     void wifiInetStateDbTableUpdate(List<OpensyncAPInetState> inetStateTables, String apId);
 
+    void wifiInetStateDbTableDelete(List<OpensyncAPInetState> inetStateTables, String apId);
+    
     void processMqttMessage(String topic, Report report);
 
     void processMqttMessage(String topic, FlowReport flowReport);

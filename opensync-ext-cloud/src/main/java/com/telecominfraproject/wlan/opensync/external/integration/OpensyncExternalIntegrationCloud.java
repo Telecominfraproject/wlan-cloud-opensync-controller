@@ -912,6 +912,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             populateNeighbourScanReports(metricRecordList, report, customerId, equipmentId, locationId);
             populateChannelInfoReports(metricRecordList, report, customerId, equipmentId, locationId);
             populateApSsidMetrics(metricRecordList, report, customerId, equipmentId, apId, locationId);
+            populateUciMetrics(metricRecordList, report,customerId,equipmentId,apId,locationId);
             // handleRssiMetrics(metricRecordList, report, customerId,
             // equipmentId, locationId);
 
@@ -924,6 +925,17 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             equipmentMetricsCollectorInterface.publishMetrics(metricRecordList);
         }
 
+    }
+
+    private void populateUciMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId,
+            long equipmentId, String apId, long locationId) {
+                
+
+        if (report.getUccReportCount() < 1) {
+            LOG.debug("No UCC metrics in this message");
+            return;
+        }
+        
     }
 
     private void populateApNodeMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId,
@@ -2433,31 +2445,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         LOG.debug("Received Wifi_Inet_State table update for AP {}", apId);
 
-        OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
 
-        if (ovsdbSession == null) {
-            LOG.debug("wifiInetStateDbTableUpdate::Cannot get Session for AP {}", apId);
-            return;
-        }
+    }
+    
+    @Override
+    public void wifiInetStateDbTableDelete(List<OpensyncAPInetState> inetStateTables, String apId) {
 
-        int customerId = ovsdbSession.getCustomerId();
-        long equipmentId = ovsdbSession.getEquipmentId();
+        LOG.debug("Received Wifi_Inet_State table delete for AP {}", apId);
 
-        if ((customerId < 0) || (equipmentId < 0)) {
-            LOG.debug("wifiInetStateDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
-                    customerId, equipmentId, apId);
-            return;
-        }
-
-        if ((inetStateTables == null) || inetStateTables.isEmpty() || (apId == null)) {
-            return;
-        }
-
-        for (OpensyncAPInetState inetState : inetStateTables) {
-            if (LOG.isTraceEnabled()) {
-                LOG.trace("Received InetState table update {}", inetState.toPrettyString());
-            }
-        }
+       
 
     }
 

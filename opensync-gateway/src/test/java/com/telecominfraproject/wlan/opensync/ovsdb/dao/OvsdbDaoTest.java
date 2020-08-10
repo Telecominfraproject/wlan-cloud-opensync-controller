@@ -421,12 +421,13 @@ public class OvsdbDaoTest {
         RowUpdate rowUpdate2 = new RowUpdate();
         rowUpdate2.setNew(row2);
 
-        TableUpdate tableUpdate = new TableUpdate(ImmutableMap.of(row.getUuidColumn("_uuid").getUuid(), rowUpdate,
-                row1.getUuidColumn("_uuid").getUuid(), rowUpdate1, row2.getUuidColumn("_uuid").getUuid(), rowUpdate2));
-        TableUpdates tableUpdates = new TableUpdates(ImmutableMap.of(OvsdbDao.wifiVifStateDbTable, tableUpdate));
-
-        List<OpensyncAPVIFState> vifStateList = ovsdbDao.getOpensyncAPVIFState(tableUpdates, "SomeAPId", ovsdbClient);
+        List<OpensyncAPVIFState> vifStateList = ovsdbDao.getOpensyncApVifStateForRowUpdate(rowUpdate, "SomeAPId", ovsdbClient);
+        assert (vifStateList.size() == 1);
+        vifStateList.addAll(ovsdbDao.getOpensyncApVifStateForRowUpdate(rowUpdate1, "SomeAPId", ovsdbClient));
+        assert (vifStateList.size() == 2);
+        vifStateList.addAll(ovsdbDao.getOpensyncApVifStateForRowUpdate(rowUpdate2, "SomeAPId", ovsdbClient));
         assert (vifStateList.size() == 3);
+
 
     }
 
@@ -553,14 +554,14 @@ public class OvsdbDaoTest {
 
         RowUpdate rowUpdate2 = new RowUpdate();
         rowUpdate2.setNew(row2);
-
-        TableUpdate tableUpdate = new TableUpdate(ImmutableMap.of(row.getUuidColumn("_uuid").getUuid(), rowUpdate,
-                row1.getUuidColumn("_uuid").getUuid(), rowUpdate1, row2.getUuidColumn("_uuid").getUuid(), rowUpdate2));
-        TableUpdates tableUpdates = new TableUpdates(ImmutableMap.of(OvsdbDao.wifiInetStateDbTable, tableUpdate));
-
-        List<OpensyncAPInetState> inetStateList = ovsdbDao.getOpensyncAPInetState(tableUpdates, "SomeAPId",
-                ovsdbClient);
+        
+        List<OpensyncAPInetState> inetStateList = ovsdbDao.getOpensyncApInetStateForRowUpdate(rowUpdate, "SomeAPId", ovsdbClient);
+        assert (inetStateList.size() == 1);
+        inetStateList.addAll(ovsdbDao.getOpensyncApInetStateForRowUpdate(rowUpdate1, "SomeAPId", ovsdbClient));
+        assert (inetStateList.size() == 2);
+        inetStateList.addAll(ovsdbDao.getOpensyncApInetStateForRowUpdate(rowUpdate2, "SomeAPId", ovsdbClient));
         assert (inetStateList.size() == 3);
+
 
     }
 

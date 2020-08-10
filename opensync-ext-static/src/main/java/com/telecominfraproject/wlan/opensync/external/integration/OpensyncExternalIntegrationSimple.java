@@ -1,7 +1,6 @@
 package com.telecominfraproject.wlan.opensync.external.integration;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.List;
 
@@ -179,5 +178,11 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 		LOG.info("Received Wifi_Associated_Clients row delete {} for ap {}", deletedClientMac, apId);
 
 	}
+
+    @Override
+    public void wifiInetStateDbTableDelete(List<OpensyncAPInetState> inetStateTables, String apId) {
+        LOG.info("Received Wifi_VIF_State row(s) delete {} for ap {}", inetStateTables, apId);
+        
+    }
 
 }
