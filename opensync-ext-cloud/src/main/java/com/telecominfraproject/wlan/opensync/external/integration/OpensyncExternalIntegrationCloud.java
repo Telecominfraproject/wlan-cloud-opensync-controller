@@ -9,9 +9,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
@@ -135,9 +132,11 @@ import sts.OpensyncStats.NetworkProbe;
 import sts.OpensyncStats.RADIUSMetrics;
 import sts.OpensyncStats.RadioBandType;
 import sts.OpensyncStats.Report;
+import sts.OpensyncStats.SIPcallReport;
 import sts.OpensyncStats.Survey;
 import sts.OpensyncStats.Survey.SurveySample;
 import sts.OpensyncStats.SurveyType;
+import sts.OpensyncStats.UCCReport;
 import sts.OpensyncStats.VLANMetrics;
 import traffic.NetworkMetadata.FlowReport;
 import wc.stats.IpDnsTelemetry.WCStatsReport;
@@ -203,12 +202,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         Equipment ce = null;
 
         try {
-            ce = cloudEquipmentRecordCache.get(apId, new Callable<Equipment>() {
-                @Override
-                public Equipment call() throws Exception {
-                    return equipmentServiceInterface.getByInventoryIdOrNull(apId);
-                }
-            });
+            ce = cloudEquipmentRecordCache.get(apId, () -> equipmentServiceInterface.getByInventoryIdOrNull(apId));
         } catch (Exception e) {
             LOG.error("Could not get customer equipment for {}", apId, e);
         }
@@ -219,16 +213,16 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     private RadioType getRadioTypeForOvsdbRadioFreqBand(String ovsdbRadioFreqBand) {
 
         switch (ovsdbRadioFreqBand) {
-        case "2.4G":
-            return RadioType.is2dot4GHz;
-        case "5G":
-            return RadioType.is5GHz;
-        case "5GL":
-            return RadioType.is5GHzL;
-        case "5GU":
-            return RadioType.is5GHzU;
-        default:
-            return RadioType.UNSUPPORTED;
+            case "2.4G":
+                return RadioType.is2dot4GHz;
+            case "5G":
+                return RadioType.is5GHz;
+            case "5GL":
+                return RadioType.is5GHzL;
+            case "5GU":
+                return RadioType.is5GHzU;
+            default:
+                return RadioType.UNSUPPORTED;
         }
 
     }
@@ -801,12 +795,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         .getBlockedClients(customerId);
                 List<MacAddress> blockList = Lists.newArrayList();
                 if ((blockedClients != null) && !blockedClients.isEmpty()) {
-                    blockedClients.forEach(new Consumer<com.telecominfraproject.wlan.client.models.Client>() {
-                        @Override
-                        public void accept(com.telecominfraproject.wlan.client.models.Client client) {
-                            blockList.add(client.getMacAddress());
-                        }
-                    });
+                    blockedClients.forEach(client -> blockList.add(client.getMacAddress()));
                 }
                 ret.setBlockedClients(blockList);
 
@@ -912,7 +901,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             populateNeighbourScanReports(metricRecordList, report, customerId, equipmentId, locationId);
             populateChannelInfoReports(metricRecordList, report, customerId, equipmentId, locationId);
             populateApSsidMetrics(metricRecordList, report, customerId, equipmentId, apId, locationId);
-            populateUciMetrics(metricRecordList, report,customerId,equipmentId,apId,locationId);
+            populateUccReport(metricRecordList, report, customerId, equipmentId, apId, locationId);
             // handleRssiMetrics(metricRecordList, report, customerId,
             // equipmentId, locationId);
 
@@ -927,15 +916,24 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     }
 
-    private void populateUciMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId,
+    private void populateUccReport(List<ServiceMetric> metricRecordList, Report report, int customerId,
             long equipmentId, String apId, long locationId) {
-                
+
+        // This feature is used identify the ongoing UCC (Unified Communications
+        // and Collaboration) technology and Video sessions.
 
         if (report.getUccReportCount() < 1) {
             LOG.debug("No UCC metrics in this message");
             return;
         }
-        
+
+        for (UCCReport uccReport : report.getUccReportList()) {
+            if (uccReport.hasSipCallReport()) {
+                LOG.debug("SIP Call Report {}", uccReport.getSipCallReport());
+            }
+        }
+
+
     }
 
     private void populateApNodeMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId,
@@ -1091,14 +1089,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             apNodeMetrics.setTxBytes(radioType, txBytes);
 
             List<MacAddress> clientMacList = new ArrayList<>();
-            clientMacs.forEach(new Consumer<String>() {
-                @Override
-                public void accept(String macStr) {
-                    try {
-                        clientMacList.add(new MacAddress(macStr));
-                    } catch (RuntimeException e) {
-                        LOG.warn("Cannot parse mac address from MQTT ClientReport {} ", macStr);
-                    }
+            clientMacs.forEach(macStr -> {
+                try {
+                    clientMacList.add(new MacAddress(macStr));
+                } catch (RuntimeException e) {
+                    LOG.warn("Cannot parse mac address from MQTT ClientReport {} ", macStr);
                 }
             });
 
@@ -1173,18 +1168,18 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                                 / surveySample.getDurationMs());
 
                 switch (survey.getBand()) {
-                case BAND2G:
-                    radioType = RadioType.is2dot4GHz;
-                    break;
-                case BAND5G:
-                    radioType = RadioType.is5GHz;
-                    break;
-                case BAND5GL:
-                    radioType = RadioType.is5GHzL;
-                    break;
-                case BAND5GU:
-                    radioType = RadioType.is5GHzU;
-                    break;
+                    case BAND2G:
+                        radioType = RadioType.is2dot4GHz;
+                        break;
+                    case BAND5G:
+                        radioType = RadioType.is5GHz;
+                        break;
+                    case BAND5GL:
+                        radioType = RadioType.is5GHzL;
+                        break;
+                    case BAND5GU:
+                        radioType = RadioType.is5GHzU;
+                        break;
                 }
 
                 if (radioType != RadioType.UNSUPPORTED) {
@@ -1275,21 +1270,21 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 if (dnsProbeMetricFromAp.hasState()) {
                     switch (dnsProbeMetricFromAp.getState()) {
-                    case SUD_down:
-                        networkProbeMetrics.setDnsState(StateUpDownError.disabled);
-                        dnsProbeMetric.setDnsState(StateUpDownError.disabled);
-                        break;
-                    case SUD_up:
-                        networkProbeMetrics.setDnsState(StateUpDownError.enabled);
-                        dnsProbeMetric.setDnsState(StateUpDownError.enabled);
-                        break;
-                    case SUD_error:
-                        networkProbeMetrics.setDnsState(StateUpDownError.error);
-                        dnsProbeMetric.setDnsState(StateUpDownError.error);
-                        break;
-                    default:
-                        networkProbeMetrics.setDnsState(StateUpDownError.UNSUPPORTED);
-                        dnsProbeMetric.setDnsState(StateUpDownError.UNSUPPORTED);
+                        case SUD_down:
+                            networkProbeMetrics.setDnsState(StateUpDownError.disabled);
+                            dnsProbeMetric.setDnsState(StateUpDownError.disabled);
+                            break;
+                        case SUD_up:
+                            networkProbeMetrics.setDnsState(StateUpDownError.enabled);
+                            dnsProbeMetric.setDnsState(StateUpDownError.enabled);
+                            break;
+                        case SUD_error:
+                            networkProbeMetrics.setDnsState(StateUpDownError.error);
+                            dnsProbeMetric.setDnsState(StateUpDownError.error);
+                            break;
+                        default:
+                            networkProbeMetrics.setDnsState(StateUpDownError.UNSUPPORTED);
+                            dnsProbeMetric.setDnsState(StateUpDownError.UNSUPPORTED);
                     }
                 }
 
@@ -1321,17 +1316,17 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     }
                     if (networkProbe.getVlanProbe().hasObsV200RadiusState()) {
                         switch (networkProbe.getVlanProbe().getObsV200RadiusState()) {
-                        case SUD_down:
-                            networkProbeMetrics.setRadiusState(StateUpDownError.disabled);
-                            break;
-                        case SUD_up:
-                            networkProbeMetrics.setRadiusState(StateUpDownError.enabled);
-                            break;
-                        case SUD_error:
-                            networkProbeMetrics.setRadiusState(StateUpDownError.error);
-                            break;
-                        default:
-                            networkProbeMetrics.setRadiusState(StateUpDownError.UNSUPPORTED);
+                            case SUD_down:
+                                networkProbeMetrics.setRadiusState(StateUpDownError.disabled);
+                                break;
+                            case SUD_up:
+                                networkProbeMetrics.setRadiusState(StateUpDownError.enabled);
+                                break;
+                            case SUD_error:
+                                networkProbeMetrics.setRadiusState(StateUpDownError.error);
+                                break;
+                            default:
+                                networkProbeMetrics.setRadiusState(StateUpDownError.UNSUPPORTED);
                         }
 
                     }
@@ -1355,17 +1350,17 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 }
                 if (vlanMetrics.hasDhcpState()) {
                     switch (vlanMetrics.getDhcpState()) {
-                    case SUD_down:
-                        networkProbeMetrics.setDhcpState(StateUpDownError.disabled);
-                        break;
-                    case SUD_up:
-                        networkProbeMetrics.setDhcpState(StateUpDownError.enabled);
-                        break;
-                    case SUD_error:
-                        networkProbeMetrics.setDhcpState(StateUpDownError.error);
-                        break;
-                    default:
-                        networkProbeMetrics.setDhcpState(StateUpDownError.UNSUPPORTED);
+                        case SUD_down:
+                            networkProbeMetrics.setDhcpState(StateUpDownError.disabled);
+                            break;
+                        case SUD_up:
+                            networkProbeMetrics.setDhcpState(StateUpDownError.enabled);
+                            break;
+                        case SUD_error:
+                            networkProbeMetrics.setDhcpState(StateUpDownError.error);
+                            break;
+                        default:
+                            networkProbeMetrics.setDhcpState(StateUpDownError.UNSUPPORTED);
                     }
                 }
 
@@ -1708,7 +1703,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     // update the client metrics, based on what we see from
                     // the MQTT data
 
-                    
+
                     if (client.getDurationMs() > 0) {
                         clientSessionDetails.setMetricDetails(calculateClientSessionMetricDetails(client, timestamp));
                     }
@@ -1737,20 +1732,20 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     private RadioType getRadioTypeFromOpensyncRadioBand(RadioBandType band) {
         RadioType radioType = null;
         switch (band) {
-        case BAND2G:
-            radioType = RadioType.is2dot4GHz;
-            break;
-        case BAND5G:
-            radioType = RadioType.is5GHz;
-            break;
-        case BAND5GU:
-            radioType = RadioType.is5GHzU;
-            break;
-        case BAND5GL:
-            radioType = RadioType.is5GHzL;
-            break;
-        default:
-            radioType = RadioType.UNSUPPORTED;
+            case BAND2G:
+                radioType = RadioType.is2dot4GHz;
+                break;
+            case BAND5G:
+                radioType = RadioType.is5GHz;
+                break;
+            case BAND5GU:
+                radioType = RadioType.is5GHzU;
+                break;
+            case BAND5GL:
+                radioType = RadioType.is5GHzL;
+                break;
+            default:
+                radioType = RadioType.UNSUPPORTED;
         }
         return radioType;
     }
@@ -1759,15 +1754,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             long timestamp) {
 
         LOG.debug("calculateClientSessionMetricDetails for Client {} at timestamp {}", client, timestamp);
-       
+
         ClientSessionMetricDetails metricDetails = new ClientSessionMetricDetails();
         metricDetails.setRssi(getNegativeSignedIntFromUnsigned(client.getStats().getRssi()));
         metricDetails.setRxBytes(client.getStats().getRxBytes());
         metricDetails.setTxBytes(client.getStats().getTxBytes());
         metricDetails.setTotalTxPackets(client.getStats().getTxFrames());
         metricDetails.setTotalRxPackets(client.getStats().getRxFrames());
-        metricDetails.setTxDataFrames((int)client.getStats().getTxFrames());
-        metricDetails.setRxDataFrames((int)client.getStats().getRxFrames());
+        metricDetails.setTxDataFrames((int) client.getStats().getTxFrames());
+        metricDetails.setRxDataFrames((int) client.getStats().getRxFrames());
         // values reported in Kbps, convert to Mbps
         metricDetails.setRxMbps((float) (client.getStats().getRxRate() / 1000));
         metricDetails.setTxMbps((float) (client.getStats().getTxRate() / 1000));
@@ -1984,18 +1979,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 // ChannelInfo entries per surveyed channel
                 Map<Integer, List<SurveySample>> sampleByChannelMap = new HashMap<>();
 
-                survey.getSurveyListList().stream().forEach(new Consumer<SurveySample>() {
-                    @Override
-                    public void accept(SurveySample s) {
-                        List<SurveySample> surveySampleList;
-                        if (sampleByChannelMap.get(s.getChannel()) == null) {
-                            surveySampleList = new ArrayList<>();
-                        } else {
-                            surveySampleList = sampleByChannelMap.get(s.getChannel());
-                        }
-                        surveySampleList.add(s);
-                        sampleByChannelMap.put(s.getChannel(), surveySampleList);
+                survey.getSurveyListList().stream().forEach(s -> {
+                    List<SurveySample> surveySampleList;
+                    if (sampleByChannelMap.get(s.getChannel()) == null) {
+                        surveySampleList = new ArrayList<>();
+                    } else {
+                        surveySampleList = sampleByChannelMap.get(s.getChannel());
                     }
+                    surveySampleList.add(s);
+                    sampleByChannelMap.put(s.getChannel(), surveySampleList);
                 });
 
                 for (List<SurveySample> surveySampleList : sampleByChannelMap.values()) {
@@ -2366,12 +2358,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             if (currentActiveBSSIDs == null) {
                 currentActiveBSSIDs = new ArrayList<>();
             } else {
-                currentActiveBSSIDs = currentActiveBSSIDs.stream().filter(new Predicate<ActiveBSSID>() {
-                    @Override
-                    public boolean test(ActiveBSSID p) {
-                        return !(p.getRadioType().equals(radioState.getFreqBand()));
-                    }
-                }).collect(Collectors.toList());
+                currentActiveBSSIDs = currentActiveBSSIDs.stream()
+                        .filter(p -> !(p.getRadioType().equals(radioState.getFreqBand()))).collect(Collectors.toList());
                 LOG.debug(
                         "Processing Wifi_Radio_State table update for AP {}, activeBSSIDs bssidList without current radio freq {}",
                         apId, currentActiveBSSIDs);
@@ -2447,13 +2435,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 
     }
-    
+
     @Override
     public void wifiInetStateDbTableDelete(List<OpensyncAPInetState> inetStateTables, String apId) {
 
         LOG.debug("Received Wifi_Inet_State table delete for AP {}", apId);
 
-       
 
     }
 
@@ -2584,105 +2571,105 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         EquipmentUpgradeState fwUpgradeState = EquipmentUpgradeState.undefined;
         FailureReason fwUpgradeFailureReason = null;
         switch (opensyncAPState.getUpgradeStatus()) {
-        case 0:
-            break; // nothing
-        case -1:
-            LOG.error("upgrade_status: Wrong arguments (app error)");
-            fwUpgradeState = EquipmentUpgradeState.download_failed;
-            fwUpgradeFailureReason = FailureReason.downloadRequestRejected;
-            break;
-        case -3:
-            LOG.error("upgrade_status: Incorrect URL)");
-            fwUpgradeState = EquipmentUpgradeState.download_failed;
-            fwUpgradeFailureReason = FailureReason.unreachableUrl;
-            break;
-        case -4:
-            LOG.error("upgrade_status: Failed firmware image download");
-            fwUpgradeState = EquipmentUpgradeState.download_failed;
-            fwUpgradeFailureReason = FailureReason.downloadFailed;
-            break;
-        case -5:
-            LOG.error("upgrade_status: Error while downloading firmware md5 sum file");
-            fwUpgradeState = EquipmentUpgradeState.download_failed;
-            fwUpgradeFailureReason = FailureReason.downloadFailed;
-            break;
-        case -6:
-            LOG.error("upgrade_status: md5 checksum file error");
-            fwUpgradeState = EquipmentUpgradeState.download_failed;
-            fwUpgradeFailureReason = FailureReason.validationFailed;
-            break;
-        case -7:
-            LOG.error("upgrade_status: Firmware image error");
-            fwUpgradeState = EquipmentUpgradeState.apply_failed;
-            fwUpgradeFailureReason = FailureReason.validationFailed;
-            break;
-        case -8:
-            LOG.error("upgrade_status: Flash erase failed");
-            fwUpgradeState = EquipmentUpgradeState.apply_failed;
-            fwUpgradeFailureReason = FailureReason.applyFailed;
-            break;
-        case -9:
-            LOG.error("upgrade_status: Flash write failed");
-            fwUpgradeState = EquipmentUpgradeState.apply_failed;
-            fwUpgradeFailureReason = FailureReason.applyFailed;
-            break;
-        case -10:
-            LOG.error("upgrade_status: Flash verification failed");
-            fwUpgradeState = EquipmentUpgradeState.apply_failed;
-            fwUpgradeFailureReason = FailureReason.validationFailed;
-            break;
-        case -11:
-            LOG.error("upgrade_status: Set new bootconfig failed");
-            fwUpgradeState = EquipmentUpgradeState.apply_failed;
-            fwUpgradeFailureReason = FailureReason.applyFailed;
-            break;
-        case -12:
-            LOG.error("upgrade_status: Device restart failed");
-            fwUpgradeState = EquipmentUpgradeState.reboot_failed;
-            fwUpgradeFailureReason = FailureReason.rebootTimedout;
-            break;
-        case -14:
-            LOG.error("upgrade_status: Flash BootConfig erase failed");
-            fwUpgradeState = EquipmentUpgradeState.apply_failed;
-            fwUpgradeFailureReason = FailureReason.applyFailed;
-            break;
-        case -15:
-            LOG.error("upgrade_status: Safe update is running");
-            fwUpgradeState = EquipmentUpgradeState.apply_failed;
-            fwUpgradeFailureReason = FailureReason.applyFailed;
-            break;
-        case -16:
-            LOG.error("upgrade_status: Not enough free space on device");
-            fwUpgradeState = EquipmentUpgradeState.download_failed;
-            fwUpgradeFailureReason = FailureReason.downloadRequestFailedFlashFull;
+            case 0:
+                break; // nothing
+            case -1:
+                LOG.error("upgrade_status: Wrong arguments (app error)");
+                fwUpgradeState = EquipmentUpgradeState.download_failed;
+                fwUpgradeFailureReason = FailureReason.downloadRequestRejected;
+                break;
+            case -3:
+                LOG.error("upgrade_status: Incorrect URL)");
+                fwUpgradeState = EquipmentUpgradeState.download_failed;
+                fwUpgradeFailureReason = FailureReason.unreachableUrl;
+                break;
+            case -4:
+                LOG.error("upgrade_status: Failed firmware image download");
+                fwUpgradeState = EquipmentUpgradeState.download_failed;
+                fwUpgradeFailureReason = FailureReason.downloadFailed;
+                break;
+            case -5:
+                LOG.error("upgrade_status: Error while downloading firmware md5 sum file");
+                fwUpgradeState = EquipmentUpgradeState.download_failed;
+                fwUpgradeFailureReason = FailureReason.downloadFailed;
+                break;
+            case -6:
+                LOG.error("upgrade_status: md5 checksum file error");
+                fwUpgradeState = EquipmentUpgradeState.download_failed;
+                fwUpgradeFailureReason = FailureReason.validationFailed;
+                break;
+            case -7:
+                LOG.error("upgrade_status: Firmware image error");
+                fwUpgradeState = EquipmentUpgradeState.apply_failed;
+                fwUpgradeFailureReason = FailureReason.validationFailed;
+                break;
+            case -8:
+                LOG.error("upgrade_status: Flash erase failed");
+                fwUpgradeState = EquipmentUpgradeState.apply_failed;
+                fwUpgradeFailureReason = FailureReason.applyFailed;
+                break;
+            case -9:
+                LOG.error("upgrade_status: Flash write failed");
+                fwUpgradeState = EquipmentUpgradeState.apply_failed;
+                fwUpgradeFailureReason = FailureReason.applyFailed;
+                break;
+            case -10:
+                LOG.error("upgrade_status: Flash verification failed");
+                fwUpgradeState = EquipmentUpgradeState.apply_failed;
+                fwUpgradeFailureReason = FailureReason.validationFailed;
+                break;
+            case -11:
+                LOG.error("upgrade_status: Set new bootconfig failed");
+                fwUpgradeState = EquipmentUpgradeState.apply_failed;
+                fwUpgradeFailureReason = FailureReason.applyFailed;
+                break;
+            case -12:
+                LOG.error("upgrade_status: Device restart failed");
+                fwUpgradeState = EquipmentUpgradeState.reboot_failed;
+                fwUpgradeFailureReason = FailureReason.rebootTimedout;
+                break;
+            case -14:
+                LOG.error("upgrade_status: Flash BootConfig erase failed");
+                fwUpgradeState = EquipmentUpgradeState.apply_failed;
+                fwUpgradeFailureReason = FailureReason.applyFailed;
+                break;
+            case -15:
+                LOG.error("upgrade_status: Safe update is running");
+                fwUpgradeState = EquipmentUpgradeState.apply_failed;
+                fwUpgradeFailureReason = FailureReason.applyFailed;
+                break;
+            case -16:
+                LOG.error("upgrade_status: Not enough free space on device");
+                fwUpgradeState = EquipmentUpgradeState.download_failed;
+                fwUpgradeFailureReason = FailureReason.downloadRequestFailedFlashFull;
 
-            break;
-        case 10:
-            LOG.info("upgrade_status: Firmware download started for AP {}", apId);
-            fwUpgradeState = EquipmentUpgradeState.download_initiated;
-            break;
-        case 11:
-            LOG.info("upgrade_status: Firmware download successful, triggering upgrade.");
-            fwUpgradeState = EquipmentUpgradeState.download_complete;
-            break;
-        case 20:
-            LOG.info("upgrade_status: FW write on alt partition started");
-            fwUpgradeState = EquipmentUpgradeState.apply_initiated;
-            break;
-        case 21:
-            LOG.info("upgrade_status: FW image write successfully completed");
-            fwUpgradeState = EquipmentUpgradeState.apply_complete;
-            break;
-        case 30:
-            LOG.info("upgrade_status: Bootconfig partition update started");
-            fwUpgradeState = EquipmentUpgradeState.apply_initiated;
-            break;
-        case 31:
-            LOG.info("upgrade_status: Bootconfig partition update completed");
-            fwUpgradeState = EquipmentUpgradeState.apply_complete;
-            break;
-        default:
-            LOG.debug("upgrade_status: {}", opensyncAPState.getUpgradeStatus());
+                break;
+            case 10:
+                LOG.info("upgrade_status: Firmware download started for AP {}", apId);
+                fwUpgradeState = EquipmentUpgradeState.download_initiated;
+                break;
+            case 11:
+                LOG.info("upgrade_status: Firmware download successful, triggering upgrade.");
+                fwUpgradeState = EquipmentUpgradeState.download_complete;
+                break;
+            case 20:
+                LOG.info("upgrade_status: FW write on alt partition started");
+                fwUpgradeState = EquipmentUpgradeState.apply_initiated;
+                break;
+            case 21:
+                LOG.info("upgrade_status: FW image write successfully completed");
+                fwUpgradeState = EquipmentUpgradeState.apply_complete;
+                break;
+            case 30:
+                LOG.info("upgrade_status: Bootconfig partition update started");
+                fwUpgradeState = EquipmentUpgradeState.apply_initiated;
+                break;
+            case 31:
+                LOG.info("upgrade_status: Bootconfig partition update completed");
+                fwUpgradeState = EquipmentUpgradeState.apply_complete;
+                break;
+            default:
+                LOG.debug("upgrade_status: {}", opensyncAPState.getUpgradeStatus());
 
         }
 
