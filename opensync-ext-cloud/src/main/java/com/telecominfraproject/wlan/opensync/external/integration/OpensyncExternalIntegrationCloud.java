@@ -8,7 +8,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
@@ -66,6 +68,7 @@ import com.telecominfraproject.wlan.firmware.models.FirmwareTrackRecord;
 import com.telecominfraproject.wlan.firmware.models.FirmwareVersion;
 import com.telecominfraproject.wlan.location.models.Location;
 import com.telecominfraproject.wlan.location.service.LocationServiceInterface;
+import com.telecominfraproject.wlan.manufacturer.ManufacturerInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.controller.OpensyncCloudGatewayController;
 import com.telecominfraproject.wlan.opensync.external.integration.controller.OpensyncCloudGatewayController.ListOfEquipmentCommandResponses;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
@@ -132,7 +135,6 @@ import sts.OpensyncStats.NetworkProbe;
 import sts.OpensyncStats.RADIUSMetrics;
 import sts.OpensyncStats.RadioBandType;
 import sts.OpensyncStats.Report;
-import sts.OpensyncStats.SIPcallReport;
 import sts.OpensyncStats.Survey;
 import sts.OpensyncStats.Survey.SurveySample;
 import sts.OpensyncStats.SurveyType;
@@ -1576,12 +1578,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     }
 
     private void handleClientSessionUpdate(int customerId, long equipmentId, String apId, long locationId, int channel,
-            RadioBandType band, long timestamp, sts.OpensyncStats.Client client, String nodeId, MacAddress bssidAddress,
+            RadioBandType band, long timestamp, sts.OpensyncStats.Client client, String nodeId, 
             String ssid) {
         try
 
         {
-            LOG.info("handleClientSessionUpdate for {} on BSSID {}", client, bssidAddress);
+            LOG.info("handleClientSessionUpdate for {} on ssid {}", client, ssid);
 
             com.telecominfraproject.wlan.client.models.Client clientInstance = clientServiceInterface
                     .getOrNull(customerId, new MacAddress(client.getMacAddress()));
@@ -1677,7 +1679,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         }
 
                     } else {
-                        clientSessionDetails.setAssociationState(AssociationState.Disconnected);
                         if (client.hasDisconnectCount()) {
                             if (client.hasDisconnectOffsetMs()) {
                                 clientSessionDetails
@@ -1708,9 +1709,16 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         clientSessionDetails.setMetricDetails(calculateClientSessionMetricDetails(client, timestamp));
                     }
                     clientSession.getDetails().mergeSession(clientSessionDetails);
-                    clientSession.getDetails()
-                            .setAssociationState(clientSession.getDetails().calculateAssociationState());
 
+                    if (client.getConnected()) {
+                        if (client.hasStats()) {
+                            clientSession.getDetails().setAssociationState(AssociationState.Active_Data);
+                        } else {
+                            clientSession.getDetails().setAssociationState(AssociationState._802_11_Associated);
+                        }
+                    } else {
+                        clientSession.getDetails().setAssociationState(AssociationState.Disconnected);
+                    }
                     LOG.debug("Assocation State {}", clientSession.getDetails().getAssociationState());
                     clientSession = clientServiceInterface.updateSession(clientSession);
 
@@ -1836,6 +1844,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             LOG.debug("Client Report Date is {}", new Date(clientReport.getTimestampMs()));
             int numConnectedClients = 0;
             for (Client client : clientReport.getClientListList()) {
+
+
                 if (client.getConnected()) {
                     numConnectedClients += 1;
                 }
@@ -1859,28 +1869,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                     lastRssi = client.getStats().getRssi();
 
-                    for (sts.OpensyncStats.Client.TxStats txStats : client.getTxStatsList()) {
-
-                        LOG.debug("txStats {}", txStats);
-                    }
-
-                    for (sts.OpensyncStats.Client.RxStats rxStats : client.getRxStatsList()) {
-
-                        LOG.debug("rxStats {}", rxStats);
-                    }
-
-                    for (sts.OpensyncStats.Client.TidStats tidStats : client.getTidStatsList()) {
-
-                        LOG.debug("tidStats {}", tidStats);
-                    }
-
                 }
 
                 try {
-                    if ((ssidStatistics.getBssid() != null) && (ssid != null) && (client.getMacAddress() != null)) {
+                    if ((ssid != null) && (client.getMacAddress() != null)) {
                         handleClientSessionUpdate(customerId, equipmentId, apId, locationId, clientReport.getChannel(),
-                                clientReport.getBand(), clientReport.getTimestampMs(), client, report.getNodeID(),
-                                ssidStatistics.getBssid(), ssid);
+                                clientReport.getBand(), clientReport.getTimestampMs(), client, report.getNodeID(), ssid);
                     }
                 } catch (Exception e) {
                     LOG.debug("Unabled to update client {} session {}", client, e);
@@ -2133,67 +2127,61 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     // radio type yet
         }
 
-        Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
-                StatusDataType.ACTIVE_BSSIDS);
 
-        if (activeBssidsStatus != null) {
+        for (OpensyncAPVIFState vifState : vifStateTables) {
 
-            ActiveBSSIDs statusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
+            LOG.debug("Processing vifState for interface {} on AP {}", vifState.getIfName(), apId);
 
-            for (OpensyncAPVIFState vifState : vifStateTables) {
+            String bssid = vifState.getMac();
 
-                LOG.debug("Processing vifState for interface {} on AP {}", vifState.getIfName(), apId);
+            if ((bssid == null) || bssid.equals("")) {
+                LOG.warn("BSSID from AP {} for vif {} is null or empty", apId, vifState.getIfName());
+                continue;
+            }
+            String ssid = vifState.getSsid();
 
-                String bssid = vifState.getMac();
-
-                if ((bssid == null) || bssid.equals("")) {
-                    LOG.warn("BSSID from AP {} for vif {} is null or empty", apId, vifState.getIfName());
-                    continue;
-                }
-                String ssid = vifState.getSsid();
-
-                if ((ssid == null) || ssid.equals("")) {
-                    LOG.warn("SSID from AP {} interface {} is null or empty", apId, vifState.getIfName());
-                    continue;
-                }
-
-                int numClients = vifState.getAssociatedClients().size();
-
-                LOG.debug("Values from Vif State Mac (BSSID) {} SSID {} AssociatedClients {}", bssid, ssid,
-                        vifState.getAssociatedClients());
-
-                List<ActiveBSSID> bssidList = statusDetails.getActiveBSSIDs();
-                for (ActiveBSSID activeBssid : bssidList) {
-
-                    LOG.debug("Checking BSSID {} and SSID {} from BssidList against BSSID {} SSID {}",
-                            activeBssid.getBssid(), activeBssid.getSsid(), bssid, ssid);
-                    if (activeBssid.getBssid().equals(bssid) && activeBssid.getSsid().equals(ssid)) {
-                        LOG.debug("Match BSSID {} and SSID {} from BssidList against BSSID {} SSID {}",
-                                activeBssid.getBssid(), activeBssid.getSsid(), bssid, ssid);
-
-                        int idx = bssidList.indexOf(activeBssid);
-
-                        activeBssid.setNumDevicesConnected(numClients);
-                        bssidList.set(idx, activeBssid);
-                        statusDetails.setActiveBSSIDs(bssidList);
-                        activeBssidsStatus.setDetails(statusDetails);
-
-                        break;
-                    }
-
-                }
-
+            if ((ssid == null) || ssid.equals("")) {
+                LOG.warn("SSID from AP {} interface {} is null or empty", apId, vifState.getIfName());
+                continue;
             }
 
-            activeBssidsStatus = statusServiceInterface.update(activeBssidsStatus);
+            int numClients = vifState.getAssociatedClients().size();
 
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("ActiveBSSIDs {}", activeBssidsStatus.toPrettyString());
+            int channel = vifState.getChannel();
+
+            if ((channel < 1)) {
+                LOG.warn("Channel from AP {} interface {} is null or empty", apId, vifState.getIfName());
+                continue;
             }
 
-            updateClientDetailsStatus(customerId, equipmentId, (ActiveBSSIDs) activeBssidsStatus.getDetails());
+            LOG.debug("Values from Vif State Mac (BSSID) {} SSID {} AssociatedClients {} Channel {}", bssid, ssid,
+                    vifState.getAssociatedClients());
+
+            RadioType radioType = null;
+            Optional<ElementRadioConfiguration> radioConfiguration = ((ApElementConfiguration) apNode.getDetails())
+                    .getRadioMap().values().stream().filter(new Predicate<ElementRadioConfiguration>() {
+
+                        @Override
+                        public boolean test(ElementRadioConfiguration t) {
+                            return (t.getActiveChannel() == channel);
+                        }
+
+                    }).findFirst();
+
+            if (radioConfiguration.isPresent()) {
+                radioType = radioConfiguration.get().getRadioType();
+            }
+
+            updateActiveBssids(customerId, equipmentId, apId, ssid, radioType, bssid, numClients);
 
         }
+
+        Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
+                StatusDataType.ACTIVE_BSSIDS);
+        if (activeBssidsStatus != null) {
+            updateClientDetailsStatus(customerId, equipmentId, (ActiveBSSIDs) activeBssidsStatus.getDetails());
+        }
+
 
         LOG.info("Finished wifiVIFStateDbTableUpdate updated {}", activeBssidsStatus);
 
@@ -2273,7 +2261,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
 
         Status protocolStatus = null;
-        Status activeBssidsStatus = null;
         EquipmentProtocolStatusData protocolStatusData = null;
 
         for (OpensyncAPRadioState radioState : radioStateTables) {
@@ -2329,73 +2316,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             }
 
-            activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
-                    StatusDataType.ACTIVE_BSSIDS);
-
-            if (activeBssidsStatus == null) {
-                activeBssidsStatus = new Status();
-                activeBssidsStatus.setCustomerId(customerId);
-                activeBssidsStatus.setEquipmentId(equipmentId);
-                activeBssidsStatus.setStatusDataType(StatusDataType.ACTIVE_BSSIDS);
-
-                ActiveBSSIDs statusDetails = new ActiveBSSIDs();
-                statusDetails.setActiveBSSIDs(new ArrayList<ActiveBSSID>());
-
-                activeBssidsStatus.setDetails(statusDetails);
-
-                activeBssidsStatus = statusServiceInterface.update(activeBssidsStatus);
-                LOG.debug("Processing Wifi_Radio_State table update for AP {}, created new ACTIVE_BSSID Status {}",
-                        apId, activeBssidsStatus);
-
-            }
-
-            ActiveBSSIDs statusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
-
-            LOG.debug("Processing Wifi_Radio_State table update for AP {}, activeBSSIDs StatusDetails before update {}",
-                    apId, statusDetails);
-
-            List<ActiveBSSID> currentActiveBSSIDs = statusDetails.getActiveBSSIDs();
-            if (currentActiveBSSIDs == null) {
-                currentActiveBSSIDs = new ArrayList<>();
-            } else {
-                currentActiveBSSIDs = currentActiveBSSIDs.stream()
-                        .filter(p -> !(p.getRadioType().equals(radioState.getFreqBand()))).collect(Collectors.toList());
-                LOG.debug(
-                        "Processing Wifi_Radio_State table update for AP {}, activeBSSIDs bssidList without current radio freq {}",
-                        apId, currentActiveBSSIDs);
-            }
-
-            ProfileContainer profileContainer = new ProfileContainer(
-                    profileServiceInterface.getProfileWithChildren(ce.getProfileId()));
-
-            List<Profile> ssidProfiles = profileContainer.getChildrenOfType(ce.getProfileId(), ProfileType.ssid);
-
-            for (Profile ssidProfile : ssidProfiles) {
-
-                SsidConfiguration ssidConfig = (SsidConfiguration) ssidProfile.getDetails();
-                if (ssidConfig.getAppliedRadios().contains(radioState.freqBand)) {
-                    ActiveBSSID activeBssid = new ActiveBSSID();
-                    activeBssid.setBssid(radioState.getMac());
-                    activeBssid.setSsid(ssidConfig.getSsid());
-                    activeBssid.setRadioType(radioState.getFreqBand());
-                    currentActiveBSSIDs.add(activeBssid);
-                }
-
-            }
-
-            statusDetails.setActiveBSSIDs(currentActiveBSSIDs);
-            activeBssidsStatus.setDetails(statusDetails);
-
-            activeBssidsStatus = statusServiceInterface.update(activeBssidsStatus);
-
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Processing Wifi_Radio_State table update for AP {}, updated ACTIVE_BSSID Status {}", apId,
-                        activeBssidsStatus.toPrettyString());
-            }
+            
 
         }
 
-        updateClientDetailsStatus(customerId, equipmentId, (ActiveBSSIDs) activeBssidsStatus.getDetails());
 
         if (protocolStatus != null) {
             statusServiceInterface.update(protocolStatus);
@@ -2426,6 +2350,64 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
         LOG.info("Finished wifiRadioStateDbTableUpdate");
 
+    }
+
+    private void updateActiveBssids(int customerId, long equipmentId, Object apId, String ssid, RadioType freqBand,
+            String macAddress, int numClients) {
+        Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
+                StatusDataType.ACTIVE_BSSIDS);
+
+        if (activeBssidsStatus == null) {
+            activeBssidsStatus = new Status();
+            activeBssidsStatus.setCustomerId(customerId);
+            activeBssidsStatus.setEquipmentId(equipmentId);
+            activeBssidsStatus.setStatusDataType(StatusDataType.ACTIVE_BSSIDS);
+
+            ActiveBSSIDs statusDetails = new ActiveBSSIDs();
+            statusDetails.setActiveBSSIDs(new ArrayList<ActiveBSSID>());
+
+            activeBssidsStatus.setDetails(statusDetails);
+
+            activeBssidsStatus = statusServiceInterface.update(activeBssidsStatus);
+            LOG.debug("Processing Wifi_VIF_State table update for AP {}, created new ACTIVE_BSSID Status {}", apId,
+                    activeBssidsStatus);
+
+        }
+
+        ActiveBSSIDs statusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
+
+        LOG.debug("Processing Wifi_VIF_State table update for AP {}, activeBSSIDs StatusDetails before update {}",
+                apId, statusDetails);
+
+        List<ActiveBSSID> currentActiveBSSIDs = statusDetails.getActiveBSSIDs();
+        if (currentActiveBSSIDs == null) {
+            currentActiveBSSIDs = new ArrayList<>();
+        } else {
+            currentActiveBSSIDs = currentActiveBSSIDs.stream().filter(p -> !(p.getRadioType().equals(freqBand) && p.getSsid().equals(ssid)))
+                    .collect(Collectors.toList());
+            LOG.debug(
+                    "Processing Wifi_VIF_State table update for AP {}, activeBSSIDs bssidList without current radio freq {} and ssid {}",
+                    apId, currentActiveBSSIDs, ssid);
+        }
+
+
+        ActiveBSSID activeBssid = new ActiveBSSID();
+        activeBssid.setBssid(macAddress);
+        activeBssid.setSsid(ssid);
+        activeBssid.setRadioType(freqBand);
+        activeBssid.setNumDevicesConnected(numClients);
+        currentActiveBSSIDs.add(activeBssid);
+
+
+        statusDetails.setActiveBSSIDs(currentActiveBSSIDs);
+        activeBssidsStatus.setDetails(statusDetails);
+
+        activeBssidsStatus = statusServiceInterface.update(activeBssidsStatus);
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Processing Wifi_VIF_State table update for AP {}, updated ACTIVE_BSSID Status {}", apId,
+                    activeBssidsStatus.toPrettyString());
+        }
     }
 
     @Override
@@ -2521,21 +2503,52 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 long sessionId = WiFiSessionUtility.encodeWiFiAssociationId(System.currentTimeMillis() / 1000L,
                         MacAddress.convertMacStringToLongValue(opensyncWifiAssociatedClients.getMac()));
                 clientSessionDetails.setSessionId(sessionId);
+                clientSessionDetails.setAssociationState(AssociationState._802_11_Associated);
+                clientSessionDetails.setAssocTimestamp(System.currentTimeMillis());
+                clientSessionDetails.setIsReassociation(false);
                 LOG.debug("wifiAssociatedClientDbTableUpdate Session Id {}", sessionId);
                 clientSession.setDetails(clientSessionDetails);
                 clientSession = clientServiceInterface.updateSession(clientSession);
             }
 
-            clientSession.setLocationId(ce.getLocationId());
             ClientSessionDetails clientSessionDetails = clientSession.getDetails();
             clientSessionDetails.setHostname(clientDetails.getHostName());
-            clientSessionDetails.setIsReassociation(isReassociation);
-            clientSessionDetails.setAssocTimestamp(System.currentTimeMillis());
-            clientSessionDetails.setAssociationState(AssociationState._802_11_Associated);
-            long sessionId = WiFiSessionUtility.encodeWiFiAssociationId(System.currentTimeMillis() / 1000L,
-                    MacAddress.convertMacStringToLongValue(opensyncWifiAssociatedClients.getMac()));
-            clientSessionDetails.setPreviousValidSessionId(clientSessionDetails.getSessionId());
-            clientSessionDetails.setSessionId(sessionId);
+            if (clientSessionDetails.getAssociationState() != null
+                    && clientSessionDetails.getAssociationState().equals(AssociationState.Disconnected)) {
+                clientSessionDetails.setIsReassociation(true); // if this
+                                                               // session was
+                                                               // previously
+                                                               // disconnected,
+                                                               // this is a
+                                                               // reassociation
+            } else {
+                clientSessionDetails.setIsReassociation(isReassociation); // else
+                                                                          // whatever
+                                                                          // state
+                                                                          // was
+                                                                          // determined
+                                                                          // above
+                                                                          // for
+                                                                          // client
+            }
+
+            if (clientSessionDetails.getIsReassociation()) {
+                // in this case, get a new session id for the reassociation
+                long sessionId = WiFiSessionUtility.encodeWiFiAssociationId(System.currentTimeMillis() / 1000L,
+                        MacAddress.convertMacStringToLongValue(opensyncWifiAssociatedClients.getMac()));
+                clientSessionDetails.setPreviousValidSessionId(clientSessionDetails.getSessionId());
+                clientSessionDetails.setSessionId(sessionId);
+            }
+
+
+            if (opensyncWifiAssociatedClients.getState().equals("active")) {
+                clientSession.getDetails().setAssociationState(AssociationState.Active_Data);
+            } else if (opensyncWifiAssociatedClients.getState().equals("idle")
+                    || opensyncWifiAssociatedClients.getState().equals("power save")) {
+                clientSession.getDetails().setAssociationState(AssociationState._802_11_Associated);
+            }
+
+
             clientSessionDetails.setApFingerprint(clientDetails.getApFingerprint());
             clientSession.setDetails(clientSessionDetails);
             clientSession = clientServiceInterface.updateSession(clientSession);
@@ -2899,29 +2912,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     if (activeBSSID.getBssid().equals(vifState.getMac())
                             && activeBSSID.getSsid().equals(vifState.getSsid())) {
                         toBeDeleted.add(activeBSSID);
-                        for (ClientSession session : clientSessionsForCustomerAndEquipment) {
 
-                            ClientSessionDetails clientSessionDetails = session.getDetails();
-
-                            if (clientSessionDetails.getSsid().equals(vifState.ssid)
-                                    && clientSessionDetails.getRadioType().equals(activeBSSID.getRadioType())) {
-                                clientSessionDetails.setDisconnectByApTimestamp(System.currentTimeMillis());
-                                session.setDetails(clientSessionDetails);
-                                clientSessionsToDisconnect.add(session);
-                            }
-
-                        }
                     }
                 }
             }
 
         }
 
-        if (!clientSessionsToDisconnect.isEmpty()) {
-            List<ClientSession> disconnectedSessionsUpdate = clientServiceInterface
-                    .updateSessions(clientSessionsToDisconnect);
-            LOG.debug("wifiVIFStateDbTableDelete Disconnect clients {}", disconnectedSessionsUpdate);
-        }
 
         bssidList.removeAll(toBeDeleted);
 
