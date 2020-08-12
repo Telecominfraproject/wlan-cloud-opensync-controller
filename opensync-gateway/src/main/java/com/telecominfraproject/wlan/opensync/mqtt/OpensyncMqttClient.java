@@ -4,9 +4,7 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
-import org.fusesource.mqtt.client.BlockingConnection;
 import org.fusesource.mqtt.client.FutureConnection;
 import org.fusesource.mqtt.client.MQTT;
 import org.fusesource.mqtt.client.Message;
@@ -82,10 +80,11 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
         }
 
         Runnable mqttClientRunnable = new Runnable() {
+
             @Override
             public void run() {
                 while (keepReconnecting) {
-                    BlockingConnection connection = null;
+                    FutureConnection futureConnection = null;
                     try {
                         Thread.sleep(5000);
 
@@ -131,10 +130,9 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
 
                         // TODO: revisit this blocking connection, change it to
                         // futureConnection
-                        FutureConnection futureConnection = mqtt.futureConnection();
+                        futureConnection = mqtt.futureConnection();
                         futureConnection.connect();
-//                        connection = mqtt.blockingConnection();
-//                        connection.connect();
+
                         LOG.info("Connected to MQTT broker at {}", mqtt.getHost());
 
                         // Subscribe to topics:
@@ -161,12 +159,11 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                         // main loop - receive messages
                         while (true) {
                             Message mqttMsg = futureConnection.receive().await();
-//                            Message mqttMsg = connection.receive(5, TimeUnit.SECONDS);
 
                             if (mqttMsg == null) {
                                 continue;
                             }
-                            
+
                             LOG.debug("MQTT Topic {}", mqttMsg.getTopic());
 
                             byte payload[] = mqttMsg.getPayload();
@@ -197,28 +194,36 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                             try {
 
                                 encodedMsg = Report.parseFrom(payload);
+
                                 MQTT_LOG.info("topic = {} Report = {}", mqttMsg.getTopic(),
                                         jsonPrinter.print(encodedMsg));
+
+
                                 extIntegrationInterface.processMqttMessage(mqttMsg.getTopic(), (Report) encodedMsg);
 
                             } catch (Exception e) {
                                 try {
-                                    // not a plume_stats report, attempt to
+                                    // not a opensync_stats report, attempt to
                                     // deserialize as network_metadata
                                     encodedMsg = FlowReport.parseFrom(payload);
+
                                     MQTT_LOG.info("topic = {} FlowReport = {}", mqttMsg.getTopic(),
                                             jsonPrinter.print(encodedMsg));
+
                                     extIntegrationInterface.processMqttMessage(mqttMsg.getTopic(),
                                             (FlowReport) encodedMsg);
                                 } catch (Exception e1) {
 
                                     try {
-                                        // not a plume_stats report and not
+                                        // not a opensync_stats report and not
                                         // network_metadata report, attempt to
                                         // deserialize as WCStatsReport
                                         encodedMsg = WCStatsReport.parseFrom(payload);
+
                                         MQTT_LOG.info("topic = {} IpDnsTelemetry = {}", mqttMsg.getTopic(),
                                                 jsonPrinter.print(encodedMsg));
+
+
                                         extIntegrationInterface.processMqttMessage(mqttMsg.getTopic(),
                                                 (WCStatsReport) encodedMsg);
                                     } catch (Exception e2) {
@@ -234,8 +239,8 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                         LOG.error("Exception in MQTT receiver", e);
                     } finally {
                         try {
-                            if (connection != null) {
-                                connection.disconnect();
+                            if (futureConnection != null) {
+                                futureConnection.disconnect();
                             }
                         } catch (Exception e1) {
                             // do nothing

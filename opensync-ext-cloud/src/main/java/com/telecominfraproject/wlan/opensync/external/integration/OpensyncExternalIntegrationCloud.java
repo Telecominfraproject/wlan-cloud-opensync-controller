@@ -68,7 +68,6 @@ import com.telecominfraproject.wlan.firmware.models.FirmwareTrackRecord;
 import com.telecominfraproject.wlan.firmware.models.FirmwareVersion;
 import com.telecominfraproject.wlan.location.models.Location;
 import com.telecominfraproject.wlan.location.service.LocationServiceInterface;
-import com.telecominfraproject.wlan.manufacturer.ManufacturerInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.controller.OpensyncCloudGatewayController;
 import com.telecominfraproject.wlan.opensync.external.integration.controller.OpensyncCloudGatewayController.ListOfEquipmentCommandResponses;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
