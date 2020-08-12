@@ -25,6 +25,10 @@ import org.springframework.stereotype.Component;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import com.google.protobuf.Descriptors;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.util.JsonFormat;
+import com.google.protobuf.util.JsonFormat.TypeRegistry;
 import com.telecominfraproject.wlan.alarm.AlarmServiceInterface;
 import com.telecominfraproject.wlan.client.ClientServiceInterface;
 import com.telecominfraproject.wlan.client.info.models.ClientInfoDetails;
@@ -123,6 +127,7 @@ import com.telecominfraproject.wlan.status.models.StatusCode;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
 import com.telecominfraproject.wlan.status.network.models.NetworkAdminStatusData;
 
+import sts.OpensyncStats;
 import sts.OpensyncStats.Client;
 import sts.OpensyncStats.ClientReport;
 import sts.OpensyncStats.DNSProbeMetric;
@@ -139,7 +144,9 @@ import sts.OpensyncStats.Survey.SurveySample;
 import sts.OpensyncStats.SurveyType;
 import sts.OpensyncStats.UCCReport;
 import sts.OpensyncStats.VLANMetrics;
+import traffic.NetworkMetadata;
 import traffic.NetworkMetadata.FlowReport;
+import wc.stats.IpDnsTelemetry;
 import wc.stats.IpDnsTelemetry.WCStatsReport;
 
 @org.springframework.context.annotation.Profile("opensync_cloud_config")
@@ -894,6 +901,23 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         long locationId = ce.getLocationId();
 
+        if (LOG.isTraceEnabled()) {
+            // prepare a JSONPrinter to format protobuf messages as
+            // json
+            List<Descriptors.Descriptor> protobufDescriptors = new ArrayList<>();
+            protobufDescriptors.addAll(OpensyncStats.getDescriptor().getMessageTypes());
+            TypeRegistry oldRegistry = TypeRegistry.newBuilder().add(protobufDescriptors).build();
+            JsonFormat.Printer jsonPrinter = JsonFormat.printer().preservingProtoFieldNames()
+                    .includingDefaultValueFields().usingTypeRegistry(oldRegistry);
+
+            try {
+                LOG.trace("MQTT OpensyncStats.report = {}", jsonPrinter.print(report));
+
+            } catch (InvalidProtocolBufferException e1) {
+                LOG.error("Couldn't parse OpensyncStats.report.", e1);
+            }
+        }
+
         List<ServiceMetric> metricRecordList = new ArrayList<>();
 
         try {
@@ -1260,8 +1284,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 DNSProbeMetric dnsProbeMetricFromAp = networkProbe.getDnsProbe();
 
-                LOG.debug("DNSProbeMetric from AP {}", dnsProbeMetricFromAp);
-
                 DnsProbeMetric dnsProbeMetric = new DnsProbeMetric();
 
                 if (dnsProbeMetricFromAp.hasLatency()) {
@@ -1310,7 +1332,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 RADIUSMetrics radiusMetrics = networkProbe.getRadiusProbe();
 
-                LOG.debug("Network Probe Radius Metrics {}", radiusMetrics);
                 if (networkProbe.hasVlanProbe()) {
                     if (networkProbe.getVlanProbe().hasObsV200RadiusLatency()) {
                         networkProbeMetrics.setRadiusLatencyInMs(networkProbe.getVlanProbe().getObsV200RadiusLatency());
@@ -1342,7 +1363,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             if (networkProbe.hasVlanProbe()) {
                 VLANMetrics vlanMetrics = networkProbe.getVlanProbe();
 
-                LOG.debug("NetworkProbe Vlan Metrics {}", vlanMetrics);
                 if (vlanMetrics.hasVlanIF()) {
                     networkProbeMetrics.setVlanIF(vlanMetrics.getVlanIF());
                 }
@@ -1388,27 +1408,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         status.setDetails(eqOsPerformance);
         status = statusServiceInterface.update(status);
         LOG.debug("updated status {}", status);
-
-        // Status networkAggStatusRec =
-        // statusServiceInterface.getOrNull(customerId, equipmentId,
-        // StatusDataType.NETWORK_AGGREGATE);
-        //
-        // NetworkAggregateStatusData naStatusData =
-        // (NetworkAggregateStatusData) networkAggStatusRec.getDetails();
-        //
-        // EquipmentPerformanceDetails equipmentPerformanceDetails = new
-        // EquipmentPerformanceDetails();
-        // equipmentPerformanceDetails.setAvgCpuTemperature((int)
-        // eqOsPerformance.getAvgCpuTemperature());
-        // equipmentPerformanceDetails.setAvgFreeMemory(eqOsPerformance.getAvgFreeMemoryKb());
-        //
-        // naStatusData.setApPerformanceDetails(equipmentPerformanceDetails);
-        // networkAggStatusRec.setDetails(naStatusData);
-        // networkAggStatusRec =
-        // statusServiceInterface.update(networkAggStatusRec);
-        //
-        // LOG.debug("updated aggregate status {}", networkAggStatusRec);
-
     }
 
     private void populateApClientMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId,
@@ -1416,8 +1415,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         LOG.debug("populateApClientMetrics for Customer {} Equipment {}", customerId, equipmentId);
 
         for (ClientReport clReport : report.getClientsList()) {
-            LOG.debug("Opensync Stats for ClientReport {}", clReport);
-
             for (Client cl : clReport.getClientListList()) {
 
                 if (cl.getMacAddress() == null) {
@@ -1427,7 +1424,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     continue;
                 }
 
-                LOG.debug("Processing ClientReport from AP {}", clReport);
+                LOG.debug("Processing ClientReport from AP {}", cl.getMacAddress());
 
                 ServiceMetric smr = new ServiceMetric(customerId, equipmentId, new MacAddress(cl.getMacAddress()));
                 smr.setLocationId(locationId);
@@ -1577,12 +1574,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     }
 
     private void handleClientSessionUpdate(int customerId, long equipmentId, String apId, long locationId, int channel,
-            RadioBandType band, long timestamp, sts.OpensyncStats.Client client, String nodeId, 
-            String ssid) {
+            RadioBandType band, long timestamp, sts.OpensyncStats.Client client, String nodeId, String ssid) {
         try
 
         {
-            LOG.info("handleClientSessionUpdate for {} on ssid {}", client, ssid);
+            LOG.info("handleClientSessionUpdate for {} on ssid {}", client.getMacAddress(), ssid);
 
             com.telecominfraproject.wlan.client.models.Client clientInstance = clientServiceInterface
                     .getOrNull(customerId, new MacAddress(client.getMacAddress()));
@@ -1597,8 +1593,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientInstance.setDetails(clientDetails);
                 clientInstance = clientServiceInterface.update(clientInstance);
 
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("handleClientSessionUpdate update ClientInstance {}", clientInstance.toPrettyString());
+                if (LOG.isTraceEnabled()) {
+                    LOG.trace("handleClientSessionUpdate update ClientInstance {}", clientInstance.toPrettyString());
                 } else {
                     LOG.info("handleClientSessionUpdate update ClientInstance {}", clientInstance);
 
@@ -1608,16 +1604,35 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
                         new MacAddress(client.getMacAddress()));
-
-                if (clientSession != null) {
-                    LOG.debug("Session found for Client {}.", client.getMacAddress());
-
+                if (clientSession == null && client.getConnected()) {
+                    clientSession = new ClientSession();
+                    clientSession.setCustomerId(customerId);
+                    clientSession.setEquipmentId(equipmentId);
+                    clientSession.setLocationId(locationId);
+                    clientSession.setMacAddress(clientInstance.getMacAddress());
                     ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+                    clientSessionDetails.setApFingerprint("fp " + clientInstance.getMacAddress().getAddressAsString());
+                    clientSessionDetails.setHostname("hostName-" + clientInstance.getMacAddress().getAddressAsLong());
+                    clientSessionDetails.setCpUsername("user-" + clientInstance.getMacAddress().getAddressAsLong());
+                    clientSessionDetails.setRadioType(getRadioTypeFromOpensyncRadioBand(band));                  
+                    clientSessionDetails.setSsid(ssid);
+                    clientSessionDetails.setAssociationState(AssociationState._802_11_Associated);
+                    clientSession.setDetails(clientSessionDetails);
+                    
+                    clientSession = clientServiceInterface.updateSession(clientSession);
+
+                }
+
+
+                    ClientSessionDetails clientSessionDetails = clientSession.getDetails();
                     clientSessionDetails.setRadioType(getRadioTypeFromOpensyncRadioBand(band));
                     clientSessionDetails.setSsid(ssid);
                     clientSessionDetails.setAssocRssi(getNegativeSignedIntFromUnsigned(client.getStats().getRssi()));
 
                     if (client.getConnected()) {
+                        if (clientSessionDetails.getAssociationState() != null && clientSessionDetails.getAssociationState().equals(AssociationState.Disconnected)) {
+                            clientSessionDetails.setIsReassociation(true);
+                        }
                         if (client.hasConnectCount()) {
                             if (client.hasConnectOffsetMs()) {
                                 clientSessionDetails.setAssocTimestamp(timestamp + client.getConnectOffsetMs());
@@ -1636,7 +1651,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         if (client.hasDurationMs()) {
                             clientSessionDetails.setFirstDataRcvdTimestamp(timestamp - client.getDurationMs());
                             clientSessionDetails.setFirstDataSentTimestamp(timestamp - client.getDurationMs());
-
                         }
                         Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
                         if (ce != null) {
@@ -1721,13 +1735,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     LOG.debug("Assocation State {}", clientSession.getDetails().getAssociationState());
                     clientSession = clientServiceInterface.updateSession(clientSession);
 
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug("handleClientSessionUpdate Updated clientSession {}", clientSession.toPrettyString());
+                    if (LOG.isTraceEnabled()) {
+                        LOG.trace("handleClientSessionUpdate Updated clientSession {}", clientSession.toPrettyString());
                     } else {
                         LOG.info("handleClientSessionUpdate Updated clientSession {}", clientSession);
 
                     }
-                }
+                
 
             }
 
@@ -1760,7 +1774,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     private ClientSessionMetricDetails calculateClientSessionMetricDetails(sts.OpensyncStats.Client client,
             long timestamp) {
 
-        LOG.debug("calculateClientSessionMetricDetails for Client {} at timestamp {}", client, timestamp);
+        LOG.debug("calculateClientSessionMetricDetails for Client {} at timestamp {}", client.getMacAddress(),
+                timestamp);
 
         ClientSessionMetricDetails metricDetails = new ClientSessionMetricDetails();
         metricDetails.setRssi(getNegativeSignedIntFromUnsigned(client.getStats().getRssi()));
@@ -1796,6 +1811,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         smr.setDetails(apSsidMetrics);
         metricRecordList.add(smr);
+
+
         for (ClientReport clientReport : report.getClientsList()) {
 
             LOG.debug("ClientReport for channel {} RadioBand {}", clientReport.getChannel(), clientReport.getBand());
@@ -1873,7 +1890,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 try {
                     if ((ssid != null) && (client.getMacAddress() != null)) {
                         handleClientSessionUpdate(customerId, equipmentId, apId, locationId, clientReport.getChannel(),
-                                clientReport.getBand(), clientReport.getTimestampMs(), client, report.getNodeID(), ssid);
+                                clientReport.getBand(), clientReport.getTimestampMs(), client, report.getNodeID(),
+                                ssid);
                     }
                 } catch (Exception e) {
                     LOG.debug("Unabled to update client {} session {}", client, e);
@@ -2003,7 +2021,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 List<SurveySample> surveySampleList = survey.getSurveyListList();
 
                 ChannelInfo channelInfo = createChannelInfo(equipmentId, radioType, surveySampleList, channelBandwidth);
-                LOG.debug("ChannelInfo for Survey {}", channelInfo.toPrettyString());
+                if (LOG.isTraceEnabled()) {
+                    LOG.trace("ChannelInfo for Survey {}", channelInfo.toPrettyString());
+                }
                 List<ChannelInfo> channelInfoList = channelInfoReports.getRadioInfo(radioType);
                 if (channelInfoList == null) {
                     channelInfoList = new ArrayList<>();
@@ -2073,6 +2093,23 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
+        if (LOG.isTraceEnabled()) {
+            // prepare a JSONPrinter to format protobuf messages as
+            // json
+            List<Descriptors.Descriptor> protobufDescriptors = new ArrayList<>();
+            protobufDescriptors.addAll(NetworkMetadata.getDescriptor().getMessageTypes());
+            TypeRegistry oldRegistry = TypeRegistry.newBuilder().add(protobufDescriptors).build();
+            JsonFormat.Printer jsonPrinter = JsonFormat.printer().preservingProtoFieldNames()
+                    .includingDefaultValueFields().usingTypeRegistry(oldRegistry);
+
+            try {
+                LOG.trace("MQTT NetworkMetadata.flowReport = {}", jsonPrinter.print(flowReport));
+
+            } catch (InvalidProtocolBufferException e1) {
+                LOG.error("Couldn't parse NetworkMetadata.flowReport.", e1);
+            }
+        }
+
     }
 
     @Override
@@ -2095,6 +2132,23 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             LOG.warn("Cannot determine AP id from topic {} - customerId {} equipmentId {} apId {}", topic, customerId,
                     equipmentId, apId);
             return;
+        }
+
+        if (LOG.isTraceEnabled()) {
+            // prepare a JSONPrinter to format protobuf messages as
+            // json
+            List<Descriptors.Descriptor> protobufDescriptors = new ArrayList<>();
+            protobufDescriptors.addAll(IpDnsTelemetry.getDescriptor().getMessageTypes());
+            TypeRegistry oldRegistry = TypeRegistry.newBuilder().add(protobufDescriptors).build();
+            JsonFormat.Printer jsonPrinter = JsonFormat.printer().preservingProtoFieldNames()
+                    .includingDefaultValueFields().usingTypeRegistry(oldRegistry);
+
+            try {
+                LOG.trace("MQTT IpDnsTelemetry.wcStatsReport = {}", jsonPrinter.print(wcStatsReport));
+
+            } catch (InvalidProtocolBufferException e1) {
+                LOG.error("Couldn't parse IpDnsTelemetry.wcStatsReport.", e1);
+            }
         }
 
     }
@@ -2223,8 +2277,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         clientDetailsStatus.setDetails(clientConnectionDetails);
         clientDetailsStatus = statusServiceInterface.update(clientDetailsStatus);
 
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Processing updateClientDetailsStatus. Updated clientConnectionDetails to {}",
+        if (LOG.isTraceEnabled()) {
+            LOG.trace("Processing updateClientDetailsStatus. Updated clientConnectionDetails to {}",
                     clientDetailsStatus.toPrettyString());
         }
 
@@ -2315,7 +2369,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             }
 
-            
 
         }
 
@@ -2375,14 +2428,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         ActiveBSSIDs statusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
 
-        LOG.debug("Processing Wifi_VIF_State table update for AP {}, activeBSSIDs StatusDetails before update {}",
-                apId, statusDetails);
+        LOG.debug("Processing Wifi_VIF_State table update for AP {}, activeBSSIDs StatusDetails before update {}", apId,
+                statusDetails);
 
         List<ActiveBSSID> currentActiveBSSIDs = statusDetails.getActiveBSSIDs();
         if (currentActiveBSSIDs == null) {
             currentActiveBSSIDs = new ArrayList<>();
         } else {
-            currentActiveBSSIDs = currentActiveBSSIDs.stream().filter(p -> !(p.getRadioType().equals(freqBand) && p.getSsid().equals(ssid)))
+            currentActiveBSSIDs = currentActiveBSSIDs.stream()
+                    .filter(p -> !(p.getRadioType().equals(freqBand) && p.getSsid().equals(ssid)))
                     .collect(Collectors.toList());
             LOG.debug(
                     "Processing Wifi_VIF_State table update for AP {}, activeBSSIDs bssidList without current radio freq {} and ssid {}",
@@ -2403,8 +2457,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         activeBssidsStatus = statusServiceInterface.update(activeBssidsStatus);
 
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Processing Wifi_VIF_State table update for AP {}, updated ACTIVE_BSSID Status {}", apId,
+        if (LOG.isTraceEnabled()) {
+            LOG.trace("Processing Wifi_VIF_State table update for AP {}, updated ACTIVE_BSSID Status {}", apId,
                     activeBssidsStatus.toPrettyString());
         }
     }
@@ -2467,7 +2521,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientInstance.setCustomerId(customerId);
                 clientInstance.setMacAddress(new MacAddress(opensyncWifiAssociatedClients.getMac()));
                 clientInstance.setDetails(new ClientInfoDetails());
-                isReassociation = false; // this is a new client
+                clientInstance = clientServiceInterface.create(clientInstance);
+
             }
             ClientInfoDetails clientDetails = (ClientInfoDetails) clientInstance.getDetails();
 
@@ -2476,85 +2531,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             clientDetails.setHostName("hostName-" + clientInstance.getMacAddress().getAddressAsLong());
             clientDetails.setUserName("user-" + clientInstance.getMacAddress().getAddressAsLong());
             clientInstance.setDetails(clientDetails);
-            if (isReassociation) {
-                clientInstance = clientServiceInterface.update(clientInstance);
-            } else {
-                clientInstance = clientServiceInterface.create(clientInstance);
+
+            clientInstance = clientServiceInterface.update(clientInstance);
+
+
+            if (LOG.isTraceEnabled()) {
+                LOG.trace("wifiAssociatedClientsDbTableUpdate client instance {}", clientInstance.toPrettyString());
             }
 
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("wifiAssociatedClientsDbTableUpdate client instance {}", clientInstance.toPrettyString());
-            }
-
-            ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                    new MacAddress(opensyncWifiAssociatedClients.getMac()));
-
-            if (clientSession == null) {
-                LOG.debug("wifiAssociatedClientsDbTableUpdate No session found for Client {}, creating new one.",
-                        opensyncWifiAssociatedClients.getMac());
-                clientSession = new ClientSession();
-                clientSession.setCustomerId(customerId);
-                clientSession.setEquipmentId(equipmentId);
-                clientSession.setLocationId(ce.getLocationId());
-                clientSession.setMacAddress(new MacAddress(opensyncWifiAssociatedClients.getMac()));
-
-                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
-                long sessionId = WiFiSessionUtility.encodeWiFiAssociationId(System.currentTimeMillis() / 1000L,
-                        MacAddress.convertMacStringToLongValue(opensyncWifiAssociatedClients.getMac()));
-                clientSessionDetails.setSessionId(sessionId);
-                clientSessionDetails.setAssociationState(AssociationState._802_11_Associated);
-                clientSessionDetails.setAssocTimestamp(System.currentTimeMillis());
-                clientSessionDetails.setIsReassociation(false);
-                LOG.debug("wifiAssociatedClientDbTableUpdate Session Id {}", sessionId);
-                clientSession.setDetails(clientSessionDetails);
-                clientSession = clientServiceInterface.updateSession(clientSession);
-            }
-
-            ClientSessionDetails clientSessionDetails = clientSession.getDetails();
-            clientSessionDetails.setHostname(clientDetails.getHostName());
-            if (clientSessionDetails.getAssociationState() != null
-                    && clientSessionDetails.getAssociationState().equals(AssociationState.Disconnected)) {
-                clientSessionDetails.setIsReassociation(true); // if this
-                                                               // session was
-                                                               // previously
-                                                               // disconnected,
-                                                               // this is a
-                                                               // reassociation
-            } else {
-                clientSessionDetails.setIsReassociation(isReassociation); // else
-                                                                          // whatever
-                                                                          // state
-                                                                          // was
-                                                                          // determined
-                                                                          // above
-                                                                          // for
-                                                                          // client
-            }
-
-            if (clientSessionDetails.getIsReassociation()) {
-                // in this case, get a new session id for the reassociation
-                long sessionId = WiFiSessionUtility.encodeWiFiAssociationId(System.currentTimeMillis() / 1000L,
-                        MacAddress.convertMacStringToLongValue(opensyncWifiAssociatedClients.getMac()));
-                clientSessionDetails.setPreviousValidSessionId(clientSessionDetails.getSessionId());
-                clientSessionDetails.setSessionId(sessionId);
-            }
-
-
-            if (opensyncWifiAssociatedClients.getState().equals("active")) {
-                clientSession.getDetails().setAssociationState(AssociationState.Active_Data);
-            } else if (opensyncWifiAssociatedClients.getState().equals("idle")
-                    || opensyncWifiAssociatedClients.getState().equals("power save")) {
-                clientSession.getDetails().setAssociationState(AssociationState._802_11_Associated);
-            }
-
-
-            clientSessionDetails.setApFingerprint(clientDetails.getApFingerprint());
-            clientSession.setDetails(clientSessionDetails);
-            clientSession = clientServiceInterface.updateSession(clientSession);
-
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("wifiAssociatedClientsDbTableUpdate client session {}", clientSession.toPrettyString());
-            }
 
         }
 
@@ -2957,15 +2941,17 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         for (ClientSession session : clientSessionList) {
 
             ClientSessionDetails clientSessionDetails = session.getDetails();
-            clientSessionDetails.setDisconnectByClientTimestamp(System.currentTimeMillis());
-            clientSessionDetails.setAssociationState(AssociationState.Disconnected);
+            if (!clientSessionDetails.getAssociationState().equals(AssociationState.Disconnected)) {
+                clientSessionDetails.setDisconnectByClientTimestamp(System.currentTimeMillis());
+                clientSessionDetails.setAssociationState(AssociationState.Disconnected);
 
-            session.setDetails(clientSessionDetails);
-            session = clientServiceInterface.updateSession(session);
+                session.setDetails(clientSessionDetails);
+                session = clientServiceInterface.updateSession(session);
 
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("wifiAssociatedClientsDbTableDelete Updated client session, set to disconnected {}",
-                        session.toPrettyString());
+                if (LOG.isTraceEnabled()) {
+                    LOG.trace("wifiAssociatedClientsDbTableDelete Updated client session, set to disconnected {}",
+                            session.toPrettyString());
+                }
             }
 
         }

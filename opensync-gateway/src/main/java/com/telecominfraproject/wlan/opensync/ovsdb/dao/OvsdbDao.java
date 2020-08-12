@@ -2852,9 +2852,13 @@ public class OvsdbDao {
 
             provisionWifiStatsConfigNeighbor(getAllowedChannels(ovsdbClient), radioConfigs,
                     getProvisionedWifiStatsConfigs(ovsdbClient), operations);
+            
 
             provisionWifiStatsConfigClient(radioConfigs, getProvisionedWifiStatsConfigs(ovsdbClient), operations);
-            
+//            provisionWifiStatsConfigSteering(radioConfigs, getProvisionedWifiStatsConfigs(ovsdbClient), operations);
+//            provisionWifiStatsConfigCapacity(radioConfigs, getProvisionedWifiStatsConfigs(ovsdbClient), operations);
+//            provisionWifiStatsConfigRssi(radioConfigs, getProvisionedWifiStatsConfigs(ovsdbClient), operations);
+
 
             if (!operations.isEmpty()) {
                 LOG.debug("Sending batch of operations : {} ", operations);
@@ -3003,6 +3007,74 @@ public class OvsdbDao {
                 }
             }
         });
+
+    }
+    
+    private void provisionWifiStatsConfigCapacity(Map<String, WifiRadioConfigInfo> radioConfigs,
+            Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs, List<Operation> operations) {
+
+        radioConfigs.values().stream().forEach(new Consumer<WifiRadioConfigInfo>() {
+            @Override
+            public void accept(WifiRadioConfigInfo rc) {
+                if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_capacity")) {
+                    //
+                    Map<String, Value> rowColumns = new HashMap<>();
+                    rowColumns.put("radio_type", new Atom<>(rc.freqBand));
+                    rowColumns.put("reporting_interval", new Atom<>(120));
+                    rowColumns.put("report_type", new Atom<>("raw"));
+                    rowColumns.put("sampling_interval", new Atom<>(10));
+                    rowColumns.put("stats_type", new Atom<>("capacity"));
+                    rowColumns.put("survey_interval_ms", new Atom<>(65));
+                    Row updateRow = new Row(rowColumns);
+                    operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
+
+                }
+            }
+        });
+
+    }
+    
+    private void provisionWifiStatsConfigRssi(Map<String, WifiRadioConfigInfo> radioConfigs,
+            Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs, List<Operation> operations) {
+
+        radioConfigs.values().stream().forEach(new Consumer<WifiRadioConfigInfo>() {
+            @Override
+            public void accept(WifiRadioConfigInfo rc) {
+                if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_rssi")) {
+                    //
+                    Map<String, Value> rowColumns = new HashMap<>();
+                    rowColumns.put("radio_type", new Atom<>(rc.freqBand));
+                    rowColumns.put("reporting_interval", new Atom<>(120));
+                    rowColumns.put("report_type", new Atom<>("raw"));
+                    rowColumns.put("sampling_interval", new Atom<>(10));
+                    rowColumns.put("stats_type", new Atom<>("rssi"));
+                    rowColumns.put("survey_interval_ms", new Atom<>(65));
+                    Row updateRow = new Row(rowColumns);
+                    operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
+
+                }
+            }
+        });
+
+    }
+    
+    private void provisionWifiStatsConfigSteering(Map<String, WifiRadioConfigInfo> radioConfigs,
+            Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs, List<Operation> operations) {
+
+
+                if (!provisionedWifiStatsConfigs.containsKey("2.4G_steering")) {
+                    //
+                    Map<String, Value> rowColumns = new HashMap<>();
+                    rowColumns.put("radio_type", new Atom<>("2.4G"));
+                    rowColumns.put("reporting_interval", new Atom<>(120));
+                    rowColumns.put("report_type", new Atom<>("raw"));
+                    rowColumns.put("stats_type", new Atom<>("steering"));
+                    Row updateRow = new Row(rowColumns);
+                    operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
+
+                }
+            
+      
 
     }
     
