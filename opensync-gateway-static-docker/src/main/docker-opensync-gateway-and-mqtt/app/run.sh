@@ -1,20 +1,20 @@
 #!/bin/sh
 
 # Prepare the hosts file - do it only if does not have required entries
-n1=`grep opensync-mqtt-broker /etc/hosts | wc -l`
+n1=`grep opensync-mqtt-broker.zone1.lab.wlan.tip.build /etc/hosts | wc -l`
 
 if [[ $n1 -eq 0  ]]
 then
-  echo Adding opensync-mqtt-broker to /etc/hosts
-  echo "127.0.0.1 opensync-mqtt-broker" >> /etc/hosts
+  echo Adding opensync-mqtt-broker.zone1.lab.wlan.tip.build to /etc/hosts
+  echo "127.0.0.1 opensync-mqtt-broker.zone1.lab.wlan.tip.build" >> /etc/hosts
 fi
 
-n2=`grep opensync-wifi-controller /etc/hosts | wc -l`
+n2=`grep opensync-controller.zone1.lab.wlan.tip.build /etc/hosts | wc -l`
 
 if [[ $n2 -eq 0  ]]
 then
-  echo Adding opensync-wifi-controller to /etc/hosts
-  echo "127.0.0.1 opensync-wifi-controller" >> /etc/hosts
+  echo Adding opensync-controller.zone1.lab.wlan.tip.build to /etc/hosts
+  echo "127.0.0.1 opensync-controller.zone1.lab.wlan.tip.build" >> /etc/hosts
 fi
 
 
@@ -62,9 +62,9 @@ EXT_CLIENT_KEYSTORE_FILE="${EXT_CLIENT_KEYSTORE_FILE:=/opt/tip-wlan/certs/client
 EXT_TRUSTSTORE_FILE="${EXT_TRUSTSTORE_FILE:=/opt/tip-wlan/certs/truststore.jks}"
 EXT_TRUSTSTORE_PASSWORD="${EXT_TRUSTSTORE_PASSWORD:=mypassword}"
 
-MQTT_BROKER_HOST_INTERNAL="${MQTT_BROKER_HOST_INTERNAL:=opensync-mqtt-broker}"
-MQTT_BROKER_HOST_EXTERNAL="${MQTT_BROKER_HOST_EXTERNAL:=opensync-mqtt-broker}"
-OVSDB_MANAGER_HOST="${OVSDB_MANAGER_HOST:=opensync-wifi-controller}"
+MQTT_BROKER_HOST_INTERNAL="${MQTT_BROKER_HOST_INTERNAL:=opensync-mqtt-broker.zone1.lab.wlan.tip.build}"
+MQTT_BROKER_HOST_EXTERNAL="${MQTT_BROKER_HOST_EXTERNAL:=opensync-mqtt-broker.zone1.lab.wlan.tip.build}"
+OVSDB_MANAGER_HOST="${OVSDB_MANAGER_HOST:=opensync-controller.zone1.lab.wlan.tip.build}"
 
 LOGBACK_CONFIG_FILE="${LOGBACK_CONFIG_FILE:=/app/opensync/logback.xml}"
 
