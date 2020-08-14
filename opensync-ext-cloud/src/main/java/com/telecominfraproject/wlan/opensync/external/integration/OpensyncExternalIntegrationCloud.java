@@ -133,6 +133,7 @@ import sts.OpensyncStats.ClientReport;
 import sts.OpensyncStats.DNSProbeMetric;
 import sts.OpensyncStats.Device;
 import sts.OpensyncStats.Device.RadioTemp;
+import sts.OpensyncStats.EventReport;
 import sts.OpensyncStats.Neighbor;
 import sts.OpensyncStats.Neighbor.NeighborBss;
 import sts.OpensyncStats.NetworkProbe;
@@ -927,6 +928,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             populateChannelInfoReports(metricRecordList, report, customerId, equipmentId, locationId);
             populateApSsidMetrics(metricRecordList, report, customerId, equipmentId, apId, locationId);
             populateUccReport(metricRecordList, report, customerId, equipmentId, apId, locationId);
+            processEventReport(report, customerId, equipmentId, apId, locationId);
             // handleRssiMetrics(metricRecordList, report, customerId,
             // equipmentId, locationId);
 
@@ -939,6 +941,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             equipmentMetricsCollectorInterface.publishMetrics(metricRecordList);
         }
 
+    }
+    
+    private void processEventReport(Report report, int customerId,
+            long equipmentId, String apId, long locationId) {
+        report.getEventReportList().stream().forEach(e -> {
+            LOG.info("Received EventReport {}", e);
+        });
+        
     }
 
     private void populateUccReport(List<ServiceMetric> metricRecordList, Report report, int customerId,
