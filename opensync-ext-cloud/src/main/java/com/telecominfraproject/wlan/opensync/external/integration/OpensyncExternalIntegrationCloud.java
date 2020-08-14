@@ -1233,6 +1233,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             cap.setAvailableCapacity(avaiCapacity);
             cap.setUsedCapacity(totalUtilization.intValue());
             cap.setUnusedCapacity(avaiCapacity - totalUtilization.intValue());
+            cap.setTotalCapacity(100);
 
             if (radioType != RadioType.UNSUPPORTED) {
                 apNodeMetrics.setChannelUtilization(radioType, totalUtilization.intValue());
