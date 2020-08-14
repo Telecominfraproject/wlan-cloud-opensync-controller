@@ -81,9 +81,12 @@ import com.telecominfraproject.wlan.status.models.Status;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
 import com.vmware.ovsdb.protocol.operation.notation.Uuid;
 
+import sts.OpensyncStats.AssocType;
 import sts.OpensyncStats.Client;
 import sts.OpensyncStats.ClientReport;
 import sts.OpensyncStats.DNSProbeMetric;
+import sts.OpensyncStats.EventReport;
+import sts.OpensyncStats.EventType;
 import sts.OpensyncStats.NetworkProbe;
 import sts.OpensyncStats.RADIUSMetrics;
 import sts.OpensyncStats.RadioBandType;
@@ -480,7 +483,7 @@ public class OpensyncExternalIntegrationCloudTest {
     public void testProcessMqttMessageStringReport() {
 
         Report report = Report.newBuilder().setNodeID("21P10C68818122")
-                .addAllClients(getOpensyncStatsClientReportsList()).build();
+                .addAllClients(getOpensyncStatsClientReportsList()).addAllEventReport(getOpensyncStatsEventReportsList()).build();
 
         String topic = "/ap/Test_Client_21P10C68818122/opensync";
 
@@ -832,6 +835,49 @@ public class OpensyncExternalIntegrationCloudTest {
         bssidList.add(activeBssid3);
         return bssidList;
     }
+    
+    
+    private List<EventReport> getOpensyncStatsEventReportsList() {
+
+        sts.OpensyncStats.EventReport.ClientAssocEvent.Builder clientAssocBuilder = EventReport.ClientAssocEvent.getDefaultInstance().toBuilder();
+        clientAssocBuilder.setAssocType(AssocType.ASSOC);
+        clientAssocBuilder.setBand(RadioBandType.BAND5GU);
+        clientAssocBuilder.setRssi(-65);
+        clientAssocBuilder.setStaMac("C0:9A:D0:76:A9:69");
+        clientAssocBuilder.setStaMacBytes(ByteString.copyFrom("C0:9A:D0:76:A9:69".getBytes()));
+        clientAssocBuilder.setSessionId(1000L);
+        clientAssocBuilder.setInternalSc(1);
+        clientAssocBuilder.setSsid("ssid-3");
+        clientAssocBuilder.setStatus(1);
+        
+        sts.OpensyncStats.EventReport.ClientAssocEvent.Builder clientAssocBuilder2 = EventReport.ClientAssocEvent.getDefaultInstance().toBuilder();
+        clientAssocBuilder2.setAssocType(AssocType.ASSOC);
+        clientAssocBuilder2.setBand(RadioBandType.BAND2G);
+        clientAssocBuilder2.setRssi(-65);
+        clientAssocBuilder2.setStaMac("7C:AB:60:E6:EA:4D");
+        clientAssocBuilder2.setStaMacBytes(ByteString.copyFrom("7C:AB:60:E6:EA:4D".getBytes()));
+        clientAssocBuilder2.setSessionId(1000L);
+        clientAssocBuilder2.setInternalSc(1);
+        clientAssocBuilder2.setSsid("ssid-1");
+        clientAssocBuilder2.setStatus(1);
+
+        List<EventReport> eventReportList = new ArrayList<>();
+
+        EventReport.Builder eventReportBuilder = EventReport.getDefaultInstance().toBuilder();
+        eventReportBuilder.setClientAssocEvent(clientAssocBuilder.build());
+        eventReportBuilder.setEventType(EventType.CLIENT_ASSOC);
+        
+        eventReportList.add(eventReportBuilder.build());
+        
+        eventReportBuilder = EventReport.getDefaultInstance().toBuilder();
+        eventReportBuilder.setClientAssocEvent(clientAssocBuilder2.build());
+        eventReportBuilder.setEventType(EventType.CLIENT_ASSOC);
+        
+        eventReportList.add(eventReportBuilder.build());
+
+        return eventReportList;
+        
+     }
 
     private List<ClientReport> getOpensyncStatsClientReportsList() {
         int rssi = Long.valueOf(4294967239L).intValue();

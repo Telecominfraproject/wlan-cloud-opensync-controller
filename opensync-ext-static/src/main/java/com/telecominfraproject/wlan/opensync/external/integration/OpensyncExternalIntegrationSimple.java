@@ -125,15 +125,21 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 	}
 
 	public void processMqttMessage(String topic, Report report) {
-		LOG.info("Received PlumeStatsReport on topic {} for ap {}\n{}", topic, report.getNodeID(), report);
+		LOG.info("Received OpensyncStatsReport on topic {} for ap {}\n{}", topic, report.getNodeID(), report);
+
+		report.getEventReportList().stream().forEach(e -> {
+		    LOG.info("Received EventReport {}", e);
+		});
+		
+		
 	}
 
 	public void processMqttMessage(String topic, FlowReport flowReport) {
-		LOG.info("Received flowReport on topic {} for ap {}", topic, flowReport.getObservationPoint().getNodeId());
+		LOG.info("Received FlowReport on topic {} for ap {}", topic, flowReport.getObservationPoint().getNodeId());
 	}
 
 	public void processMqttMessage(String topic, WCStatsReport wcStatsReport) {
-		LOG.info("Received wcStatsReport on topic {} for ap {}", topic,
+		LOG.info("Received WCStatsReport on topic {} for ap {}", topic,
 				wcStatsReport.getObservationPoint().getNodeId());
 	}
 
