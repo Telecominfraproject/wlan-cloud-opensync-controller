@@ -2606,9 +2606,9 @@ public class OvsdbDao {
                     
                    
                     if (numberOfInterfaces > 0) {
-                        // 1st interface has no number, 2nd has '-1', 3rd has
-                        // '-2' etc.
-                        ifName = ifName + "-" + numberOfInterfaces;
+                        // 1st interface has no number, 2nd has '_1', 3rd has
+                        // '_2' etc.
+                        ifName = ifName + "_" + numberOfInterfaces;
                     }
 
                     configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(), ssidBroadcast, security, freqBand,
@@ -2660,16 +2660,14 @@ public class OvsdbDao {
                         && (profileCaptive.getDetails() != null)) {
                     CaptivePortalConfiguration captiveProfileDetails = ((CaptivePortalConfiguration) profileCaptive
                             .getDetails());
-                    captiveMap.put("sessiontimeout",
+                    captiveMap.put("session_timeout",
                             String.valueOf(captiveProfileDetails.getSessionTimeoutInMinutes()));
                     captiveMap.put("redirect_url", captiveProfileDetails.getRedirectURL());
                     captiveMap.put("browser_title", captiveProfileDetails.getBrowserTitle());
                     captiveMap.put("splash_page_title", captiveProfileDetails.getHeaderContent());
 
-                    // captiveMap.put("userAcceptancePolicy",
-                    // captiveProfileDetails.getUserAcceptancePolicy());
-                    // captiveMap.put("successPageMarkdownText",
-                    // captiveProfileDetails.getSuccessPageMarkdownText());
+                     captiveMap.put("acceptance_policy", captiveProfileDetails.getUserAcceptancePolicy());
+                     captiveMap.put("login_success_text", captiveProfileDetails.getSuccessPageMarkdownText());
                     // captiveMap.put("externalCaptivePortalURL",
                     // captiveProfileDetails.getExternalCaptivePortalURL());
                     // captiveMap.put("backgroundPosition",
@@ -2680,7 +2678,7 @@ public class OvsdbDao {
 
                     captiveMap.put("splash_page_logo",
                             getCaptiveManagedFileUrl("logoFileURL", captiveProfileDetails.getLogoFile()));
-                    captiveMap.put("splash_page_background",
+                    captiveMap.put("splash_page_background_logo",
                             getCaptiveManagedFileUrl("backgroundFileURL", captiveProfileDetails.getBackgroundFile()));
 
                     LOG.debug("captiveMap {}", captiveMap);
