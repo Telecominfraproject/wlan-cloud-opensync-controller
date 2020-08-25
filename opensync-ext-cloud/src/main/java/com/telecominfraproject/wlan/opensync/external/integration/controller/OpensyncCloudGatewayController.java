@@ -14,6 +14,9 @@ import java.util.function.Consumer;
 
 import javax.servlet.http.HttpServletRequest;
 
+import com.telecominfraproject.wlan.core.model.service.GatewayType;
+import com.telecominfraproject.wlan.core.client.PingClient;
+import com.telecominfraproject.wlan.datastore.exceptions.DsEntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -77,6 +80,9 @@ public class OpensyncCloudGatewayController {
 
     @Autowired
     private OvsdbClientInterface tipwlanOvsdbClient;
+
+    @Autowired
+    private PingClient pingClient;
 
     /**
      * Flag indicates if this gateway has registered with routing service
@@ -215,7 +221,6 @@ public class OpensyncCloudGatewayController {
      *
      * @param session
      * @param command
-     * @param protocolVersion
      * @return NoRouteToCE if route Id does not match or Success
      */
     private EquipmentCommandResponse checkEquipmentRouting(OvsdbSession session, CEGWRouteCheck command) {
@@ -267,7 +272,6 @@ public class OpensyncCloudGatewayController {
      * @param session
      * @param inventoryId
      * @param command
-     * @param request
      * @return
      */
     private EquipmentCommandResponse sendMessage(OvsdbSession session, String inventoryId, EquipmentCommand command) {
@@ -373,6 +377,8 @@ public class OpensyncCloudGatewayController {
                 throw new ConfigurationException(
                         "Unable to register gateway with routing service: routing service interface not initialized");
             }
+
+            cleanupStaleGwRecord();
             EquipmentGatewayRecord gwRecord = new EquipmentGatewayRecord();
 
             // external facing service, protected by the client certificate auth
@@ -394,6 +400,42 @@ public class OpensyncCloudGatewayController {
                         getGatewayName(), e.getLocalizedMessage());
             }
         }
+    }
+
+    /**
+     * This method does the following:
+     * See WIFI-540
+     * 1. Retrieves the existing list of Gateway entries from the Routing Service
+     * 2. Check each one of them for reachability (using PING method)
+     * 3. If the Gw does not respond (stale IP), they will be unregistered/cleaned
+     */
+    protected void cleanupStaleGwRecord() {
+        LOG.debug("In CleanUp stale registered Gateways records ");
+        // Get Equipment gateway list
+        List<EquipmentGatewayRecord> eqGwRecList = eqRoutingSvc.getGateway(GatewayType.CEGW);
+        if (eqGwRecList != null) {
+            for (EquipmentGatewayRecord eqpRec : eqGwRecList) {
+                if (!isGwReachable(eqpRec.getIpAddr(), eqpRec.getPort())) {
+                    // GW isn't reachable --> invoke deleteGw
+                    LOG.debug("Gateway {} is not-reachable... deleting from Routing Svc", eqpRec.getHostname());
+                    try {
+                        eqRoutingSvc.deleteGateway(eqpRec.getId());
+                    } catch (RuntimeException e) {
+                        // failed
+                        LOG.error("Failed to delete Equipment Gateway (name={}) from Routing Service: {}",
+                                eqpRec.getHostname(), e.getLocalizedMessage());
+                    }
+                } else {
+                    LOG.debug("Gateway {} is reachable.", eqpRec.getHostname());
+                }
+            }
+        } else {
+            LOG.debug("No gateways registered with Routing Service");
+        }
+    }
+
+    private boolean isGwReachable(String ipAddr, int port) {
+        return pingClient.isReachable(ipAddr, port);
     }
 
     /**
@@ -445,6 +487,8 @@ public class OpensyncCloudGatewayController {
                     equipmentId);
             return null;
         }
+        // Clean up stale records
+        cleanupStaleEqptRoutingRecord(equipmentId);
         EquipmentRoutingRecord routingRecord = new EquipmentRoutingRecord();
         routingRecord.setCustomerId(customerId);
         routingRecord.setEquipmentId(equipmentId);
@@ -461,6 +505,61 @@ public class OpensyncCloudGatewayController {
                     e.getLocalizedMessage());
         }
         return null;
+    }
+
+    /**
+     * Deletes the Equipment to Gateway relationship for gateway's that don't respond
+     * See WIFI-540
+     * 1. Get List of EquipmentRoutingRecords for an Equipment
+     * 2. Get the GW from GW-Id associated with 'this' EquipmentRoutingRecord
+     * 3. Try to ping the gateway
+     * 4. If ping fails or Gateway does not exist, delete the equipmentRouting entry.
+     * @param equipmentId: Equipment's ID
+     */
+    protected void cleanupStaleEqptRoutingRecord(Long equipmentId) {
+        LOG.debug("In Clean Up stale Equipment Routing record for Equipment ID {}", equipmentId);
+        List<EquipmentRoutingRecord> eqptRoutingRecsList = eqRoutingSvc.getRegisteredRouteList(equipmentId);
+        if (eqptRoutingRecsList != null) {
+            for(EquipmentRoutingRecord eqRouting : eqptRoutingRecsList) {
+                try {
+                    EquipmentGatewayRecord gwRec = eqRoutingSvc.getGateway(eqRouting.getGatewayId());
+                    if (gwRec != null) {
+                        if (!isGwReachable(gwRec.getIpAddr(), gwRec.getPort())) {
+                            // GW isn't reachable --> invoke unregister
+                            LOG.debug("Gateway {} is not-reachable... Deleting the equipment routing entry", gwRec.getHostname());
+                            deleteUnresponiveGwRoutingRecord(eqRouting.getId(), equipmentId);
+                        } else {
+                            LOG.debug("Gateway {} is reachable.", gwRec.getHostname());
+                        }
+                    } else {
+                        LOG.debug("Gateway with ID {} not found. Deleting the equipment routing entry ", eqRouting.getGatewayId());
+                        deleteUnresponiveGwRoutingRecord(eqRouting.getId(), equipmentId);
+                    }
+                } catch ( DsEntityNotFoundException entityNotFoundException) {
+                    LOG.debug("Gateway ID: {} not found... Deleting the equipment routing entry", eqRouting.getGatewayId());
+                    deleteUnresponiveGwRoutingRecord(eqRouting.getId(), equipmentId);
+                } catch ( Exception genericException) {
+                    LOG.debug("Generic Exception encountered when trying to query/delete " +
+                            "the Gateway with ID: {}. Error: {} ", eqRouting.getGatewayId(), genericException.getMessage());
+                }
+            }
+
+        } else {
+            LOG.debug("No gateways registered with Routing Service for Equipment ID {}", equipmentId);
+        }
+
+    }
+
+    private boolean deleteUnresponiveGwRoutingRecord(Long routingId, Long eqptId) {
+        try {
+            eqRoutingSvc.delete(routingId);
+        } catch (RuntimeException e) {
+            // failed
+            LOG.error("Failed to delete Equipment routing record (ID={}) from Routing Service: {}",
+                    eqptId, e.getLocalizedMessage());
+            return false;
+        }
+        return true;
     }
 
     public void deregisterCustomerEquipment(Long routingId, String equipmentName, Long equipmentId) {

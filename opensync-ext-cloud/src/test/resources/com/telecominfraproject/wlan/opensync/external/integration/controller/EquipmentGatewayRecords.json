@@ -1,0 +1,9 @@
+{
+  "id": "1",
+  "hostname": "Host-1",
+  "ipAddr": "1.1.1.1",
+  "port": 123,
+  "gatewayType": "CEGW",
+  "createdTimestamp": 0,
+  "lastModifiedTimestamp": 0
+}

@@ -28,6 +28,11 @@
         <groupId>com.telecominfraproject.wlan</groupId>
         <version>${tip-wlan-cloud.release.version}</version>
       </dependency>
+        <dependency>
+            <artifactId>base-client</artifactId>
+            <groupId>com.telecominfraproject.wlan</groupId>
+            <version>${tip-wlan-cloud.release.version}</version>
+        </dependency>
 
       <dependency>
         <artifactId>equipment-gateway-models</artifactId>
