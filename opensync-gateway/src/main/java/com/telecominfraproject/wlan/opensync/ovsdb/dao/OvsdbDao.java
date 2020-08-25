@@ -2513,7 +2513,7 @@ public class OvsdbDao {
 
                 boolean uapsdEnabled = radioConfiguration.getUapsdState() == StateSetting.enabled;
 
-                boolean apBridge = radioConfiguration.getStationIsolation() == StateSetting.enabled; // stationIsolation
+                boolean apBridge = radioConfiguration.getStationIsolation() == StateSetting.disabled; // stationIsolation
                 // off by default
                 boolean enable80211r = false;
                 int mobilityDomain = 0;
