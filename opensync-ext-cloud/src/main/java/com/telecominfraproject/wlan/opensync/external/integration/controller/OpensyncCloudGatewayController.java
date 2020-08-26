@@ -411,26 +411,32 @@ public class OpensyncCloudGatewayController {
      */
     protected void cleanupStaleGwRecord() {
         LOG.debug("In CleanUp stale registered Gateways records ");
-        // Get Equipment gateway list
-        List<EquipmentGatewayRecord> eqGwRecList = eqRoutingSvc.getGateway(GatewayType.CEGW);
-        if (eqGwRecList != null) {
-            for (EquipmentGatewayRecord eqpRec : eqGwRecList) {
-                if (!isGwReachable(eqpRec.getIpAddr(), eqpRec.getPort())) {
-                    // GW isn't reachable --> invoke deleteGw
-                    LOG.debug("Gateway {} is not-reachable... deleting from Routing Svc", eqpRec.getHostname());
-                    try {
-                        eqRoutingSvc.deleteGateway(eqpRec.getId());
-                    } catch (RuntimeException e) {
-                        // failed
-                        LOG.error("Failed to delete Equipment Gateway (name={}) from Routing Service: {}",
-                                eqpRec.getHostname(), e.getLocalizedMessage());
+        try {
+            // Get Equipment gateway list
+            List<EquipmentGatewayRecord> eqGwRecList = eqRoutingSvc.getGateway(GatewayType.CEGW);
+            if (eqGwRecList != null) {
+                for (EquipmentGatewayRecord eqpRec : eqGwRecList) {
+                    if (!isGwReachable(eqpRec.getIpAddr(), eqpRec.getPort())) {
+                        // GW isn't reachable --> invoke deleteGw
+                        LOG.debug("Gateway {} is not-reachable... deleting from Routing Svc", eqpRec.getHostname());
+                        try {
+                            eqRoutingSvc.deleteGateway(eqpRec.getId());
+                        } catch (RuntimeException e) {
+                            // failed
+                            LOG.error("Failed to delete Equipment Gateway (name={}) from Routing Service: {}",
+                                    eqpRec.getHostname(), e.getLocalizedMessage());
+                        }
+                    } else {
+                        LOG.debug("Gateway {} is reachable.", eqpRec.getHostname());
                     }
-                } else {
-                    LOG.debug("Gateway {} is reachable.", eqpRec.getHostname());
                 }
+            } else {
+                LOG.debug("No gateways registered with Routing Service");
             }
-        } else {
-            LOG.debug("No gateways registered with Routing Service");
+        } catch (Exception ex) { // Catching Exception to prevent crashing the register thread
+            LOG.debug("Generic Exception encountered when trying to cleanup " +
+                    "the stale not-reachable GateWays. Continuing to register the new Gateway." +
+                    " Error: {} ", ex.getMessage());
         }
     }
 
@@ -518,36 +524,37 @@ public class OpensyncCloudGatewayController {
      */
     protected void cleanupStaleEqptRoutingRecord(Long equipmentId) {
         LOG.debug("In Clean Up stale Equipment Routing record for Equipment ID {}", equipmentId);
-        List<EquipmentRoutingRecord> eqptRoutingRecsList = eqRoutingSvc.getRegisteredRouteList(equipmentId);
-        if (eqptRoutingRecsList != null) {
-            for(EquipmentRoutingRecord eqRouting : eqptRoutingRecsList) {
-                try {
-                    EquipmentGatewayRecord gwRec = eqRoutingSvc.getGateway(eqRouting.getGatewayId());
-                    if (gwRec != null) {
-                        if (!isGwReachable(gwRec.getIpAddr(), gwRec.getPort())) {
-                            // GW isn't reachable --> invoke unregister
-                            LOG.debug("Gateway {} is not-reachable... Deleting the equipment routing entry", gwRec.getHostname());
-                            deleteUnresponiveGwRoutingRecord(eqRouting.getId(), equipmentId);
+        try {
+            List<EquipmentRoutingRecord> eqptRoutingRecsList = eqRoutingSvc.getRegisteredRouteList(equipmentId);
+            if (eqptRoutingRecsList != null) {
+                for (EquipmentRoutingRecord eqRouting : eqptRoutingRecsList) {
+                    try {
+                        EquipmentGatewayRecord gwRec = eqRoutingSvc.getGateway(eqRouting.getGatewayId());
+                        if (gwRec != null) {
+                            if (!isGwReachable(gwRec.getIpAddr(), gwRec.getPort())) {
+                                // GW isn't reachable --> invoke unregister
+                                LOG.debug("Gateway {} is not-reachable... Deleting the equipment routing entry", gwRec.getHostname());
+                                deleteUnresponiveGwRoutingRecord(eqRouting.getId(), equipmentId);
+                            } else {
+                                LOG.debug("Gateway {} is reachable.", gwRec.getHostname());
+                            }
                         } else {
-                            LOG.debug("Gateway {} is reachable.", gwRec.getHostname());
+                            LOG.debug("Gateway with ID {} not found. Deleting the equipment routing entry ", eqRouting.getGatewayId());
+                            deleteUnresponiveGwRoutingRecord(eqRouting.getId(), equipmentId);
                         }
-                    } else {
-                        LOG.debug("Gateway with ID {} not found. Deleting the equipment routing entry ", eqRouting.getGatewayId());
+                    } catch (DsEntityNotFoundException entityNotFoundException) {
+                        LOG.debug("Gateway ID: {} not found... Deleting the equipment routing entry", eqRouting.getGatewayId());
                         deleteUnresponiveGwRoutingRecord(eqRouting.getId(), equipmentId);
                     }
-                } catch ( DsEntityNotFoundException entityNotFoundException) {
-                    LOG.debug("Gateway ID: {} not found... Deleting the equipment routing entry", eqRouting.getGatewayId());
-                    deleteUnresponiveGwRoutingRecord(eqRouting.getId(), equipmentId);
-                } catch ( Exception genericException) {
-                    LOG.debug("Generic Exception encountered when trying to query/delete " +
-                            "the Gateway with ID: {}. Error: {} ", eqRouting.getGatewayId(), genericException.getMessage());
                 }
+            } else {
+                LOG.debug("No gateways registered with Routing Service for Equipment ID {}", equipmentId);
             }
-
-        } else {
-            LOG.debug("No gateways registered with Routing Service for Equipment ID {}", equipmentId);
+        } catch (Exception genericException) { // Catching Exception to prevent crashing the register thread
+            LOG.debug("Generic Exception encountered when trying to cleanup " +
+                    "the stale routing records for equipment ID: {}. Continuing to register the new RoutingRecord." +
+                    " Error: {} ", equipmentId, genericException.getMessage());
         }
-
     }
 
     private boolean deleteUnresponiveGwRoutingRecord(Long routingId, Long eqptId) {
