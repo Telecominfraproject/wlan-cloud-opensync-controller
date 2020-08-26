@@ -1625,15 +1625,16 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     clientSessionDetails.setApFingerprint("fp " + clientInstance.getMacAddress().getAddressAsString());
                     clientSessionDetails.setHostname("hostName-" + clientInstance.getMacAddress().getAddressAsLong());
                     clientSessionDetails.setCpUsername("user-" + clientInstance.getMacAddress().getAddressAsLong());
-                    clientSessionDetails.setRadioType(getRadioTypeFromOpensyncRadioBand(band));                  
+                    clientSessionDetails.setRadioType(getRadioTypeFromOpensyncRadioBand(band));
                     clientSessionDetails.setSsid(ssid);
                     clientSessionDetails.setAssociationState(AssociationState._802_11_Associated);
                     clientSession.setDetails(clientSessionDetails);
-                    
+
                     clientSession = clientServiceInterface.updateSession(clientSession);
 
                 }
 
+                if (clientSession != null) {
 
                     ClientSessionDetails clientSessionDetails = clientSession.getDetails();
                     clientSessionDetails.setRadioType(getRadioTypeFromOpensyncRadioBand(band));
@@ -1641,7 +1642,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     clientSessionDetails.setAssocRssi(getNegativeSignedIntFromUnsigned(client.getStats().getRssi()));
 
                     if (client.getConnected()) {
-                        if (clientSessionDetails.getAssociationState() != null && clientSessionDetails.getAssociationState().equals(AssociationState.Disconnected)) {
+                        if (clientSessionDetails.getAssociationState() != null
+                                && clientSessionDetails.getAssociationState().equals(AssociationState.Disconnected)) {
                             clientSessionDetails.setIsReassociation(true);
                         }
                         if (client.hasConnectCount()) {
@@ -1752,7 +1754,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         LOG.info("handleClientSessionUpdate Updated clientSession {}", clientSession);
 
                     }
-                
+                }
 
             }
 
