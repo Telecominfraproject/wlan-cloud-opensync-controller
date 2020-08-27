@@ -2,7 +2,9 @@ package com.telecominfraproject.wlan.opensync.ovsdb;
 
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
@@ -38,6 +40,7 @@ import com.vmware.ovsdb.protocol.methods.RowUpdate;
 import com.vmware.ovsdb.protocol.methods.TableUpdate;
 import com.vmware.ovsdb.protocol.methods.TableUpdates;
 import com.vmware.ovsdb.protocol.operation.notation.Row;
+import com.vmware.ovsdb.protocol.operation.notation.Value;
 import com.vmware.ovsdb.service.OvsdbClient;
 import com.vmware.ovsdb.service.OvsdbPassiveConnectionListener;
 
@@ -78,6 +81,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
     public void listenForConnections() {
 
         ConnectionCallback connectionCallback = new ConnectionCallback() {
+
             @Override
             public void connected(OvsdbClient ovsdbClient) {
 
@@ -333,73 +337,156 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         try {
             monitorAwlanNodeDbTable(ovsdbClient, key);
         } catch (OvsdbClientException e) {
-            LOG.debug("Could not enable monitor for deletions to AWLAN_Node table. {}", e.getMessage());
+            LOG.debug("Could not enable monitor for AWLAN_Node table. {}", e.getMessage());
+
+        }
+        try {
+            monitorDhcpLeasedIpDbTable(ovsdbClient, key);
+        } catch (OvsdbClientException e) {
+            LOG.debug("Could not enable monitor for DHCP_leased_IP table. {}", e.getMessage());
 
         }
         LOG.debug("Finished (re)setting monitors for AP {}", key);
 
     }
 
-    private void monitorAwlanNodeDbTable(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
-        CompletableFuture<TableUpdates> awCf = ovsdbClient
-                .monitor(OvsdbDao.ovsdbName, OvsdbDao.awlanNodeDbTable + "_" + key,
-                        new MonitorRequests(ImmutableMap.of(OvsdbDao.awlanNodeDbTable,
-                                new MonitorRequest())),
-                        new MonitorCallback() {
+    private void monitorDhcpLeasedIpDbTable(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
 
-                            @Override
-                            public void update(TableUpdates tableUpdates) {
-                                LOG.info(OvsdbDao.awlanNodeDbTable + "_" + key + " monitor callback received {}",
-                                        tableUpdates);
+        CompletableFuture<TableUpdates> awCf = ovsdbClient.monitor(OvsdbDao.ovsdbName,
+                OvsdbDao.dhcpLeasedIpDbTable + "_" + key,
+                new MonitorRequests(ImmutableMap.of(OvsdbDao.dhcpLeasedIpDbTable, new MonitorRequest())),
+                new MonitorCallback() {
 
-                                extIntegrationInterface.awlanNodeDbTableUpdate(
-                                        ovsdbDao.getOpensyncAWLANNode(tableUpdates, key, ovsdbClient), key);
+                    @Override
+                    public void update(TableUpdates tableUpdates) {
+                        LOG.info(OvsdbDao.dhcpLeasedIpDbTable + "_" + key + " monitor callback received {}",
+                                tableUpdates);
+
+                        List<Map<String, String>> insert = new ArrayList<>();
+                        List<Map<String, String>> delete = new ArrayList<>();
+                        List<Map<String, String>> update = new ArrayList<>();
+
+
+                        for (TableUpdate tableUpdate : tableUpdates.getTableUpdates().values()) {
+                            for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
+
+                                if (rowUpdate.getNew() == null) {
+                                    Map<String, String> rowMap = new HashMap<>();
+
+                                    rowUpdate.getOld().getColumns().entrySet().stream().forEach(c -> {
+                                        rowMap.put(c.getKey(), c.getValue().toString());
+                                    });
+
+                                    delete.add(rowMap);
+                                    // delete
+                                } else if (rowUpdate.getOld() == null) {
+                                    // insert
+                                    Map<String, String> rowMap = new HashMap<>();
+
+                                    rowUpdate.getNew().getColumns().entrySet().stream().forEach(c -> {
+                                        rowMap.put(c.getKey(), c.getValue().toString());
+                                    });
+
+                                    insert.add(rowMap);
+                                } else {
+
+                                    // insert
+                                    Map<String, String> rowMap = new HashMap<>();
+
+                                    rowUpdate.getOld().getColumns().putAll(rowUpdate.getNew().getColumns());
+                                    rowUpdate.getOld().getColumns().entrySet().stream().forEach(c -> {
+                                        rowMap.put(c.getKey(), c.getValue().toString());
+                                    });
+
+                                    update.add(rowMap);
+
+                                }
                             }
+                        }
 
-                        });
+                        // -- mikehansen1970 --
+                        //TODO: when AP has schema and functionality in place to support it's                       
+                        // additional attributes this will be enhanced to either
+                        // follow the same approach as the other table state
+                        // changes, in which case an additional model will be
+                        // defined in the opensync-ext-interface project along
+                        // with appropriate interface methods to handle changes.
+                        // Alternatively this may be handled in the events from
+                        // the AP when that comes online.
+
+                        LOG.debug("insert {}", insert);
+                        LOG.debug("delete {}", delete);
+                        LOG.debug("modify {}", update);
+
+                    }
+
+
+                });
+
+        awCf.join();
+
+
+    }
+
+    private void monitorAwlanNodeDbTable(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
+        CompletableFuture<TableUpdates> awCf = ovsdbClient.monitor(OvsdbDao.ovsdbName,
+                OvsdbDao.awlanNodeDbTable + "_" + key,
+                new MonitorRequests(ImmutableMap.of(OvsdbDao.awlanNodeDbTable, new MonitorRequest())),
+                new MonitorCallback() {
+
+                    @Override
+                    public void update(TableUpdates tableUpdates) {
+                        LOG.info(OvsdbDao.awlanNodeDbTable + "_" + key + " monitor callback received {}", tableUpdates);
+
+                        extIntegrationInterface.awlanNodeDbTableUpdate(
+                                ovsdbDao.getOpensyncAWLANNode(tableUpdates, key, ovsdbClient), key);
+                    }
+
+                });
 
         awCf.join();
 
     }
 
     private void monitorWifiAssociatedClientsDbTable(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
-        CompletableFuture<TableUpdates> acCf = ovsdbClient
-                .monitor(OvsdbDao.ovsdbName, OvsdbDao.wifiAssociatedClientsDbTable + "_" + key,
-                        new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiAssociatedClientsDbTable,
-                                new MonitorRequest())),
-                        new MonitorCallback() {
+        CompletableFuture<TableUpdates> acCf = ovsdbClient.monitor(OvsdbDao.ovsdbName,
+                OvsdbDao.wifiAssociatedClientsDbTable + "_" + key,
+                new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiAssociatedClientsDbTable, new MonitorRequest())),
+                new MonitorCallback() {
 
-                            @Override
-                            public void update(TableUpdates tableUpdates) {
-                                
-                                LOG.info(OvsdbDao.wifiAssociatedClientsDbTable + "_" + key
-                                        + " monitor callback received {}", tableUpdates);
-                                
-                                List<OpensyncWifiAssociatedClients> associatedClients = new ArrayList<>();
-                                
-                                for (TableUpdate tableUpdate : tableUpdates.getTableUpdates().values()) {
+                    @Override
+                    public void update(TableUpdates tableUpdates) {
 
-                                    for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
-                                        if ((rowUpdate.getOld() != null) && (rowUpdate.getNew() == null)) {
-                                            Row row = rowUpdate.getOld();
-                                            String deletedClientMac = row.getStringColumn("mac");
-                                            // take care of the deletes as we go through the updates, as we want to delete before adding anyway.
-                                            extIntegrationInterface.wifiAssociatedClientsDbTableDelete(deletedClientMac,
-                                                    key);
-                                        } else {
-                                            associatedClients.addAll(ovsdbDao.getOpensyncWifiAssociatedClients(rowUpdate, key, ovsdbClient));
-                                        }
-                                    }
+                        LOG.info(OvsdbDao.wifiAssociatedClientsDbTable + "_" + key + " monitor callback received {}",
+                                tableUpdates);
 
+                        List<OpensyncWifiAssociatedClients> associatedClients = new ArrayList<>();
+
+                        for (TableUpdate tableUpdate : tableUpdates.getTableUpdates().values()) {
+
+                            for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
+                                if ((rowUpdate.getOld() != null) && (rowUpdate.getNew() == null)) {
+                                    Row row = rowUpdate.getOld();
+                                    String deletedClientMac = row.getStringColumn("mac");
+                                    // take care of the deletes as we go through
+                                    // the updates, as we want to delete before
+                                    // adding anyway.
+                                    extIntegrationInterface.wifiAssociatedClientsDbTableDelete(deletedClientMac, key);
+                                } else {
+                                    associatedClients.addAll(
+                                            ovsdbDao.getOpensyncWifiAssociatedClients(rowUpdate, key, ovsdbClient));
                                 }
-                                
-                                
-                                // now address the update/add
-                                extIntegrationInterface.wifiAssociatedClientsDbTableUpdate(associatedClients, key);
-
                             }
 
-                        });
+                        }
+
+
+                        // now address the update/add
+                        extIntegrationInterface.wifiAssociatedClientsDbTableUpdate(associatedClients, key);
+
+                    }
+
+                });
 
         acCf.join();
 
@@ -418,31 +505,31 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                                 LOG.info(OvsdbDao.ovsdbName,
                                         OvsdbDao.wifiInetStateDbTable + "_" + key + " monitor callback received {}",
                                         tableUpdates);
-                                
+
                                 List<OpensyncAPInetState> inetStateInsertOrUpdate = new ArrayList<>();
                                 List<OpensyncAPInetState> inetStateDelete = new ArrayList<>();
-                                
+
                                 for (TableUpdate tableUpdate : tableUpdates.getTableUpdates().values()) {
-                                    
+
                                     for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
 
                                         if (rowUpdate.getNew() == null) {
-                                            inetStateDelete.addAll(ovsdbDao.getOpensyncApInetStateForRowUpdate(rowUpdate, key, ovsdbClient));
+                                            inetStateDelete.addAll(ovsdbDao
+                                                    .getOpensyncApInetStateForRowUpdate(rowUpdate, key, ovsdbClient));
                                         } else {
-                                            inetStateInsertOrUpdate.addAll(ovsdbDao.getOpensyncApInetStateForRowUpdate(rowUpdate, key, ovsdbClient));
+                                            inetStateInsertOrUpdate.addAll(ovsdbDao
+                                                    .getOpensyncApInetStateForRowUpdate(rowUpdate, key, ovsdbClient));
                                         }
-                                        
+
                                     }
                                 }
-                                
+
 
                                 // delete first
-                                extIntegrationInterface.wifiInetStateDbTableUpdate(
-                                        inetStateDelete, key);
+                                extIntegrationInterface.wifiInetStateDbTableUpdate(inetStateDelete, key);
 
-                                // now process updates and mutations                               
-                                extIntegrationInterface.wifiInetStateDbTableUpdate(
-                                        inetStateInsertOrUpdate, key);
+                                // now process updates and mutations
+                                extIntegrationInterface.wifiInetStateDbTableUpdate(inetStateInsertOrUpdate, key);
 
                             }
 
@@ -452,76 +539,73 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
     }
 
     private void monitorWifiRadioStateDbTable(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
-        
-        CompletableFuture<TableUpdates> rsCf = ovsdbClient
-                .monitor(OvsdbDao.ovsdbName, OvsdbDao.wifiRadioStateDbTable + "_" + key,
-                        new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiRadioStateDbTable,
-                                new MonitorRequest())),
-                        new MonitorCallback() {
 
-                            @Override
-                            public void update(TableUpdates tableUpdates) {
-                                LOG.info(OvsdbDao.wifiRadioStateDbTable + "_" + key + " monitor callback received {}",
-                                        tableUpdates);
+        CompletableFuture<TableUpdates> rsCf = ovsdbClient.monitor(OvsdbDao.ovsdbName,
+                OvsdbDao.wifiRadioStateDbTable + "_" + key,
+                new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiRadioStateDbTable, new MonitorRequest())),
+                new MonitorCallback() {
 
-                                extIntegrationInterface.wifiRadioStatusDbTableUpdate(
-                                        ovsdbDao.getOpensyncAPRadioState(tableUpdates, key, ovsdbClient), key);
-                            }
+                    @Override
+                    public void update(TableUpdates tableUpdates) {
+                        LOG.info(OvsdbDao.wifiRadioStateDbTable + "_" + key + " monitor callback received {}",
+                                tableUpdates);
 
-                        });
+                        extIntegrationInterface.wifiRadioStatusDbTableUpdate(
+                                ovsdbDao.getOpensyncAPRadioState(tableUpdates, key, ovsdbClient), key);
+                    }
+
+                });
         rsCf.join();
 
     }
-   
+
     private void monitorWifiVifStateDbTable(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
-        
-        CompletableFuture<TableUpdates> vsCf = ovsdbClient
-                .monitor(OvsdbDao.ovsdbName, OvsdbDao.wifiVifStateDbTable + "_" + key,
-                        new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiVifStateDbTable,
-                                new MonitorRequest())),
-                        new MonitorCallback() {
-                            @Override
-                            public void update(TableUpdates tableUpdates) {
-                                LOG.info(OvsdbDao.wifiVifStateDbTable + "_" + key + " monitor callback received {}",
-                                        tableUpdates);
-                                
-                                List<OpensyncAPVIFState> vifsToDelete = new ArrayList<>();
-                                List<OpensyncAPVIFState> vifsToInsertOrUpdate = new ArrayList<>();
-                                for (TableUpdate tableUpdate : tableUpdates.getTableUpdates().values()) {
-                                    
-                                    for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
 
-                                        if (rowUpdate.getNew() == null) {
-                                            // this is a deletion
-                                            vifsToDelete.addAll(
-                                                    ovsdbDao.getOpensyncApVifStateForRowUpdate(rowUpdate, key, ovsdbClient));
+        CompletableFuture<TableUpdates> vsCf = ovsdbClient.monitor(OvsdbDao.ovsdbName,
+                OvsdbDao.wifiVifStateDbTable + "_" + key,
+                new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiVifStateDbTable, new MonitorRequest())),
+                new MonitorCallback() {
 
-                                        } else {
-                                            // either an insert or
-                                            // mutuate/update
-                                            vifsToInsertOrUpdate.addAll(
-                                                    ovsdbDao.getOpensyncApVifStateForRowUpdate(rowUpdate, key, ovsdbClient));
+                    @Override
+                    public void update(TableUpdates tableUpdates) {
+                        LOG.info(OvsdbDao.wifiVifStateDbTable + "_" + key + " monitor callback received {}",
+                                tableUpdates);
 
-                                        }
+                        List<OpensyncAPVIFState> vifsToDelete = new ArrayList<>();
+                        List<OpensyncAPVIFState> vifsToInsertOrUpdate = new ArrayList<>();
+                        for (TableUpdate tableUpdate : tableUpdates.getTableUpdates().values()) {
 
-                                    }
-                                    
-                                    // delete first, if required
-                                    if (!vifsToDelete.isEmpty()) {
-                                        extIntegrationInterface.wifiVIFStateDbTableDelete(vifsToDelete, key);
-                                    }
-                                    if (!vifsToInsertOrUpdate.isEmpty()) {
-                                        extIntegrationInterface.wifiVIFStateDbTableUpdate(vifsToInsertOrUpdate, key);
-                                    }
-                                    
+                            for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
+
+                                if (rowUpdate.getNew() == null) {
+                                    // this is a deletion
+                                    vifsToDelete.addAll(
+                                            ovsdbDao.getOpensyncApVifStateForRowUpdate(rowUpdate, key, ovsdbClient));
+
+                                } else {
+                                    // either an insert or
+                                    // mutuate/update
+                                    vifsToInsertOrUpdate.addAll(
+                                            ovsdbDao.getOpensyncApVifStateForRowUpdate(rowUpdate, key, ovsdbClient));
+
                                 }
-
-                                
-             
 
                             }
 
-                        });
+                            // delete first, if required
+                            if (!vifsToDelete.isEmpty()) {
+                                extIntegrationInterface.wifiVIFStateDbTableDelete(vifsToDelete, key);
+                            }
+                            if (!vifsToInsertOrUpdate.isEmpty()) {
+                                extIntegrationInterface.wifiVIFStateDbTableUpdate(vifsToInsertOrUpdate, key);
+                            }
+
+                        }
+
+
+                    }
+
+                });
 
         vsCf.join();
 
