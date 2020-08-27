@@ -32,7 +32,10 @@ import com.google.protobuf.util.JsonFormat.TypeRegistry;
 import com.telecominfraproject.wlan.alarm.AlarmServiceInterface;
 import com.telecominfraproject.wlan.client.ClientServiceInterface;
 import com.telecominfraproject.wlan.client.info.models.ClientInfoDetails;
+import com.telecominfraproject.wlan.client.models.events.ClientSessionChangedEvent;
+import com.telecominfraproject.wlan.client.models.events.ClientSessionClosedEvent;
 import com.telecominfraproject.wlan.client.session.models.AssociationState;
+import com.telecominfraproject.wlan.client.session.models.ClientFailureDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientSession;
 import com.telecominfraproject.wlan.client.session.models.ClientSessionDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientSessionMetricDetails;
@@ -128,12 +131,21 @@ import com.telecominfraproject.wlan.status.models.StatusDataType;
 import com.telecominfraproject.wlan.status.network.models.NetworkAdminStatusData;
 
 import sts.OpensyncStats;
+import sts.OpensyncStats.AssocType;
 import sts.OpensyncStats.Client;
 import sts.OpensyncStats.ClientReport;
 import sts.OpensyncStats.DNSProbeMetric;
 import sts.OpensyncStats.Device;
 import sts.OpensyncStats.Device.RadioTemp;
-import sts.OpensyncStats.EventReport;
+import sts.OpensyncStats.EventReport.ClientAssocEvent;
+import sts.OpensyncStats.EventReport.ClientAuthEvent;
+import sts.OpensyncStats.EventReport.ClientDisconnectEvent;
+import sts.OpensyncStats.EventReport.ClientFailureEvent;
+import sts.OpensyncStats.EventReport.ClientFirstDataEvent;
+import sts.OpensyncStats.EventReport.ClientIdEvent;
+import sts.OpensyncStats.EventReport.ClientIpEvent;
+import sts.OpensyncStats.EventReport.ClientTimeoutEvent;
+import sts.OpensyncStats.FrameType;
 import sts.OpensyncStats.Neighbor;
 import sts.OpensyncStats.Neighbor.NeighborBss;
 import sts.OpensyncStats.NetworkProbe;
@@ -942,13 +954,318 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
 
     }
-    
-    private void processEventReport(Report report, int customerId,
-            long equipmentId, String apId, long locationId) {
+
+    private void processEventReport(Report report, int customerId, long equipmentId, String apId, long locationId) {
         report.getEventReportList().stream().forEach(e -> {
             LOG.info("Received EventReport {}", e);
+
+            if (e.hasClientAssocEvent()) {
+
+
+                ClientAssocEvent clientAssocEvent = e.getClientAssocEvent();
+
+                ClientSession clientSession = new ClientSession();
+                clientSession.setCustomerId(customerId);
+                clientSession.setEquipmentId(equipmentId);
+                clientSession.setLocationId(locationId);
+
+                if (clientAssocEvent.hasStaMac()) {
+                    clientSession.setMacAddress(new MacAddress(clientAssocEvent.getStaMac()));
+                }
+
+                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+                if (clientAssocEvent.hasUsing11K()) {
+                    clientSessionDetails.setIs11KUsed(clientAssocEvent.getUsing11K());
+                }
+                if (clientAssocEvent.hasUsing11R()) {
+                    clientSessionDetails.setIs11RUsed(clientAssocEvent.getUsing11R());
+                }
+                if (clientAssocEvent.hasUsing11V()) {
+                    clientSessionDetails.setIs11VUsed(clientAssocEvent.getUsing11V());
+                }
+                if (clientAssocEvent.hasAssocType()) {
+                    clientSessionDetails.setIsReassociation(clientAssocEvent.getAssocType().equals(AssocType.REASSOC));
+                }
+                if (clientAssocEvent.hasBand()) {
+                    clientSessionDetails.setRadioType(getRadioTypeFromOpensyncRadioBand(clientAssocEvent.getBand()));
+                }
+                if (clientAssocEvent.hasRssi()) {
+                    clientSessionDetails.setAssocRssi(clientAssocEvent.getRssi());
+                }
+                if (clientAssocEvent.hasSessionId()) {
+                    clientSessionDetails.setSessionId(clientAssocEvent.getSessionId());
+                }
+                if (clientAssocEvent.hasSsid()) {
+                    clientSessionDetails.setSsid(clientAssocEvent.getSsid());
+                }
+                if (clientAssocEvent.hasStatus()) {
+                    clientSessionDetails.setAssociationStatus(clientAssocEvent.getStatus());
+                    clientSessionDetails.setAssociationState(AssociationState._802_11_Associated);
+                }
+
+                clientSession.setDetails(clientSessionDetails);
+
+                equipmentMetricsCollectorInterface.publishEvent(new ClientSessionChangedEvent(clientSession));
+
+            }
+
+            if (e.hasClientAuthEvent()) {
+
+
+                ClientAuthEvent clientAuthEvent = e.getClientAuthEvent();
+                ClientSession clientSession = new ClientSession();
+                clientSession.setCustomerId(customerId);
+                clientSession.setEquipmentId(equipmentId);
+                clientSession.setLocationId(locationId);
+                if (clientAuthEvent.hasStaMac()) {
+                    clientSession.setMacAddress(new MacAddress(clientAuthEvent.getStaMac().toByteArray()));
+                }
+                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+
+                if (clientAuthEvent.hasSessionId()) {
+                    clientSessionDetails.setSessionId(clientAuthEvent.getSessionId());
+                }
+                if (clientAuthEvent.hasBand()) {
+                    clientSessionDetails.setRadioType(getRadioTypeFromOpensyncRadioBand(clientAuthEvent.getBand()));
+                }
+                if (clientAuthEvent.hasSsid()) {
+                    clientSessionDetails.setSsid(clientAuthEvent.getSsid());
+                }
+                if (clientAuthEvent.hasAuthStatus()) {
+                    clientSessionDetails.setAssociationState(AssociationState._802_11_Authenticated);
+                }
+
+                clientSession.setDetails(clientSessionDetails);
+
+                equipmentMetricsCollectorInterface.publishEvent(new ClientSessionChangedEvent(clientSession));
+
+            }
+
+            if (e.hasClientDisconnectEvent()) {
+
+                ClientDisconnectEvent clientDisconnectEvent = e.getClientDisconnectEvent();
+
+                ClientSession clientSession = new ClientSession();
+                clientSession.setCustomerId(customerId);
+                clientSession.setEquipmentId(equipmentId);
+                clientSession.setLocationId(locationId);
+
+                if (clientDisconnectEvent.hasStaMac()) {
+                    clientSession.setMacAddress(new MacAddress(clientDisconnectEvent.getStaMac().toByteArray()));
+                }
+
+                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+
+                if (clientDisconnectEvent.hasBand()) {
+                    clientSessionDetails
+                            .setRadioType(getRadioTypeFromOpensyncRadioBand(clientDisconnectEvent.getBand()));
+                }
+                if (clientDisconnectEvent.hasDevType()) {
+                }
+                if (clientDisconnectEvent.hasFrType()) {
+                    if (clientDisconnectEvent.getFrType().equals(FrameType.FT_DEAUTH)) {
+                    }
+                    if (clientDisconnectEvent.getFrType().equals(FrameType.FT_DISASSOC)) {
+                    }
+                }
+                if (clientDisconnectEvent.hasRssi()) {
+                    clientSessionDetails.setAssocRssi(clientDisconnectEvent.getRssi());
+                }
+
+                if (clientDisconnectEvent.hasSessionId()) {
+                    clientSessionDetails.setSessionId(clientDisconnectEvent.getSessionId());
+                }
+
+                if (clientDisconnectEvent.hasLastRcvUpTsInUs()) {
+                    clientSessionDetails.setLastRxTimestamp(clientDisconnectEvent.getLastRcvUpTsInUs());
+                }
+
+                if (clientDisconnectEvent.hasLastSentUpTsInUs()) {
+                    clientSessionDetails.setLastTxTimestamp(clientDisconnectEvent.getLastSentUpTsInUs());
+                }
+
+                if (clientDisconnectEvent.hasInternalRC()) {
+                    clientSessionDetails.setDisconnectByClientInternalReasonCode(clientDisconnectEvent.getInternalRC());
+                }
+                if (clientDisconnectEvent.hasReason()) {
+                    clientSessionDetails.setDisconnectByClientReasonCode(clientDisconnectEvent.getReason());
+
+                }
+                clientSessionDetails.setAssociationState(AssociationState.Disconnected);
+
+                clientSession.setDetails(clientSessionDetails);
+
+                equipmentMetricsCollectorInterface.publishEvent(new ClientSessionClosedEvent(clientSession));
+            }
+
+            if (e.hasClientFailureEvent()) {
+
+                ClientFailureEvent clientFailureEvent = e.getClientFailureEvent();
+
+                ClientSession clientSession = new ClientSession();
+                clientSession.setCustomerId(customerId);
+                clientSession.setEquipmentId(equipmentId);
+                clientSession.setLocationId(locationId);
+
+                if (clientFailureEvent.hasStaMac()) {
+                    clientSession.setMacAddress(new MacAddress(clientFailureEvent.getStaMac().toByteArray()));
+                }
+
+                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+
+                if (clientFailureEvent.hasSsid()) {
+                    clientSessionDetails.setSsid(clientFailureEvent.getSsid());
+                }
+
+                if (clientFailureEvent.hasSessionId()) {
+                    clientSessionDetails.setSessionId(clientFailureEvent.getSessionId());
+                }
+                ClientFailureDetails clientFailureDetails = new ClientFailureDetails();
+                if (clientFailureEvent.hasReasonStr()) {
+                    clientFailureDetails.setReason(clientFailureEvent.getReasonStr());
+                }
+                if (clientFailureEvent.hasReasonCode()) {
+                    clientFailureDetails.setReasonCode(clientFailureEvent.getReasonCode());
+                }
+                clientSessionDetails.setLastFailureDetails(clientFailureDetails);
+                clientSession.setDetails(clientSessionDetails);
+
+                equipmentMetricsCollectorInterface.publishEvent(new ClientSessionChangedEvent(clientSession));
+            }
+
+            if (e.hasClientFirstDataEvent()) {
+
+
+                ClientFirstDataEvent clientFirstDataEvent = e.getClientFirstDataEvent();
+
+                ClientSession clientSession = new ClientSession();
+                clientSession.setCustomerId(customerId);
+                clientSession.setEquipmentId(equipmentId);
+                clientSession.setLocationId(locationId);
+
+                if (clientFirstDataEvent.hasStaMac()) {
+                    clientSession.setMacAddress(new MacAddress(clientFirstDataEvent.getStaMac().toByteArray()));
+                }
+
+                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+
+                if (clientFirstDataEvent.hasFirstDataRxedUpTsInUs()) {
+                    clientSessionDetails.setFirstDataRcvdTimestamp(clientFirstDataEvent.getFirstDataRxedUpTsInUs());
+                }
+
+                if (clientFirstDataEvent.hasFirstDataTxedUpTsInUs()) {
+                    clientSessionDetails.setFirstDataSentTimestamp(clientFirstDataEvent.getFirstDataTxedUpTsInUs());
+                }
+
+                if (clientFirstDataEvent.hasSessionId()) {
+                    clientSessionDetails.setSessionId(clientFirstDataEvent.getSessionId());
+                }
+                clientSessionDetails.setAssociationState(AssociationState.Active_Data);
+
+                clientSession.setDetails(clientSessionDetails);
+
+                equipmentMetricsCollectorInterface.publishEvent(new ClientSessionChangedEvent(clientSession));
+
+            }
+
+            if (e.hasClientIdEvent()) {
+
+                ClientIdEvent clientIdEvent = e.getClientIdEvent();
+
+                ClientSession clientSession = new ClientSession();
+                clientSession.setCustomerId(customerId);
+                clientSession.setEquipmentId(equipmentId);
+                clientSession.setLocationId(locationId);
+
+                if (clientIdEvent.hasCltMac()) {
+                    clientSession.setMacAddress(new MacAddress(clientIdEvent.getCltMac().toByteArray()));
+                }
+
+                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+                if (clientIdEvent.hasSessionId()) {
+                    clientSessionDetails.setSessionId(clientIdEvent.getSessionId());
+                }
+
+                clientSession.setDetails(clientSessionDetails);
+
+                equipmentMetricsCollectorInterface.publishEvent(new ClientSessionChangedEvent(clientSession));
+
+            }
+
+            if (e.hasClientIpEvent()) {
+
+                ClientIpEvent clientIpEvent = e.getClientIpEvent();
+
+                ClientSession clientSession = new ClientSession();
+                clientSession.setCustomerId(customerId);
+                clientSession.setEquipmentId(equipmentId);
+                clientSession.setLocationId(locationId);
+
+                if (clientIpEvent.hasStaMac()) {
+                    clientSession.setMacAddress(new MacAddress(clientIpEvent.getStaMac().toByteArray()));
+                }
+
+                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+
+                if (clientIpEvent.hasSessionId()) {
+                    clientSessionDetails.setSessionId(clientIpEvent.getSessionId());
+                }
+
+                if (clientIpEvent.hasIpAddr()) {
+                    try {
+                        clientSessionDetails
+                                .setIpAddress(InetAddress.getByAddress(clientIpEvent.getIpAddr().toByteArray()));
+                        clientSessionDetails.setAssociationState(AssociationState.Valid_Ip);
+                    } catch (UnknownHostException e1) {
+                        LOG.error("Cannot get InetAddress from clientIpEvent.", e1);
+                    }
+                }
+
+                clientSession.setDetails(clientSessionDetails);
+
+                equipmentMetricsCollectorInterface.publishEvent(new ClientSessionChangedEvent(clientSession));
+
+
+            }
+
+            if (e.hasClientTimeoutEvent()) {
+
+                ClientTimeoutEvent clientTimeoutEvent = e.getClientTimeoutEvent();
+
+
+                ClientSession clientSession = new ClientSession();
+                clientSession.setCustomerId(customerId);
+                clientSession.setEquipmentId(equipmentId);
+                clientSession.setLocationId(locationId);
+
+                if (clientTimeoutEvent.hasStaMac()) {
+                    clientSession.setMacAddress(new MacAddress(clientTimeoutEvent.getStaMac().toByteArray()));
+                }
+
+                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+
+                if (clientTimeoutEvent.hasSessionId()) {
+                    clientSessionDetails.setSessionId(clientTimeoutEvent.getSessionId());
+                }
+
+                if (clientTimeoutEvent.hasLastRcvUpTsInUs()) {
+                    clientSessionDetails.setLastRxTimestamp(clientTimeoutEvent.getLastRcvUpTsInUs());
+                }
+
+                if (clientTimeoutEvent.hasLastSentUpTsInUs()) {
+                    clientSessionDetails.setLastTxTimestamp(clientTimeoutEvent.getLastSentUpTsInUs());
+                }
+
+                clientSessionDetails.setAssociationState(AssociationState.AP_Timeout);
+                clientSession.setDetails(clientSessionDetails);
+
+                equipmentMetricsCollectorInterface.publishEvent(new ClientSessionChangedEvent(clientSession));
+
+            }
+
+
         });
-        
+
     }
 
     private void populateUccReport(List<ServiceMetric> metricRecordList, Report report, int customerId,
