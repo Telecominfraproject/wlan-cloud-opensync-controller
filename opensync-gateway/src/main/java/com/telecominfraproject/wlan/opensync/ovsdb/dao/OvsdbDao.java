@@ -170,6 +170,8 @@ public class OvsdbDao {
 
     public static final String wifiRrmConfigDbTable = "Wifi_RRM_Config";
 
+    public static final String dhcpLeasedIpDbTable = "DHCP_leased_IP";
+
     public ConnectNodeInfo getConnectNodeInfo(OvsdbClient ovsdbClient) {
         ConnectNodeInfo ret = new ConnectNodeInfo();
 
@@ -2140,6 +2142,7 @@ public class OvsdbDao {
 
     }
 
+
     private void configureWifiRadios(OvsdbClient ovsdbClient, String freqBand, int channel,
             Map<String, String> hwConfig, String country, int beaconInterval, boolean enabled, String hwMode,
             String ht_mode, int txPower)
@@ -2198,12 +2201,9 @@ public class OvsdbDao {
         try {
 
             // If we are doing a NAT SSID, no bridge, else yes
-            String bridge = null;
+            String bridge = defaultWanInterfaceName;
             if (networkForwardMode == NetworkForwardMode.NAT) {
                 bridge = defaultLanInterfaceName;
-            } else {
-                bridge = defaultWanInterfaceName;
-
             }
 
             if (vlanId > 1) {
@@ -2215,13 +2215,15 @@ public class OvsdbDao {
                 if (!wifiInetConfigInfoMap.containsKey(vlanIfName)) {
                     // we need to make a VLAN, before we do anything else
                     createInetConfigForVlan(ovsdbClient, bridge, (networkForwardMode == NetworkForwardMode.NAT),
-                            vlanIfName, vlanId, gateway, inet, ipAssignScheme);
+                            vlanIfName, vlanId, gateway, inet, ipAssignScheme, dns);
                 }
 
                 bridge = vlanIfName;
 
                 updateColumns.put("vlan_id", new Atom<>(vlanId));
-                updateColumns.put("mode", new Atom<>("ap_vlan"));
+                // updateColumns.put("mode", new Atom<>("ap_vlan"));
+                updateColumns.put("mode", new Atom<>("ap"));
+
             } else {
                 updateColumns.put("mode", new Atom<>("ap"));
                 updateColumns.put("vlan_id", new com.vmware.ovsdb.protocol.operation.notation.Set());
@@ -2600,6 +2602,9 @@ public class OvsdbDao {
                 } else if (ssidSecurityMode.equals("wpaEAP") || ssidSecurityMode.equals("wpa2EAP")
                         || ssidSecurityMode.equals("wpa2OnlyEAP")) {
                     opensyncSecurityMode = "WPA-EAP";
+                }  else if (ssidSecurityMode.equals("wpaRadius") || ssidSecurityMode.equals("wpa2OnlyRadius")
+                        || ssidSecurityMode.equals("wpa2Radius")) {
+                    opensyncSecurityMode = "WPA-EAP";
                 }
 
                 security.put("encryption", opensyncSecurityMode);
@@ -2614,13 +2619,13 @@ public class OvsdbDao {
                     } else if (ssidSecurityMode.equals("wpaPSK")) {
                         security.put("key", ssidConfig.getKeyStr());
                         security.put("mode", "1");
-                    } else if (ssidSecurityMode.equals("wpa2OnlyEAP")) {
+                    } else if (ssidSecurityMode.equals("wpa2OnlyEAP") || ssidSecurityMode.equals("wpa2OnlyRadius")) {
                         security.put("mode", "2");
                         getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
-                    } else if (ssidSecurityMode.equals("wpa2EAP")) {
+                    } else if (ssidSecurityMode.equals("wpa2EAP") || ssidSecurityMode.equals("wpa2Radius")) {
                         security.put("mode", "mixed");
                         getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
-                    } else if (ssidSecurityMode.equals("wpaEAP")) {
+                    } else if (ssidSecurityMode.equals("wpaEAP") || ssidSecurityMode.equals("wpaRadius")) {
                         security.put("mode", "1");
                         getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
                     } else if (ssidSecurityMode.equals("wep")) {
@@ -2675,7 +2680,7 @@ public class OvsdbDao {
     }
 
     private void createInetConfigForVlan(OvsdbClient ovsdbClient, String parentIfName, boolean isNAT, String vlanIfName,
-            int vlanId, String gateway, String inet, String ipAssignScheme) {
+            int vlanId, String gateway, String inet, String ipAssignScheme, Map<String, String> dns) {
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> insertColumns = new HashMap<>();
@@ -2705,7 +2710,6 @@ public class OvsdbDao {
 
 
             } else if (ipAssignScheme.equals("dhcp")) {
-
                 insertColumns.put("ip_assign_scheme", new Atom<>("dhcp"));
                 insertColumns.put("dhcp_sniff", new Atom<>(true));
 
@@ -2893,14 +2897,16 @@ public class OvsdbDao {
             insertColumns.put("ip_assign_scheme", new Atom<>(ipAssignScheme));
 
             if (ipAssignScheme.equals("static")) {
-                insertColumns.put("dns", com.vmware.ovsdb.protocol.operation.notation.Map.of(dns));
-                insertColumns.put("inet_addr", new Atom<>(inet));
-                insertColumns.put("gateway", new Atom<>(gateway));
+
+                if (inet != null) {
+                    insertColumns.put("inet_addr", new Atom<>(inet));
+                }
+                insertColumns.put("netmask", new Atom<>("255.255.255.0"));
                 // netmask
                 // broadcast
             }
             if (ipAssignScheme.equals("dhcp")) {
-                insertColumns.put("dhcp_sniff", new Atom<>(true));
+                  insertColumns.put("dhcp_sniff", new Atom<>(true));
             } else {
                 insertColumns.put("dhcp_sniff", new Atom<>(false));
             }
