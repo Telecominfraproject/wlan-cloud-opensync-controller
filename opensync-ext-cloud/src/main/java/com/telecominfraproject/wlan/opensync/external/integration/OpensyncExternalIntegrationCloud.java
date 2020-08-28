@@ -954,6 +954,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     }
 
     private void processEventReport(Report report, int customerId, long equipmentId, String apId, long locationId) {
+
+        LOG.debug("Processing EventReport List {}", report.getEventReportList());
+
         report.getEventReportList().stream().forEach(e -> {
             LOG.info("Received EventReport {}", e);
 
@@ -3354,9 +3357,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         for (ClientSession session : clientSessionList) {
 
             ClientSessionDetails clientSessionDetails = session.getDetails();
-            
-            
-            if (clientSessionDetails.getAssociationState() != null && !clientSessionDetails.getAssociationState().equals(AssociationState.Disconnected)) {
+
+
+            if (clientSessionDetails.getAssociationState() != null
+                    && !clientSessionDetails.getAssociationState().equals(AssociationState.Disconnected)) {
                 clientSessionDetails.setDisconnectByClientTimestamp(System.currentTimeMillis());
                 clientSessionDetails.setAssociationState(AssociationState.Disconnected);
 
@@ -3410,6 +3414,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
 
 
+        Equipment ce = getCustomerEquipment(apId);
+
+        if (ce == null) {
+            LOG.debug("updateDhcpIpClientFingerprints::Cannot get Equipment for AP {}", apId);
+            return;
+        }
+
+        long locationId = ce.getLocationId();
+
         if (rowUpdateOperation.equals(RowUpdateOperation.INSERT)) {
 
 
@@ -3449,7 +3462,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                     // In this case, we might have a session, as the client
                     // already exists on the cloud, update if required
-                    ClientSession session = updateClientSession(customerId, equipmentId, dhcpLeasedIps, clientMacAddress);
+                    ClientSession session = updateClientSession(customerId, equipmentId, locationId, dhcpLeasedIps,
+                            clientMacAddress);
                     if (session != null) {
                         clientSessionList.add(session);
 
@@ -3548,7 +3562,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 // check if there is a session for this client
 
-                ClientSession session = updateClientSession(customerId, equipmentId, dhcpLeasedIps, clientMacAddress);
+                ClientSession session = updateClientSession(customerId, equipmentId, locationId, dhcpLeasedIps,
+                        clientMacAddress);
                 if (session != null) {
                     clientSessionList.add(session);
 
@@ -3570,91 +3585,92 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     }
 
-    protected ClientSession updateClientSession(int customerId, long equipmentId, Map<String, String> dhcpLeasedIps,
-            MacAddress clientMacAddress) {
+    protected ClientSession updateClientSession(int customerId, long equipmentId, long locationId,
+            Map<String, String> dhcpLeasedIps, MacAddress clientMacAddress) {
         ClientSession session = clientServiceInterface.getSessionOrNull(customerId, equipmentId, clientMacAddress);
 
         if (session == null) {
             session = new ClientSession();
-            session.setCustomerId(customerId);
-            session.setEquipmentId(equipmentId);
-            session.setMacAddress(clientMacAddress);
-            session.setDetails(new ClientSessionDetails());
+        }
+        session.setCustomerId(customerId);
+        session.setEquipmentId(equipmentId);
+        session.setLocationId(locationId);
+        session.setMacAddress(clientMacAddress);
+        session.setDetails(new ClientSessionDetails());
 
-            ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+        ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
 
-            if (dhcpLeasedIps.containsKey("fingerprint")) {
+        if (dhcpLeasedIps.containsKey("fingerprint")) {
 
-                clientSessionDetails.setApFingerprint(dhcpLeasedIps.get("fingerprint"));
+            clientSessionDetails.setApFingerprint(dhcpLeasedIps.get("fingerprint"));
+        }
+
+        if (dhcpLeasedIps.containsKey("inet_addr")) {
+
+            try {
+                clientSessionDetails.setIpAddress(InetAddress.getByName(dhcpLeasedIps.get("inet_addr")));
+            } catch (UnknownHostException e) {
+                LOG.error("Invalid Client IP", e);
             }
-
-            if (dhcpLeasedIps.containsKey("inet_addr")) {
-
-                try {
-                    clientSessionDetails.setIpAddress(InetAddress.getByName(dhcpLeasedIps.get("inet_addr")));
-                } catch (UnknownHostException e) {
-                    LOG.error("Invalid Client IP", e);
-                }
-
-            }
-
-            if (dhcpLeasedIps.containsKey("hostname")) {
-
-                clientSessionDetails.setHostname(dhcpLeasedIps.get("hostname"));
-
-            }
-
-
-            ClientDhcpDetails clientDhcpDetails = new ClientDhcpDetails(clientSessionDetails.getSessionId());
-
-            if (dhcpLeasedIps.containsKey("lease_time")) {
-                Integer leaseTime = Integer.valueOf(dhcpLeasedIps.get("lease_time"));
-                clientDhcpDetails.setLeaseTimeInSeconds(leaseTime / 1000);
-            }
-
-            if (dhcpLeasedIps.containsKey("gateway")) {
-                try {
-                    clientDhcpDetails.setGatewayIp(InetAddress.getByName(dhcpLeasedIps.get("gateway")));
-                } catch (UnknownHostException e) {
-                    LOG.error("Invalid Gateway IP", e);
-
-                }
-            }
-
-            if (dhcpLeasedIps.containsKey("subnet_mask")) {
-                try {
-                    clientDhcpDetails.setSubnetMask(InetAddress.getByName(dhcpLeasedIps.get("subnet_mask")));
-                } catch (UnknownHostException e) {
-                    LOG.error("Invalid Subnet Mask", e);
-
-                }
-            }
-
-            if (dhcpLeasedIps.containsKey("primary_dns")) {
-                try {
-                    clientDhcpDetails.setPrimaryDns(InetAddress.getByName(dhcpLeasedIps.get("primary_dns")));
-                } catch (UnknownHostException e) {
-                    LOG.error("Invalid Primary DNS", e);
-
-                }
-            }
-
-            if (dhcpLeasedIps.containsKey("secondary_dns")) {
-                try {
-                    clientDhcpDetails.setSecondaryDns(InetAddress.getByName(dhcpLeasedIps.get("secondary_dns")));
-                } catch (UnknownHostException e) {
-                    LOG.error("Invalid Secondary DNS", e);
-
-                }
-            }
-
-
-            clientSessionDetails.setDhcpDetails(clientDhcpDetails);
-
-            session.getDetails().mergeSession(clientSessionDetails);
-
 
         }
+
+        if (dhcpLeasedIps.containsKey("hostname")) {
+
+            clientSessionDetails.setHostname(dhcpLeasedIps.get("hostname"));
+
+        }
+
+
+        ClientDhcpDetails clientDhcpDetails = new ClientDhcpDetails(clientSessionDetails.getSessionId());
+
+        if (dhcpLeasedIps.containsKey("lease_time")) {
+            Integer leaseTime = Integer.valueOf(dhcpLeasedIps.get("lease_time"));
+            clientDhcpDetails.setLeaseTimeInSeconds(leaseTime / 1000);
+        }
+
+        if (dhcpLeasedIps.containsKey("gateway")) {
+            try {
+                clientDhcpDetails.setGatewayIp(InetAddress.getByName(dhcpLeasedIps.get("gateway")));
+            } catch (UnknownHostException e) {
+                LOG.error("Invalid Gateway IP", e);
+
+            }
+        }
+
+        if (dhcpLeasedIps.containsKey("subnet_mask")) {
+            try {
+                clientDhcpDetails.setSubnetMask(InetAddress.getByName(dhcpLeasedIps.get("subnet_mask")));
+            } catch (UnknownHostException e) {
+                LOG.error("Invalid Subnet Mask", e);
+
+            }
+        }
+
+        if (dhcpLeasedIps.containsKey("primary_dns")) {
+            try {
+                clientDhcpDetails.setPrimaryDns(InetAddress.getByName(dhcpLeasedIps.get("primary_dns")));
+            } catch (UnknownHostException e) {
+                LOG.error("Invalid Primary DNS", e);
+
+            }
+        }
+
+        if (dhcpLeasedIps.containsKey("secondary_dns")) {
+            try {
+                clientDhcpDetails.setSecondaryDns(InetAddress.getByName(dhcpLeasedIps.get("secondary_dns")));
+            } catch (UnknownHostException e) {
+                LOG.error("Invalid Secondary DNS", e);
+
+            }
+        }
+
+
+        clientSessionDetails.setDhcpDetails(clientDhcpDetails);
+
+        session.getDetails().mergeSession(clientSessionDetails);
+
+
         return session;
     }
 
