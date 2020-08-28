@@ -3354,7 +3354,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         for (ClientSession session : clientSessionList) {
 
             ClientSessionDetails clientSessionDetails = session.getDetails();
-            if (!clientSessionDetails.getAssociationState().equals(AssociationState.Disconnected)) {
+            
+            
+            if (clientSessionDetails.getAssociationState() != null && !clientSessionDetails.getAssociationState().equals(AssociationState.Disconnected)) {
                 clientSessionDetails.setDisconnectByClientTimestamp(System.currentTimeMillis());
                 clientSessionDetails.setAssociationState(AssociationState.Disconnected);
 
