@@ -3447,8 +3447,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                     // In this case, we might have a session, as the client
                     // already exists on the cloud, update if required
-                    clientSessionList
-                            .add(updateClientSession(customerId, equipmentId, dhcpLeasedIps, clientMacAddress));
+                    ClientSession session = updateClientSession(customerId, equipmentId, dhcpLeasedIps, clientMacAddress);
+                    if (session != null) {
+                        clientSessionList.add(session);
+
+                    }
 
 
                 } else {
@@ -3543,8 +3546,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 // check if there is a session for this client
 
-                clientSessionList.add(updateClientSession(customerId, equipmentId, dhcpLeasedIps, clientMacAddress));
+                ClientSession session = updateClientSession(customerId, equipmentId, dhcpLeasedIps, clientMacAddress);
+                if (session != null) {
+                    clientSessionList.add(session);
 
+                }
 
             }
 
@@ -3566,7 +3572,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             MacAddress clientMacAddress) {
         ClientSession session = clientServiceInterface.getSessionOrNull(customerId, equipmentId, clientMacAddress);
 
-        if (session != null) {
+        if (session == null) {
+            session = new ClientSession();
+            session.setCustomerId(customerId);
+            session.setEquipmentId(equipmentId);
+            session.setMacAddress(clientMacAddress);
+            session.setDetails(new ClientSessionDetails());
 
             ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
 
