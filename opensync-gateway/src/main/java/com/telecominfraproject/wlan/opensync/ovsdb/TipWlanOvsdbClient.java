@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 import com.google.common.collect.ImmutableMap;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExternalIntegrationInterface;
+import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExternalIntegrationInterface.RowUpdateOperation;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbClientInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSession;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSessionMapInterface;
@@ -402,21 +403,21 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
                                 }
                             }
+                        }                     
+
+                        if (!insert.isEmpty()) {
+                            extIntegrationInterface.dhcpLeasedIpDbTableUpdate(insert, key,RowUpdateOperation.INSERT);
                         }
+                        
+                        if (!delete.isEmpty()) {
+                            extIntegrationInterface.dhcpLeasedIpDbTableUpdate(delete, key,RowUpdateOperation.DELETE);
 
-                        // -- mikehansen1970 --
-                        //TODO: when AP has schema and functionality in place to support it's                       
-                        // additional attributes this will be enhanced to either
-                        // follow the same approach as the other table state
-                        // changes, in which case an additional model will be
-                        // defined in the opensync-ext-interface project along
-                        // with appropriate interface methods to handle changes.
-                        // Alternatively this may be handled in the events from
-                        // the AP when that comes online.
+                        }
+                        
+                        if (!update.isEmpty()) {
+                            extIntegrationInterface.dhcpLeasedIpDbTableUpdate(update, key,RowUpdateOperation.MODIFY);
 
-                        LOG.debug("insert {}", insert);
-                        LOG.debug("delete {}", delete);
-                        LOG.debug("modify {}", update);
+                        }
 
                     }
 

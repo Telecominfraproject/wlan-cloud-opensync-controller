@@ -3,6 +3,7 @@ package com.telecominfraproject.wlan.opensync.external.integration;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import javax.annotation.PostConstruct;
 
@@ -188,6 +189,13 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
     @Override
     public void wifiInetStateDbTableDelete(List<OpensyncAPInetState> inetStateTables, String apId) {
         LOG.info("Received Wifi_VIF_State row(s) delete {} for ap {}", inetStateTables, apId);
+        
+    }
+
+    @Override
+    public void dhcpLeasedIpDbTableUpdate(List<Map<String, String>> dhcpAttributes, String apId,
+            RowUpdateOperation rowUpdateOperation) {
+        // TODO Auto-generated method stub
         
     }
 

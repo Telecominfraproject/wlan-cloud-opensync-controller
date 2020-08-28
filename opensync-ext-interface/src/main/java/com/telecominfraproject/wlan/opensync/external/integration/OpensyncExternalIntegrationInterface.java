@@ -1,6 +1,7 @@
 package com.telecominfraproject.wlan.opensync.external.integration;
 
 import java.util.List;
+import java.util.Map;
 
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
@@ -46,4 +47,7 @@ public interface OpensyncExternalIntegrationInterface {
     void wifiAssociatedClientsDbTableDelete(String deletedClientMac, String apId);
 
     void awlanNodeDbTableUpdate(OpensyncAWLANNode opensyncAPState, String apId);
+    
+    void dhcpLeasedIpDbTableUpdate(List<Map<String,String>> dhcpAttributes, String apId, RowUpdateOperation rowUpdateOperation);
+
 }

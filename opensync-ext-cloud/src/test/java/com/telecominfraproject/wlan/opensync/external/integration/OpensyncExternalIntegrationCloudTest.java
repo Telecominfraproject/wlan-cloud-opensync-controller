@@ -531,13 +531,11 @@ public class OpensyncExternalIntegrationCloudTest {
 
         opensyncExternalIntegrationCloud.processMqttMessage(topic, report);
 
-        Mockito.verify(clientServiceInterface, Mockito.times(2)).getOrNull(Mockito.anyInt(),
+        Mockito.verify(clientServiceInterface, Mockito.times(4)).getOrNull(Mockito.anyInt(),
                 Mockito.any(MacAddress.class));
-        Mockito.verify(clientServiceInterface, Mockito.times(2)).getSessionOrNull(Mockito.anyInt(), Mockito.anyLong(),
+        Mockito.verify(clientServiceInterface, Mockito.times(4)).getSessionOrNull(Mockito.anyInt(), Mockito.anyLong(),
                 Mockito.any(MacAddress.class));
-        Mockito.verify(clientServiceInterface, Mockito.times(2)).updateSession(Mockito.any(ClientSession.class));
-        Mockito.verify(clientServiceInterface, Mockito.times(2))
-                .update(Mockito.any(com.telecominfraproject.wlan.client.models.Client.class));
+        Mockito.verify(clientServiceInterface, Mockito.times(4)).updateSession(Mockito.any(ClientSession.class));
         Mockito.verify(statusServiceInterface, Mockito.times(3)).getOrNull(Mockito.anyInt(), Mockito.anyLong(),
                 Mockito.eq(StatusDataType.ACTIVE_BSSIDS));
 
