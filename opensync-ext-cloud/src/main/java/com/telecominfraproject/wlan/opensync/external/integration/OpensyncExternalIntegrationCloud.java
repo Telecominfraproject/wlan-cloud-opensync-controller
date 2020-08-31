@@ -34,6 +34,7 @@ import com.telecominfraproject.wlan.client.ClientServiceInterface;
 import com.telecominfraproject.wlan.client.info.models.ClientInfoDetails;
 import com.telecominfraproject.wlan.client.session.models.AssociationState;
 import com.telecominfraproject.wlan.client.session.models.ClientDhcpDetails;
+import com.telecominfraproject.wlan.client.session.models.ClientEapDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientFailureDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientSession;
 import com.telecominfraproject.wlan.client.session.models.ClientSessionDetails;
@@ -48,6 +49,7 @@ import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.NeighborScanPacketType;
 import com.telecominfraproject.wlan.core.model.equipment.NetworkType;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
+import com.telecominfraproject.wlan.core.model.equipment.SecurityType;
 import com.telecominfraproject.wlan.core.model.equipment.WiFiSessionUtility;
 import com.telecominfraproject.wlan.core.model.pagination.PaginationContext;
 import com.telecominfraproject.wlan.core.model.pagination.PaginationResponse;
@@ -85,9 +87,11 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileContainer;
+import com.telecominfraproject.wlan.profile.models.ProfileDetails;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.telecominfraproject.wlan.profile.network.models.RadioProfileConfiguration;
+import com.telecominfraproject.wlan.profile.ssid.models.RadioBasedSsidConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration.SecureMode;
 import com.telecominfraproject.wlan.routing.RoutingServiceInterface;
@@ -937,8 +941,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             populateNeighbourScanReports(metricRecordList, report, customerId, equipmentId, locationId);
             populateChannelInfoReports(metricRecordList, report, customerId, equipmentId, locationId);
             populateApSsidMetrics(metricRecordList, report, customerId, equipmentId, apId, locationId);
-            populateUccReport(metricRecordList, report, customerId, equipmentId, apId, locationId);
-            processEventReport(report, customerId, equipmentId, apId, locationId);
+            // TODO: uncomment when AP support present
+            // populateUccReport(metricRecordList, report, customerId,
+            // equipmentId, apId, locationId);
+            // processEventReport(report, customerId, equipmentId, apId,
+            // locationId);
             // handleRssiMetrics(metricRecordList, report, customerId,
             // equipmentId, locationId);
 
@@ -2138,37 +2145,127 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
     }
 
-    private void handleClientSessionMetricsUpdate(int customerId, long equipmentId, long timestamp,
-            sts.OpensyncStats.Client client) {
+    private void handleClientSessionMetricsUpdate(int customerId, long equipmentId, long locationId,
+            RadioType radioType, long timestamp, sts.OpensyncStats.Client client) {
         try
 
         {
-            LOG.info("handleClientSessionUpdate for {} ", client.getMacAddress());
+            LOG.info("handleClientSessionUpdate for customerId {} equipmentId {} locationId {} client {} ", customerId,
+                    equipmentId, locationId, client);
 
             com.telecominfraproject.wlan.client.models.Client clientInstance = clientServiceInterface
                     .getOrNull(customerId, new MacAddress(client.getMacAddress()));
-            if (clientInstance != null) {
 
-                ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                        new MacAddress(client.getMacAddress()));
+            boolean isReassociation = true;
+            if (clientInstance == null) {
+                clientInstance = new com.telecominfraproject.wlan.client.models.Client();
+                clientInstance.setCustomerId(customerId);
+                clientInstance.setMacAddress(new MacAddress(client.getMacAddress()));
+                clientInstance.setDetails(new ClientInfoDetails());
+                clientInstance = clientServiceInterface.create(clientInstance);
 
-                if (clientSession != null) {
+                isReassociation = false;
+            }
 
-                    ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+            LOG.info("Client {}", clientInstance);
 
-                    if (client.getDurationMs() > 0) {
-                        clientSessionDetails.setMetricDetails(calculateClientSessionMetricDetails(client, timestamp));
+            ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
+                    clientInstance.getMacAddress());
 
-                        clientSession.getDetails().mergeSession(clientSessionDetails);
+            if (clientSession == null) {
 
-                        LOG.debug("Assocation State {}", clientSession.getDetails().getAssociationState());
-                        clientSession = clientServiceInterface.updateSession(clientSession);
+                clientSession = new ClientSession();
+                clientSession.setCustomerId(customerId);
+                clientSession.setEquipmentId(equipmentId);
+                clientSession.setLocationId(locationId);
+                clientSession.setMacAddress(clientInstance.getMacAddress());
+                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+                clientSessionDetails.setSsid(client.getSsid());
+                clientSessionDetails.setRadioType(radioType);
+                clientSessionDetails.setSessionId(clientInstance.getMacAddress().getAddressAsLong());
+                clientSession.setDetails(new ClientSessionDetails());
+                clientSession = clientServiceInterface.updateSession(clientSession);
+            }
 
-                    }
+            ClientSessionDetails latestClientSessionDetails = clientSession.getDetails();
+            latestClientSessionDetails.setIsReassociation(isReassociation);
+            latestClientSessionDetails.setSsid(client.getSsid());
+            latestClientSessionDetails.setRadioType(radioType);
+            latestClientSessionDetails.setSessionId(clientInstance.getMacAddress().getAddressAsLong());
+            latestClientSessionDetails.setLastEventTimestamp(timestamp);
+            latestClientSessionDetails.setFirstDataSentTimestamp(timestamp - client.getDurationMs());
+            latestClientSessionDetails.setFirstDataRcvdTimestamp(timestamp - client.getDurationMs());
+            latestClientSessionDetails.setAssociationState(AssociationState.Active_Data);
+            latestClientSessionDetails.setAssocRssi(getNegativeSignedIntFromUnsigned(client.getStats().getRssi()));
+            latestClientSessionDetails.setLastRxTimestamp(timestamp);
+            latestClientSessionDetails.setLastTxTimestamp(timestamp);
 
+            Equipment ce = equipmentServiceInterface.get(equipmentId);
+            ProfileContainer profileContainer = new ProfileContainer(
+                    profileServiceInterface.getProfileWithChildren(ce.getProfileId()));
+
+            List<Profile> ssidConfigList = new ArrayList<>();
+            ssidConfigList = profileContainer.getChildrenOfType(ce.getProfileId(), ProfileType.ssid).stream()
+                    .filter(new Predicate<Profile>() {
+
+                        @Override
+                        public boolean test(Profile t) {
+
+                            SsidConfiguration ssidConfig = (SsidConfiguration) t.getDetails();
+                            return ssidConfig.getSsid().equals(client.getSsid())
+                                    && ssidConfig.getAppliedRadios().contains(radioType);
+                        }
+
+                    }).collect(Collectors.toList());
+
+            if (!ssidConfigList.isEmpty()) {
+
+                Profile ssidProfile = ssidConfigList.iterator().next();
+                SsidConfiguration ssidConfig = (SsidConfiguration) ssidProfile.getDetails();
+                if (ssidConfig.getSecureMode().equals(SecureMode.open)) {
+                    latestClientSessionDetails.setSecurityType(SecurityType.OPEN);
+                } else if (ssidConfig.getSecureMode().equals(SecureMode.wpaPSK)
+                        || ssidConfig.getSecureMode().equals(SecureMode.wpa2PSK)
+                        || ssidConfig.getSecureMode().equals(SecureMode.wpa2OnlyPSK)) {
+                    latestClientSessionDetails.setSecurityType(SecurityType.PSK);
+                } else if (ssidConfig.getSecureMode().equals(SecureMode.wpa2Radius)
+                        || ssidConfig.getSecureMode().equals(SecureMode.wpaRadius)
+                        || ssidConfig.getSecureMode().equals(SecureMode.wpa2OnlyRadius)) {
+                    latestClientSessionDetails.setSecurityType(SecurityType.RADIUS);
+                    latestClientSessionDetails.setEapDetails(new ClientEapDetails());
+                } else if (ssidConfig.getSecureMode().equals(SecureMode.wpaEAP)
+                        || ssidConfig.getSecureMode().equals(SecureMode.wpa2EAP)
+                        || ssidConfig.getSecureMode().equals(SecureMode.wpa2OnlyEAP)) {
+                    latestClientSessionDetails.setSecurityType(SecurityType.RADIUS);
+
+                    latestClientSessionDetails.setEapDetails(new ClientEapDetails());
+                } else {
+                    latestClientSessionDetails.setSecurityType(SecurityType.UNSUPPORTED);
                 }
 
+                if (ssidConfig.getVlanId() > 1) {
+                    latestClientSessionDetails.setDynamicVlan(ssidConfig.getVlanId());
+                }
+
+
+                RadioBasedSsidConfiguration radioConfig = ssidConfig.getRadioBasedConfigs().get(radioType);
+                latestClientSessionDetails
+                        .setIs11KUsed(radioConfig.getEnable80211k() != null ? radioConfig.getEnable80211k() : false);
+                latestClientSessionDetails
+                        .setIs11RUsed(radioConfig.getEnable80211r() != null ? radioConfig.getEnable80211r() : false);
+                latestClientSessionDetails
+                        .setIs11VUsed(radioConfig.getEnable80211v() != null ? radioConfig.getEnable80211v() : false);
+
             }
+
+            latestClientSessionDetails.setMetricDetails(calculateClientSessionMetricDetails(client, timestamp));
+
+            clientSession.getDetails().mergeSession(latestClientSessionDetails);
+            clientSession.setLastModifiedTimestamp(timestamp);
+
+            clientSession = clientServiceInterface.updateSession(clientSession);
+
+            LOG.debug("Updated client session {}", clientSession);
 
         } catch (Exception e) {
             LOG.error("Error while attempting to create ClientSession and Info", e);
@@ -2285,37 +2382,84 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             LOG.debug("Client Report Date is {}", new Date(clientReport.getTimestampMs()));
             int numConnectedClients = 0;
             for (Client client : clientReport.getClientListList()) {
-
-
-                if (client.getConnected()) {
-                    numConnectedClients += 1;
-                }
-
-                if (client.hasSsid() && (client.getSsid() != null) && !client.getSsid().equals("")) {
-                    ssid = client.getSsid();
-                }
-
                 if (client.hasStats()) {
-                    clientMacs.add(client.getMacAddress());
-                    sts.OpensyncStats.Client.Stats clientStats = client.getStats();
 
-                    rxBytes += clientStats.getRxBytes();
-                    txBytes += clientStats.getTxBytes();
-                    txFrames += clientStats.getRxFrames();
-                    rxFrames += clientStats.getTxFrames();
-                    rxRetries += clientStats.getRxRetries();
-                    txRetries += clientStats.getTxRetries();
-                    rxErrors += clientStats.getRxErrors();
-                    txErrors += clientStats.getTxErrors();
 
+                    if (client.hasSsid()) {
+                        ssid = client.getSsid();
+                    }
+
+                    if (client.hasMacAddress()) {
+                        clientMacs.add(client.getMacAddress());
+                        
+                    } else {
+                        continue; // cannot have a session without a MAC address
+                    }
+
+                    rxBytes += client.getStats().getRxBytes();
+                    txBytes += client.getStats().getTxBytes();
+                    txFrames += client.getStats().getRxFrames();
+                    rxFrames += client.getStats().getTxFrames();
+                    rxRetries += client.getStats().getRxRetries();
+                    txRetries += client.getStats().getTxRetries();
+                    rxErrors += client.getStats().getRxErrors();
+                    txErrors += client.getStats().getTxErrors();
                     lastRssi = client.getStats().getRssi();
 
-                }
 
-                try {
-                    handleClientSessionMetricsUpdate(customerId, equipmentId, clientReport.getTimestampMs(), client);
-                } catch (Exception e) {
-                    LOG.debug("Unabled to update client {} session {}", client, e);
+                    try {
+
+                        if (client.hasConnected() && client.getConnected()) {
+                            // update metrics for connected client
+                            numConnectedClients += 1;
+                            handleClientSessionMetricsUpdate(customerId, equipmentId, locationId, radioType,
+                                    clientReport.getTimestampMs(), client);
+                        } else {
+                            // Make sure, if we have a session for this client,
+                            // it
+                            // shows disconnected.
+                            // update any metrics that need update if the disconnect occured during this window
+                            if (client.hasMacAddress()) {
+                                ClientSession session = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
+                                        new MacAddress(client.getMacAddress()));
+
+                                if (session != null) {
+                                    if (session.getDetails().getAssociationState() != null && !session.getDetails()
+                                            .getAssociationState().equals(AssociationState.Disconnected)) {
+
+                                        ClientSessionDetails latestSessionDetails = new ClientSessionDetails();
+                                        latestSessionDetails.setAssociationState(AssociationState.Disconnected);
+                                        latestSessionDetails.setLastEventTimestamp(clientReport.getTimestampMs());
+                                        latestSessionDetails
+                                                .setDisconnectByClientTimestamp(client.hasDisconnectOffsetMs()
+                                                        ? clientReport.getTimestampMs() - client.getDisconnectOffsetMs()
+                                                        : clientReport.getTimestampMs());
+                                        if (client.hasSsid()) {
+                                            latestSessionDetails.setSsid(client.getSsid());
+                                        }
+
+                                        // could still be values from before
+                                        // disconnect occured.
+                                        latestSessionDetails.setMetricDetails(calculateClientSessionMetricDetails(
+                                                client, clientReport.getTimestampMs()));
+
+                                        session.getDetails().mergeSession(latestSessionDetails);
+
+                                        clientServiceInterface.updateSession(session);
+
+                                    }
+                                }
+
+                            }
+
+                            continue; // not connected
+                        }
+
+
+                    } catch (Exception e) {
+                        LOG.debug("Unabled to update client {} session {}", client, e);
+                    }
+
                 }
 
             }
@@ -2944,6 +3088,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientInstance.setDetails(new ClientInfoDetails());
                 clientInstance = clientServiceInterface.create(clientInstance);
 
+                isReassociation = false;
+
             }
             ClientInfoDetails clientDetails = (ClientInfoDetails) clientInstance.getDetails();
 
@@ -2951,11 +3097,30 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             clientInstance = clientServiceInterface.update(clientInstance);
 
+            ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
+                    clientInstance.getMacAddress());
 
-            if (LOG.isTraceEnabled()) {
-                LOG.trace("wifiAssociatedClientsDbTableUpdate client instance {}", clientInstance.toPrettyString());
+            if (clientSession == null) {
+                clientSession = new ClientSession();
+                clientSession.setCustomerId(customerId);
+                clientSession.setEquipmentId(equipmentId);
+                clientSession.setMacAddress(clientInstance.getMacAddress());
+                clientSession.setLocationId(ce.getLocationId());
+                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+                clientSessionDetails.setIsReassociation(isReassociation);
+                clientSessionDetails.setSessionId(clientInstance.getMacAddress().getAddressAsLong());
+                clientSession.setDetails(clientSessionDetails);
+
+                clientSession = clientServiceInterface.updateSession(clientSession);
             }
 
+            ClientSessionDetails clientSessionDetails = clientSession.getDetails();
+            clientSessionDetails.setAssociationState(AssociationState._802_11_Associated);
+            clientSessionDetails.setAssocTimestamp(System.currentTimeMillis());
+            clientSessionDetails.setSessionId(clientInstance.getMacAddress().getAddressAsLong());
+            clientSession.getDetails().mergeSession(clientSessionDetails);
+
+            clientSession = clientServiceInterface.updateSession(clientSession);
 
         }
 
