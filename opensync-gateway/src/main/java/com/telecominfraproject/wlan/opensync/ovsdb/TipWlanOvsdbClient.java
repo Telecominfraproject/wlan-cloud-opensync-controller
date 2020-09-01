@@ -41,7 +41,6 @@ import com.vmware.ovsdb.protocol.methods.RowUpdate;
 import com.vmware.ovsdb.protocol.methods.TableUpdate;
 import com.vmware.ovsdb.protocol.methods.TableUpdates;
 import com.vmware.ovsdb.protocol.operation.notation.Row;
-import com.vmware.ovsdb.protocol.operation.notation.Value;
 import com.vmware.ovsdb.service.OvsdbClient;
 import com.vmware.ovsdb.service.OvsdbPassiveConnectionListener;
 
@@ -347,6 +346,13 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             LOG.debug("Could not enable monitor for DHCP_leased_IP table. {}", e.getMessage());
 
         }
+        
+        try {
+            monitorCommandStateDbTable(ovsdbClient, key);
+        } catch (OvsdbClientException e) {
+            LOG.debug("Could not enable monitor for Command_State table. {}", e.getMessage());
+
+        }
         LOG.debug("Finished (re)setting monitors for AP {}", key);
 
     }
@@ -425,6 +431,85 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                 });
 
         awCf.join();
+
+
+    }
+    
+    
+    private void monitorCommandStateDbTable(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
+
+        CompletableFuture<TableUpdates> csCf = ovsdbClient.monitor(OvsdbDao.ovsdbName,
+                OvsdbDao.commandStateDbTable + "_" + key,
+                new MonitorRequests(ImmutableMap.of(OvsdbDao.commandStateDbTable, new MonitorRequest())),
+                new MonitorCallback() {
+
+                    @Override
+                    public void update(TableUpdates tableUpdates) {
+                        LOG.info(OvsdbDao.commandStateDbTable + "_" + key + " monitor callback received {}",
+                                tableUpdates);
+
+                        List<Map<String, String>> insert = new ArrayList<>();
+                        List<Map<String, String>> delete = new ArrayList<>();
+                        List<Map<String, String>> update = new ArrayList<>();
+
+
+                        for (TableUpdate tableUpdate : tableUpdates.getTableUpdates().values()) {
+                            for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
+
+                                if (rowUpdate.getNew() == null) {
+                                    Map<String, String> rowMap = new HashMap<>();
+
+                                    rowUpdate.getOld().getColumns().entrySet().stream().forEach(c -> {
+                                        rowMap.put(c.getKey(), c.getValue().toString());
+                                    });
+
+                                    delete.add(rowMap);
+                                    // delete
+                                } else if (rowUpdate.getOld() == null) {
+                                    // insert
+                                    Map<String, String> rowMap = new HashMap<>();
+
+                                    rowUpdate.getNew().getColumns().entrySet().stream().forEach(c -> {
+                                        rowMap.put(c.getKey(), c.getValue().toString());
+                                    });
+
+                                    insert.add(rowMap);
+                                } else {
+
+                                    // insert
+                                    Map<String, String> rowMap = new HashMap<>();
+
+                                    rowUpdate.getOld().getColumns().putAll(rowUpdate.getNew().getColumns());
+                                    rowUpdate.getOld().getColumns().entrySet().stream().forEach(c -> {
+                                        rowMap.put(c.getKey(), c.getValue().toString());
+                                    });
+
+                                    update.add(rowMap);
+
+                                }
+                            }
+                        }
+
+                        if (!insert.isEmpty()) {
+                            extIntegrationInterface.commandStateDbTableUpdate(insert, key, RowUpdateOperation.INSERT);
+                        }
+
+                        if (!delete.isEmpty()) {
+                            extIntegrationInterface.commandStateDbTableUpdate(delete, key, RowUpdateOperation.DELETE);
+
+                        }
+
+                        if (!update.isEmpty()) {
+                            extIntegrationInterface.commandStateDbTableUpdate(update, key, RowUpdateOperation.MODIFY);
+
+                        }
+
+                    }
+
+
+                });
+
+        csCf.join();
 
 
     }

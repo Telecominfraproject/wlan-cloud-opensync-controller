@@ -43,6 +43,7 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAWLANNode;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.BridgeInfo;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.CommandConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.InterfaceInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.PortInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiInetConfigInfo;
@@ -171,6 +172,10 @@ public class OvsdbDao {
     public static final String wifiRrmConfigDbTable = "Wifi_RRM_Config";
 
     public static final String dhcpLeasedIpDbTable = "DHCP_leased_IP";
+
+    public static final String commandConfigDbTable = "Command_Config";
+
+    public static final String commandStateDbTable = "Command_State";
 
     public ConnectNodeInfo getConnectNodeInfo(OvsdbClient ovsdbClient) {
         ConnectNodeInfo ret = new ConnectNodeInfo();
@@ -982,6 +987,58 @@ public class OvsdbDao {
         }
 
         return ret;
+    }
+    
+    public Map<String, CommandConfigInfo> getProvisionedCommandConfigs(OvsdbClient ovsdbClient) {
+        Map<String, CommandConfigInfo> ret = new HashMap<>();
+        
+        List<Operation> operations = new ArrayList<>();
+        List<Condition> conditions = new ArrayList<>();
+        List<String> columns = new ArrayList<>();
+
+        columns.add("_uuid");
+        columns.add("delay");
+        columns.add("duration");
+        columns.add("command");
+        columns.add("payload");
+        columns.add("timestamp");
+        
+
+        try {
+            LOG.debug("Retrieving CommandConfig:");
+
+            operations.add(new Select(commandConfigDbTable, conditions, columns));
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            for (OperationResult res : result) {
+                LOG.debug("Op Result {}", res);
+            }
+
+            for (Row row : ((SelectResult) result[0]).getRows()) {
+
+                CommandConfigInfo commandConfigInfo = new CommandConfigInfo();
+                commandConfigInfo.uuid = row.getUuidColumn("_uuid");
+                commandConfigInfo.delay = row.getIntegerColumn("delay");          
+                commandConfigInfo.duration = row.getIntegerColumn("duration");
+                commandConfigInfo.command = row.getStringColumn("command");
+                commandConfigInfo.payload = row.getMapColumn("payload");
+                commandConfigInfo.timestamp = row.getIntegerColumn("timestamp");
+                
+                ret.put(commandConfigInfo.command, commandConfigInfo);
+            }
+
+            LOG.debug("Retrieved CommandConfig: {}", ret);
+        
+        } catch (ExecutionException | InterruptedException | OvsdbClientException | TimeoutException e) {
+           
+            LOG.error("Error in getProvisionedCommandConfigs", e);
+
+            throw new RuntimeException(e);
+        } 
+        
+        return ret;
+
     }
 
     public Map<String, WifiRadioConfigInfo> getProvisionedWifiRadioConfigs(OvsdbClient ovsdbClient) {
@@ -2142,6 +2199,46 @@ public class OvsdbDao {
 
     }
 
+    public void configureCommands(OvsdbClient ovsdbClient, String command, Map<String, String> payload, Long delay,
+            Long duration) {
+
+
+        List<Operation> operations = new ArrayList<>();
+        Map<String, Value> commandConfigColumns = new HashMap<>();
+        List<Condition> conditions = new ArrayList<>();
+        conditions.add(new Condition("command", Function.EQUALS, new Atom<>(command)));
+
+        commandConfigColumns.put("command", new Atom<>(command));
+        commandConfigColumns.put("payload", com.vmware.ovsdb.protocol.operation.notation.Map.of(payload));
+
+        commandConfigColumns.put("delay", new Atom<>(delay));
+        commandConfigColumns.put("duration", new Atom<>(delay));
+
+        Row row = new Row(commandConfigColumns);
+        if (getProvisionedCommandConfigs(ovsdbClient).containsKey(command)) {
+            operations.add(new Update(commandConfigDbTable, conditions, row));
+        } else {
+            operations.add(new Insert(commandConfigDbTable, row));
+        }
+
+
+        try {
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            LOG.debug("Configured command {} for duration {} payload {}", command, duration, payload);
+
+            for (OperationResult res : result) {
+                LOG.debug("Op Result {}", res);
+            }
+        } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
+            LOG.error("configureCommands interrupted.", e);
+            throw new RuntimeException(e);
+
+        }
+
+
+    }
 
     private void configureWifiRadios(OvsdbClient ovsdbClient, String freqBand, int channel,
             Map<String, String> hwConfig, String country, int beaconInterval, boolean enabled, String hwMode,
@@ -2602,7 +2699,7 @@ public class OvsdbDao {
                 } else if (ssidSecurityMode.equals("wpaEAP") || ssidSecurityMode.equals("wpa2EAP")
                         || ssidSecurityMode.equals("wpa2OnlyEAP")) {
                     opensyncSecurityMode = "WPA-EAP";
-                }  else if (ssidSecurityMode.equals("wpaRadius") || ssidSecurityMode.equals("wpa2OnlyRadius")
+                } else if (ssidSecurityMode.equals("wpaRadius") || ssidSecurityMode.equals("wpa2OnlyRadius")
                         || ssidSecurityMode.equals("wpa2Radius")) {
                     opensyncSecurityMode = "WPA-EAP";
                 }
@@ -2906,7 +3003,7 @@ public class OvsdbDao {
                 // broadcast
             }
             if (ipAssignScheme.equals("dhcp")) {
-                  insertColumns.put("dhcp_sniff", new Atom<>(true));
+                insertColumns.put("dhcp_sniff", new Atom<>(true));
             } else {
                 insertColumns.put("dhcp_sniff", new Atom<>(false));
             }
