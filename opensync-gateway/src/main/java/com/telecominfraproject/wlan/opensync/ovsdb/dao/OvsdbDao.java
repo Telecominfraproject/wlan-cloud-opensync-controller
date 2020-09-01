@@ -3033,7 +3033,7 @@ public class OvsdbDao {
             List<Operation> operations = new ArrayList<>();
             Map<String, Integer> thresholdMap = new HashMap<>();
             thresholdMap.put("max_delay", 600);
-            thresholdMap.put("util", 10);
+            thresholdMap.put("util", 25);
 
             @SuppressWarnings("unchecked")
             com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer> thresholds = com.vmware.ovsdb.protocol.operation.notation.Map
@@ -3139,7 +3139,7 @@ public class OvsdbDao {
                     rowColumns.put("radio_type", new Atom<>(rc.freqBand));
                     rowColumns.put("reporting_interval", new Atom<>(60));
                     rowColumns.put("report_type", new Atom<>("raw"));
-                    rowColumns.put("sampling_interval", new Atom<>(6));
+                    rowColumns.put("sampling_interval", new Atom<>(10));
                     rowColumns.put("stats_type", new Atom<>("survey"));
                     rowColumns.put("survey_interval_ms", new Atom<>(65));
                     rowColumns.put("survey_type", new Atom<>("on-chan"));
@@ -3166,11 +3166,11 @@ public class OvsdbDao {
                     rowColumns.put("channel_list", channels);
 
                     rowColumns.put("radio_type", new Atom<>(rc.freqBand));
-                    rowColumns.put("reporting_interval", new Atom<>(60));
+                    rowColumns.put("reporting_interval", new Atom<>(300));
+                    rowColumns.put("report_type", new Atom<>("raw"));
                     rowColumns.put("stats_type", new Atom<>("survey"));
                     rowColumns.put("survey_type", new Atom<>("off-chan"));
-                    rowColumns.put("report_type", new Atom<>("raw"));
-                    rowColumns.put("sampling_interval", new Atom<>(60));
+                    rowColumns.put("sampling_interval", new Atom<>(30));
                     rowColumns.put("survey_interval_ms", new Atom<>(65));
                     rowColumns.put("threshold", thresholds);
                     Row updateRow = new Row(rowColumns);

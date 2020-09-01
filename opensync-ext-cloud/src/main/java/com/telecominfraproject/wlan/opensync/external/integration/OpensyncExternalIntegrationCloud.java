@@ -129,7 +129,6 @@ import com.telecominfraproject.wlan.status.equipment.report.models.RadioUtilizat
 import com.telecominfraproject.wlan.status.models.Status;
 import com.telecominfraproject.wlan.status.models.StatusCode;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
-import com.telecominfraproject.wlan.status.models.StatusDetails;
 import com.telecominfraproject.wlan.status.network.models.NetworkAdminStatusData;
 
 import sts.OpensyncStats;
@@ -744,11 +743,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
 
             if (ovsdbSession != null) {
-                if (ovsdbSession.getCustomerId() > 0 && ovsdbSession.getEquipmentId() > 0L) {
-                    List<Status> statusForDisconnectedAp = statusServiceInterface.delete(ovsdbSession.getCustomerId(),
-                            ovsdbSession.getEquipmentId());
-                    LOG.info("Deleted status records {} for AP {}", statusForDisconnectedAp, apId);
-                }
+//                if (ovsdbSession.getCustomerId() > 0 && ovsdbSession.getEquipmentId() > 0L) {
+//                    List<Status> statusForDisconnectedAp = statusServiceInterface.delete(ovsdbSession.getCustomerId(),
+//                            ovsdbSession.getEquipmentId());
+//                    LOG.info("Deleted status records {} for AP {}", statusForDisconnectedAp, apId);
+//                }
                 if (ovsdbSession.getRoutingId() > 0L) {
                     try {
                         routingServiceInterface.delete(ovsdbSession.getRoutingId());
@@ -1542,7 +1541,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         ServiceMetric smr = new ServiceMetric(customerId, equipmentId);
 
         smr.setLocationId(locationId);
-        getMacAddressForAp(customerId, equipmentId, locationId, smr);
 
         metricRecordList.add(smr);
         smr.setDetails(apNodeMetrics);
@@ -2099,7 +2097,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             ServiceMetric smr = new ServiceMetric(customerId, equipmentId);
             smr.setLocationId(locationId);
-            getMacAddressForAp(customerId, equipmentId, locationId, smr);
 
             metricRecordList.add(smr);
             NeighbourScanReports neighbourScanReports = new NeighbourScanReports();
@@ -2339,7 +2336,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         smr.setLocationId(locationId);
         ApSsidMetrics apSsidMetrics = new ApSsidMetrics();
 
-        getMacAddressForAp(customerId, equipmentId, locationId, smr);
 
         smr.setDetails(apSsidMetrics);
         metricRecordList.add(smr);
@@ -2502,37 +2498,16 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     }
 
-    protected void getMacAddressForAp(int customerId, long equipmentId, long locationId,
-            ServiceMetric smr) {
-        Status equipmentProtocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
-                StatusDataType.PROTOCOL);
-        if (equipmentProtocolStatus != null) {
-            EquipmentProtocolStatusData equipmentProtocolStatusData = (EquipmentProtocolStatusData) equipmentProtocolStatus
-                    .getDetails();
-
-            if (equipmentProtocolStatusData != null) {
-                if (equipmentProtocolStatusData.getReportedMacAddr() != null) {
-                    smr.setClientMac(equipmentProtocolStatusData.getReportedMacAddr().getAddressAsLong());
-                } else if (equipmentProtocolStatusData.getBaseMacAddress() != null) {
-                    smr.setClientMac(equipmentProtocolStatusData.getBaseMacAddress().getAddressAsLong());
-                } else {
-                    LOG.debug("Unable to get mac address for equipment {} customer {} location {}", equipmentId,
-                            customerId, locationId);
-                }
-            }
-
-
-        }
-    }
-
     int getNegativeSignedIntFromUnsigned(int unsignedValue) {
         int negSignedValue = (unsignedValue << 1) >> 1;
         return negSignedValue;
     }
 
     int getNegativeSignedIntFrom8BitUnsigned(int unsignedValue) {
+     
         byte b = (byte) Integer.parseInt(Integer.toHexString(unsignedValue), 16);
         return b;
+   
     }
 
     private void populateChannelInfoReports(List<ServiceMetric> metricRecordList, Report report, int customerId,
@@ -2543,7 +2518,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         smr.setCustomerId(customerId);
         smr.setEquipmentId(equipmentId);
         smr.setLocationId(locationId);
-        getMacAddressForAp(customerId, equipmentId, locationId, smr);
 
         ChannelInfoReports channelInfoReports = new ChannelInfoReports();
 
@@ -2553,20 +2527,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         for (Survey survey : report.getSurveyList()) {
 
             smr.setCreatedTimestamp(survey.getTimestampMs());
-            // message SurveySample {
-            // required uint32 channel = 1;
-            // optional uint32 duration_ms = 2;
-            // optional uint32 total_count = 3;
-            // optional uint32 sample_count = 4;
-            // optional uint32 busy = 5; /* Busy = Rx + Tx + Interference */
-            // optional uint32 busy_tx = 6; /* Tx */
-            // optional uint32 busy_rx = 7; /* Rx = Rx_obss + Rx_errr (self and
-            // obss errors) */
-            // optional uint32 busy_self = 8; /* Rx_self (derived from succesful
-            // Rx frames)*/
-            // optional uint32 offset_ms = 9;
-            // optional uint32 busy_ext = 10; /* 40MHz extention channel busy */
-            // }
+            LOG.info("Survey {}", survey);
 
             RadioType radioType = null;
             if (survey.getBand() == RadioBandType.BAND2G) {
