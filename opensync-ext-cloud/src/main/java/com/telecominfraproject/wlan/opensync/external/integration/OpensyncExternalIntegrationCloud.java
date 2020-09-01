@@ -87,7 +87,6 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileContainer;
-import com.telecominfraproject.wlan.profile.models.ProfileDetails;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.telecominfraproject.wlan.profile.network.models.RadioProfileConfiguration;
@@ -942,10 +941,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             populateChannelInfoReports(metricRecordList, report, customerId, equipmentId, locationId);
             populateApSsidMetrics(metricRecordList, report, customerId, equipmentId, apId, locationId);
             // TODO: uncomment when AP support present
-            // populateUccReport(metricRecordList, report, customerId,
-            // equipmentId, apId, locationId);
-            // processEventReport(report, customerId, equipmentId, apId,
-            // locationId);
+             populateUccReport(metricRecordList, report, customerId,
+             equipmentId, apId, locationId);
+             processEventReport(report, customerId, equipmentId, apId,
+             locationId);
             // handleRssiMetrics(metricRecordList, report, customerId,
             // equipmentId, locationId);
 
@@ -1054,12 +1053,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 if (clientAuthEvent.hasStaMac()) {
 
                     com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface
-                            .getOrNull(customerId, new MacAddress(clientAuthEvent.getStaMac().toByteArray()));
+                            .getOrNull(customerId, new MacAddress(clientAuthEvent.getStaMac()));
                     if (client == null) {
                         client = new com.telecominfraproject.wlan.client.models.Client();
 
                         client.setCustomerId(customerId);
-                        client.setMacAddress(new MacAddress(clientAuthEvent.getStaMac().toByteArray()));
+                        client.setMacAddress(new MacAddress(clientAuthEvent.getStaMac()));
 
                         client.setDetails(new ClientInfoDetails());
 
@@ -1068,7 +1067,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     }
 
                     ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                            new MacAddress(clientAuthEvent.getStaMac().toByteArray()));
+                            new MacAddress(clientAuthEvent.getStaMac()));
 
                     if (clientSession == null) {
                         clientSession = new ClientSession();
@@ -1077,7 +1076,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     clientSession.setCustomerId(customerId);
                     clientSession.setEquipmentId(equipmentId);
                     clientSession.setLocationId(locationId);
-                    clientSession.setMacAddress(new MacAddress(clientAuthEvent.getStaMac().toByteArray()));
+                    clientSession.setMacAddress(new MacAddress(clientAuthEvent.getStaMac()));
 
                     ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
 
@@ -1117,12 +1116,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 if (clientDisconnectEvent.hasStaMac()) {
 
                     com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface
-                            .getOrNull(customerId, new MacAddress(clientDisconnectEvent.getStaMac().toByteArray()));
+                            .getOrNull(customerId, new MacAddress(clientDisconnectEvent.getStaMac()));
                     if (client == null) {
                         client = new com.telecominfraproject.wlan.client.models.Client();
 
                         client.setCustomerId(customerId);
-                        client.setMacAddress(new MacAddress(clientDisconnectEvent.getStaMac().toByteArray()));
+                        client.setMacAddress(new MacAddress(clientDisconnectEvent.getStaMac()));
 
                         client.setDetails(new ClientInfoDetails());
 
@@ -1131,7 +1130,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     }
 
                     ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                            new MacAddress(clientDisconnectEvent.getStaMac().toByteArray()));
+                            new MacAddress(clientDisconnectEvent.getStaMac()));
 
                     if (clientSession == null) {
                         clientSession = new ClientSession();
@@ -1140,7 +1139,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     clientSession.setCustomerId(customerId);
                     clientSession.setEquipmentId(equipmentId);
                     clientSession.setLocationId(locationId);
-                    clientSession.setMacAddress(new MacAddress(clientDisconnectEvent.getStaMac().toByteArray()));
+                    clientSession.setMacAddress(new MacAddress(clientDisconnectEvent.getStaMac()));
 
                     ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
 
@@ -1164,17 +1163,17 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         clientSessionDetails.setSessionId(clientDisconnectEvent.getSessionId());
                     }
 
-                    if (clientDisconnectEvent.hasLastRcvUpTsInUs()) {
-                        clientSessionDetails.setLastRxTimestamp(clientDisconnectEvent.getLastRcvUpTsInUs());
+                    if (clientDisconnectEvent.hasLrcvUpTsInUs()) {
+                        clientSessionDetails.setLastRxTimestamp(clientDisconnectEvent.getLrcvUpTsInUs());
                     }
 
-                    if (clientDisconnectEvent.hasLastSentUpTsInUs()) {
-                        clientSessionDetails.setLastTxTimestamp(clientDisconnectEvent.getLastSentUpTsInUs());
+                    if (clientDisconnectEvent.hasLsentUpTsInUs()) {
+                        clientSessionDetails.setLastTxTimestamp(clientDisconnectEvent.getLsentUpTsInUs());
                     }
 
-                    if (clientDisconnectEvent.hasInternalRC()) {
+                    if (clientDisconnectEvent.hasInternalRc()) {
                         clientSessionDetails
-                                .setDisconnectByClientInternalReasonCode(clientDisconnectEvent.getInternalRC());
+                                .setDisconnectByClientInternalReasonCode(clientDisconnectEvent.getInternalRc());
                     }
                     if (clientDisconnectEvent.hasReason()) {
                         clientSessionDetails.setDisconnectByClientReasonCode(clientDisconnectEvent.getReason());
@@ -1206,12 +1205,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 if (clientFailureEvent.hasStaMac()) {
 
                     com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface
-                            .getOrNull(customerId, new MacAddress(clientFailureEvent.getStaMac().toByteArray()));
+                            .getOrNull(customerId, new MacAddress(clientFailureEvent.getStaMac()));
                     if (client == null) {
                         client = new com.telecominfraproject.wlan.client.models.Client();
 
                         client.setCustomerId(customerId);
-                        client.setMacAddress(new MacAddress(clientFailureEvent.getStaMac().toByteArray()));
+                        client.setMacAddress(new MacAddress(clientFailureEvent.getStaMac()));
 
                         client.setDetails(new ClientInfoDetails());
 
@@ -1220,7 +1219,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     }
 
                     ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                            new MacAddress(clientFailureEvent.getStaMac().toByteArray()));
+                            new MacAddress(clientFailureEvent.getStaMac()));
 
                     if (clientSession == null) {
                         clientSession = new ClientSession();
@@ -1229,7 +1228,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     clientSession.setCustomerId(customerId);
                     clientSession.setEquipmentId(equipmentId);
                     clientSession.setLocationId(locationId);
-                    clientSession.setMacAddress(new MacAddress(clientFailureEvent.getStaMac().toByteArray()));
+                    clientSession.setMacAddress(new MacAddress(clientFailureEvent.getStaMac()));
 
 
                     ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
@@ -1273,12 +1272,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 if (clientFirstDataEvent.hasStaMac()) {
 
                     com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface
-                            .getOrNull(customerId, new MacAddress(clientFirstDataEvent.getStaMac().toByteArray()));
+                            .getOrNull(customerId, new MacAddress(clientFirstDataEvent.getStaMac()));
                     if (client == null) {
                         client = new com.telecominfraproject.wlan.client.models.Client();
 
                         client.setCustomerId(customerId);
-                        client.setMacAddress(new MacAddress(clientFirstDataEvent.getStaMac().toByteArray()));
+                        client.setMacAddress(new MacAddress(clientFirstDataEvent.getStaMac()));
 
                         client.setDetails(new ClientInfoDetails());
 
@@ -1287,7 +1286,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     }
 
                     ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                            new MacAddress(clientFirstDataEvent.getStaMac().toByteArray()));
+                            new MacAddress(clientFirstDataEvent.getStaMac()));
 
                     if (clientSession == null) {
                         clientSession = new ClientSession();
@@ -1296,18 +1295,18 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     clientSession.setCustomerId(customerId);
                     clientSession.setEquipmentId(equipmentId);
                     clientSession.setLocationId(locationId);
-                    clientSession.setMacAddress(new MacAddress(clientFirstDataEvent.getStaMac().toByteArray()));
+                    clientSession.setMacAddress(new MacAddress(clientFirstDataEvent.getStaMac()));
 
 
                     ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
 
 
-                    if (clientFirstDataEvent.hasFirstDataRxedUpTsInUs()) {
-                        clientSessionDetails.setFirstDataRcvdTimestamp(clientFirstDataEvent.getFirstDataRxedUpTsInUs());
+                    if (clientFirstDataEvent.hasFdataRxUpTsInUs()) {
+                        clientSessionDetails.setFirstDataRcvdTimestamp(clientFirstDataEvent.getFdataRxUpTsInUs());
                     }
 
-                    if (clientFirstDataEvent.hasFirstDataTxedUpTsInUs()) {
-                        clientSessionDetails.setFirstDataSentTimestamp(clientFirstDataEvent.getFirstDataTxedUpTsInUs());
+                    if (clientFirstDataEvent.hasFdataTxUpTsInUs()) {
+                        clientSessionDetails.setFirstDataSentTimestamp(clientFirstDataEvent.getFdataTxUpTsInUs());
                     }
 
                     if (clientFirstDataEvent.hasSessionId()) {
@@ -1337,12 +1336,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 if (clientIdEvent.hasCltMac()) {
 
                     com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface
-                            .getOrNull(customerId, new MacAddress(clientIdEvent.getCltMac().toByteArray()));
+                            .getOrNull(customerId, new MacAddress(clientIdEvent.getCltMac()));
                     if (client == null) {
                         client = new com.telecominfraproject.wlan.client.models.Client();
 
                         client.setCustomerId(customerId);
-                        client.setMacAddress(new MacAddress(clientIdEvent.getCltMac().toByteArray()));
+                        client.setMacAddress(new MacAddress(clientIdEvent.getCltMac()));
 
                         client.setDetails(new ClientInfoDetails());
 
@@ -1351,7 +1350,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     }
 
                     ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                            new MacAddress(clientIdEvent.getCltMac().toByteArray()));
+                            new MacAddress(clientIdEvent.getCltMac()));
 
                     if (clientSession == null) {
                         clientSession = new ClientSession();
@@ -1360,7 +1359,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     clientSession.setCustomerId(customerId);
                     clientSession.setEquipmentId(equipmentId);
                     clientSession.setLocationId(locationId);
-                    clientSession.setMacAddress(new MacAddress(clientIdEvent.getCltMac().toByteArray()));
+                    clientSession.setMacAddress(new MacAddress(clientIdEvent.getCltMac()));
 
 
                     ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
@@ -1391,12 +1390,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 if (clientIpEvent.hasStaMac()) {
 
                     com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface
-                            .getOrNull(customerId, new MacAddress(clientIpEvent.getStaMac().toByteArray()));
+                            .getOrNull(customerId, new MacAddress(clientIpEvent.getStaMac()));
                     if (client == null) {
                         client = new com.telecominfraproject.wlan.client.models.Client();
 
                         client.setCustomerId(customerId);
-                        client.setMacAddress(new MacAddress(clientIpEvent.getStaMac().toByteArray()));
+                        client.setMacAddress(new MacAddress(clientIpEvent.getStaMac()));
 
                         client.setDetails(new ClientInfoDetails());
 
@@ -1405,7 +1404,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     }
 
                     ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                            new MacAddress(clientIpEvent.getStaMac().toByteArray()));
+                            new MacAddress(clientIpEvent.getStaMac()));
 
                     if (clientSession == null) {
                         clientSession = new ClientSession();
@@ -1414,7 +1413,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     clientSession.setCustomerId(customerId);
                     clientSession.setEquipmentId(equipmentId);
                     clientSession.setLocationId(locationId);
-                    clientSession.setMacAddress(new MacAddress(clientIpEvent.getStaMac().toByteArray()));
+                    clientSession.setMacAddress(new MacAddress(clientIpEvent.getStaMac()));
 
                     ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
 
@@ -1453,12 +1452,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 if (clientTimeoutEvent.hasStaMac()) {
 
                     com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface
-                            .getOrNull(customerId, new MacAddress(clientTimeoutEvent.getStaMac().toByteArray()));
+                            .getOrNull(customerId, new MacAddress(clientTimeoutEvent.getStaMac()));
                     if (client == null) {
                         client = new com.telecominfraproject.wlan.client.models.Client();
 
                         client.setCustomerId(customerId);
-                        client.setMacAddress(new MacAddress(clientTimeoutEvent.getStaMac().toByteArray()));
+                        client.setMacAddress(new MacAddress(clientTimeoutEvent.getStaMac()));
 
                         client.setDetails(new ClientInfoDetails());
 
@@ -1467,7 +1466,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     }
 
                     ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                            new MacAddress(clientTimeoutEvent.getStaMac().toByteArray()));
+                            new MacAddress(clientTimeoutEvent.getStaMac()));
 
                     if (clientSession == null) {
                         clientSession = new ClientSession();
@@ -1476,7 +1475,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     clientSession.setCustomerId(customerId);
                     clientSession.setEquipmentId(equipmentId);
                     clientSession.setLocationId(locationId);
-                    clientSession.setMacAddress(new MacAddress(clientTimeoutEvent.getStaMac().toByteArray()));
+                    clientSession.setMacAddress(new MacAddress(clientTimeoutEvent.getStaMac()));
 
                     ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
 
@@ -1984,7 +1983,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     private void populateApClientMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId,
             long equipmentId, long locationId) {
-        LOG.debug("populateApClientMetrics for Customer {} Equipment {}", customerId, equipmentId);
+        LOG.debug("populateApClientMetrics {} for Customer {} Equipment {}", report.getClientsList(), customerId, equipmentId);
 
         for (ClientReport clReport : report.getClientsList()) {
             for (Client cl : clReport.getClientListList()) {
