@@ -50,4 +50,5 @@ public interface OpensyncExternalIntegrationInterface {
     
     void dhcpLeasedIpDbTableUpdate(List<Map<String,String>> dhcpAttributes, String apId, RowUpdateOperation rowUpdateOperation);
 
+    void commandStateDbTableUpdate(List<Map<String,String>> commandStateAttributes, String apId, RowUpdateOperation rowUpdateOperation);
 }

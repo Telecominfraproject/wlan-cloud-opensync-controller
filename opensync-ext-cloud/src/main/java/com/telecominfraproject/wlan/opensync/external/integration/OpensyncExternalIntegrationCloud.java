@@ -129,6 +129,7 @@ import com.telecominfraproject.wlan.status.equipment.report.models.RadioUtilizat
 import com.telecominfraproject.wlan.status.models.Status;
 import com.telecominfraproject.wlan.status.models.StatusCode;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
+import com.telecominfraproject.wlan.status.models.StatusDetails;
 import com.telecominfraproject.wlan.status.network.models.NetworkAdminStatusData;
 
 import sts.OpensyncStats;
@@ -743,6 +744,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
 
             if (ovsdbSession != null) {
+                if (ovsdbSession.getCustomerId() > 0 && ovsdbSession.getEquipmentId() > 0L) {
+                    List<Status> statusForDisconnectedAp = statusServiceInterface.delete(ovsdbSession.getCustomerId(),
+                            ovsdbSession.getEquipmentId());
+                    LOG.info("Deleted status records {} for AP {}", statusForDisconnectedAp, apId);
+                }
                 if (ovsdbSession.getRoutingId() > 0L) {
                     try {
                         routingServiceInterface.delete(ovsdbSession.getRoutingId());
@@ -941,10 +947,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             populateChannelInfoReports(metricRecordList, report, customerId, equipmentId, locationId);
             populateApSsidMetrics(metricRecordList, report, customerId, equipmentId, apId, locationId);
             // TODO: uncomment when AP support present
-             populateUccReport(metricRecordList, report, customerId,
-             equipmentId, apId, locationId);
-             processEventReport(report, customerId, equipmentId, apId,
-             locationId);
+            populateUccReport(metricRecordList, report, customerId, equipmentId, apId, locationId);
+            processEventReport(report, customerId, equipmentId, apId, locationId);
             // handleRssiMetrics(metricRecordList, report, customerId,
             // equipmentId, locationId);
 
@@ -1538,6 +1542,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         ServiceMetric smr = new ServiceMetric(customerId, equipmentId);
 
         smr.setLocationId(locationId);
+        getMacAddressForAp(customerId, equipmentId, locationId, smr);
+
         metricRecordList.add(smr);
         smr.setDetails(apNodeMetrics);
 
@@ -1983,7 +1989,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     private void populateApClientMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId,
             long equipmentId, long locationId) {
-        LOG.debug("populateApClientMetrics {} for Customer {} Equipment {}", report.getClientsList(), customerId, equipmentId);
+        LOG.debug("populateApClientMetrics {} for Customer {} Equipment {}", report.getClientsList(), customerId,
+                equipmentId);
 
         for (ClientReport clReport : report.getClientsList()) {
             for (Client cl : clReport.getClientListList()) {
@@ -2092,6 +2099,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             ServiceMetric smr = new ServiceMetric(customerId, equipmentId);
             smr.setLocationId(locationId);
+            getMacAddressForAp(customerId, equipmentId, locationId, smr);
+
             metricRecordList.add(smr);
             NeighbourScanReports neighbourScanReports = new NeighbourScanReports();
             smr.setDetails(neighbourScanReports);
@@ -2330,6 +2339,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         smr.setLocationId(locationId);
         ApSsidMetrics apSsidMetrics = new ApSsidMetrics();
 
+        getMacAddressForAp(customerId, equipmentId, locationId, smr);
+
         smr.setDetails(apSsidMetrics);
         metricRecordList.add(smr);
 
@@ -2390,7 +2401,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                     if (client.hasMacAddress()) {
                         clientMacs.add(client.getMacAddress());
-                        
+
                     } else {
                         continue; // cannot have a session without a MAC address
                     }
@@ -2417,7 +2428,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                             // Make sure, if we have a session for this client,
                             // it
                             // shows disconnected.
-                            // update any metrics that need update if the disconnect occured during this window
+                            // update any metrics that need update if the
+                            // disconnect occured during this window
                             if (client.hasMacAddress()) {
                                 ClientSession session = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
                                         new MacAddress(client.getMacAddress()));
@@ -2490,6 +2502,29 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     }
 
+    protected void getMacAddressForAp(int customerId, long equipmentId, long locationId,
+            ServiceMetric smr) {
+        Status equipmentProtocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
+                StatusDataType.PROTOCOL);
+        if (equipmentProtocolStatus != null) {
+            EquipmentProtocolStatusData equipmentProtocolStatusData = (EquipmentProtocolStatusData) equipmentProtocolStatus
+                    .getDetails();
+
+            if (equipmentProtocolStatusData != null) {
+                if (equipmentProtocolStatusData.getReportedMacAddr() != null) {
+                    smr.setClientMac(equipmentProtocolStatusData.getReportedMacAddr().getAddressAsLong());
+                } else if (equipmentProtocolStatusData.getBaseMacAddress() != null) {
+                    smr.setClientMac(equipmentProtocolStatusData.getBaseMacAddress().getAddressAsLong());
+                } else {
+                    LOG.debug("Unable to get mac address for equipment {} customer {} location {}", equipmentId,
+                            customerId, locationId);
+                }
+            }
+
+
+        }
+    }
+
     int getNegativeSignedIntFromUnsigned(int unsignedValue) {
         int negSignedValue = (unsignedValue << 1) >> 1;
         return negSignedValue;
@@ -2508,6 +2543,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         smr.setCustomerId(customerId);
         smr.setEquipmentId(equipmentId);
         smr.setLocationId(locationId);
+        getMacAddressForAp(customerId, equipmentId, locationId, smr);
 
         ChannelInfoReports channelInfoReports = new ChannelInfoReports();
 
@@ -3836,6 +3872,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 
         return session;
+    }
+
+    @Override
+    public void commandStateDbTableUpdate(List<Map<String, String>> commandStateAttributes, String apId,
+            RowUpdateOperation rowUpdateOperation) {
+        LOG.info("Received Command_State row(s) {} rowUpdateOperation {} for ap {}", commandStateAttributes, rowUpdateOperation,apId);
+
+        // TODO: will handle changes from Command_State table
     }
 
 

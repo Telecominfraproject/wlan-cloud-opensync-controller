@@ -195,7 +195,14 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
     @Override
     public void dhcpLeasedIpDbTableUpdate(List<Map<String, String>> dhcpAttributes, String apId,
             RowUpdateOperation rowUpdateOperation) {
-        // TODO Auto-generated method stub
+        LOG.info("Received DHCP_Leased_IP row(s) {} rowUpdateOperation {} for ap {}", dhcpAttributes, rowUpdateOperation,apId);
+        
+    }
+
+    @Override
+    public void commandStateDbTableUpdate(List<Map<String, String>> commandStateAttributes, String apId,
+            RowUpdateOperation rowUpdateOperation) {
+        LOG.info("Received Command_State row(s) {} rowUpdateOperation {} for ap {}", commandStateAttributes, rowUpdateOperation,apId);
         
     }
 
