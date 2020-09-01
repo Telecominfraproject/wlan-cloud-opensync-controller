@@ -3049,13 +3049,6 @@ public class OvsdbDao {
 
 
             provisionWifiStatsConfigClient(radioConfigs, getProvisionedWifiStatsConfigs(ovsdbClient), operations);
-            // provisionWifiStatsConfigSteering(radioConfigs,
-            // getProvisionedWifiStatsConfigs(ovsdbClient), operations);
-            // provisionWifiStatsConfigCapacity(radioConfigs,
-            // getProvisionedWifiStatsConfigs(ovsdbClient), operations);
-            // provisionWifiStatsConfigRssi(radioConfigs,
-            // getProvisionedWifiStatsConfigs(ovsdbClient), operations);
-
 
             if (!operations.isEmpty()) {
                 LOG.debug("Sending batch of operations : {} ", operations);
@@ -3072,7 +3065,9 @@ public class OvsdbDao {
                 }
             }
 
+            // TODO: when schema support is added, these should be part of the bulk provisioning operation above.
             provisionUccStatsConfig(ovsdbClient);
+            provisionEventReporting(ovsdbClient);
 
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             throw new RuntimeException(e);
@@ -3327,6 +3322,49 @@ public class OvsdbDao {
 
     }
 
+    /**
+     * @param ovsdbClient
+     *
+     */
+    public void provisionEventReporting(OvsdbClient ovsdbClient) {
+        
+        LOG.debug("Enable event reporting from AP");
+
+        try {
+            List<Operation> operations = new ArrayList<>();
+            Map<String, Value> rowColumns = new HashMap<>();
+            rowColumns.put("radio_type", new Atom<>("2.4G"));
+            rowColumns.put("reporting_interval", new Atom<>(30));
+            rowColumns.put("sampling_interval", new Atom<>(0));
+            rowColumns.put("stats_type", new Atom<>("event"));
+            rowColumns.put("reporting_interval", new Atom<>(0));
+            Row row = new Row(rowColumns);
+
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            if (LOG.isDebugEnabled()) {
+
+                for (OperationResult res : result) {
+
+                    if (res instanceof ErrorResult) {
+                        LOG.error("Could not update {}:", wifiStatsConfigDbTable);
+                        LOG.error("Error: {} Details: {}", ((ErrorResult) res).getError(),
+                                ((ErrorResult) res).getDetails());
+                    } else {
+                        LOG.debug("Updated {}:", wifiStatsConfigDbTable);
+                        LOG.debug("Op Result {}", res);
+                    }
+                }
+            }
+
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
 
     public String changeRedirectorAddress(OvsdbClient ovsdbClient, String apId, String newRedirectorAddress) {
         try {
