@@ -4,6 +4,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -537,14 +538,6 @@ public class OpensyncExternalIntegrationCloudTest {
                 Mockito.any(MacAddress.class));
         Mockito.verify(statusServiceInterface, Mockito.times(3)).getOrNull(Mockito.anyInt(), Mockito.anyLong(),
                 Mockito.eq(StatusDataType.ACTIVE_BSSIDS));
-
-    }
-
-    @Test
-    public void testGetNegativeSignedIntFromUnsigned() {
-        int unsignedVal = Long.valueOf(4294967239L).intValue();
-        int expectedVal = -57; // (unsignedValue << 1) >> 1
-        assert (expectedVal == opensyncExternalIntegrationCloud.getNegativeSignedIntFromUnsigned(unsignedVal));
 
     }
 

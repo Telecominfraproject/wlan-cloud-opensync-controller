@@ -2,7 +2,9 @@ package com.telecominfraproject.wlan.opensync.external.integration;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -131,6 +133,7 @@ import com.telecominfraproject.wlan.status.models.StatusCode;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
 import com.telecominfraproject.wlan.status.network.models.NetworkAdminStatusData;
 
+import javassist.bytecode.ByteArray;
 import sts.OpensyncStats;
 import sts.OpensyncStats.AssocType;
 import sts.OpensyncStats.Client;
@@ -1614,6 +1617,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             int rxRetries = 0;
             int rxErrors = 0;
             int rssi = 0;
+            Long uRssi = null;
 
             Set<String> clientMacs = new HashSet<>();
 
@@ -1638,7 +1642,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     rxBytes += cl.getStats().getRxBytes();
                 }
                 if (cl.getStats().hasRssi()) {
-                    rssi += cl.getStats().getRssi();
+                    rssi = cl.getStats().getRssi();
                 }
                 if (cl.getStats().hasTxFrames()) {
                     txFrames += cl.getStats().getTxFrames();
@@ -1678,7 +1682,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             radioStats.setNumTxRetryAttemps(txRetries);
             radioStats.setCurChannel(clReport.getChannel());
             if (clReport.getClientListCount() > 0) {
-                radioStats.setRxLastRssi(getNegativeSignedIntFromUnsigned(rssi) / clReport.getClientListCount());
+                // radioStats.setRxLastRssi(getNegativeSignedIntFromUnsigned(rssi)
+                // / clReport.getClientListCount());
+                radioStats.setRxLastRssi(rssi);
             }
             radioStats.setRxDataBytes(rxBytes);
             radioStats.setNumRxDataFrames(rxFrames);
@@ -2026,8 +2032,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 if (cl.hasStats()) {
                     if (cl.getStats().hasRssi()) {
-                        int unsignedRssi = cl.getStats().getRssi();
-                        cMetrics.setRssi(getNegativeSignedIntFromUnsigned(unsignedRssi));
+                        int rssi = cl.getStats().getRssi();
+                        cMetrics.setRssi(rssi);
                     }
 
                     // populate Rx stats
@@ -2138,7 +2144,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 // nr.setRate(rate);
                 // we can only get Rssi as an unsigned int from opensync, so
                 // some shifting
-                nr.setRssi(getNegativeSignedIntFromUnsigned(nBss.getRssi()));
+                int rssi = nBss.getRssi();
+                nr.setRssi(rssi);
                 // nr.setScanTimeInSeconds(scanTimeInSeconds);
                 nr.setSecureMode(DetectedAuthMode.WPA);
                 // nr.setSignal(signal);
@@ -2199,7 +2206,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             latestClientSessionDetails.setFirstDataSentTimestamp(timestamp - client.getDurationMs());
             latestClientSessionDetails.setFirstDataRcvdTimestamp(timestamp - client.getDurationMs());
             latestClientSessionDetails.setAssociationState(AssociationState.Active_Data);
-            latestClientSessionDetails.setAssocRssi(getNegativeSignedIntFromUnsigned(client.getStats().getRssi()));
+            int rssi = client.getStats().getRssi();
+            latestClientSessionDetails.setAssocRssi(rssi);
             latestClientSessionDetails.setLastRxTimestamp(timestamp);
             latestClientSessionDetails.setLastTxTimestamp(timestamp);
 
@@ -2303,7 +2311,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 timestamp);
 
         ClientSessionMetricDetails metricDetails = new ClientSessionMetricDetails();
-        metricDetails.setRssi(getNegativeSignedIntFromUnsigned(client.getStats().getRssi()));
+
+        int rssi = client.getStats().getRssi();
+        metricDetails.setRssi(rssi);
         metricDetails.setRxBytes(client.getStats().getRxBytes());
         metricDetails.setTxBytes(client.getStats().getTxBytes());
         metricDetails.setTotalTxPackets(client.getStats().getTxFrames());
@@ -2410,7 +2420,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     txErrors += client.getStats().getTxErrors();
                     lastRssi = client.getStats().getRssi();
 
-
                     try {
 
                         if (client.hasConnected() && client.getConnected()) {
@@ -2471,7 +2480,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             // we can only get Rssi as an unsigned int from opensync, so some
             // shifting
-            ssidStatistics.setRxLastRssi(getNegativeSignedIntFromUnsigned(lastRssi));
+            ssidStatistics.setRxLastRssi(lastRssi);
             ssidStatistics.setNumRxData(Long.valueOf(rxFrames).intValue());
             ssidStatistics.setRxBytes(rxBytes - rxErrors - rxRetries);
             ssidStatistics.setNumTxDataRetries(txRetries);
@@ -2494,11 +2503,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         LOG.debug("ApSsidMetrics {}", apSsidMetrics);
 
-    }
-
-    int getNegativeSignedIntFromUnsigned(int unsignedValue) {
-        int negSignedValue = (unsignedValue << 1) >> 1;
-        return negSignedValue;
     }
 
     int getNegativeSignedIntFrom8BitUnsigned(int unsignedValue) {
@@ -2628,7 +2632,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
         return channelInfo;
     }
-
+    
     @Override
     public void processMqttMessage(String topic, FlowReport flowReport) {
 
