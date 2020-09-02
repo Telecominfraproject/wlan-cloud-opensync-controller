@@ -2,9 +2,7 @@ package com.telecominfraproject.wlan.opensync.external.integration;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -133,7 +131,6 @@ import com.telecominfraproject.wlan.status.models.StatusCode;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
 import com.telecominfraproject.wlan.status.network.models.NetworkAdminStatusData;
 
-import javassist.bytecode.ByteArray;
 import sts.OpensyncStats;
 import sts.OpensyncStats.AssocType;
 import sts.OpensyncStats.Client;
@@ -2514,91 +2511,76 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             long equipmentId, long locationId) {
 
         LOG.debug("populateChannelInfoReports for Customer {} Equipment {}", customerId, equipmentId);
-        ServiceMetric smr = new ServiceMetric();
-        smr.setCustomerId(customerId);
-        smr.setEquipmentId(equipmentId);
-        smr.setLocationId(locationId);
-
-        ChannelInfoReports channelInfoReports = new ChannelInfoReports();
-
-        smr.setDetails(channelInfoReports);
-        metricRecordList.add(smr);
 
         for (Survey survey : report.getSurveyList()) {
 
-            smr.setCreatedTimestamp(survey.getTimestampMs());
-            LOG.info("Survey {}", survey);
+            ServiceMetric smr = new ServiceMetric();
+            smr.setCustomerId(customerId);
+            smr.setEquipmentId(equipmentId);
+            smr.setLocationId(locationId);
+
+            ChannelInfoReports channelInfoReports = new ChannelInfoReports();
+            Map<RadioType, List<ChannelInfo>> channelInfoMap = channelInfoReports
+                    .getChannelInformationReportsPerRadio();
 
             RadioType radioType = null;
-            if (survey.getBand() == RadioBandType.BAND2G) {
-                radioType = RadioType.is2dot4GHz;
-            } else if (survey.getBand() == RadioBandType.BAND5G) {
-                radioType = RadioType.is5GHz;
-            } else if (survey.getBand() == RadioBandType.BAND5GL) {
-                radioType = RadioType.is5GHzL;
-            } else if (survey.getBand() == RadioBandType.BAND5GU) {
-                radioType = RadioType.is5GHzU;
+
+            if (survey.hasBand()) {
+                radioType = getRadioTypeFromOpensyncRadioBand(survey.getBand());
+            } else {
+                continue;
             }
+
 
             ChannelBandwidth channelBandwidth = ((ApElementConfiguration) equipmentServiceInterface.get(equipmentId)
                     .getDetails()).getRadioMap().get(radioType).getChannelBandwidth();
 
-            if (survey.getSurveyType().equals(SurveyType.OFF_CHANNEL)
-                    || survey.getSurveyType().equals(SurveyType.FULL)) {
+            Map<Integer, List<SurveySample>> sampleByChannelMap = new HashMap<>();
 
-                // in this case, we have multiple channels (potentially) and
-                // will make
-                // ChannelInfo entries per surveyed channel
-                Map<Integer, List<SurveySample>> sampleByChannelMap = new HashMap<>();
+            survey.getSurveyListList().stream().filter(new Predicate<SurveySample>() {
 
-                survey.getSurveyListList().stream().forEach(s -> {
-                    List<SurveySample> surveySampleList;
-                    if (sampleByChannelMap.get(s.getChannel()) == null) {
-                        surveySampleList = new ArrayList<>();
+                @Override
+                public boolean test(SurveySample t) {
+                    if (survey.getSurveyType().equals(SurveyType.ON_CHANNEL)) {
+                        return t.hasDurationMs() && t.getDurationMs() > 0 && t.hasChannel() && t.hasBusy()
+                                && t.hasBusyTx() && t.hasNoise();
                     } else {
-                        surveySampleList = sampleByChannelMap.get(s.getChannel());
+                        return t.hasDurationMs() && t.hasChannel();
                     }
-                    surveySampleList.add(s);
-                    sampleByChannelMap.put(s.getChannel(), surveySampleList);
-                });
-
-                for (List<SurveySample> surveySampleList : sampleByChannelMap.values()) {
-                    ChannelInfo channelInfo = createChannelInfo(equipmentId, radioType, surveySampleList,
-                            channelBandwidth);
-
-                    List<ChannelInfo> channelInfoList = channelInfoReports.getRadioInfo(radioType);
-                    if (channelInfoList == null) {
-                        channelInfoList = new ArrayList<>();
-                    }
-                    channelInfoList.add(channelInfo);
-                    Map<RadioType, List<ChannelInfo>> channelInfoMap = channelInfoReports
-                            .getChannelInformationReportsPerRadio();
-                    channelInfoMap.put(radioType, channelInfoList);
-                    channelInfoReports.setChannelInformationReportsPerRadio(channelInfoMap);
                 }
 
-            } else {
+            }).forEach(s -> {
+                List<SurveySample> surveySampleList;
+                if (sampleByChannelMap.get(s.getChannel()) == null) {
+                    surveySampleList = new ArrayList<>();
+                } else {
+                    surveySampleList = sampleByChannelMap.get(s.getChannel());
+                }
+                surveySampleList.add(s);
+                sampleByChannelMap.put(s.getChannel(), surveySampleList);
+            });
 
-                List<SurveySample> surveySampleList = survey.getSurveyListList();
-
+            for (List<SurveySample> surveySampleList : sampleByChannelMap.values()) {
                 ChannelInfo channelInfo = createChannelInfo(equipmentId, radioType, surveySampleList, channelBandwidth);
-                if (LOG.isTraceEnabled()) {
-                    LOG.trace("ChannelInfo for Survey {}", channelInfo.toPrettyString());
-                }
                 List<ChannelInfo> channelInfoList = channelInfoReports.getRadioInfo(radioType);
                 if (channelInfoList == null) {
                     channelInfoList = new ArrayList<>();
                 }
                 channelInfoList.add(channelInfo);
-                Map<RadioType, List<ChannelInfo>> channelInfoMap = channelInfoReports
-                        .getChannelInformationReportsPerRadio();
                 channelInfoMap.put(radioType, channelInfoList);
                 channelInfoReports.setChannelInformationReportsPerRadio(channelInfoMap);
             }
 
+
+            channelInfoReports.setChannelInformationReportsPerRadio(channelInfoMap);
+            smr.setDetails(channelInfoReports);
+            smr.setCreatedTimestamp(survey.getTimestampMs());
+            metricRecordList.add(smr);
+
+            LOG.debug("ChannelInfoReports {}", channelInfoReports);
+
         }
 
-        LOG.debug("ChannelInfoReports {}", channelInfoReports);
 
     }
 
@@ -2612,7 +2594,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         int[] noiseArray = new int[surveySampleList.size()];
         int index = 0;
         for (SurveySample sample : surveySampleList) {
-
+            LOG.debug("createChannelInfo::SurveySample {}", sample);
             busyTx += sample.getBusyTx();
             busySelf += sample.getBusySelf();
             busy += sample.getBusy();
@@ -2632,7 +2614,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
         return channelInfo;
     }
-    
+
     @Override
     public void processMqttMessage(String topic, FlowReport flowReport) {
 
