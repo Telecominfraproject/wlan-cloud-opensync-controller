@@ -787,7 +787,7 @@ public class OpensyncExternalIntegrationCloudTest {
                 .setDhcpState(StateUpDown.SUD_up).setVlanIF("vlan-1").setObsV200RadiusLatency(15)
                 .setObsV200RadiusState(StateUpDown.SUD_up).build();
         NetworkProbe networkProbe = NetworkProbe.getDefaultInstance().toBuilder().setVlanProbe(vlanMetrics)
-                .setDnsProbe(dnsProbeMetric).setRadiusProbe(radiusProbeMetric).build();
+                .setDnsProbe(dnsProbeMetric).addRadiusProbe(radiusProbeMetric).build();
 
         Report report = Report.getDefaultInstance().toBuilder().setNodeID("21P10C68818122")
                 .addNetworkProbe(networkProbe).build();

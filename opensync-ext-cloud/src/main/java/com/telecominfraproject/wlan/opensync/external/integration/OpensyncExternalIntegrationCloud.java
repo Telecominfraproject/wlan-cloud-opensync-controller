@@ -743,11 +743,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
 
             if (ovsdbSession != null) {
-//                if (ovsdbSession.getCustomerId() > 0 && ovsdbSession.getEquipmentId() > 0L) {
-//                    List<Status> statusForDisconnectedAp = statusServiceInterface.delete(ovsdbSession.getCustomerId(),
-//                            ovsdbSession.getEquipmentId());
-//                    LOG.info("Deleted status records {} for AP {}", statusForDisconnectedAp, apId);
-//                }
+                // if (ovsdbSession.getCustomerId() > 0 &&
+                // ovsdbSession.getEquipmentId() > 0L) {
+                // List<Status> statusForDisconnectedAp =
+                // statusServiceInterface.delete(ovsdbSession.getCustomerId(),
+                // ovsdbSession.getEquipmentId());
+                // LOG.info("Deleted status records {} for AP {}",
+                // statusForDisconnectedAp, apId);
+                // }
                 if (ovsdbSession.getRoutingId() > 0L) {
                     try {
                         routingServiceInterface.delete(ovsdbSession.getRoutingId());
@@ -1903,10 +1906,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             networkProbeMetrics.setDnsProbeResults(dnsProbeResults);
 
-            if (networkProbe.hasRadiusProbe()) {
-
-                RADIUSMetrics radiusMetrics = networkProbe.getRadiusProbe();
-
+            for (RADIUSMetrics radiusMetrics : networkProbe.getRadiusProbeList()) {
                 if (networkProbe.hasVlanProbe()) {
                     if (networkProbe.getVlanProbe().hasObsV200RadiusLatency()) {
                         networkProbeMetrics.setRadiusLatencyInMs(networkProbe.getVlanProbe().getObsV200RadiusLatency());
@@ -1925,7 +1925,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                             default:
                                 networkProbeMetrics.setRadiusState(StateUpDownError.UNSUPPORTED);
                         }
-
                     }
                 } else {
                     // take the average if we don't have from the VLAN Probe
@@ -1933,7 +1932,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         networkProbeMetrics.setRadiusLatencyInMs(radiusMetrics.getLatencyAve());
                     }
                 }
-
             }
             if (networkProbe.hasVlanProbe()) {
                 VLANMetrics vlanMetrics = networkProbe.getVlanProbe();
@@ -2504,10 +2502,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     }
 
     int getNegativeSignedIntFrom8BitUnsigned(int unsignedValue) {
-     
         byte b = (byte) Integer.parseInt(Integer.toHexString(unsignedValue), 16);
         return b;
-   
     }
 
     private void populateChannelInfoReports(List<ServiceMetric> metricRecordList, Report report, int customerId,
@@ -3838,7 +3834,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     @Override
     public void commandStateDbTableUpdate(List<Map<String, String>> commandStateAttributes, String apId,
             RowUpdateOperation rowUpdateOperation) {
-        LOG.info("Received Command_State row(s) {} rowUpdateOperation {} for ap {}", commandStateAttributes, rowUpdateOperation,apId);
+        LOG.info("Received Command_State row(s) {} rowUpdateOperation {} for ap {}", commandStateAttributes,
+                rowUpdateOperation, apId);
 
         // TODO: will handle changes from Command_State table
     }
