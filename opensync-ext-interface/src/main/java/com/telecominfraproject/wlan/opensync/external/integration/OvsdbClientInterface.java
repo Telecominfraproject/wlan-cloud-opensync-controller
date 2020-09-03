@@ -9,7 +9,11 @@ public interface OvsdbClientInterface {
 
     Set<String> getConnectedClientIds();
 
-    String changeRedirectorAddress(String apId, String newRedirectorAddress);
+    String changeRedirectorHost(String apId, String newRedirectorHost);
+    
+    String startDebugEngine(String apId, String gatewayHostname, Integer gatewayPort);
+    
+    String stopDebugEngine(String apId);
 
     void processConfigChanged(String apId);
 

@@ -235,7 +235,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
      * @return updated value of the redirector
      */
     @Override
-    public String changeRedirectorAddress(String apId, String newRedirectorAddress) {
+    public String changeRedirectorHost(String apId, String newRedirectorAddress) {
         OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
         if (ovsdbSession == null) {
             throw new IllegalStateException("AP with id " + apId + " is not connected");
@@ -744,6 +744,40 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         }
         LOG.debug("Initiated firmware flash for AP {} to {} ", apId, firmwareVersion);
         return "Initiated firmware flash for AP " + apId + " to " + firmwareVersion;
+    }
+
+    @Override
+    public String startDebugEngine(String apId, String gatewayHostname, Integer gatewayPort) {
+        LOG.debug("TipWlanOvsdbClient::startDebugEngine apId {} gatewayHostname {} gatewayPort {}", apId,gatewayHostname,gatewayPort);
+        
+        OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
+        OvsdbClient ovsdbClient = session.getOvsdbClient();
+        
+        // TODO: need to establish what the command will be to start debug logging, on the AP side
+        // For now, use start_debug_engine
+        // Map will have gateway_host and gateway_port for now
+        // Delay/Duration TBD, just use 0s for now
+        Map<String,String> payload = new HashMap<>();
+        payload.put("gateway_hostname", gatewayHostname);
+        payload.put("gateway_port", gatewayPort.toString());
+        ovsdbDao.configureCommands(ovsdbClient, OvsdbDao.StartDebugEngineApCommand, payload, Long.valueOf(0L), Long.valueOf(0L));
+        
+        LOG.debug("Started debug engine on AP {} with gateway {} port {}", apId, gatewayHostname, gatewayPort);
+        return "Started debug engine on AP " + apId + " with gateway " + gatewayHostname + " port " + gatewayPort;
+    }
+
+    @Override
+    public String stopDebugEngine(String apId) {
+        LOG.debug("TipWlanOvsdbClient::stopDebugEngine apId {}", apId);
+        
+        OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
+        OvsdbClient ovsdbClient = session.getOvsdbClient();
+        
+        Map<String,String> payload = new HashMap<>();
+        ovsdbDao.configureCommands(ovsdbClient, OvsdbDao.StopDebugEngineApCommand, payload, Long.valueOf(0L), Long.valueOf(0L));
+        
+        LOG.debug("Stop debug engine on AP  {}", apId);
+        return "Stop debug engine on AP " + apId ;
     }
 
 }

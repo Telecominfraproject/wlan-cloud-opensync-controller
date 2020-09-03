@@ -34,7 +34,7 @@ public class OpenSyncGatewayController {
 	@RequestMapping(value = "/changeRedirectorAddress", method = RequestMethod.POST)
 	public String changeRedirectorAddress(@RequestParam String apId, @RequestParam String newRedirectorAddress) {
 		LOG.info("Changing redirector address for AP {} to {}", apId, newRedirectorAddress);
-		String ret = tipwlanOvsdbClient.changeRedirectorAddress(apId, newRedirectorAddress);
+		String ret = tipwlanOvsdbClient.changeRedirectorHost(apId, newRedirectorAddress);
 		LOG.info("Changed redirector address for AP {} to {}", apId, ret);
 		return ret;
 	}

@@ -275,6 +275,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                                     + autoProvisionedCustomerId);
                 }
 
+//                String dbUrlString = customer.getDetails().getClientFingerPrintsDbUrl();
                 ce = new Equipment();
                 ce.setEquipmentType(EquipmentType.AP);
                 ce.setInventoryId(apId);

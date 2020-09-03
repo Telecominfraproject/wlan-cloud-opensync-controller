@@ -177,6 +177,10 @@ public class OvsdbDao {
 
     public static final String commandStateDbTable = "Command_State";
 
+    public static final String StartDebugEngineApCommand = "start_debug_engine";
+
+    public static final String StopDebugEngineApCommand = "stop_debug_engine";
+
     public ConnectNodeInfo getConnectNodeInfo(OvsdbClient ovsdbClient) {
         ConnectNodeInfo ret = new ConnectNodeInfo();
 
@@ -988,10 +992,10 @@ public class OvsdbDao {
 
         return ret;
     }
-    
+
     public Map<String, CommandConfigInfo> getProvisionedCommandConfigs(OvsdbClient ovsdbClient) {
         Map<String, CommandConfigInfo> ret = new HashMap<>();
-        
+
         List<Operation> operations = new ArrayList<>();
         List<Condition> conditions = new ArrayList<>();
         List<String> columns = new ArrayList<>();
@@ -1002,7 +1006,7 @@ public class OvsdbDao {
         columns.add("command");
         columns.add("payload");
         columns.add("timestamp");
-        
+
 
         try {
             LOG.debug("Retrieving CommandConfig:");
@@ -1019,24 +1023,24 @@ public class OvsdbDao {
 
                 CommandConfigInfo commandConfigInfo = new CommandConfigInfo();
                 commandConfigInfo.uuid = row.getUuidColumn("_uuid");
-                commandConfigInfo.delay = row.getIntegerColumn("delay");          
+                commandConfigInfo.delay = row.getIntegerColumn("delay");
                 commandConfigInfo.duration = row.getIntegerColumn("duration");
                 commandConfigInfo.command = row.getStringColumn("command");
                 commandConfigInfo.payload = row.getMapColumn("payload");
                 commandConfigInfo.timestamp = row.getIntegerColumn("timestamp");
-                
+
                 ret.put(commandConfigInfo.command, commandConfigInfo);
             }
 
             LOG.debug("Retrieved CommandConfig: {}", ret);
-        
+
         } catch (ExecutionException | InterruptedException | OvsdbClientException | TimeoutException e) {
-           
+
             LOG.error("Error in getProvisionedCommandConfigs", e);
 
             throw new RuntimeException(e);
-        } 
-        
+        }
+
         return ret;
 
     }
@@ -2202,6 +2206,8 @@ public class OvsdbDao {
     public void configureCommands(OvsdbClient ovsdbClient, String command, Map<String, String> payload, Long delay,
             Long duration) {
 
+        LOG.debug("OvsdbDao::configureCommands command {}, payload {}, delay {} duration {}", command, payload, delay,
+                duration);
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> commandConfigColumns = new HashMap<>();
@@ -2226,13 +2232,13 @@ public class OvsdbDao {
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
-            LOG.debug("Configured command {} for duration {} payload {}", command, duration, payload);
+            LOG.debug("OvsdbDao::configureCommands successfully configured command {} for duration {} payload {}", command, duration, payload);
 
             for (OperationResult res : result) {
                 LOG.debug("Op Result {}", res);
             }
         } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
-            LOG.error("configureCommands interrupted.", e);
+            LOG.error("OvsdbDao::configureCommands failed.", e);
             throw new RuntimeException(e);
 
         }
@@ -3065,7 +3071,8 @@ public class OvsdbDao {
                 }
             }
 
-            // TODO: when schema support is added, these should be part of the bulk provisioning operation above.
+            // TODO: when schema support is added, these should be part of the
+            // bulk provisioning operation above.
             provisionUccStatsConfig(ovsdbClient);
             provisionEventReporting(ovsdbClient);
 
@@ -3327,7 +3334,7 @@ public class OvsdbDao {
      *
      */
     public void provisionEventReporting(OvsdbClient ovsdbClient) {
-        
+
         LOG.debug("Enable event reporting from AP");
 
         try {
