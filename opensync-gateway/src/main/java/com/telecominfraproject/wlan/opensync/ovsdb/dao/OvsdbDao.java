@@ -1,6 +1,7 @@
 package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -50,6 +51,8 @@ import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiInetConfigInfo
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiRadioConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiStatsConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiVifConfigInfo;
+import com.telecominfraproject.wlan.profile.bonjour.models.BonjourGatewayProfile;
+import com.telecominfraproject.wlan.profile.bonjour.models.BonjourServiceSet;
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalConfiguration;
 import com.telecominfraproject.wlan.profile.captiveportal.models.ManagedFileInfo;
 import com.telecominfraproject.wlan.profile.models.Profile;
@@ -2300,7 +2303,7 @@ public class OvsdbDao {
             boolean uapsdEnabled, boolean apBridge, NetworkForwardMode networkForwardMode, String gateway, String inet,
             Map<String, String> dns, String ipAssignScheme, List<MacAddress> macBlockList, boolean rateLimitEnable,
             int ssidDlLimit, int ssidUlLimit, int clientDlLimit, int clientUlLimit, Map<String, String> captiveMap,
-            List<String> walledGardenAllowlist) {
+            List<String> walledGardenAllowlist, Map<Short, Set<String>> bonjourServiceMap) {
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
@@ -2348,6 +2351,11 @@ public class OvsdbDao {
                 com.vmware.ovsdb.protocol.operation.notation.Set captiveAllowList = com.vmware.ovsdb.protocol.operation.notation.Set
                         .of(walledGardenAllowlist);
                 updateColumns.put("captive_allowlist", captiveAllowList);
+            }
+
+            // TODO: when AP support for Bonjour Gateway set values
+            if (bonjourServiceMap != null && bonjourServiceMap.size() > 0) {
+                LOG.debug("SSID {} Bonjour Services per vlan {}", ssid, bonjourServiceMap);
             }
 
             updateColumns.put("bridge", new Atom<>(bridge));
@@ -2759,6 +2767,9 @@ public class OvsdbDao {
                 List<String> walledGardenAllowlist = new ArrayList<>();
                 getCaptiveConfiguration(opensyncApConfig, ssidConfig, captiveMap, walledGardenAllowlist);
 
+                Map<Short, Set<String>> bonjourServiceMap = new HashMap<>();
+                getBonjourGatewayConfiguration(opensyncApConfig, ssidConfig, bonjourServiceMap);
+
                 boolean enabled = ssidConfig.getSsidAdminState().equals(StateSetting.enabled);
 
                 int numberOfInterfaces = 0;
@@ -2787,7 +2798,7 @@ public class OvsdbDao {
                             ssidConfig.getVlanId(), rrmEnabled, enable80211r, mobilityDomain, enable80211v, minHwMode,
                             enabled, keyRefresh, uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet,
                             dns, ipAssignScheme, macBlockList, rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit,
-                            clientUlLimit, captiveMap, walledGardenAllowlist);
+                            clientUlLimit, captiveMap, walledGardenAllowlist, bonjourServiceMap);
 
                 } catch (IllegalStateException e) {
                     // could not provision this SSID, but still can go on
@@ -2930,6 +2941,36 @@ public class OvsdbDao {
                             getCaptiveManagedFileUrl("backgroundFileURL", captiveProfileDetails.getBackgroundFile()));
 
                     LOG.debug("captiveMap {}", captiveMap);
+                }
+            }
+        }
+    }
+
+    private void getBonjourGatewayConfiguration(OpensyncAPConfig opensyncApConfig, SsidConfiguration ssidConfig,
+            Map<Short, Set<String>> bonjourServiceMap) {
+        if ((ssidConfig.getBonjourGatewayProfileId() != null)
+                && (opensyncApConfig.getBonjourGatewayProfiles() != null)) {
+            for (Profile profileBonjour : opensyncApConfig.getBonjourGatewayProfiles()) {
+                if ((ssidConfig.getBonjourGatewayProfileId() == profileBonjour.getId())
+                        && (profileBonjour.getDetails() != null)) {
+
+
+                    BonjourGatewayProfile bonjourGatewayConfiguration = (BonjourGatewayProfile) profileBonjour
+                            .getDetails();
+
+                    Collection<BonjourServiceSet> bonjourServicesCollection = bonjourGatewayConfiguration
+                            .getBonjourServices();
+                    bonjourServicesCollection.stream().forEach(b -> {
+                        Set<String> serviceSet = new HashSet<>();
+                        if (bonjourServiceMap.containsKey(b.getVlanId())) {
+                            serviceSet.addAll(bonjourServiceMap.get(b.getVlanId()));
+                        }
+                        serviceSet.addAll(b.getServiceNames());
+                        bonjourServiceMap.put(b.getVlanId(), serviceSet);
+                    });
+
+
+                    LOG.debug("bonjourServiceMap {}", bonjourServiceMap);
                 }
             }
         }
