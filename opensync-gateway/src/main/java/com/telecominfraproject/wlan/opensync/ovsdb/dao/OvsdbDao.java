@@ -79,6 +79,8 @@ import com.vmware.ovsdb.protocol.operation.result.ErrorResult;
 import com.vmware.ovsdb.protocol.operation.result.InsertResult;
 import com.vmware.ovsdb.protocol.operation.result.OperationResult;
 import com.vmware.ovsdb.protocol.operation.result.SelectResult;
+import com.vmware.ovsdb.protocol.schema.DatabaseSchema;
+import com.vmware.ovsdb.protocol.schema.TableSchema;
 import com.vmware.ovsdb.service.OvsdbClient;
 
 @Component
@@ -2232,7 +2234,8 @@ public class OvsdbDao {
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
-            LOG.debug("OvsdbDao::configureCommands successfully configured command {} for duration {} payload {}", command, duration, payload);
+            LOG.debug("OvsdbDao::configureCommands successfully configured command {} for duration {} payload {}",
+                    command, duration, payload);
 
             for (OperationResult res : result) {
                 LOG.debug("Op Result {}", res);
@@ -2296,7 +2299,8 @@ public class OvsdbDao {
             int mobilityDomain, boolean enable80211v, String minHwMode, boolean enabled, int keyRefresh,
             boolean uapsdEnabled, boolean apBridge, NetworkForwardMode networkForwardMode, String gateway, String inet,
             Map<String, String> dns, String ipAssignScheme, List<MacAddress> macBlockList, boolean rateLimitEnable,
-            int ssidDlLimit, int ssidUlLimit, int clientDlLimit, int clientUlLimit) {
+            int ssidDlLimit, int ssidUlLimit, int clientDlLimit, int clientUlLimit, Map<String, String> captiveMap,
+            List<String> walledGardenAllowlist) {
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
@@ -2324,7 +2328,6 @@ public class OvsdbDao {
                 bridge = vlanIfName;
 
                 updateColumns.put("vlan_id", new Atom<>(vlanId));
-                // updateColumns.put("mode", new Atom<>("ap_vlan"));
                 updateColumns.put("mode", new Atom<>("ap"));
 
             } else {
@@ -2332,6 +2335,20 @@ public class OvsdbDao {
                 updateColumns.put("vlan_id", new com.vmware.ovsdb.protocol.operation.notation.Set());
             }
 
+            // TODO: remove when captive portal support available in AP load
+            DatabaseSchema dbSchema = ovsdbClient.getSchema(ovsdbName).join();
+            TableSchema tableSchema = dbSchema.getTables().get(wifiVifConfigDbTable);
+            if (tableSchema.getColumns().containsKey("captive_portal")) {
+                @SuppressWarnings("unchecked")
+                com.vmware.ovsdb.protocol.operation.notation.Map<String, String> captivePortalMap = com.vmware.ovsdb.protocol.operation.notation.Map
+                        .of(captiveMap);
+                updateColumns.put("captive_portal", captivePortalMap);
+            }
+            if (tableSchema.getColumns().containsKey("captive_allowlist")) {
+                com.vmware.ovsdb.protocol.operation.notation.Set captiveAllowList = com.vmware.ovsdb.protocol.operation.notation.Set
+                        .of(walledGardenAllowlist);
+                updateColumns.put("captive_allowlist", captiveAllowList);
+            }
 
             updateColumns.put("bridge", new Atom<>(bridge));
 
@@ -2770,7 +2787,7 @@ public class OvsdbDao {
                             ssidConfig.getVlanId(), rrmEnabled, enable80211r, mobilityDomain, enable80211v, minHwMode,
                             enabled, keyRefresh, uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet,
                             dns, ipAssignScheme, macBlockList, rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit,
-                            clientUlLimit);
+                            clientUlLimit, captiveMap, walledGardenAllowlist);
 
                 } catch (IllegalStateException e) {
                     // could not provision this SSID, but still can go on
@@ -2840,27 +2857,46 @@ public class OvsdbDao {
 
     private void getRadiusConfiguration(OpensyncAPConfig opensyncApConfig, SsidConfiguration ssidConfig,
             Map<String, String> security) {
-        List<Profile> radiusServiceList = new ArrayList<>();
-        radiusServiceList = opensyncApConfig.getRadiusProfiles().stream().filter(new Predicate<Profile>() {
 
-            @Override
-            public boolean test(Profile p) {
-                return p.getName().equals((ssidConfig.getRadiusServiceName()));
-            }
-        }).collect(Collectors.toList());
-        if (!radiusServiceList.isEmpty()) {
+        LOG.debug("getRadiusConfiguration for ssidConfig {} from radiusProfiles {}", ssidConfig,
+                opensyncApConfig.getRadiusProfiles());
+
+        List<Profile> radiusServiceList = opensyncApConfig.getRadiusProfiles().stream()
+                .filter(new Predicate<Profile>() {
+
+                    @Override
+                    public boolean test(Profile p) {
+                        return p.getName().equals((ssidConfig.getRadiusServiceName()));
+                    }
+                }).collect(Collectors.toList());
+
+        if (radiusServiceList != null && radiusServiceList.size() > 0) {
             Profile profileRadius = radiusServiceList.get(0);
             String region = opensyncApConfig.getEquipmentLocation().getName();
             List<RadiusServer> radiusServerList = new ArrayList<>();
             RadiusProfile radiusProfileDetails = ((RadiusProfile) profileRadius.getDetails());
             RadiusServiceRegion radiusServiceRegion = radiusProfileDetails.findServiceRegion(region);
-            radiusServerList = radiusServiceRegion.findServerConfiguration(ssidConfig.getRadiusServiceName());
-            if (!radiusServerList.isEmpty()) {
-                RadiusServer rServer = radiusServerList.get(0);
-                security.put("radius_server_ip", rServer.getIpAddress().getHostAddress());
-                security.put("radius_server_port", String.valueOf(rServer.getAuthPort()));
-                security.put("radius_server_secret", rServer.getSecret());
+            if (radiusServiceRegion != null) {
+                radiusServerList = radiusServiceRegion.findServerConfiguration(ssidConfig.getRadiusServiceName());
+                if (radiusServerList != null && radiusServerList.size() > 0) {
+                    RadiusServer rServer = radiusServerList.get(0);
+                    if (rServer != null) {
+                        security.put("radius_server_ip",
+                                rServer.getIpAddress() != null ? rServer.getIpAddress().getHostAddress() : null);
+                        security.put("radius_server_port",
+                                rServer.getAuthPort() != null ? String.valueOf(rServer.getAuthPort()) : null);
+                        security.put("radius_server_secret", rServer.getSecret());
+                    }
+                } else {
+                    LOG.warn("Could not get RadiusServerConfiguration for {} from RadiusProfile {}",
+                            ssidConfig.getRadiusServiceName(), profileRadius);
+                }
+            } else {
+                LOG.warn("Could not get RadiusServiceRegion {} from RadiusProfile {}", region, profileRadius);
             }
+        } else {
+            LOG.warn("Could not find radius profile {} in {}", ssidConfig.getRadiusServiceName(),
+                    opensyncApConfig.getRadiusProfiles());
         }
     }
 
