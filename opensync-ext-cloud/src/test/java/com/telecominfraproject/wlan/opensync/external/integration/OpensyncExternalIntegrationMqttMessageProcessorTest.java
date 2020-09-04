@@ -246,10 +246,10 @@ public class OpensyncExternalIntegrationMqttMessageProcessorTest {
 
         DNSProbeMetric dnsProbeMetric = DNSProbeMetric.getDefaultInstance().toBuilder().setLatency(10)
                 .setState(StateUpDown.SUD_up).setServerIP(ip.getHostName()).build();
-        RADIUSMetrics radiusProbeMetric = RADIUSMetrics.getDefaultInstance().toBuilder().setLatencyAve(10).build();
-        VLANMetrics vlanMetrics = VLANMetrics.getDefaultInstance().toBuilder().setDhcpLatency(10)
-                .setDhcpState(StateUpDown.SUD_up).setVlanIF("vlan-1").setObsV200RadiusLatency(15)
-                .setObsV200RadiusState(StateUpDown.SUD_up).build();
+        RADIUSMetrics radiusProbeMetric = RADIUSMetrics.getDefaultInstance().toBuilder().setLatency(10)
+                .setRadiusState(StateUpDown.SUD_up).setServerIP(ip.getHostName()).build();
+        VLANMetrics vlanMetrics = VLANMetrics.getDefaultInstance().toBuilder().setLatency(10)
+                .setDhcpState(StateUpDown.SUD_up).setVlanIF("vlan-1").build();
         NetworkProbe networkProbe = NetworkProbe.getDefaultInstance().toBuilder().setVlanProbe(vlanMetrics)
                 .setDnsProbe(dnsProbeMetric).addRadiusProbe(radiusProbeMetric).build();
 
@@ -262,12 +262,12 @@ public class OpensyncExternalIntegrationMqttMessageProcessorTest {
 
         assertNotNull(apNodeMetrics.getNetworkProbeMetrics());
 
-        assert (apNodeMetrics.getNetworkProbeMetrics().get(0).getDhcpLatencyMs() == 10);
         assert (apNodeMetrics.getNetworkProbeMetrics().get(0).getDnsLatencyMs() == 10);
+        assert (apNodeMetrics.getNetworkProbeMetrics().get(0).getDhcpLatencyMs() == 10);
         assert (apNodeMetrics.getNetworkProbeMetrics().get(0).getRadiusState().equals(StateUpDownError.enabled));
         assert (apNodeMetrics.getNetworkProbeMetrics().get(0).getDhcpState().equals(StateUpDownError.enabled));
         assert (apNodeMetrics.getNetworkProbeMetrics().get(0).getDnsState().equals(StateUpDownError.enabled));
-        assert (apNodeMetrics.getNetworkProbeMetrics().get(0).getRadiusLatencyInMs() == 15);
+        assert (apNodeMetrics.getNetworkProbeMetrics().get(0).getRadiusLatencyInMs() == 10);
         assert (apNodeMetrics.getNetworkProbeMetrics().get(0).getVlanIF().equals("vlan-1"));
 
     }

@@ -1165,30 +1165,30 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
                 DNSProbeMetric dnsProbeMetricFromAp = networkProbe.getDnsProbe();
 
-                DnsProbeMetric dnsProbeMetric = new DnsProbeMetric();
+                DnsProbeMetric cloudDnsProbeMetric = new DnsProbeMetric();
 
                 if (dnsProbeMetricFromAp.hasLatency()) {
                     networkProbeMetrics.setDnsLatencyMs(dnsProbeMetricFromAp.getLatency());
-                    dnsProbeMetric.setDnsLatencyMs(dnsProbeMetricFromAp.getLatency());
+                    cloudDnsProbeMetric.setDnsLatencyMs(dnsProbeMetricFromAp.getLatency());
                 }
 
                 if (dnsProbeMetricFromAp.hasState()) {
                     switch (dnsProbeMetricFromAp.getState()) {
                         case SUD_down:
                             networkProbeMetrics.setDnsState(StateUpDownError.disabled);
-                            dnsProbeMetric.setDnsState(StateUpDownError.disabled);
+                            cloudDnsProbeMetric.setDnsState(StateUpDownError.disabled);
                             break;
                         case SUD_up:
                             networkProbeMetrics.setDnsState(StateUpDownError.enabled);
-                            dnsProbeMetric.setDnsState(StateUpDownError.enabled);
+                            cloudDnsProbeMetric.setDnsState(StateUpDownError.enabled);
                             break;
                         case SUD_error:
                             networkProbeMetrics.setDnsState(StateUpDownError.error);
-                            dnsProbeMetric.setDnsState(StateUpDownError.error);
+                            cloudDnsProbeMetric.setDnsState(StateUpDownError.error);
                             break;
                         default:
                             networkProbeMetrics.setDnsState(StateUpDownError.UNSUPPORTED);
-                            dnsProbeMetric.setDnsState(StateUpDownError.UNSUPPORTED);
+                            cloudDnsProbeMetric.setDnsState(StateUpDownError.UNSUPPORTED);
                     }
                 }
 
@@ -1196,56 +1196,48 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                     InetAddress ipAddress;
                     try {
                         ipAddress = InetAddress.getByName(dnsProbeMetricFromAp.getServerIP());
-                        dnsProbeMetric.setDnsServerIp(ipAddress);
-
+                        cloudDnsProbeMetric.setDnsServerIp(ipAddress);
                     } catch (UnknownHostException e) {
                         LOG.error("Could not get DNS Server IP from network_probe metrics", e);
                     }
                 }
 
-                dnsProbeResults.add(dnsProbeMetric);
+                dnsProbeResults.add(cloudDnsProbeMetric);
 
             }
 
             networkProbeMetrics.setDnsProbeResults(dnsProbeResults);
 
             for (RADIUSMetrics radiusMetrics : networkProbe.getRadiusProbeList()) {
-                if (networkProbe.hasVlanProbe()) {
-                    if (networkProbe.getVlanProbe().hasObsV200RadiusLatency()) {
-                        networkProbeMetrics.setRadiusLatencyInMs(networkProbe.getVlanProbe().getObsV200RadiusLatency());
+                if (radiusMetrics.hasLatency()) {
+                    networkProbeMetrics.setRadiusLatencyInMs(radiusMetrics.getLatency());                
+                } 
+                if (radiusMetrics.hasRadiusState()) {
+
+                    switch (radiusMetrics.getRadiusState()) {
+                        case SUD_down:
+                            networkProbeMetrics.setRadiusState(StateUpDownError.disabled);
+                            break;
+                        case SUD_up:
+                            networkProbeMetrics.setRadiusState(StateUpDownError.enabled);
+                            break;
+                        case SUD_error:
+                            networkProbeMetrics.setRadiusState(StateUpDownError.error);
+                            break;
+                        default:
+                            networkProbeMetrics.setRadiusState(StateUpDownError.UNSUPPORTED);
                     }
-                    if (networkProbe.getVlanProbe().hasObsV200RadiusState()) {
-                        switch (networkProbe.getVlanProbe().getObsV200RadiusState()) {
-                            case SUD_down:
-                                networkProbeMetrics.setRadiusState(StateUpDownError.disabled);
-                                break;
-                            case SUD_up:
-                                networkProbeMetrics.setRadiusState(StateUpDownError.enabled);
-                                break;
-                            case SUD_error:
-                                networkProbeMetrics.setRadiusState(StateUpDownError.error);
-                                break;
-                            default:
-                                networkProbeMetrics.setRadiusState(StateUpDownError.UNSUPPORTED);
-                        }
-                    }
-                } else {
-                    // take the average if we don't have from the VLAN Probe
-                    if (radiusMetrics.hasLatencyAve()) {
-                        networkProbeMetrics.setRadiusLatencyInMs(radiusMetrics.getLatencyAve());
-                    }
+
                 }
             }
+
             if (networkProbe.hasVlanProbe()) {
                 VLANMetrics vlanMetrics = networkProbe.getVlanProbe();
-
                 if (vlanMetrics.hasVlanIF()) {
                     networkProbeMetrics.setVlanIF(vlanMetrics.getVlanIF());
-                }
-                if (vlanMetrics.hasDhcpLatency()) {
-                    networkProbeMetrics.setDhcpLatencyMs(vlanMetrics.getDhcpLatency());
-                }
+                }               
                 if (vlanMetrics.hasDhcpState()) {
+
                     switch (vlanMetrics.getDhcpState()) {
                         case SUD_down:
                             networkProbeMetrics.setDhcpState(StateUpDownError.disabled);
@@ -1258,9 +1250,11 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                             break;
                         default:
                             networkProbeMetrics.setDhcpState(StateUpDownError.UNSUPPORTED);
-                    }
+                    }                   
+                }                
+                if (vlanMetrics.hasLatency()) {
+                    networkProbeMetrics.setDhcpLatencyMs(vlanMetrics.getLatency());
                 }
-
             }
 
             networkProbeMetricsList.add(networkProbeMetrics);
