@@ -47,7 +47,10 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 	
 	@Value("${tip.wlan.ovsdb.captiveProfileFileName:/app/config/ProfileCaptive.json}")
 	private String captiveProfileFileName;
-
+	
+	@Value("${tip.wlan.ovsdb.bonjourProfileFileName:/app/config/ProfileBonjour.json}")
+	private String bonjourProfileFileName;
+	
 	@Value("${tip.wlan.ovsdb.locationFileName:/app/config/LocationBuildingExample.json}")
 	private String locationFileName;
 
@@ -101,6 +104,15 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 			} else {
 				LOG.info("Captive file is not provided");
 			}
+			
+	         List<com.telecominfraproject.wlan.profile.models.Profile> bonjourProfiles = null;
+	            File bonjourFile = new File(bonjourProfileFileName);
+	            if (bonjourFile.exists()) {
+	                bonjourProfiles = com.telecominfraproject.wlan.profile.models.Profile
+	                    .listFromFile(bonjourProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
+	            } else {
+	                LOG.info("Bonjour file is not provided");
+	            }
 
 			equipment.setProfileId(apProfile.getId());
 
@@ -115,6 +127,7 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 			ret.setRadiusProfiles(radiusProfiles);
 			ret.setEquipmentLocation(location);
 			ret.setCaptiveProfiles(captiveProfiles);
+            ret.setBonjourGatewayProfiles(bonjourProfiles);
 
 		} catch (IOException e) {
 			LOG.error("Cannot read config file", e);

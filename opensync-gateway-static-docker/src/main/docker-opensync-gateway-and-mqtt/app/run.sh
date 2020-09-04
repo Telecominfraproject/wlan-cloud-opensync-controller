@@ -133,6 +133,7 @@ OVSDB_PROPS="$OVSDB_PROPS -Dtip.wlan.ovsdb.ssidProfileFileName=$OVSDB_SSIDPROFIL
 OVSDB_PROPS="$OVSDB_PROPS -Dtip.wlan.ovsdb.radiusProfileFileName=$OVSDB_RADIUSPROFILE_CONFIG_FILE"
 OVSDB_PROPS="$OVSDB_PROPS -Dtip.wlan.ovsdb.locationFileName=$OVSDB_LOCATION_CONFIG_FILE"
 OVSDB_PROPS="$OVSDB_PROPS -Dtip.wlan.ovsdb.captiveProfileFileName=$OVSDB_CAPTIVEPROFILE_CONFIG_FILE"
+OVSDB_PROPS="$OVSDB_PROPS -Dtip.wlan.ovsdb.bonjourProfileFileName=$OVSDB_BONJOURPROFILE_CONFIG_FILE"
 OVSDB_PROPS="$OVSDB_PROPS -Dtip.wlan.ovsdb.wifi-iface.default_bridge=$OVSDB_IF_DEFAULT_BRIDGE"
 OVSDB_PROPS="$OVSDB_PROPS -Dtip.wlan.ovsdb.wifi-iface.default_wan_type=$OVSDB_DEVICE_DEFAULT_WAN_TYPE"
 OVSDB_PROPS="$OVSDB_PROPS -Dtip.wlan.ovsdb.wifi-iface.default_wan_name=$OVSDB_DEVICE_DEFAULT_WAN_NAME"

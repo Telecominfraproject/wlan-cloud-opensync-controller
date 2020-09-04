@@ -1,0 +1,29 @@
+[
+{
+    "model_type": "Profile",
+    "id": 100,
+    "customerId": 2,
+    "profileType": "bonjour",
+    "name": "Bonjour-gateway",
+    "details": {
+        "model_type": "BonjourGatewayProfile",
+        "profileDescription": "Bonjour Gateway Configuration for Design Testing",
+        "profileType": "bonjour",
+        "bonjourServices": [
+            {
+                "model_type": "BonjourServiceSet",
+                "vlanId": 1,
+                "supportAllServices": false,
+                "serviceNames": [
+                    "AirPort",
+                    "SFTP",
+                    "SSH"
+                ]
+            }
+        ]
+    },
+    "createdTimestamp": 1599234550774,
+    "lastModifiedTimestamp": 1599234550774,
+    "childProfileIds": []
+}
+]
