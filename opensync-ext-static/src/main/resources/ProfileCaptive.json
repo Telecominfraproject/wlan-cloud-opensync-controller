@@ -12,7 +12,7 @@
         "headerContent": "Captive Portal",
         "userAcceptancePolicy": "Use this network at your own risk. No warranty of any kind.",
         "successPageMarkdownText": "Welcome to the network",
-        "redirectURL": "",
+        "redirectURL": "www.google.com",
         "externalCaptivePortalURL": null,
         "sessionTimeoutInMinutes": 60,
         "logoFile": {
@@ -35,8 +35,8 @@
         },
         "walledGardenAllowlist": [
           "1.2.3.4",
-          "1.2.3.4-2.3.4.5",
-          "connectus.ai"
+          "1.2.3.6-2.3.4.5",
+          "netexperience.com"
         ],
         "usernamePasswordFile": null,
         "authenticationType": "guest",

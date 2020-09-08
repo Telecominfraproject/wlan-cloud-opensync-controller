@@ -53,6 +53,7 @@ import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiStatsConfigInf
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiVifConfigInfo;
 import com.telecominfraproject.wlan.profile.bonjour.models.BonjourGatewayProfile;
 import com.telecominfraproject.wlan.profile.bonjour.models.BonjourServiceSet;
+import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalAuthenticationType;
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalConfiguration;
 import com.telecominfraproject.wlan.profile.captiveportal.models.ManagedFileInfo;
 import com.telecominfraproject.wlan.profile.models.Profile;
@@ -2342,15 +2343,21 @@ public class OvsdbDao {
             DatabaseSchema dbSchema = ovsdbClient.getSchema(ovsdbName).join();
             TableSchema tableSchema = dbSchema.getTables().get(wifiVifConfigDbTable);
             if (tableSchema.getColumns().containsKey("captive_portal")) {
-                @SuppressWarnings("unchecked")
+            	@SuppressWarnings("unchecked")
                 com.vmware.ovsdb.protocol.operation.notation.Map<String, String> captivePortalMap = com.vmware.ovsdb.protocol.operation.notation.Map
                         .of(captiveMap);
                 updateColumns.put("captive_portal", captivePortalMap);
             }
             if (tableSchema.getColumns().containsKey("captive_allowlist")) {
-                com.vmware.ovsdb.protocol.operation.notation.Set captiveAllowList = com.vmware.ovsdb.protocol.operation.notation.Set
-                        .of(walledGardenAllowlist);
-                updateColumns.put("captive_allowlist", captiveAllowList);
+            	if (walledGardenAllowlist != null && !walledGardenAllowlist.isEmpty()) {
+                    Set<Atom<String>> atomMacList = new HashSet<>();
+                    walledGardenAllowlist.stream().forEach(allow -> atomMacList.add(new Atom<>(allow)));
+                    com.vmware.ovsdb.protocol.operation.notation.Set allowListSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                            .of(atomMacList);
+                    updateColumns.put("captive_allowlist", allowListSet);
+                } else {
+                    updateColumns.put("captive_allowlist", new com.vmware.ovsdb.protocol.operation.notation.Set());
+                }
             }
 
             // TODO: when AP support for Bonjour Gateway set values
@@ -2927,6 +2934,7 @@ public class OvsdbDao {
 
                     captiveMap.put("acceptance_policy", captiveProfileDetails.getUserAcceptancePolicy());
                     captiveMap.put("login_success_text", captiveProfileDetails.getSuccessPageMarkdownText());
+                    captiveMap.put("authentication", getCaptiveAuthentication(captiveProfileDetails.getAuthenticationType()));
                     // captiveMap.put("externalCaptivePortalURL",
                     // captiveProfileDetails.getExternalCaptivePortalURL());
                     // captiveMap.put("backgroundPosition",
@@ -2943,6 +2951,20 @@ public class OvsdbDao {
                     LOG.debug("captiveMap {}", captiveMap);
                 }
             }
+        }
+    }
+    
+    private String getCaptiveAuthentication(CaptivePortalAuthenticationType authentication) {
+        switch (authentication) {
+            case guest:
+                    return "None";
+            case username:
+                    return "Captive Portal User List";
+            case radius:
+                    return "RADIUS";
+            default:
+                    LOG.error("Unsupported captive portal authentication {}", authentication);
+                    return "None";
         }
     }
 
