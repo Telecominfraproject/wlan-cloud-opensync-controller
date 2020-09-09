@@ -61,7 +61,6 @@ import com.telecominfraproject.wlan.servicemetric.apssid.models.SsidStatistics;
 import com.telecominfraproject.wlan.servicemetric.channelinfo.models.ChannelInfo;
 import com.telecominfraproject.wlan.servicemetric.channelinfo.models.ChannelInfoReports;
 import com.telecominfraproject.wlan.servicemetric.client.models.ClientMetrics;
-import com.telecominfraproject.wlan.servicemetric.client.models.ClientRadioUtils;
 import com.telecominfraproject.wlan.servicemetric.models.ServiceMetric;
 import com.telecominfraproject.wlan.servicemetric.neighbourscan.models.NeighbourReport;
 import com.telecominfraproject.wlan.servicemetric.neighbourscan.models.NeighbourScanReports;
@@ -99,8 +98,8 @@ import sts.OpensyncStats.Report;
 import sts.OpensyncStats.Survey;
 import sts.OpensyncStats.Survey.SurveySample;
 import sts.OpensyncStats.SurveyType;
-import sts.OpensyncStats.UCCReport;
 import sts.OpensyncStats.VLANMetrics;
+import sts.OpensyncStats.VideoVoiceReport;
 import traffic.NetworkMetadata;
 import traffic.NetworkMetadata.FlowReport;
 import wc.stats.IpDnsTelemetry;
@@ -212,7 +211,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             populateChannelInfoReports(metricRecordList, report, customerId, equipmentId, locationId);
             populateApSsidMetrics(metricRecordList, report, customerId, equipmentId, apId, locationId);
             // TODO: uncomment when AP support present
-            populateUccReport(metricRecordList, report, customerId, equipmentId, apId, locationId);
+            populateSipCallReport(metricRecordList, report, customerId, equipmentId, apId, locationId);
             processEventReport(report, customerId, equipmentId, apId, locationId);
             // handleRssiMetrics(metricRecordList, report, customerId,
             // equipmentId, locationId);
@@ -820,39 +819,20 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
     }
 
-    void populateUccReport(List<ServiceMetric> metricRecordList, Report report, int customerId, long equipmentId,
+    void populateSipCallReport(List<ServiceMetric> metricRecordList, Report report, int customerId, long equipmentId,
             String apId, long locationId) {
 
-        // This feature is used identify the ongoing UCC (Unified Communications
-        // and Collaboration) technology and Video sessions.
 
-       
-        for (UCCReport uccReport : report.getUccReportList()) {
-            if (uccReport.hasSipCallReport()) {
-                LOG.debug("SIP Call Report {}", uccReport.getSipCallReport());
-            }
-            if (uccReport.hasSipCallStart()) {
-                LOG.debug("SIP Call Start {}", uccReport.getSipCallStart());
-            }
-            if (uccReport.hasSipCallStop()) {
-                LOG.debug("SIP Call Stop {}", uccReport.getSipCallStop());
+        for (VideoVoiceReport videoVoiceReport : report.getVideoVoiceReportList()) {
+            
+            
 
-            }
-            if (uccReport.hasStreamVideoServer()) {
-                LOG.debug("Stream Video Server {}", uccReport.getStreamVideoServer());
- 
-            }
-            if (uccReport.hasStreamVideoSessionStart()) {
-                LOG.debug("Stream Video Session Start {}", uccReport.getStreamVideoSessionStart());
-
-            }
-            if (uccReport.hasStreamVideoStop()) {
-                LOG.debug("Stream Video Stop {}", uccReport.getStreamVideoStop());
-
-            }
+            LOG.debug("Received VideoVoiceReport {} for SIP call", videoVoiceReport);
+            
+            
         }
-
-
+        
+        
     }
 
     void populateApNodeMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId, long equipmentId,
