@@ -2343,13 +2343,13 @@ public class OvsdbDao {
             DatabaseSchema dbSchema = ovsdbClient.getSchema(ovsdbName).join();
             TableSchema tableSchema = dbSchema.getTables().get(wifiVifConfigDbTable);
             if (tableSchema.getColumns().containsKey("captive_portal")) {
-            	@SuppressWarnings("unchecked")
+                @SuppressWarnings("unchecked")
                 com.vmware.ovsdb.protocol.operation.notation.Map<String, String> captivePortalMap = com.vmware.ovsdb.protocol.operation.notation.Map
                         .of(captiveMap);
                 updateColumns.put("captive_portal", captivePortalMap);
             }
             if (tableSchema.getColumns().containsKey("captive_allowlist")) {
-            	if (walledGardenAllowlist != null && !walledGardenAllowlist.isEmpty()) {
+                if (walledGardenAllowlist != null && !walledGardenAllowlist.isEmpty()) {
                     Set<Atom<String>> atomMacList = new HashSet<>();
                     walledGardenAllowlist.stream().forEach(allow -> atomMacList.add(new Atom<>(allow)));
                     com.vmware.ovsdb.protocol.operation.notation.Set allowListSet = com.vmware.ovsdb.protocol.operation.notation.Set
@@ -2934,9 +2934,10 @@ public class OvsdbDao {
 
                     captiveMap.put("acceptance_policy", captiveProfileDetails.getUserAcceptancePolicy());
                     captiveMap.put("login_success_text", captiveProfileDetails.getSuccessPageMarkdownText());
-                    captiveMap.put("authentication", getCaptiveAuthentication(captiveProfileDetails.getAuthenticationType()));
-                    captiveMap.put("username_password_file",
-                            getCaptiveManagedFileUrl("usernamePasswordFileURL", captiveProfileDetails.getUsernamePasswordFile()));                    
+                    captiveMap.put("authentication",
+                            getCaptiveAuthentication(captiveProfileDetails.getAuthenticationType()));
+                    captiveMap.put("username_password_file", getCaptiveManagedFileUrl("usernamePasswordFileURL",
+                            captiveProfileDetails.getUsernamePasswordFile()));
                     // captiveMap.put("externalCaptivePortalURL",
                     // captiveProfileDetails.getExternalCaptivePortalURL());
                     // captiveMap.put("backgroundPosition",
@@ -2955,18 +2956,18 @@ public class OvsdbDao {
             }
         }
     }
-    
+
     private String getCaptiveAuthentication(CaptivePortalAuthenticationType authentication) {
         switch (authentication) {
             case guest:
-                    return "None";
+                return "None";
             case username:
-                    return "Captive Portal User List";
+                return "Captive Portal User List";
             case radius:
-                    return "RADIUS";
+                return "RADIUS";
             default:
-                    LOG.error("Unsupported captive portal authentication {}", authentication);
-                    return "None";
+                LOG.error("Unsupported captive portal authentication {}", authentication);
+                return "None";
         }
     }
 
@@ -3174,7 +3175,7 @@ public class OvsdbDao {
 
             // TODO: when schema support is added, these should be part of the
             // bulk provisioning operation above.
-            provisionUccStatsConfig(ovsdbClient);
+            provisionVideoVoiceStats(ovsdbClient);
             provisionEventReporting(ovsdbClient);
 
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
@@ -3389,18 +3390,17 @@ public class OvsdbDao {
      * @param ovsdbClient
      *
      */
-    public void provisionUccStatsConfig(OvsdbClient ovsdbClient) {
-        LOG.debug("Enable ucc_report");
+    public void provisionVideoVoiceStats(OvsdbClient ovsdbClient) {
+        LOG.debug("Enable video_voice_report");
 
         try {
             List<Operation> operations = new ArrayList<>();
-            LOG.debug("Enable uci_report metrics");
             Map<String, Value> rowColumns = new HashMap<>();
             rowColumns.put("radio_type", new Atom<>("2.4G"));
             rowColumns.put("reporting_interval", new Atom<>(60));
             rowColumns.put("report_type", new Atom<>("raw"));
             rowColumns.put("sampling_interval", new Atom<>(10));
-            rowColumns.put("stats_type", new Atom<>("ucc"));
+            rowColumns.put("stats_type", new Atom<>("video_voice"));
             rowColumns.put("survey_interval_ms", new Atom<>(65));
             Row row = new Row(rowColumns);
 
