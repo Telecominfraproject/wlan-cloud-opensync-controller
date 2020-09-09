@@ -61,6 +61,7 @@ import com.telecominfraproject.wlan.servicemetric.apssid.models.SsidStatistics;
 import com.telecominfraproject.wlan.servicemetric.channelinfo.models.ChannelInfo;
 import com.telecominfraproject.wlan.servicemetric.channelinfo.models.ChannelInfoReports;
 import com.telecominfraproject.wlan.servicemetric.client.models.ClientMetrics;
+import com.telecominfraproject.wlan.servicemetric.client.models.ClientRadioUtils;
 import com.telecominfraproject.wlan.servicemetric.models.ServiceMetric;
 import com.telecominfraproject.wlan.servicemetric.neighbourscan.models.NeighbourReport;
 import com.telecominfraproject.wlan.servicemetric.neighbourscan.models.NeighbourScanReports;
@@ -825,14 +826,29 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
         // This feature is used identify the ongoing UCC (Unified Communications
         // and Collaboration) technology and Video sessions.
 
-        if (report.getUccReportCount() < 1) {
-            LOG.debug("No UCC metrics in this message");
-            return;
-        }
-
+       
         for (UCCReport uccReport : report.getUccReportList()) {
             if (uccReport.hasSipCallReport()) {
                 LOG.debug("SIP Call Report {}", uccReport.getSipCallReport());
+            }
+            if (uccReport.hasSipCallStart()) {
+                LOG.debug("SIP Call Start {}", uccReport.getSipCallStart());
+            }
+            if (uccReport.hasSipCallStop()) {
+                LOG.debug("SIP Call Stop {}", uccReport.getSipCallStop());
+
+            }
+            if (uccReport.hasStreamVideoServer()) {
+                LOG.debug("Stream Video Server {}", uccReport.getStreamVideoServer());
+ 
+            }
+            if (uccReport.hasStreamVideoSessionStart()) {
+                LOG.debug("Stream Video Session Start {}", uccReport.getStreamVideoSessionStart());
+
+            }
+            if (uccReport.hasStreamVideoStop()) {
+                LOG.debug("Stream Video Stop {}", uccReport.getStreamVideoStop());
+
             }
         }
 
@@ -1774,25 +1790,28 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
         int busyTx = 0; /* Tx */
         int busySelf = 0; /* Rx_self (derived from succesful Rx frames) */
         int busy = 0; /* Busy = Rx + Tx + Interference */
+        long durationMs = 0;
         ChannelInfo channelInfo = new ChannelInfo();
 
         int[] noiseArray = new int[surveySampleList.size()];
         int index = 0;
-        for (SurveySample sample : surveySampleList) {
+        for (SurveySample sample : surveySampleList) {            
             LOG.debug("createChannelInfo::SurveySample {}", sample);
             busyTx += sample.getBusyTx();
-            busySelf += sample.getBusySelf();
+            busySelf += sample.getBusySelf(); // successful Rx
             busy += sample.getBusy();
             channelInfo.setChanNumber(sample.getChannel());
             noiseArray[index++] = getNegativeSignedIntFrom8BitUnsigned(sample.getNoise());
+            durationMs += sample.getDurationMs();
         }
 
         int iBSS = busyTx + busySelf;
+       
+        Double totalUtilization = (100D * busy) / durationMs;
+        Double totalNonWifi = (100D * (busy - iBSS )) / durationMs;
 
-        int totalWifi = busy - iBSS;
-
-        channelInfo.setTotalUtilization(busy);
-        channelInfo.setWifiUtilization(totalWifi);
+        channelInfo.setTotalUtilization(totalUtilization.intValue());
+        channelInfo.setWifiUtilization(totalUtilization.intValue()- totalNonWifi.intValue());
         channelInfo.setBandwidth(channelBandwidth);
         if (surveySampleList.size() > 0) {
             channelInfo.setNoiseFloor((int) Math.round(DecibelUtils.getAverageDecibel(noiseArray)));
