@@ -2935,6 +2935,8 @@ public class OvsdbDao {
                     captiveMap.put("acceptance_policy", captiveProfileDetails.getUserAcceptancePolicy());
                     captiveMap.put("login_success_text", captiveProfileDetails.getSuccessPageMarkdownText());
                     captiveMap.put("authentication", getCaptiveAuthentication(captiveProfileDetails.getAuthenticationType()));
+                    captiveMap.put("username_password_file",
+                            getCaptiveManagedFileUrl("usernamePasswordFileURL", captiveProfileDetails.getUsernamePasswordFile()));                    
                     // captiveMap.put("externalCaptivePortalURL",
                     // captiveProfileDetails.getExternalCaptivePortalURL());
                     // captiveMap.put("backgroundPosition",
