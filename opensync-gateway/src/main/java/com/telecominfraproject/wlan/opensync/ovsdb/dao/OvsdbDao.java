@@ -1833,6 +1833,68 @@ public class OvsdbDao {
 
     }
 
+    
+
+    public void configureInterfaces(OvsdbClient ovsdbClient) {
+
+        configureWanInterfaces(ovsdbClient);
+        configureLanInterfaces(ovsdbClient);
+        
+    }
+    
+    private void configureLanInterfaces(OvsdbClient ovsdbClient) {
+        List<Operation> operations = new ArrayList<>();
+        Map<String, Value> updateColumns = new HashMap<>();
+        List<Condition> conditions = new ArrayList<>();
+        conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(defaultLanInterfaceName)));
+        updateColumns.put("dhcp_sniff", new Atom<>(true));
+
+        Row row = new Row(updateColumns);
+        operations.add(new Update(wifiInetConfigDbTable, conditions, row));
+
+
+        try {
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+
+            for (OperationResult res : result) {
+                LOG.debug("Op Result {}", res);
+            }
+        } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
+            LOG.error("OvsdbDao::configureLanInterfaces failed.", e);
+            throw new RuntimeException(e);
+
+        }
+
+    }
+
+    private void configureWanInterfaces(OvsdbClient ovsdbClient) {
+        List<Operation> operations = new ArrayList<>();
+        Map<String, Value> updateColumns = new HashMap<>();
+        List<Condition> conditions = new ArrayList<>();
+        conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(defaultWanInterfaceName)));
+        updateColumns.put("dhcp_sniff", new Atom<>(true));
+
+        Row row = new Row(updateColumns);
+        operations.add(new Update(wifiInetConfigDbTable, conditions, row));
+
+
+        try {
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+
+            for (OperationResult res : result) {
+                LOG.debug("Op Result {}", res);
+            }
+        } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
+            LOG.error("OvsdbDao::configureWanInterfaces failed.", e);
+            throw new RuntimeException(e);
+
+        }
+    }
+
     public List<OpensyncAPRadioState> getOpensyncAPRadioState(TableUpdates tableUpdates, String apId,
             OvsdbClient ovsdbClient) {
 
@@ -2833,6 +2895,7 @@ public class OvsdbDao {
             insertColumns.put("network", new Atom<>(true));
             insertColumns.put("mtu", new Atom<>(1500));
             insertColumns.put("ip_assign_scheme", new Atom<>(ipAssignScheme));
+            insertColumns.put("dhcp_sniff", new Atom<>(true));
 
             if (ipAssignScheme.equals("static")) {
 
@@ -2849,7 +2912,6 @@ public class OvsdbDao {
 
             } else if (ipAssignScheme.equals("dhcp")) {
                 insertColumns.put("ip_assign_scheme", new Atom<>("dhcp"));
-                insertColumns.put("dhcp_sniff", new Atom<>(true));
 
             }
 
@@ -3043,6 +3105,7 @@ public class OvsdbDao {
             updateColumns.put("network", new Atom<>(true));
 
             updateColumns.put("ip_assign_scheme", new Atom<>(ipAssignScheme));
+            updateColumns.put("dhcp_sniff", new Atom<>(true));
 
             if (ipAssignScheme.equals("static")) {
                 updateColumns.put("dns", com.vmware.ovsdb.protocol.operation.notation.Map.of(dns));
@@ -3051,11 +3114,7 @@ public class OvsdbDao {
                 // netmask
                 // broadcast
             }
-            if (ipAssignScheme.equals("dhcp")) {
-                updateColumns.put("dhcp_sniff", new Atom<>(true));
-            } else {
-                updateColumns.put("dhcp_sniff", new Atom<>(false));
-            }
+            
 
             Row row = new Row(updateColumns);
             operations.add(new Update(wifiInetConfigDbTable, conditions, row));
@@ -3098,6 +3157,7 @@ public class OvsdbDao {
             // implemented
             insertColumns.put("mtu", new Atom<>(1500));
             insertColumns.put("network", new Atom<>(true));
+            insertColumns.put("dhcp_sniff", new Atom<>(true));
 
             insertColumns.put("ip_assign_scheme", new Atom<>(ipAssignScheme));
 
@@ -3110,11 +3170,7 @@ public class OvsdbDao {
                 // netmask
                 // broadcast
             }
-            if (ipAssignScheme.equals("dhcp")) {
-                insertColumns.put("dhcp_sniff", new Atom<>(true));
-            } else {
-                insertColumns.put("dhcp_sniff", new Atom<>(false));
-            }
+           
 
             Row row = new Row(insertColumns);
             operations.add(new Insert(wifiInetConfigDbTable, row));
@@ -3726,5 +3782,6 @@ public class OvsdbDao {
             throw new RuntimeException(e);
         }
     }
+
 
 }

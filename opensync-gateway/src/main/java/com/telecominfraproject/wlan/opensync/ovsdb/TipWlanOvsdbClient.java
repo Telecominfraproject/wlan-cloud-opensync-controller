@@ -201,6 +201,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
         if (opensyncAPConfig != null) {
             ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
+            ovsdbDao.configureInterfaces(ovsdbClient);
             ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
         }
@@ -268,6 +269,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
 
         ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
+        ovsdbDao.configureInterfaces(ovsdbClient);
         ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureStats(ovsdbClient);
