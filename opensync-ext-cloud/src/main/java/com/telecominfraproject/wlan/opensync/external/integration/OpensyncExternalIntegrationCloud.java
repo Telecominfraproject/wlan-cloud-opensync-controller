@@ -1851,7 +1851,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         if (dhcpLeasedIps.containsKey("lease_time")) {
             Integer leaseTime = Integer.valueOf(dhcpLeasedIps.get("lease_time"));
-            clientDhcpDetails.setLeaseTimeInSeconds(leaseTime / 1000);
+            clientDhcpDetails.setLeaseTimeInSeconds(leaseTime);
         }
 
         if (dhcpLeasedIps.containsKey("gateway")) {
@@ -1859,7 +1859,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientDhcpDetails.setGatewayIp(InetAddress.getByName(dhcpLeasedIps.get("gateway")));
             } catch (UnknownHostException e) {
                 LOG.error("Invalid Gateway IP", e);
-
             }
         }
 
@@ -1889,7 +1888,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             }
         }
-
+        
 
         clientSessionDetails.setDhcpDetails(clientDhcpDetails);
 
