@@ -51,6 +51,9 @@ import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiInetConfigInfo
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiRadioConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiStatsConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiVifConfigInfo;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpDbStatus;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpDeviceType;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpManufId;
 import com.telecominfraproject.wlan.profile.bonjour.models.BonjourGatewayProfile;
 import com.telecominfraproject.wlan.profile.bonjour.models.BonjourServiceSet;
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalAuthenticationType;
@@ -186,6 +189,21 @@ public class OvsdbDao {
     public static final String StartDebugEngineApCommand = "start_debug_engine";
 
     public static final String StopDebugEngineApCommand = "stop_debug_engine";
+
+
+    public static void translateDhcpFpValueToString(Entry<String, Value> c, Map<String, String> rowMap) {
+        if (c.getKey().equals("manuf_id")) {
+            rowMap.put(c.getKey(), DhcpFpManufId.getById(Integer.valueOf(c.getValue().toString())).getName());
+        } else if (c.getKey().equals("device_type")) {
+            rowMap.put(c.getKey(), DhcpFpDeviceType.getById(Integer.valueOf(c.getValue().toString())).getName());
+
+        } else if (c.getKey().equals("db_status")) {
+            rowMap.put(c.getKey(), DhcpFpDbStatus.getById(Integer.valueOf(c.getValue().toString())).getName());
+        } else {
+            rowMap.put(c.getKey(), c.getValue().toString());
+        }
+    }
+
 
     public ConnectNodeInfo getConnectNodeInfo(OvsdbClient ovsdbClient) {
         ConnectNodeInfo ret = new ConnectNodeInfo();
@@ -1833,15 +1851,14 @@ public class OvsdbDao {
 
     }
 
-    
 
     public void configureInterfaces(OvsdbClient ovsdbClient) {
 
         configureWanInterfaces(ovsdbClient);
         configureLanInterfaces(ovsdbClient);
-        
+
     }
-    
+
     private void configureLanInterfaces(OvsdbClient ovsdbClient) {
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
@@ -3114,7 +3131,7 @@ public class OvsdbDao {
                 // netmask
                 // broadcast
             }
-            
+
 
             Row row = new Row(updateColumns);
             operations.add(new Update(wifiInetConfigDbTable, conditions, row));
@@ -3170,7 +3187,7 @@ public class OvsdbDao {
                 // netmask
                 // broadcast
             }
-           
+
 
             Row row = new Row(insertColumns);
             operations.add(new Insert(wifiInetConfigDbTable, row));

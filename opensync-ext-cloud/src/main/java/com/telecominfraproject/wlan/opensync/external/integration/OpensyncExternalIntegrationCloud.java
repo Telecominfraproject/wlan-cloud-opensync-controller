@@ -752,7 +752,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         if (captivePortId != null) {
                             captiveProfileIds.add(captivePortId);
                         }
-                        Long bonjourGatewayProfileId = ((SsidConfiguration)ssidProfile.getDetails()).getBonjourGatewayProfileId();
+                        Long bonjourGatewayProfileId = ((SsidConfiguration) ssidProfile.getDetails())
+                                .getBonjourGatewayProfileId();
                         if (bonjourGatewayProfileId != null) {
                             bonjourGatewayProfileIds.add(bonjourGatewayProfileId);
                         }
@@ -1648,6 +1649,22 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         long locationId = ce.getLocationId();
 
+        //         "hwaddr":
+        //         "inet_addr":
+        //         "hostname":
+        //         "fingerprint":
+        //         "vendor_class":
+        //         "lease_time":
+        //         "subnet_mask":
+        //         "gateway":
+        //         "dhcp_server":
+        //         "primary_dns":
+        //         "secondary_dns":
+        //         "db_status":
+        //         "device_name":
+        //         "device_type":
+        //         "manuf_id":
+
         if (rowUpdateOperation.equals(RowUpdateOperation.INSERT)) {
 
 
@@ -1763,11 +1780,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 }
 
                 ClientInfoDetails clientDetails = (ClientInfoDetails) client.getDetails();
-
-                if (dhcpLeasedIps.containsKey("inet_addr")) {
-
-                }
-
                 if (dhcpLeasedIps.containsKey("hostname")) {
 
                     clientDetails.setHostName(dhcpLeasedIps.get("hostname"));
@@ -1814,6 +1826,23 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             Map<String, String> dhcpLeasedIps, MacAddress clientMacAddress) {
         ClientSession session = clientServiceInterface.getSessionOrNull(customerId, equipmentId, clientMacAddress);
 
+        //         "hwaddr": --
+        //         "inet_addr": --
+        //         "hostname": --
+        //         "fingerprint": --
+        //         "vendor_class": --
+        //         "lease_time": --
+        //         "subnet_mask": --
+        //         "gateway": --
+        //         "dhcp_server": --
+        //         "primary_dns": --
+        //         "secondary_dns": --
+        //         "db_status":
+        //         "device_name":
+        //         "device_type":
+        //         "manuf_id":
+
+
         if (session == null) {
             session = new ClientSession();
         }
@@ -1848,6 +1877,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 
         ClientDhcpDetails clientDhcpDetails = new ClientDhcpDetails(clientSessionDetails.getSessionId());
+
+        if (dhcpLeasedIps.containsKey("dhcp_server")) {
+            try {
+                clientDhcpDetails.setDhcpServerIp(InetAddress.getByName(dhcpLeasedIps.get("dhcp_server")));
+            } catch (UnknownHostException e) {
+                LOG.error("Invalid DhcpServer", e);
+            }
+        }
 
         if (dhcpLeasedIps.containsKey("lease_time")) {
             Integer leaseTime = Integer.valueOf(dhcpLeasedIps.get("lease_time"));
@@ -1888,8 +1925,28 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             }
         }
-        
 
+
+        if (dhcpLeasedIps.containsKey("vendor_class")) {
+            clientSessionDetails.setClassificationName(dhcpLeasedIps.get("vendor_class"));
+        }
+        
+        if (dhcpLeasedIps.containsKey("db_status")) {
+            LOG.info("DHCP_leased_IP db_status {}", dhcpLeasedIps.get("db_status"));
+        }
+        if (dhcpLeasedIps.containsKey("device_name")) {
+            LOG.info("DHCP_leased_IP device_name {}", dhcpLeasedIps.get("device_name"));
+        }
+        if (dhcpLeasedIps.containsKey("device_type")) {
+            LOG.info("DHCP_leased_IP device_type {}", dhcpLeasedIps.get("device_type"));
+        }
+        if (dhcpLeasedIps.containsKey("manuf_id")) {
+            LOG.info("DHCP_leased_IP manuf_id {}", dhcpLeasedIps.get("manuf_id"));
+        }
+        
+        
+        
+        
         clientSessionDetails.setDhcpDetails(clientDhcpDetails);
 
         session.getDetails().mergeSession(clientSessionDetails);

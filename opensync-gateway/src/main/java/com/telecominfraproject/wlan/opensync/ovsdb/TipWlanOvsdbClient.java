@@ -29,6 +29,9 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.OvsdbDao;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpDbStatus;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpDeviceType;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpManufId;
 import com.telecominfraproject.wlan.opensync.util.SslUtil;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.vmware.ovsdb.callback.ConnectionCallback;
@@ -348,7 +351,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             LOG.debug("Could not enable monitor for DHCP_leased_IP table. {}", e.getMessage());
 
         }
-        
+
         try {
             monitorCommandStateDbTable(ovsdbClient, key);
         } catch (OvsdbClientException e) {
@@ -375,7 +378,6 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                         List<Map<String, String>> delete = new ArrayList<>();
                         List<Map<String, String>> update = new ArrayList<>();
 
-
                         for (TableUpdate tableUpdate : tableUpdates.getTableUpdates().values()) {
                             for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
 
@@ -383,7 +385,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                                     Map<String, String> rowMap = new HashMap<>();
 
                                     rowUpdate.getOld().getColumns().entrySet().stream().forEach(c -> {
-                                        rowMap.put(c.getKey(), c.getValue().toString());
+                                        OvsdbDao.translateDhcpFpValueToString(c, rowMap);
                                     });
 
                                     delete.add(rowMap);
@@ -393,7 +395,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                                     Map<String, String> rowMap = new HashMap<>();
 
                                     rowUpdate.getNew().getColumns().entrySet().stream().forEach(c -> {
-                                        rowMap.put(c.getKey(), c.getValue().toString());
+                                        OvsdbDao.translateDhcpFpValueToString(c, rowMap);
                                     });
 
                                     insert.add(rowMap);
@@ -404,26 +406,26 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
                                     rowUpdate.getOld().getColumns().putAll(rowUpdate.getNew().getColumns());
                                     rowUpdate.getOld().getColumns().entrySet().stream().forEach(c -> {
-                                        rowMap.put(c.getKey(), c.getValue().toString());
+                                        OvsdbDao.translateDhcpFpValueToString(c, rowMap);
                                     });
 
                                     update.add(rowMap);
 
                                 }
                             }
-                        }                     
+                        }
 
                         if (!insert.isEmpty()) {
-                            extIntegrationInterface.dhcpLeasedIpDbTableUpdate(insert, key,RowUpdateOperation.INSERT);
+                            extIntegrationInterface.dhcpLeasedIpDbTableUpdate(insert, key, RowUpdateOperation.INSERT);
                         }
-                        
+
                         if (!delete.isEmpty()) {
-                            extIntegrationInterface.dhcpLeasedIpDbTableUpdate(delete, key,RowUpdateOperation.DELETE);
+                            extIntegrationInterface.dhcpLeasedIpDbTableUpdate(delete, key, RowUpdateOperation.DELETE);
 
                         }
-                        
+
                         if (!update.isEmpty()) {
-                            extIntegrationInterface.dhcpLeasedIpDbTableUpdate(update, key,RowUpdateOperation.MODIFY);
+                            extIntegrationInterface.dhcpLeasedIpDbTableUpdate(update, key, RowUpdateOperation.MODIFY);
 
                         }
 
@@ -436,8 +438,8 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
 
     }
-    
-    
+
+
     private void monitorCommandStateDbTable(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
 
         CompletableFuture<TableUpdates> csCf = ovsdbClient.monitor(OvsdbDao.ovsdbName,
@@ -750,20 +752,23 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
     @Override
     public String startDebugEngine(String apId, String gatewayHostname, Integer gatewayPort) {
-        LOG.debug("TipWlanOvsdbClient::startDebugEngine apId {} gatewayHostname {} gatewayPort {}", apId,gatewayHostname,gatewayPort);
-        
+        LOG.debug("TipWlanOvsdbClient::startDebugEngine apId {} gatewayHostname {} gatewayPort {}", apId,
+                gatewayHostname, gatewayPort);
+
         OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
         OvsdbClient ovsdbClient = session.getOvsdbClient();
-        
-        // TODO: need to establish what the command will be to start debug logging, on the AP side
+
+        // TODO: need to establish what the command will be to start debug
+        // logging, on the AP side
         // For now, use start_debug_engine
         // Map will have gateway_host and gateway_port for now
         // Delay/Duration TBD, just use 0s for now
-        Map<String,String> payload = new HashMap<>();
+        Map<String, String> payload = new HashMap<>();
         payload.put("gateway_hostname", gatewayHostname);
         payload.put("gateway_port", gatewayPort.toString());
-        ovsdbDao.configureCommands(ovsdbClient, OvsdbDao.StartDebugEngineApCommand, payload, Long.valueOf(0L), Long.valueOf(0L));
-        
+        ovsdbDao.configureCommands(ovsdbClient, OvsdbDao.StartDebugEngineApCommand, payload, Long.valueOf(0L),
+                Long.valueOf(0L));
+
         LOG.debug("Started debug engine on AP {} with gateway {} port {}", apId, gatewayHostname, gatewayPort);
         return "Started debug engine on AP " + apId + " with gateway " + gatewayHostname + " port " + gatewayPort;
     }
@@ -771,15 +776,16 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
     @Override
     public String stopDebugEngine(String apId) {
         LOG.debug("TipWlanOvsdbClient::stopDebugEngine apId {}", apId);
-        
+
         OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
         OvsdbClient ovsdbClient = session.getOvsdbClient();
-        
-        Map<String,String> payload = new HashMap<>();
-        ovsdbDao.configureCommands(ovsdbClient, OvsdbDao.StopDebugEngineApCommand, payload, Long.valueOf(0L), Long.valueOf(0L));
-        
+
+        Map<String, String> payload = new HashMap<>();
+        ovsdbDao.configureCommands(ovsdbClient, OvsdbDao.StopDebugEngineApCommand, payload, Long.valueOf(0L),
+                Long.valueOf(0L));
+
         LOG.debug("Stop debug engine on AP  {}", apId);
-        return "Stop debug engine on AP " + apId ;
+        return "Stop debug engine on AP " + apId;
     }
 
 }
