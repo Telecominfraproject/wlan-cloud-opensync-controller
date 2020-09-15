@@ -1425,7 +1425,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             int oBSS = 0;
             int iBSS = 0;
             int totalBusy = 0;
-            int durationMs = 0;
+            int totalDurationMs = 0;
             RadioType radioType = RadioType.UNSUPPORTED;
 
             List<Integer> noiseList = new ArrayList<>();
@@ -1434,19 +1434,19 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                     continue;
                 }
 
-                iBSS += surveySample.getBusySelf() + surveySample.getBusyTx();
-                oBSS += surveySample.getBusyRx();
-                totalBusy += surveySample.getBusy();
-                durationMs += surveySample.getDurationMs();
+                // we need to perform a weighted average here because the
+                // samples are in percentage, and may be of different durations
+                iBSS += (surveySample.getBusySelf() + surveySample.getBusyTx()) * surveySample.getDurationMs();
+                oBSS += surveySample.getBusyRx() * surveySample.getDurationMs();
+                totalBusy += surveySample.getBusy() * surveySample.getDurationMs();
+                totalDurationMs += surveySample.getDurationMs();
                 noiseList.add(getNegativeSignedIntFrom8BitUnsigned(surveySample.getNoise()));
                 RadioUtilization radioUtil = new RadioUtilization();
                 radioUtil.setTimestampSeconds((int) ((survey.getTimestampMs() + surveySample.getOffsetMs()) / 1000));
-                radioUtil.setAssocClientTx((100 * surveySample.getBusyTx()) / surveySample.getDurationMs());
-                radioUtil.setAssocClientRx((100 * surveySample.getBusyRx()) / surveySample.getDurationMs());
+                radioUtil.setAssocClientTx(surveySample.getBusyTx());
+                radioUtil.setAssocClientRx(surveySample.getBusySelf());
                 // TODO not totally correct, NonWifi = totalBusy - iBSS - oBSS
-                radioUtil.setNonWifi(
-                        (100 * (surveySample.getBusy() - surveySample.getBusyTx() - surveySample.getBusyRx()))
-                                / surveySample.getDurationMs());
+                radioUtil.setNonWifi(surveySample.getBusy() - surveySample.getBusyTx() - surveySample.getBusySelf());
 
                 switch (survey.getBand()) {
                     case BAND2G:
@@ -1480,20 +1480,22 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 avgNoiseFloor.put(radioType, noiseAvg);
                 apNodeMetrics.setNoiseFloor(radioType, noiseAvg);
             }
-            Double totalUtilization = (100D * totalBusy) / durationMs;
-            Double totalNonWifi = (100D * (totalBusy - iBSS - oBSS)) / durationMs;
+            if (totalDurationMs > 0) {
+                Long totalUtilization = Math.round((double) totalBusy / totalDurationMs);
+                Long totalNonWifi = Math.round((double) totalBusy - (double) iBSS - (double) oBSS / totalDurationMs);
 
-            EquipmentCapacityDetails cap = new EquipmentCapacityDetails();
-            cap.setUnavailableCapacity(totalNonWifi.intValue());
-            int avaiCapacity = 100 - totalNonWifi.intValue();
-            cap.setAvailableCapacity(avaiCapacity);
-            cap.setUsedCapacity(totalUtilization.intValue());
-            cap.setUnusedCapacity(avaiCapacity - totalUtilization.intValue());
-            cap.setTotalCapacity(100);
+                EquipmentCapacityDetails cap = new EquipmentCapacityDetails();
+                cap.setUnavailableCapacity(totalNonWifi.intValue());
+                int avaiCapacity = 100 - totalNonWifi.intValue();
+                cap.setAvailableCapacity(avaiCapacity);
+                cap.setUsedCapacity(totalUtilization.intValue());
+                cap.setUnusedCapacity(avaiCapacity - totalUtilization.intValue());
+                cap.setTotalCapacity(100);
 
-            if (radioType != RadioType.UNSUPPORTED) {
-                apNodeMetrics.setChannelUtilization(radioType, totalUtilization.intValue());
-                capacityDetails.put(radioType, cap);
+                if (radioType != RadioType.UNSUPPORTED) {
+                    apNodeMetrics.setChannelUtilization(radioType, totalUtilization.intValue());
+                    capacityDetails.put(radioType, cap);
+                }
             }
         }
 
@@ -2147,31 +2149,34 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
     ChannelInfo createChannelInfo(long equipmentId, RadioType radioType, List<SurveySample> surveySampleList,
             ChannelBandwidth channelBandwidth) {
+
+        LOG.debug("createChannelInfo::SurveySampleList {}", surveySampleList);
+
         int busyTx = 0; /* Tx */
         int busySelf = 0; /* Rx_self (derived from succesful Rx frames) */
         int busy = 0; /* Busy = Rx + Tx + Interference */
-        long durationMs = 0;
+        long totalDurationMs = 0;
         ChannelInfo channelInfo = new ChannelInfo();
 
         int[] noiseArray = new int[surveySampleList.size()];
         int index = 0;
-        for (SurveySample sample : surveySampleList) {            
-            LOG.debug("createChannelInfo::SurveySample {}", sample);
-            busyTx += sample.getBusyTx();
-            busySelf += sample.getBusySelf(); // successful Rx
-            busy += sample.getBusy();
+        for (SurveySample sample : surveySampleList) {
+            busyTx += sample.getBusyTx() * sample.getDurationMs();
+            busySelf += sample.getBusySelf() * sample.getDurationMs(); // successful
+                                                                       // Rx
+            busy += sample.getBusy() * sample.getDurationMs();
             channelInfo.setChanNumber(sample.getChannel());
             noiseArray[index++] = getNegativeSignedIntFrom8BitUnsigned(sample.getNoise());
-            durationMs += sample.getDurationMs();
+            totalDurationMs += sample.getDurationMs();
         }
 
         int iBSS = busyTx + busySelf;
-       
-        Double totalUtilization = (100D * busy) / durationMs;
-        Double totalNonWifi = (100D * (busy - iBSS )) / durationMs;
+
+        Long totalUtilization = Math.round((double) busy / totalDurationMs);
+        Long totalNonWifi = Math.round(((double) busy - (double) iBSS) / totalDurationMs);
 
         channelInfo.setTotalUtilization(totalUtilization.intValue());
-        channelInfo.setWifiUtilization(totalUtilization.intValue()- totalNonWifi.intValue());
+        channelInfo.setWifiUtilization(totalUtilization.intValue() - totalNonWifi.intValue());
         channelInfo.setBandwidth(channelBandwidth);
         if (surveySampleList.size() > 0) {
             channelInfo.setNoiseFloor((int) Math.round(DecibelUtils.getAverageDecibel(noiseArray)));
