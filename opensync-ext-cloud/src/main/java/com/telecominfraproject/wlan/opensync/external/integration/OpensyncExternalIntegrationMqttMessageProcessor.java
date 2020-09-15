@@ -1253,7 +1253,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
             if (deviceReport.hasCpuUtil() && deviceReport.getCpuUtil().hasCpuUtil()) {
                 Integer cpuUtilization = deviceReport.getCpuUtil().getCpuUtil();
-                apPerformance.setCpuUtilized(new byte[] { cpuUtilization.byteValue() });
+                apPerformance.setCpuUtilized(new int[] { cpuUtilization.intValue() });
             }
 
             apPerformance.setEthLinkState(EthernetLinkState.UP1000_FULL_DUPLEX);
@@ -1735,8 +1735,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                     }
 
                     if (cl.getStats().hasTxRate() && cl.getStats().hasRxRate()) {
-                        cMetrics.setRates(new byte[] { Double.valueOf(cl.getStats().getTxRate() / 1000).byteValue(),
-                                Double.valueOf(cl.getStats().getRxRate() / 1000).byteValue() });
+                        cMetrics.setRates(new int[] { Double.valueOf(cl.getStats().getTxRate() / 1000).intValue(),
+                                Double.valueOf(cl.getStats().getRxRate() / 1000).intValue() });
                     }
 
                     if (cl.getStats().hasTxErrors()) {
