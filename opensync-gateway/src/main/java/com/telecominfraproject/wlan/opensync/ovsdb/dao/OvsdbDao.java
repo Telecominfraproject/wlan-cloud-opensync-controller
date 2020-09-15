@@ -2379,11 +2379,12 @@ public class OvsdbDao {
 
     private void configureSingleSsid(OvsdbClient ovsdbClient, String ifName, String ssid, boolean ssidBroadcast,
             Map<String, String> security, String radioFreqBand, int vlanId, boolean rrmEnabled, boolean enable80211r,
-            int mobilityDomain, boolean enable80211v, String minHwMode, boolean enabled, int keyRefresh,
-            boolean uapsdEnabled, boolean apBridge, NetworkForwardMode networkForwardMode, String gateway, String inet,
-            Map<String, String> dns, String ipAssignScheme, List<MacAddress> macBlockList, boolean rateLimitEnable,
-            int ssidDlLimit, int ssidUlLimit, int clientDlLimit, int clientUlLimit, Map<String, String> captiveMap,
-            List<String> walledGardenAllowlist, Map<Short, Set<String>> bonjourServiceMap) {
+            int mobilityDomain, boolean enable80211v, boolean enable80211k, String minHwMode, boolean enabled,
+            int keyRefresh, boolean uapsdEnabled, boolean apBridge, NetworkForwardMode networkForwardMode,
+            String gateway, String inet, Map<String, String> dns, String ipAssignScheme, List<MacAddress> macBlockList,
+            boolean rateLimitEnable, int ssidDlLimit, int ssidUlLimit, int clientDlLimit, int clientUlLimit,
+            Map<String, String> captiveMap, List<String> walledGardenAllowlist,
+            Map<Short, Set<String>> bonjourServiceMap) {
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
@@ -2483,6 +2484,11 @@ public class OvsdbDao {
             customOptions.put("ssid_dl_limit", String.valueOf(ssidDlLimit * 1000));
             customOptions.put("client_dl_limit", String.valueOf(clientDlLimit * 1000));
             customOptions.put("client_ul_limit", String.valueOf(clientUlLimit * 1000));
+            if (enable80211k) {
+                customOptions.put("ieee80211k", String.valueOf(1));
+            } else {
+                customOptions.put("ieee80211k", String.valueOf(0));
+            }
 
             @SuppressWarnings("unchecked")
             com.vmware.ovsdb.protocol.operation.notation.Map<String, String> customMap = com.vmware.ovsdb.protocol.operation.notation.Map
@@ -2782,6 +2788,8 @@ public class OvsdbDao {
                 int mobilityDomain = 0;
                 // on by default
                 boolean enable80211v = true;
+                // on by default
+                boolean enable80211k = true;
 
                 if (ssidConfig.getRadioBasedConfigs() != null) {
                     if (ssidConfig.getRadioBasedConfigs().containsKey(radioType)
@@ -2800,6 +2808,9 @@ public class OvsdbDao {
                         }
                         if (ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211v() != null) {
                             enable80211v = ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211v();
+                        }
+                        if (ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211k() != null) {
+                            enable80211k = ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211k();
                         }
                     }
                 }
@@ -2881,10 +2892,11 @@ public class OvsdbDao {
                     }
 
                     configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(), ssidBroadcast, security, freqBand,
-                            ssidConfig.getVlanId(), rrmEnabled, enable80211r, mobilityDomain, enable80211v, minHwMode,
-                            enabled, keyRefresh, uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet,
-                            dns, ipAssignScheme, macBlockList, rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit,
-                            clientUlLimit, captiveMap, walledGardenAllowlist, bonjourServiceMap);
+                            ssidConfig.getVlanId(), rrmEnabled, enable80211r, mobilityDomain, enable80211v,
+                            enable80211k, minHwMode, enabled, keyRefresh, uapsdEnabled, apBridge,
+                            ssidConfig.getForwardMode(), gateway, inet, dns, ipAssignScheme, macBlockList,
+                            rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit, captiveMap,
+                            walledGardenAllowlist, bonjourServiceMap);
 
                 } catch (IllegalStateException e) {
                     // could not provision this SSID, but still can go on
