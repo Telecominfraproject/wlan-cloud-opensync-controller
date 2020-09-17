@@ -82,7 +82,6 @@ import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeStrea
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeStreamingStopEvent;
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.SIPCallReportReason;
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.SipCallStopReason;
-import com.telecominfraproject.wlan.systemevent.equipment.realtime.StreamingVideoType;
 import com.telecominfraproject.wlan.systemevent.models.SystemEvent;
 
 import sts.OpensyncStats;
@@ -1087,8 +1086,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 }
             }
             if (apStreamVideoServer.hasStreamingVideoType()) {
-                rtsStartEvent
-                        .setType(getCloudStreamingVideoTypeFromApReport(apStreamVideoServer.getStreamingVideoType()));
+                rtsStartEvent.setType(OvsdbToWlanCloudTypeMappingUtility
+                        .getCloudStreamingVideoTypeFromApReport(apStreamVideoServer.getStreamingVideoType()));
             }
 
             if (apStreamVideoServer.hasServerDnsName()) {
@@ -1140,8 +1139,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             }
 
             if (apStreamVideoSessionStart.hasStreamingVideoType()) {
-                rtsStartSessionEvent.setType(
-                        getCloudStreamingVideoTypeFromApReport(apStreamVideoSessionStart.getStreamingVideoType()));
+                rtsStartSessionEvent.setType(OvsdbToWlanCloudTypeMappingUtility
+                        .getCloudStreamingVideoTypeFromApReport(apStreamVideoSessionStart.getStreamingVideoType()));
 
             }
 
@@ -1181,7 +1180,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
             if (apStreamVideoStop.hasStreamingVideoType()) {
 
-                rtsStopEvent.setType(getCloudStreamingVideoTypeFromApReport(apStreamVideoStop.getStreamingVideoType()));
+                rtsStopEvent.setType(OvsdbToWlanCloudTypeMappingUtility
+                        .getCloudStreamingVideoTypeFromApReport(apStreamVideoStop.getStreamingVideoType()));
 
             }
 
@@ -1198,24 +1198,6 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
         }
     }
 
-    private StreamingVideoType getCloudStreamingVideoTypeFromApReport(
-            sts.OpensyncStats.StreamingVideoType apReportStreamingVideoType) {
-        switch (apReportStreamingVideoType) {
-            case NETFLIX:
-                return StreamingVideoType.NETFLIX;
-            case YOUTUBE:
-                return StreamingVideoType.YOUTUBE;
-
-            case PLEX:
-                return StreamingVideoType.PLEX;
-
-            case UNKNOWN:
-                return StreamingVideoType.UNKNOWN;
-
-            default:
-                return StreamingVideoType.UNSUPPORTED;
-        }
-    }
 
     void populateApNodeMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId, long equipmentId,
             long locationId) {
@@ -1255,7 +1237,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
             if (deviceReport.hasCpuUtil() && deviceReport.getCpuUtil().hasCpuUtil()) {
                 Integer cpuUtilization = deviceReport.getCpuUtil().getCpuUtil();
-                apPerformance.setCpuUtilized(new int[] { cpuUtilization.intValue() });
+                apPerformance.setCpuUtilized(new int[] { cpuUtilization });
             }
 
             apPerformance.setEthLinkState(EthernetLinkState.UP1000_FULL_DUPLEX);
@@ -1451,20 +1433,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 // TODO not totally correct, NonWifi = totalBusy - iBSS - oBSS
                 radioUtil.setNonWifi(surveySample.getBusy() - surveySample.getBusyTx() - surveySample.getBusySelf());
 
-                switch (survey.getBand()) {
-                    case BAND2G:
-                        radioType = RadioType.is2dot4GHz;
-                        break;
-                    case BAND5G:
-                        radioType = RadioType.is5GHz;
-                        break;
-                    case BAND5GL:
-                        radioType = RadioType.is5GHzL;
-                        break;
-                    case BAND5GU:
-                        radioType = RadioType.is5GHzU;
-                        break;
-                }
+                radioType = OvsdbToWlanCloudTypeMappingUtility
+                        .getRadioTypeFromOpensyncStatsRadioBandType(survey.getBand());
 
                 if (radioType != RadioType.UNSUPPORTED) {
 
@@ -1485,7 +1455,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             }
             if (totalDurationMs > 0) {
                 Long totalUtilization = Math.round((double) totalBusy / totalDurationMs);
-                Long totalNonWifi = Math.round((double) totalBusy - (double) iBSS - (double) oBSS / totalDurationMs);
+                Long totalNonWifi = Math.round((double) totalBusy - (double) iBSS - ((double) oBSS / totalDurationMs));
 
                 EquipmentCapacityDetails cap = new EquipmentCapacityDetails();
                 cap.setUnavailableCapacity(totalNonWifi.intValue());
@@ -1555,7 +1525,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
                 if (dnsProbeMetricFromAp.hasState()) {
                     StateUpDownError dnsState = OvsdbToWlanCloudTypeMappingUtility
-                            .getCloudDnsStateFromOpensyncStatsStateUpDown(dnsProbeMetricFromAp.getState());
+                            .getCloudMetricsStateFromOpensyncStatsStateUpDown(dnsProbeMetricFromAp.getState());
 
                     networkProbeMetrics.setDnsState(dnsState);
                     cloudDnsProbeMetric.setDnsState(dnsState);
@@ -1584,18 +1554,12 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 }
                 if (radiusMetrics.hasRadiusState()) {
 
-                    switch (radiusMetrics.getRadiusState()) {
-                        case SUD_down:
-                            networkProbeMetrics.setRadiusState(StateUpDownError.disabled);
-                            break;
-                        case SUD_up:
-                            networkProbeMetrics.setRadiusState(StateUpDownError.enabled);
-                            break;
-                        case SUD_error:
-                            networkProbeMetrics.setRadiusState(StateUpDownError.error);
-                            break;
-                        default:
-                            networkProbeMetrics.setRadiusState(StateUpDownError.UNSUPPORTED);
+                    if (radiusMetrics.hasRadiusState()) {
+                        StateUpDownError radiusState = OvsdbToWlanCloudTypeMappingUtility
+                                .getCloudMetricsStateFromOpensyncStatsStateUpDown(radiusMetrics.getRadiusState());
+
+                        networkProbeMetrics.setRadiusState(radiusState);
+
                     }
 
                 }
@@ -1607,20 +1571,12 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                     networkProbeMetrics.setVlanIF(vlanMetrics.getVlanIF());
                 }
                 if (vlanMetrics.hasDhcpState()) {
+                    StateUpDownError dhcpState = OvsdbToWlanCloudTypeMappingUtility
+                            .getCloudMetricsStateFromOpensyncStatsStateUpDown(vlanMetrics.getDhcpState());
 
-                    switch (vlanMetrics.getDhcpState()) {
-                        case SUD_down:
-                            networkProbeMetrics.setDhcpState(StateUpDownError.disabled);
-                            break;
-                        case SUD_up:
-                            networkProbeMetrics.setDhcpState(StateUpDownError.enabled);
-                            break;
-                        case SUD_error:
-                            networkProbeMetrics.setDhcpState(StateUpDownError.error);
-                            break;
-                        default:
-                            networkProbeMetrics.setDhcpState(StateUpDownError.UNSUPPORTED);
-                    }
+
+                    networkProbeMetrics.setDhcpState(dhcpState);
+
                 }
                 if (vlanMetrics.hasLatency()) {
                     networkProbeMetrics.setDhcpLatencyMs(vlanMetrics.getLatency());

@@ -3,8 +3,11 @@ package com.telecominfraproject.wlan.opensync.ovsdb.dao.utilities;
 import com.telecominfraproject.wlan.client.models.ClientType;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpDeviceType;
-//import com.telecominfraproject.wlan.servicemetric.apnode.models.StateUpDownError;
+
 import com.telecominfraproject.wlan.servicemetric.apnode.models.StateUpDownError;
+import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeState;
+import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeState.FailureReason;
+import com.telecominfraproject.wlan.systemevent.equipment.realtime.StreamingVideoType;
 
 import sts.OpensyncStats.RadioBandType;
 import sts.OpensyncStats.StateUpDown;
@@ -76,7 +79,7 @@ public class OvsdbToWlanCloudTypeMappingUtility {
         }
     }
 
-    public static StateUpDownError getCloudDnsStateFromOpensyncStatsStateUpDown(StateUpDown apNetworkProbeState) {
+    public static StateUpDownError getCloudMetricsStateFromOpensyncStatsStateUpDown(StateUpDown apNetworkProbeState) {
         switch (apNetworkProbeState) {
             case SUD_down:
                 return StateUpDownError.disabled;
@@ -89,6 +92,159 @@ public class OvsdbToWlanCloudTypeMappingUtility {
                 return StateUpDownError.UNSUPPORTED;
 
         }
+
+    }
+
+    public static StreamingVideoType getCloudStreamingVideoTypeFromApReport(
+            sts.OpensyncStats.StreamingVideoType apReportStreamingVideoType) {
+        switch (apReportStreamingVideoType) {
+            case NETFLIX:
+                return StreamingVideoType.NETFLIX;
+            case YOUTUBE:
+                return StreamingVideoType.YOUTUBE;
+
+            case PLEX:
+                return StreamingVideoType.PLEX;
+
+            case UNKNOWN:
+                return StreamingVideoType.UNKNOWN;
+
+            default:
+                return StreamingVideoType.UNSUPPORTED;
+        }
+    }
+
+    public static EquipmentUpgradeState getCloudEquipmentUpgradeStateFromOpensyncUpgradeStatus(int upgradeStatus) {
+
+        EquipmentUpgradeState ret = EquipmentUpgradeState.undefined;
+
+        switch (upgradeStatus) {
+            case 0:
+                break; // nothing
+            case -1:
+                ret = EquipmentUpgradeState.download_failed;
+                break;
+            case -3:
+                ret = EquipmentUpgradeState.download_failed;
+                break;
+            case -4:
+                ret = EquipmentUpgradeState.download_failed;
+                break;
+            case -5:
+                ret = EquipmentUpgradeState.download_failed;
+                break;
+            case -6:
+                ret = EquipmentUpgradeState.download_failed;
+                break;
+            case -7:
+                ret = EquipmentUpgradeState.apply_failed;
+                break;
+            case -8:
+                ret = EquipmentUpgradeState.apply_failed;
+                break;
+            case -9:
+                ret = EquipmentUpgradeState.apply_failed;
+                break;
+            case -10:
+                ret = EquipmentUpgradeState.apply_failed;
+                break;
+            case -11:
+                ret = EquipmentUpgradeState.apply_failed;
+                break;
+            case -12:
+                ret = EquipmentUpgradeState.reboot_failed;
+                break;
+            case -14:
+                ret = EquipmentUpgradeState.apply_failed;
+                break;
+            case -15:
+                ret = EquipmentUpgradeState.apply_failed;
+                break;
+            case -16:
+                ret = EquipmentUpgradeState.download_failed;
+                break;
+            case 10:
+                ret = EquipmentUpgradeState.download_initiated;
+                break;
+            case 11:
+                ret = EquipmentUpgradeState.download_complete;
+                break;
+            case 20:
+                ret = EquipmentUpgradeState.apply_initiated;
+                break;
+            case 21:
+                ret = EquipmentUpgradeState.apply_complete;
+                break;
+            case 30:
+                ret = EquipmentUpgradeState.apply_initiated;
+                break;
+            case 31:
+                ret = EquipmentUpgradeState.apply_complete;
+                break;
+            default:
+
+        }
+
+        return ret;
+
+    }
+
+    public static EquipmentUpgradeState.FailureReason getCloudEquipmentUpgradeFailureReasonFromOpensyncUpgradeStatus(
+            int upgradeStatus) {
+
+        EquipmentUpgradeState.FailureReason ret = null;
+
+        switch (upgradeStatus) {
+            case 0:
+                break; // nothing
+            case -1:
+                ret = FailureReason.downloadRequestRejected;
+                break;
+            case -3:
+                ret = FailureReason.unreachableUrl;
+                break;
+            case -4:
+                ret = FailureReason.downloadFailed;
+                break;
+            case -5:
+                ret = FailureReason.downloadFailed;
+                break;
+            case -6:
+                ret = FailureReason.validationFailed;
+                break;
+            case -7:
+                ret = FailureReason.validationFailed;
+                break;
+            case -8:
+                ret = FailureReason.applyFailed;
+                break;
+            case -9:
+                ret = FailureReason.applyFailed;
+                break;
+            case -10:
+                ret = FailureReason.validationFailed;
+                break;
+            case -11:
+                ret = FailureReason.applyFailed;
+                break;
+            case -12:
+                ret = FailureReason.rebootTimedout;
+                break;
+            case -14:
+                ret = FailureReason.applyFailed;
+                break;
+            case -15:
+                ret = FailureReason.applyFailed;
+                break;
+            case -16:
+                ret = FailureReason.downloadRequestFailedFlashFull;
+                break;
+
+            default:
+
+        }
+
+        return ret;
 
     }
 

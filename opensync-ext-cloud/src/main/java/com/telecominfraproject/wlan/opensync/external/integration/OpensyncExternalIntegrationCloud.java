@@ -1207,109 +1207,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
-        EquipmentUpgradeState fwUpgradeState = EquipmentUpgradeState.undefined;
+        int upgradeStatusFromAp = opensyncAPState.getUpgradeStatus();
+
+        EquipmentUpgradeState fwUpgradeState = OvsdbToWlanCloudTypeMappingUtility
+                .getCloudEquipmentUpgradeStateFromOpensyncUpgradeStatus(upgradeStatusFromAp);
         FailureReason fwUpgradeFailureReason = null;
-        switch (opensyncAPState.getUpgradeStatus()) {
-            case 0:
-                break; // nothing
-            case -1:
-                LOG.error("upgrade_status: Wrong arguments (app error)");
-                fwUpgradeState = EquipmentUpgradeState.download_failed;
-                fwUpgradeFailureReason = FailureReason.downloadRequestRejected;
-                break;
-            case -3:
-                LOG.error("upgrade_status: Incorrect URL)");
-                fwUpgradeState = EquipmentUpgradeState.download_failed;
-                fwUpgradeFailureReason = FailureReason.unreachableUrl;
-                break;
-            case -4:
-                LOG.error("upgrade_status: Failed firmware image download");
-                fwUpgradeState = EquipmentUpgradeState.download_failed;
-                fwUpgradeFailureReason = FailureReason.downloadFailed;
-                break;
-            case -5:
-                LOG.error("upgrade_status: Error while downloading firmware md5 sum file");
-                fwUpgradeState = EquipmentUpgradeState.download_failed;
-                fwUpgradeFailureReason = FailureReason.downloadFailed;
-                break;
-            case -6:
-                LOG.error("upgrade_status: md5 checksum file error");
-                fwUpgradeState = EquipmentUpgradeState.download_failed;
-                fwUpgradeFailureReason = FailureReason.validationFailed;
-                break;
-            case -7:
-                LOG.error("upgrade_status: Firmware image error");
-                fwUpgradeState = EquipmentUpgradeState.apply_failed;
-                fwUpgradeFailureReason = FailureReason.validationFailed;
-                break;
-            case -8:
-                LOG.error("upgrade_status: Flash erase failed");
-                fwUpgradeState = EquipmentUpgradeState.apply_failed;
-                fwUpgradeFailureReason = FailureReason.applyFailed;
-                break;
-            case -9:
-                LOG.error("upgrade_status: Flash write failed");
-                fwUpgradeState = EquipmentUpgradeState.apply_failed;
-                fwUpgradeFailureReason = FailureReason.applyFailed;
-                break;
-            case -10:
-                LOG.error("upgrade_status: Flash verification failed");
-                fwUpgradeState = EquipmentUpgradeState.apply_failed;
-                fwUpgradeFailureReason = FailureReason.validationFailed;
-                break;
-            case -11:
-                LOG.error("upgrade_status: Set new bootconfig failed");
-                fwUpgradeState = EquipmentUpgradeState.apply_failed;
-                fwUpgradeFailureReason = FailureReason.applyFailed;
-                break;
-            case -12:
-                LOG.error("upgrade_status: Device restart failed");
-                fwUpgradeState = EquipmentUpgradeState.reboot_failed;
-                fwUpgradeFailureReason = FailureReason.rebootTimedout;
-                break;
-            case -14:
-                LOG.error("upgrade_status: Flash BootConfig erase failed");
-                fwUpgradeState = EquipmentUpgradeState.apply_failed;
-                fwUpgradeFailureReason = FailureReason.applyFailed;
-                break;
-            case -15:
-                LOG.error("upgrade_status: Safe update is running");
-                fwUpgradeState = EquipmentUpgradeState.apply_failed;
-                fwUpgradeFailureReason = FailureReason.applyFailed;
-                break;
-            case -16:
-                LOG.error("upgrade_status: Not enough free space on device");
-                fwUpgradeState = EquipmentUpgradeState.download_failed;
-                fwUpgradeFailureReason = FailureReason.downloadRequestFailedFlashFull;
 
-                break;
-            case 10:
-                LOG.info("upgrade_status: Firmware download started for AP {}", apId);
-                fwUpgradeState = EquipmentUpgradeState.download_initiated;
-                break;
-            case 11:
-                LOG.info("upgrade_status: Firmware download successful, triggering upgrade.");
-                fwUpgradeState = EquipmentUpgradeState.download_complete;
-                break;
-            case 20:
-                LOG.info("upgrade_status: FW write on alt partition started");
-                fwUpgradeState = EquipmentUpgradeState.apply_initiated;
-                break;
-            case 21:
-                LOG.info("upgrade_status: FW image write successfully completed");
-                fwUpgradeState = EquipmentUpgradeState.apply_complete;
-                break;
-            case 30:
-                LOG.info("upgrade_status: Bootconfig partition update started");
-                fwUpgradeState = EquipmentUpgradeState.apply_initiated;
-                break;
-            case 31:
-                LOG.info("upgrade_status: Bootconfig partition update completed");
-                fwUpgradeState = EquipmentUpgradeState.apply_complete;
-                break;
-            default:
-                LOG.debug("upgrade_status: {}", opensyncAPState.getUpgradeStatus());
-
+        if (upgradeStatusFromAp < 0) {
+            fwUpgradeFailureReason = OvsdbToWlanCloudTypeMappingUtility
+                    .getCloudEquipmentUpgradeFailureReasonFromOpensyncUpgradeStatus(upgradeStatusFromAp);
         }
 
         Status protocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.PROTOCOL);
@@ -1687,7 +1593,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 
                         DhcpFpDeviceType dhcpFpDeviceType = DhcpFpDeviceType
-                                .getById(Integer.valueOf(dhcpLeasedIps.get("device_type")));
+                                .getByName(dhcpLeasedIps.get("device_type"));
                         ClientType clientType = OvsdbToWlanCloudTypeMappingUtility
                                 .getClientTypeForDhcpFpDeviceType(dhcpFpDeviceType);
 
@@ -1731,6 +1637,20 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     if (dhcpLeasedIps.containsKey("fingerprint")) {
 
                         clientDetails.setApFingerprint(dhcpLeasedIps.get("fingerprint"));
+                    }
+
+                    if (dhcpLeasedIps.containsKey("device_type")) {
+
+
+                        DhcpFpDeviceType dhcpFpDeviceType = DhcpFpDeviceType
+                                .getByName(dhcpLeasedIps.get("device_type"));
+                        ClientType clientType = OvsdbToWlanCloudTypeMappingUtility
+                                .getClientTypeForDhcpFpDeviceType(dhcpFpDeviceType);
+
+                        LOG.debug("Translate from ovsdb {} to cloud {}", dhcpFpDeviceType, clientType);
+
+                        clientDetails.setClientType(clientType.getId());
+
                     }
 
                     client.setDetails(clientDetails);
@@ -1790,6 +1710,19 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 if (dhcpLeasedIps.containsKey("fingerprint")) {
 
                     clientDetails.setApFingerprint(dhcpLeasedIps.get("fingerprint"));
+                }
+
+                if (dhcpLeasedIps.containsKey("device_type")) {
+
+
+                    DhcpFpDeviceType dhcpFpDeviceType = DhcpFpDeviceType.getByName(dhcpLeasedIps.get("device_type"));
+                    ClientType clientType = OvsdbToWlanCloudTypeMappingUtility
+                            .getClientTypeForDhcpFpDeviceType(dhcpFpDeviceType);
+
+                    LOG.debug("Translate from ovsdb {} to cloud {}", dhcpFpDeviceType, clientType);
+
+                    clientDetails.setClientType(clientType.getId());
+
                 }
 
                 client.setDetails(clientDetails);
@@ -1869,6 +1802,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             }
 
         }
+        
 
         if (dhcpLeasedIps.containsKey("hostname")) {
 
@@ -1928,23 +1862,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
 
 
-        if (dhcpLeasedIps.containsKey("vendor_class")) {
-            clientSessionDetails.setClassificationName(dhcpLeasedIps.get("vendor_class"));
-        }
-
-        if (dhcpLeasedIps.containsKey("db_status")) {
-            LOG.info("DHCP_leased_IP db_status {}", dhcpLeasedIps.get("db_status"));
-        }
         if (dhcpLeasedIps.containsKey("device_name")) {
-            LOG.info("DHCP_leased_IP device_name {}", dhcpLeasedIps.get("device_name"));
+            clientSessionDetails.setClassificationName(dhcpLeasedIps.get("device_name"));
         }
-        if (dhcpLeasedIps.containsKey("device_type")) {
-            LOG.info("DHCP_leased_IP device_type {}", dhcpLeasedIps.get("device_type"));
-        }
-        if (dhcpLeasedIps.containsKey("manuf_id")) {
-            LOG.info("DHCP_leased_IP manuf_id {}", dhcpLeasedIps.get("manuf_id"));
-        }
-
 
         clientSessionDetails.setDhcpDetails(clientDhcpDetails);
 
