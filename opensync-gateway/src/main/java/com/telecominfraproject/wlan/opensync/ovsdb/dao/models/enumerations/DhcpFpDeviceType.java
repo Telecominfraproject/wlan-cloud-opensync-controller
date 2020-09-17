@@ -16,19 +16,6 @@ public class DhcpFpDeviceType implements EnumWithId {
     private static final Map<Integer, DhcpFpDeviceType> ELEMENTS = new ConcurrentHashMap<>();
     private static final Map<String, DhcpFpDeviceType> ELEMENTS_BY_NAME = new ConcurrentHashMap<>();
 
-//    typedef enum {
-//        DHCP_FP_DEV_TYPE_MISC = 0,
-//        DHCP_FP_DEV_TYPE_MOBILE = 1,
-//        DHCP_FP_DEV_TYPE_PC = 2,
-//        DHCP_FP_DEV_TYPE_PRINTER = 3,
-//        DHCP_FP_DEV_TYPE_VIDEO = 4,
-//        DHCP_FP_DEV_TYPE_GAME = 5,
-//        DHCP_FP_DEV_TYPE_VOIP = 6,
-//        DHCP_FP_DEV_TYPE_MONITORING = 7,
-//        DHCP_FP_DEV_TYPE_MAX = 8
-//        } dhcp_fp_devicetype_t;
-
-
     public static final DhcpFpDeviceType DHCP_FP_DEV_TYPE_MISC = new DhcpFpDeviceType(0, "DHCP_FP_DEV_TYPE_MISC"),
             DHCP_FP_DEV_TYPE_MOBILE = new DhcpFpDeviceType(1, "DHCP_FP_DEV_TYPE_MOBILE"),
             DHCP_FP_DEV_TYPE_PC = new DhcpFpDeviceType(2, "DHCP_FP_DEV_TYPE_PC"),
@@ -120,16 +107,5 @@ public class DhcpFpDeviceType implements EnumWithId {
         return name;
     }
 
-    // @Override
-    // public int getId() {
-    // // TODO Auto-generated method stub
-    // return 0;
-    // }
-    //
-    // @Override
-    // public String getName() {
-    // // TODO Auto-generated method stub
-    // return null;
-    // }
 
 }

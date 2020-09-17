@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import com.telecominfraproject.wlan.client.models.ClientType;
 import com.telecominfraproject.wlan.core.model.equipment.AutoOrManualValue;
 import com.telecominfraproject.wlan.core.model.equipment.ChannelBandwidth;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
@@ -186,9 +187,9 @@ public class OvsdbDao {
 
     public static final String commandStateDbTable = "Command_State";
 
-    public static final String StartDebugEngineApCommand = "start_debug_engine";
+    public static final String StartDebugEngineApCommand = "startPortForwardingSession.sh";
 
-    public static final String StopDebugEngineApCommand = "stop_debug_engine";
+    public static final String StopDebugEngineApCommand = "stopSession.sh";
 
 
     public static void translateDhcpFpValueToString(Entry<String, Value> c, Map<String, String> rowMap) {
@@ -196,7 +197,6 @@ public class OvsdbDao {
             rowMap.put(c.getKey(), DhcpFpManufId.getById(Integer.valueOf(c.getValue().toString())).getName());
         } else if (c.getKey().equals("device_type")) {
             rowMap.put(c.getKey(), DhcpFpDeviceType.getById(Integer.valueOf(c.getValue().toString())).getName());
-
         } else if (c.getKey().equals("db_status")) {
             rowMap.put(c.getKey(), DhcpFpDbStatus.getById(Integer.valueOf(c.getValue().toString())).getName());
         } else {
