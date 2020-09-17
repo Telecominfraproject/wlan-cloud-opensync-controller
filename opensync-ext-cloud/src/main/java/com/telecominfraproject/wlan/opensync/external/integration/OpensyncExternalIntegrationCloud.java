@@ -25,6 +25,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.telecominfraproject.wlan.client.ClientServiceInterface;
 import com.telecominfraproject.wlan.client.info.models.ClientInfoDetails;
+import com.telecominfraproject.wlan.client.models.ClientType;
 import com.telecominfraproject.wlan.client.session.models.AssociationState;
 import com.telecominfraproject.wlan.client.session.models.ClientDhcpDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientSession;
@@ -66,6 +67,8 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAWLANNode;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpDeviceType;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.utilities.OvsdbToWlanCloudTypeMappingUtility;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileContainer;
@@ -164,22 +167,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         return ce;
     }
 
-    private RadioType getRadioTypeForOvsdbRadioFreqBand(String ovsdbRadioFreqBand) {
-
-        switch (ovsdbRadioFreqBand) {
-            case "2.4G":
-                return RadioType.is2dot4GHz;
-            case "5G":
-                return RadioType.is5GHz;
-            case "5GL":
-                return RadioType.is5GHzL;
-            case "5GU":
-                return RadioType.is5GHzU;
-            default:
-                return RadioType.UNSUPPORTED;
-        }
-
-    }
 
     @Override
     public void apConnected(String apId, ConnectNodeInfo connectNodeInfo) {
@@ -374,7 +361,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         for (String radioBand : connectNodeInfo.wifiRadioStates.keySet()) {
 
-            RadioType radioType = getRadioTypeForOvsdbRadioFreqBand(radioBand);
+            RadioType radioType = OvsdbToWlanCloudTypeMappingUtility.getRadioTypeForOvsdbRadioFreqBand(radioBand);
             if (!radioType.equals(RadioType.UNSUPPORTED)) {
                 radioProfileMap.put(radioType, RadioProfileConfiguration.createWithDefaults(radioType));
             }
@@ -1696,6 +1683,20 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         clientDetails.setApFingerprint(dhcpLeasedIps.get("fingerprint"));
                     }
 
+                    if (dhcpLeasedIps.containsKey("device_type")) {
+
+
+                        DhcpFpDeviceType dhcpFpDeviceType = DhcpFpDeviceType
+                                .getById(Integer.valueOf(dhcpLeasedIps.get("device_type")));
+                        ClientType clientType = OvsdbToWlanCloudTypeMappingUtility
+                                .getClientTypeForDhcpFpDeviceType(dhcpFpDeviceType);
+
+                        LOG.debug("Translate from ovsdb {} to cloud {}", dhcpFpDeviceType, clientType);
+
+                        clientDetails.setClientType(clientType.getId());
+
+                    }
+
                     client.setDetails(clientDetails);
 
                     client = clientServiceInterface.update(client);
@@ -1930,7 +1931,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         if (dhcpLeasedIps.containsKey("vendor_class")) {
             clientSessionDetails.setClassificationName(dhcpLeasedIps.get("vendor_class"));
         }
-        
+
         if (dhcpLeasedIps.containsKey("db_status")) {
             LOG.info("DHCP_leased_IP db_status {}", dhcpLeasedIps.get("db_status"));
         }
@@ -1943,10 +1944,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         if (dhcpLeasedIps.containsKey("manuf_id")) {
             LOG.info("DHCP_leased_IP manuf_id {}", dhcpLeasedIps.get("manuf_id"));
         }
-        
-        
-        
-        
+
+
         clientSessionDetails.setDhcpDetails(clientDhcpDetails);
 
         session.getDetails().mergeSession(clientSessionDetails);

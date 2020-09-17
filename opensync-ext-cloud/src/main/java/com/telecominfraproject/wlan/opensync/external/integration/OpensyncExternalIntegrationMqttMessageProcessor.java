@@ -41,6 +41,7 @@ import com.telecominfraproject.wlan.core.model.utils.DecibelUtils;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.Equipment;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.utilities.OvsdbToWlanCloudTypeMappingUtility;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileContainer;
@@ -338,8 +339,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                                 .setIsReassociation(clientAssocEvent.getAssocType().equals(AssocType.REASSOC));
                     }
                     if (clientAssocEvent.hasBand()) {
-                        clientSessionDetails
-                                .setRadioType(getRadioTypeFromOpensyncRadioBand(clientAssocEvent.getBand()));
+                        clientSessionDetails.setRadioType(OvsdbToWlanCloudTypeMappingUtility
+                                .getRadioTypeFromOpensyncStatsRadioBandType(clientAssocEvent.getBand()));
                     }
                     if (clientAssocEvent.hasRssi()) {
                         clientSessionDetails.setAssocRssi(clientAssocEvent.getRssi());
@@ -410,7 +411,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                         clientSessionDetails.setSessionId(clientAuthEvent.getSessionId());
                     }
                     if (clientAuthEvent.hasBand()) {
-                        clientSessionDetails.setRadioType(getRadioTypeFromOpensyncRadioBand(clientAuthEvent.getBand()));
+                        clientSessionDetails.setRadioType(OvsdbToWlanCloudTypeMappingUtility
+                                .getRadioTypeFromOpensyncStatsRadioBandType(clientAuthEvent.getBand()));
                     }
                     if (clientAuthEvent.hasSsid()) {
                         clientSessionDetails.setSsid(clientAuthEvent.getSsid());
@@ -470,8 +472,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                     ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
 
                     if (clientDisconnectEvent.hasBand()) {
-                        clientSessionDetails
-                                .setRadioType(getRadioTypeFromOpensyncRadioBand(clientDisconnectEvent.getBand()));
+                        clientSessionDetails.setRadioType(OvsdbToWlanCloudTypeMappingUtility
+                                .getRadioTypeFromOpensyncStatsRadioBandType(clientDisconnectEvent.getBand()));
                     }
                     if (clientDisconnectEvent.hasDevType()) {
                     }
@@ -1344,7 +1346,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
             }
 
-            RadioType radioType = getRadioTypeFromOpensyncRadioBand(clReport.getBand());
+            RadioType radioType = OvsdbToWlanCloudTypeMappingUtility
+                    .getRadioTypeFromOpensyncStatsRadioBandType(clReport.getBand());
             RadioStatistics radioStats = apNodeMetrics.getRadioStats(radioType);
             if (radioStats == null) {
                 radioStats = new RadioStatistics();
@@ -1551,23 +1554,12 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 }
 
                 if (dnsProbeMetricFromAp.hasState()) {
-                    switch (dnsProbeMetricFromAp.getState()) {
-                        case SUD_down:
-                            networkProbeMetrics.setDnsState(StateUpDownError.disabled);
-                            cloudDnsProbeMetric.setDnsState(StateUpDownError.disabled);
-                            break;
-                        case SUD_up:
-                            networkProbeMetrics.setDnsState(StateUpDownError.enabled);
-                            cloudDnsProbeMetric.setDnsState(StateUpDownError.enabled);
-                            break;
-                        case SUD_error:
-                            networkProbeMetrics.setDnsState(StateUpDownError.error);
-                            cloudDnsProbeMetric.setDnsState(StateUpDownError.error);
-                            break;
-                        default:
-                            networkProbeMetrics.setDnsState(StateUpDownError.UNSUPPORTED);
-                            cloudDnsProbeMetric.setDnsState(StateUpDownError.UNSUPPORTED);
-                    }
+                    StateUpDownError dnsState = OvsdbToWlanCloudTypeMappingUtility
+                            .getCloudDnsStateFromOpensyncStatsStateUpDown(dnsProbeMetricFromAp.getState());
+
+                    networkProbeMetrics.setDnsState(dnsState);
+                    cloudDnsProbeMetric.setDnsState(dnsState);
+
                 }
 
                 if (dnsProbeMetricFromAp.hasServerIP()) {
@@ -1690,7 +1682,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 // OvsdbDao.configureStats(OvsdbClient)
                 cMetrics.setPeriodLengthSec(periodLengthSec);
 
-                cMetrics.setRadioType(getRadioTypeFromOpensyncRadioBand(clReport.getBand()));
+                cMetrics.setRadioType(OvsdbToWlanCloudTypeMappingUtility
+                        .getRadioTypeFromOpensyncStatsRadioBandType(clReport.getBand()));
                 // we'll report each device as having a single (very long)
                 // session
                 long sessionId = WiFiSessionUtility.encodeWiFiAssociationId(clReport.getTimestampMs() / 1000L,
@@ -2015,7 +2008,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
             Set<String> clientMacs = new HashSet<>();
 
-            RadioType radioType = getRadioTypeFromOpensyncRadioBand(clientReport.getBand());
+            RadioType radioType = OvsdbToWlanCloudTypeMappingUtility
+                    .getRadioTypeFromOpensyncStatsRadioBandType(clientReport.getBand());
 
             SsidStatistics ssidStatistics = new SsidStatistics();
             // GET the Radio IF MAC (BSSID) from the activeBSSIDs
@@ -2203,7 +2197,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             RadioType radioType = null;
 
             if (survey.hasBand()) {
-                radioType = getRadioTypeFromOpensyncRadioBand(survey.getBand());
+                radioType = OvsdbToWlanCloudTypeMappingUtility
+                        .getRadioTypeFromOpensyncStatsRadioBandType(survey.getBand());
             } else {
                 continue;
             }
@@ -2256,26 +2251,6 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
     }
 
-    RadioType getRadioTypeFromOpensyncRadioBand(RadioBandType band) {
-        RadioType radioType = null;
-        switch (band) {
-            case BAND2G:
-                radioType = RadioType.is2dot4GHz;
-                break;
-            case BAND5G:
-                radioType = RadioType.is5GHz;
-                break;
-            case BAND5GU:
-                radioType = RadioType.is5GHzU;
-                break;
-            case BAND5GL:
-                radioType = RadioType.is5GHzL;
-                break;
-            default:
-                radioType = RadioType.UNSUPPORTED;
-        }
-        return radioType;
-    }
 
     int getNegativeSignedIntFrom8BitUnsigned(int unsignedValue) {
         byte b = (byte) Integer.parseInt(Integer.toHexString(unsignedValue), 16);
