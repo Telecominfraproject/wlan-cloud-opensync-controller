@@ -29,6 +29,7 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.OvsdbDao;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.utilities.OvsdbStringConstants;
 import com.telecominfraproject.wlan.opensync.util.SslUtil;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.vmware.ovsdb.callback.ConnectionCallback;
@@ -752,37 +753,103 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         LOG.debug("TipWlanOvsdbClient::startDebugEngine apId {} gatewayHostname {} gatewayPort {}", apId,
                 gatewayHostname, gatewayPort);
 
-        OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
-        OvsdbClient ovsdbClient = session.getOvsdbClient();
+        try {
+            OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
+            OvsdbClient ovsdbClient = session.getOvsdbClient();
 
-        // TODO: need to establish what the command will be to start debug
-        // logging, on the AP side
-        // For now, use start_debug_engine
-        // Map will have gateway_host and gateway_port for now
-        // Delay/Duration TBD, just use 0s for now
-        Map<String, String> payload = new HashMap<>();
-        payload.put("gateway_hostname", gatewayHostname);
-        payload.put("gateway_port", gatewayPort.toString());
-        ovsdbDao.configureCommands(ovsdbClient, OvsdbDao.StartDebugEngineApCommand, payload, Long.valueOf(0L),
-                Long.valueOf(0L));
+            // TODO: need to establish what the command will be to start debug
+            // logging, on the AP side
+            // For now, use start_debug_engine
+            // Map will have gateway_host and gateway_port for now
+            // Delay/Duration TBD, just use 0s for now
+            Map<String, String> payload = new HashMap<>();
+            payload.put("gateway_hostname", gatewayHostname);
+            payload.put("gateway_port", gatewayPort.toString());
+            ovsdbDao.configureCommands(ovsdbClient, OvsdbDao.StartDebugEngineApCommand, payload, Long.valueOf(0L),
+                    Long.valueOf(0L));
 
-        LOG.debug("Started debug engine on AP {} with gateway {} port {}", apId, gatewayHostname, gatewayPort);
-        return "Started debug engine on AP " + apId + " with gateway " + gatewayHostname + " port " + gatewayPort;
+            LOG.debug("Started debug engine on AP {} with gateway {} port {}", apId, gatewayHostname, gatewayPort);
+            return "Started debug engine on AP " + apId + " with gateway " + gatewayHostname + " port " + gatewayPort;
+        } catch (Exception e) {
+            LOG.error(
+                    "TipWlanOvsdbClient::startDebugEngine Failed to start debug engine on AP {} with gateway {} port {}",
+                    apId, gatewayHostname, gatewayPort, e);
+            return "Failed to start debug engine on AP " + apId + " with gateway " + gatewayHostname + " port "
+                    + gatewayPort;
+        }
     }
 
     @Override
     public String stopDebugEngine(String apId) {
         LOG.debug("TipWlanOvsdbClient::stopDebugEngine apId {}", apId);
 
-        OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
-        OvsdbClient ovsdbClient = session.getOvsdbClient();
+        try {
+            OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
+            OvsdbClient ovsdbClient = session.getOvsdbClient();
 
-        Map<String, String> payload = new HashMap<>();
-        ovsdbDao.configureCommands(ovsdbClient, OvsdbDao.StopDebugEngineApCommand, payload, Long.valueOf(0L),
-                Long.valueOf(0L));
+            Map<String, String> payload = new HashMap<>();
+            ovsdbDao.configureCommands(ovsdbClient, OvsdbDao.StopDebugEngineApCommand, payload, Long.valueOf(0L),
+                    Long.valueOf(0L));
 
-        LOG.debug("Stop debug engine on AP  {}", apId);
-        return "Stop debug engine on AP " + apId;
+            LOG.debug("TipWlanOvsdbClient::stopDebugEngine Stop debug engine on AP  {}", apId);
+            return "Stop debug engine on AP " + apId;
+        } catch (Exception e) {
+            LOG.error("TipWlanOvsdbClient::stopDebugEngine Failed to request stop debug engine on AP  {}", apId, e);
+            return "Failed to request stop debug engine on AP " + apId;
+        }
+    }
+
+    @Override
+    public String processRebootRequest(String apId, boolean switchBanks) {
+        try {
+            OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
+            OvsdbClient ovsdbClient = session.getOvsdbClient();
+
+            if (switchBanks) {
+                LOG.debug("TipWlanOvsdbClient::processRebootRequest Switch software bank on AP {}", apId);
+
+                ovsdbDao.rebootOrResetAp(ovsdbClient, OvsdbStringConstants.OVSDB_AWLAN_AP_SWITCH_SOFTWARE_BANK);
+                LOG.debug("TipWlanOvsdbClient::processRebootRequest triggered switch software bank on AP {}", apId);
+                return "Switch software bank on AP " + apId;
+
+            } else {
+                LOG.debug("TipWlanOvsdbClient::processRebootRequest Reboot AP {}", apId);
+
+                ovsdbDao.rebootOrResetAp(ovsdbClient, OvsdbStringConstants.OVSDB_AWLAN_AP_REBOOT);
+                LOG.debug("TipWlanOvsdbClient::processRebootRequest triggered reboot of AP {}", apId);
+                return "Reboot AP  " + apId;
+
+            }
+        } catch (Exception e) {
+            if (switchBanks) {
+                LOG.debug("TipWlanOvsdbClient::processRebootRequest failed to trigger switch software bank on AP {}",
+                        apId, e);
+                return "failed to trigger switch software bank on AP " + apId;
+            } else {
+                LOG.error("TipWlanOvsdbClient::processRebootRequest failed to trigger reboot of AP {}", apId, e);
+                return "Failed to trigger reboot of AP " + apId;
+            }
+        }
+
+    }
+
+    @Override
+    public String processFactoryResetRequest(String apId) {
+
+        LOG.debug("TipWlanOvsdbClient::processFactoryResetRequest for AP {}", apId);
+
+        try {
+            OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
+            OvsdbClient ovsdbClient = session.getOvsdbClient();
+            ovsdbDao.rebootOrResetAp(ovsdbClient, OvsdbStringConstants.OVSDB_AWLAN_AP_FACTORY_RESET);
+            LOG.debug("TipWlanOvsdbClient::processRebootRequest Triggered a factory reset of AP   {}", apId);
+            return "Triggered a factory reset of AP  " + apId;
+        } catch (Exception e) {
+            LOG.error("TipWlanOvsdbClient::processRebootRequest failed to trigger a factory reset of AP {}", apId, e);
+            return "failed to trigger a factory reset of AP " + apId;
+        }
+
+
     }
 
 }

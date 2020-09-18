@@ -14,6 +14,7 @@ import java.util.function.Consumer;
 
 import javax.servlet.http.HttpServletRequest;
 
+import com.telecominfraproject.wlan.core.model.role.PortalUserRole;
 import com.telecominfraproject.wlan.core.model.service.GatewayType;
 import com.telecominfraproject.wlan.core.client.PingClient;
 import com.telecominfraproject.wlan.datastore.exceptions.DsEntityNotFoundException;
@@ -41,6 +42,7 @@ import com.telecominfraproject.wlan.equipmentgateway.models.CEGWConfigChangeNoti
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWFirmwareDownloadRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWFirmwareFlashRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRadioResetRequest;
+import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRebootRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRouteCheck;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWStartDebugEngine;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWStopDebugEngine;
@@ -54,6 +56,7 @@ import com.telecominfraproject.wlan.routing.RoutingServiceInterface;
 import com.telecominfraproject.wlan.routing.models.EquipmentGatewayRecord;
 import com.telecominfraproject.wlan.routing.models.EquipmentRoutingRecord;
 import com.telecominfraproject.wlan.server.exceptions.ConfigurationException;
+import com.telecominfraproject.wlan.status.equipment.models.EquipmentResetMethod;
 
 /**
  * Opensync Gateway Controller - integration code for cloud deployment
@@ -191,6 +194,9 @@ public class OpensyncCloudGatewayController {
                     case RadioReset:
                         ret.add(processRadioReset(session, (CEGWRadioResetRequest) command));
                         break;
+                    case RebootRequest:
+                        ret.add(processRadioReboot(session, (CEGWRebootRequest) command));
+                        break;
                     case ClientBlocklistChangeNotification:
                         ret.add(sendClientBlocklistChangeNotification(session,
                                 (CEGWClientBlocklistChangeNotification) command));
@@ -221,6 +227,10 @@ public class OpensyncCloudGatewayController {
     }
 
     private EquipmentCommandResponse processRadioReset(OvsdbSession session, CEGWRadioResetRequest command) {
+        return sendMessage(session, command.getInventoryId(), command);
+    }
+
+    private EquipmentCommandResponse processRadioReboot(OvsdbSession session, CEGWRebootRequest command) {
         return sendMessage(session, command.getInventoryId(), command);
     }
 
@@ -339,6 +349,33 @@ public class OpensyncCloudGatewayController {
             response = new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
                     "Received Command " + command.getCommandType() + " for " + inventoryId, command,
                     registeredGateway.getHostname(), registeredGateway.getPort());
+        } else if (command instanceof CEGWRebootRequest) {
+
+            CEGWRebootRequest rebootRequest = (CEGWRebootRequest) command;
+            // Reboot the AP, Reset method specifies what kind of reboot, i.e.
+            // Factory reset, reboot without changes, etc.
+            EquipmentResetMethod resetMethod = rebootRequest.getPerformReset();
+            switch (resetMethod) {
+                case FactoryReset:
+                    response.setResultDetail(tipwlanOvsdbClient.processFactoryResetRequest(inventoryId));
+                    break;
+                case NoReset:
+                    if (rebootRequest.isUseInactiveBank()) {
+                        response.setResultDetail(tipwlanOvsdbClient.processRebootRequest(inventoryId, true));
+                    } else {
+                        response.setResultDetail(tipwlanOvsdbClient.processRebootRequest(inventoryId, false));
+                    }
+                    break;
+                case ConfigReset:
+                case UNSUPPORTED: // for UNSUPPORTED or default just respond
+                                  // with Unsupported Command
+                default:
+                    response = new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
+                            "Received Command " + command.getCommandType() + " for " + inventoryId, command,
+                            registeredGateway.getHostname(), registeredGateway.getPort());
+            }
+
+      
         }
 
         return response;

@@ -339,7 +339,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             LOG.info("ConnectNodeInfo {}", connectNodeInfo);
 
             if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY)) {
-                reconcileFwVersionToTrack(ce, connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY), connectNodeInfo.model);
+                reconcileFwVersionToTrack(ce,
+                        connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY),
+                        connectNodeInfo.model);
             } else {
                 LOG.info("Cloud based firmware upgrade is not supported for this AP");
             }
@@ -381,7 +383,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         Set<RadioType> radioTypes = radioProfileMap.keySet();
 
         for (RadioType radioType : radioTypes) {
-        	// SSID Profile set in AP Profile
+            // SSID Profile set in AP Profile
             Profile ssidProfile = new Profile();
             ssidProfile.setCustomerId(ce.getCustomerId());
             ssidProfile.setName(autoProvisionedSsid + radioType.name() + " for " + ce.getName());
@@ -400,11 +402,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             ssidProfile = profileServiceInterface.create(ssidProfile);
 
             apProfile.getChildProfileIds().add(ssidProfile.getId());
-            
+
             // Update AP Profile with ssidProfile and rfProfile
             apProfile = profileServiceInterface.update(apProfile);
         }
-        
+
         // RF Profile set in AP Profile
         Profile rfProfile = new Profile();
         rfProfile.setCustomerId(ce.getCustomerId());
@@ -412,15 +414,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         RfConfiguration rfConfig = RfConfiguration.createWithDefaults();
 
         // Override default values
-        for (RadioType radioType: radioTypes) {
-        	rfConfig.getRfConfig(radioType).setRf(rfProfile.getName());
+        for (RadioType radioType : radioTypes) {
+            rfConfig.getRfConfig(radioType).setRf(rfProfile.getName());
         }
-        
+
         rfProfile.setDetails(rfConfig);
         rfProfile = profileServiceInterface.create(rfProfile);
-        
+
         apProfile.getChildProfileIds().add(rfProfile.getId());
-        
+
         // Update AP Profile with ssidProfile and rfProfile
         apProfile = profileServiceInterface.update(apProfile);
 
@@ -484,16 +486,20 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             protocolStatusData.setReportedCC(CountryCode.ca);
             protocolStatusData.setReportedHwVersion(connectNodeInfo.platformVersion);
             if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY)) {
-                protocolStatusData.setReportedSwVersion(connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY));
-            } else if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_NAME_KEY)){
-                protocolStatusData.setReportedSwVersion(connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_NAME_KEY));
+                protocolStatusData.setReportedSwVersion(
+                        connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY));
+            } else if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_NAME_KEY)) {
+                protocolStatusData.setReportedSwVersion(
+                        connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_NAME_KEY));
             } else {
                 protocolStatusData.setReportedSwVersion("Unknown");
             }
             if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_INACTIVE_KEY)) {
-                protocolStatusData.setReportedSwAltVersion(connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_INACTIVE_KEY));
-            }else if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_NAME_KEY)){
-                protocolStatusData.setReportedSwVersion(connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_NAME_KEY));
+                protocolStatusData.setReportedSwAltVersion(
+                        connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_INACTIVE_KEY));
+            } else if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_NAME_KEY)) {
+                protocolStatusData.setReportedSwVersion(
+                        connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_NAME_KEY));
             } else {
                 protocolStatusData.setReportedSwVersion("Unknown");
             }
@@ -522,26 +528,30 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             EquipmentUpgradeStatusData fwUpgradeStatusData = (EquipmentUpgradeStatusData) statusRecord.getDetails();
             if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY)) {
-                fwUpgradeStatusData.setActiveSwVersion(connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY));
-            } else if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_NAME_KEY)){
-                fwUpgradeStatusData.setActiveSwVersion(connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_NAME_KEY));
+                fwUpgradeStatusData.setActiveSwVersion(
+                        connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY));
+            } else if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_NAME_KEY)) {
+                fwUpgradeStatusData
+                        .setActiveSwVersion(connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_NAME_KEY));
             } else {
                 fwUpgradeStatusData.setActiveSwVersion("Unknown");
             }
             if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_INACTIVE_KEY)) {
-                fwUpgradeStatusData.setAlternateSwVersion(connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_INACTIVE_KEY));
-            } else if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_NAME_KEY)){
-                fwUpgradeStatusData.setAlternateSwVersion(connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_NAME_KEY));
+                fwUpgradeStatusData.setAlternateSwVersion(
+                        connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_INACTIVE_KEY));
+            } else if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_NAME_KEY)) {
+                fwUpgradeStatusData.setAlternateSwVersion(
+                        connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_NAME_KEY));
             } else {
                 fwUpgradeStatusData.setAlternateSwVersion("Unknown");
             }
-            
+
             if (fwUpgradeStatusData.getUpgradeState() == null) {
-            fwUpgradeStatusData.setUpgradeState(EquipmentUpgradeState.undefined);
-            fwUpgradeStatusData.setUpgradeStartTime(null);
+                fwUpgradeStatusData.setUpgradeState(EquipmentUpgradeState.undefined);
+                fwUpgradeStatusData.setUpgradeStartTime(null);
 
             }
-      
+
             statusRecord.setDetails(fwUpgradeStatusData);
             statusServiceInterface.update(statusRecord);
 
@@ -772,9 +782,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         profileServiceInterface.getProfileWithChildren(equipmentConfig.getProfileId()));
 
                 ret.setApProfile(profileContainer.getOrNull(equipmentConfig.getProfileId()));
-                
-                ret.setRfProfile(
-                		profileContainer.getChildOfTypeOrNull(equipmentConfig.getProfileId(), ProfileType.rf));
+
+                ret.setRfProfile(profileContainer.getChildOfTypeOrNull(equipmentConfig.getProfileId(), ProfileType.rf));
 
                 ret.setSsidProfile(
                         profileContainer.getChildrenOfType(equipmentConfig.getProfileId(), ProfileType.ssid));
@@ -1260,15 +1269,26 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
 
         int upgradeStatusFromAp = opensyncAPState.getUpgradeStatus();
-
-        EquipmentUpgradeState fwUpgradeState = OvsdbToWlanCloudTypeMappingUtility
-                .getCloudEquipmentUpgradeStateFromOpensyncUpgradeStatus(upgradeStatusFromAp);
+        EquipmentUpgradeState fwUpgradeState = null;
         FailureReason fwUpgradeFailureReason = null;
 
-        if (upgradeStatusFromAp < 0) {
-            fwUpgradeFailureReason = OvsdbToWlanCloudTypeMappingUtility
-                    .getCloudEquipmentUpgradeFailureReasonFromOpensyncUpgradeStatus(upgradeStatusFromAp);
+        if (opensyncAPState.getFirmwareUrl().equals(OvsdbStringConstants.OVSDB_AWLAN_AP_FACTORY_RESET)
+                || opensyncAPState.getFirmwareUrl().equals(OvsdbStringConstants.OVSDB_AWLAN_AP_FACTORY_RESET)
+                || opensyncAPState.getFirmwareUrl().equals(OvsdbStringConstants.OVSDB_AWLAN_AP_FACTORY_RESET)
+                || opensyncAPState.getFirmwareUrl().equals("")) {
+            
+            fwUpgradeState = EquipmentUpgradeState.undefined;
+
+        } else {
+            fwUpgradeState = OvsdbToWlanCloudTypeMappingUtility
+                    .getCloudEquipmentUpgradeStateFromOpensyncUpgradeStatus(upgradeStatusFromAp);
+
+            if (upgradeStatusFromAp < 0) {
+                fwUpgradeFailureReason = OvsdbToWlanCloudTypeMappingUtility
+                        .getCloudEquipmentUpgradeFailureReasonFromOpensyncUpgradeStatus(upgradeStatusFromAp);
+            }
         }
+
 
         Status protocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.PROTOCOL);
         if (protocolStatus == null) {
@@ -1288,10 +1308,16 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         if (opensyncAPState.getVersionMatrix().containsKey(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY)) {
             reportedFwImageName = opensyncAPState.getVersionMatrix().get(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY);
+        } else {
+            reportedFwImageName = opensyncAPState.getVersionMatrix().get(OvsdbStringConstants.FW_IMAGE_NAME_KEY);
+
         }
-        
+
         if (opensyncAPState.getVersionMatrix().containsKey(OvsdbStringConstants.FW_IMAGE_INACTIVE_KEY)) {
             reportedAltFwImageName = opensyncAPState.getVersionMatrix().get(OvsdbStringConstants.FW_IMAGE_INACTIVE_KEY);
+        } else {
+            reportedAltFwImageName = opensyncAPState.getVersionMatrix().get(OvsdbStringConstants.FW_IMAGE_NAME_KEY);
+
         }
 
         EquipmentProtocolStatusData protocolStatusData = (EquipmentProtocolStatusData) protocolStatus.getDetails();
@@ -1334,7 +1360,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         .getDetails();
                 if (reportedFwImageName != null) {
                     if (!firmwareStatusData.getActiveSwVersion().equals(reportedFwImageName)
-                            || !firmwareStatusData.getUpgradeState().equals(fwUpgradeState) || !firmwareStatusData.getAlternateSwVersion().equals(reportedAltFwImageName)) {
+                            || !firmwareStatusData.getUpgradeState().equals(fwUpgradeState)
+                            || !firmwareStatusData.getAlternateSwVersion().equals(reportedAltFwImageName)) {
                         firmwareStatusData.setActiveSwVersion(reportedFwImageName);
                         firmwareStatusData.setAlternateSwVersion(reportedAltFwImageName);
                         firmwareStatusData.setUpgradeState(fwUpgradeState, fwUpgradeFailureReason);
@@ -1364,7 +1391,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         .getDetails();
                 if (reportedFwImageName != null) {
                     if (!firmwareStatusData.getActiveSwVersion().equals(reportedFwImageName)
-                            || !firmwareStatusData.getUpgradeState().equals(fwUpgradeState) || !firmwareStatusData.getAlternateSwVersion().equals(reportedAltFwImageName)) {
+                            || !firmwareStatusData.getUpgradeState().equals(fwUpgradeState)
+                            || !firmwareStatusData.getAlternateSwVersion().equals(reportedAltFwImageName)) {
                         firmwareStatusData.setActiveSwVersion(reportedFwImageName);
                         firmwareStatusData.setAlternateSwVersion(reportedAltFwImageName);
                         firmwareStatusData.setUpgradeState(fwUpgradeState, fwUpgradeFailureReason);
@@ -1394,7 +1422,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 EquipmentUpgradeStatusData firmwareStatusData = (EquipmentUpgradeStatusData) firmwareStatus
                         .getDetails();
                 if (reportedFwImageName != null) {
-                    if (!firmwareStatusData.getActiveSwVersion().equals(reportedFwImageName) ||  !firmwareStatusData.getAlternateSwVersion().equals(reportedAltFwImageName)
+                    if (!firmwareStatusData.getActiveSwVersion().equals(reportedFwImageName)
+                            || !firmwareStatusData.getAlternateSwVersion().equals(reportedAltFwImageName)
                             || !firmwareStatusData.getUpgradeState().equals(fwUpgradeState)
                             || !firmwareStatusData.getReason().equals(fwUpgradeFailureReason)) {
                         firmwareStatusData.setActiveSwVersion(reportedFwImageName);
@@ -1424,8 +1453,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         .getDetails();
                 if (reportedFwImageName != null) {
                     if (!firmwareStatusData.getActiveSwVersion().equals(reportedFwImageName)
-                            || !firmwareStatusData.getUpgradeState().equals(fwUpgradeState)) {
+                            || !firmwareStatusData.getUpgradeState().equals(fwUpgradeState)
+                            || !firmwareStatusData.getAlternateSwVersion().equals(reportedAltFwImageName)) {
                         firmwareStatusData.setActiveSwVersion(reportedFwImageName);
+                        firmwareStatusData.setAlternateSwVersion(reportedAltFwImageName);
                         firmwareStatusData.setUpgradeState(fwUpgradeState, fwUpgradeFailureReason);
                         firmwareStatus.setDetails(firmwareStatusData);
                         updates.add(firmwareStatus);
@@ -1861,7 +1892,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             }
 
         }
-        
+
 
         if (dhcpLeasedIps.containsKey("hostname")) {
 
@@ -1890,7 +1921,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientDhcpDetails.setGatewayIp(InetAddress.getByName(dhcpLeasedIps.get("gateway")));
             } catch (UnknownHostException e) {
                 LOG.error("Invalid Gateway IP", e);
-                
+
                 try {
                     clientDhcpDetails.setGatewayIp(InetAddress.getByAddress(dhcpLeasedIps.get("gateway").getBytes()));
                 } catch (UnknownHostException e1) {
@@ -1907,7 +1938,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             } catch (UnknownHostException e) {
                 LOG.error("Invalid Subnet Mask", e);
                 try {
-                    clientDhcpDetails.setGatewayIp(InetAddress.getByAddress(dhcpLeasedIps.get("subnet_mask").getBytes()));
+                    clientDhcpDetails
+                            .setGatewayIp(InetAddress.getByAddress(dhcpLeasedIps.get("subnet_mask").getBytes()));
                 } catch (UnknownHostException e1) {
                     // TODO Auto-generated catch block
                     LOG.error("Invalid Subnet Mask Address", e);
@@ -1921,7 +1953,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             } catch (UnknownHostException e) {
                 LOG.error("Invalid Primary DNS", e);
                 try {
-                    clientDhcpDetails.setGatewayIp(InetAddress.getByAddress(dhcpLeasedIps.get("primary_dns").getBytes()));
+                    clientDhcpDetails
+                            .setGatewayIp(InetAddress.getByAddress(dhcpLeasedIps.get("primary_dns").getBytes()));
                 } catch (UnknownHostException e1) {
                     // TODO Auto-generated catch block
                     LOG.error("Invalid Primary DNS Address", e);
@@ -1936,7 +1969,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             } catch (UnknownHostException e) {
                 LOG.error("Invalid Secondary DNS", e);
                 try {
-                    clientDhcpDetails.setGatewayIp(InetAddress.getByAddress(dhcpLeasedIps.get("secondary_dns").getBytes()));
+                    clientDhcpDetails
+                            .setGatewayIp(InetAddress.getByAddress(dhcpLeasedIps.get("secondary_dns").getBytes()));
                 } catch (UnknownHostException e1) {
                     // TODO Auto-generated catch block
                     LOG.error("Invalid Seconary DNS Address", e);

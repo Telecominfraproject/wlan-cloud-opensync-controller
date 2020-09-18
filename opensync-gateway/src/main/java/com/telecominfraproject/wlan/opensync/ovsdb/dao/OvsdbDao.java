@@ -1711,7 +1711,7 @@ public class OvsdbDao {
         // ;-)
 
         RfConfiguration rfConfig = (RfConfiguration) opensyncAPConfig.getRfProfile().getDetails();
-        
+
         ApElementConfiguration apElementConfiguration = (ApElementConfiguration) opensyncAPConfig.getCustomerEquipment()
                 .getDetails();
 
@@ -3646,6 +3646,29 @@ public class OvsdbDao {
             throw new RuntimeException(e);
 
         }
+    }
+
+    public void rebootOrResetAp(OvsdbClient ovsdbClient, String desiredApAction) {
+        try {
+            LOG.debug("rebootOrResetAp on AP perform {}.", desiredApAction, upgradeTimerSeconds);
+            List<Operation> operations = new ArrayList<>();
+            Map<String, Value> updateColumns = new HashMap<>();
+            updateColumns.put("firmware_url", new Atom<>(desiredApAction));
+            Row row = new Row(updateColumns);
+            operations.add(new Update(awlanNodeDbTable, row));
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+
+            OperationResult[] result = fResult.join();
+            for (OperationResult r : result) {
+                LOG.debug("Op Result {}", r);
+            }
+        } catch (OvsdbClientException e) {
+            LOG.error("Could not trigger {}", desiredApAction, e);
+            throw new RuntimeException(e);
+
+        }
+
+
     }
 
     public void removeAllStatsConfigs(OvsdbClient ovsdbClient) {

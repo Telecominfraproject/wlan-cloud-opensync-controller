@@ -10,9 +10,9 @@ public interface OvsdbClientInterface {
     Set<String> getConnectedClientIds();
 
     String changeRedirectorHost(String apId, String newRedirectorHost);
-    
+
     String startDebugEngine(String apId, String gatewayHostname, Integer gatewayPort);
-    
+
     String stopDebugEngine(String apId);
 
     void processConfigChanged(String apId);
@@ -25,4 +25,9 @@ public interface OvsdbClientInterface {
     String closeSession(String apId);
 
     String processFirmwareFlash(String apId, String firmwareVersion, String username);
+
+    String processRebootRequest(String apId, boolean switchBanks);
+    
+    String processFactoryResetRequest(String apId);
+
 }
