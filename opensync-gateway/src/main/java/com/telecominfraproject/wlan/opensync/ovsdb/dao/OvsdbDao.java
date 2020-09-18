@@ -22,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import com.telecominfraproject.wlan.client.models.ClientType;
 import com.telecominfraproject.wlan.core.model.equipment.AutoOrManualValue;
 import com.telecominfraproject.wlan.core.model.equipment.ChannelBandwidth;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
@@ -61,6 +60,8 @@ import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalAu
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalConfiguration;
 import com.telecominfraproject.wlan.profile.captiveportal.models.ManagedFileInfo;
 import com.telecominfraproject.wlan.profile.models.Profile;
+import com.telecominfraproject.wlan.profile.network.models.RfConfiguration;
+import com.telecominfraproject.wlan.profile.network.models.RfElementConfiguration;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusProfile;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusServer;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusServiceRegion;
@@ -1709,15 +1710,18 @@ public class OvsdbDao {
         // radios on this AP
         // ;-)
 
+        RfConfiguration rfConfig = (RfConfiguration) opensyncAPConfig.getRfProfile().getDetails();
+        
         ApElementConfiguration apElementConfiguration = (ApElementConfiguration) opensyncAPConfig.getCustomerEquipment()
                 .getDetails();
 
         for (RadioType radioType : apElementConfiguration.getRadioMap().keySet()) {
             Map<String, String> hwConfig = new HashMap<>();
 
+            RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(radioType);
             ElementRadioConfiguration elementRadioConfig = apElementConfiguration.getRadioMap().get(radioType);
             int channel = elementRadioConfig.getChannelNumber();
-            ChannelBandwidth bandwidth = elementRadioConfig.getChannelBandwidth();
+            ChannelBandwidth bandwidth = rfElementConfig.getChannelBandwidth();
             String ht_mode = null;
             switch (bandwidth) {
                 case is20MHz:
@@ -1738,10 +1742,10 @@ public class OvsdbDao {
                 default:
                     ht_mode = null;
             }
-            elementRadioConfig.getAutoChannelSelection();
+            rfElementConfig.getAutoChannelSelection();
 
             RadioConfiguration radioConfig = apElementConfiguration.getAdvancedRadioMap().get(radioType);
-            int beaconInterval = radioConfig.getBeaconInterval();
+            int beaconInterval = rfElementConfig.getBeaconInterval();
             boolean enabled = radioConfig.getRadioAdminState().equals(StateSetting.enabled);
 
             int txPower = 0;

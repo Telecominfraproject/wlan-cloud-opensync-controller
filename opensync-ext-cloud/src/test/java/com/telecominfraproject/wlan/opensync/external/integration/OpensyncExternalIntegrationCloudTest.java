@@ -865,7 +865,8 @@ public class OpensyncExternalIntegrationCloudTest {
         versionMatrix.put("FW_BUILD", "0");
         versionMatrix.put("FW_COMMIT", "notgit");
         versionMatrix.put("FW_PROFILE", "development");
-        versionMatrix.put("FW_IMAGE_NAME", "ea8300-2020-07-23-staging-fwupgrade-4da695d");
+        versionMatrix.put("FW_IMAGE_ACTIVE", "ea8300-2020-07-23-staging-fwupgrade-4da695d");
+        versionMatrix.put("FW_IMAGE_INACTIVE", "ea8300-2020-07-23-staging-fwupgrade-4da695d");
         versionMatrix.put("FW_VERSION", "0.1.0");
         versionMatrix.put("HOST", "runner@26793cf70348");
         versionMatrix.put("OPENSYNC", "2.0.5.0");
