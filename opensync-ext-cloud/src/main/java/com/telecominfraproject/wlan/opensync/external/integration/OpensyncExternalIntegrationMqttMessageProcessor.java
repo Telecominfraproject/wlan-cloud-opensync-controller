@@ -287,8 +287,6 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
     void processEventReport(Report report, int customerId, long equipmentId, String apId, long locationId) {
 
-        LOG.debug("Processing EventReport List {}", report.getEventReportList());
-
         report.getEventReportList().stream().forEach(e -> {
             LOG.info("Received EventReport {}", e);
 
@@ -1608,7 +1606,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
     void populateApClientMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId, long equipmentId,
             long locationId) {
-        LOG.debug("populateApClientMetrics {} for Customer {} Equipment {}", report.getClientsList(), customerId,
+        LOG.debug("populateApClientMetrics for Customer {} Equipment {}", customerId,
                 equipmentId);
 
         for (ClientReport clReport : report.getClientsList()) {
@@ -2099,8 +2097,6 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
     ChannelInfo createChannelInfo(long equipmentId, RadioType radioType, List<SurveySample> surveySampleList,
             ChannelBandwidth channelBandwidth) {
-
-        LOG.debug("createChannelInfo::SurveySampleList {}", surveySampleList);
 
         int busyTx = 0; /* Tx */
         int busySelf = 0; /* Rx_self (derived from succesful Rx frames) */

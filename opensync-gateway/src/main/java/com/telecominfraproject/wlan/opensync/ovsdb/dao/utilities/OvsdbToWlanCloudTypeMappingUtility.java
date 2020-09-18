@@ -14,12 +14,6 @@ import sts.OpensyncStats.StateUpDown;
 
 public class OvsdbToWlanCloudTypeMappingUtility {
 
-
-    public static final String OVSDB_FREQ_BAND_5G = "5G";
-    public static final String OVSDB_FREQ_BAND_5GL = "5GL";
-    public static final String OVSDB_FREQ_BAND_5GU = "5GU";
-    public static final String OVSDB_FREQ_BAND_2pt4G = "2.4G";
-
     public static ClientType getClientTypeForDhcpFpDeviceType(DhcpFpDeviceType dhcpFpDeviceType) {
 
         ClientType ret = ClientType.UNSUPPORTED;
@@ -50,13 +44,13 @@ public class OvsdbToWlanCloudTypeMappingUtility {
     public static RadioType getRadioTypeForOvsdbRadioFreqBand(String ovsdbRadioFreqBand) {
 
         switch (ovsdbRadioFreqBand) {
-            case OVSDB_FREQ_BAND_2pt4G:
+            case OvsdbStringConstants.OVSDB_FREQ_BAND_2pt4G:
                 return RadioType.is2dot4GHz;
-            case OVSDB_FREQ_BAND_5G:
+            case OvsdbStringConstants.OVSDB_FREQ_BAND_5G:
                 return RadioType.is5GHz;
-            case OVSDB_FREQ_BAND_5GL:
+            case OvsdbStringConstants.OVSDB_FREQ_BAND_5GL:
                 return RadioType.is5GHzL;
-            case OVSDB_FREQ_BAND_5GU:
+            case OvsdbStringConstants.OVSDB_FREQ_BAND_5GU:
                 return RadioType.is5GHzU;
             default:
                 return RadioType.UNSUPPORTED;
