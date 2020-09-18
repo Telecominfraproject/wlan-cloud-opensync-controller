@@ -39,13 +39,13 @@ import com.telecominfraproject.wlan.core.model.equipment.SecurityType;
 import com.telecominfraproject.wlan.core.model.equipment.WiFiSessionUtility;
 import com.telecominfraproject.wlan.core.model.utils.DecibelUtils;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
-import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.Equipment;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.utilities.OvsdbToWlanCloudTypeMappingUtility;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileContainer;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
+import com.telecominfraproject.wlan.profile.network.models.RfConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.RadioBasedSsidConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration.SecureMode;
@@ -2159,9 +2159,14 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 continue;
             }
 
+            ProfileContainer profileContainer = new ProfileContainer(
+                    profileServiceInterface.getProfileWithChildren(
+                    		equipmentServiceInterface.get(equipmentId).getProfileId()));
 
-            ChannelBandwidth channelBandwidth = ((ApElementConfiguration) equipmentServiceInterface.get(equipmentId)
-                    .getDetails()).getRadioMap().get(radioType).getChannelBandwidth();
+            RfConfiguration rfConfig = (RfConfiguration) profileContainer.getChildOfTypeOrNull(
+            		equipmentServiceInterface.get(equipmentId).getProfileId(), ProfileType.rf).getDetails();
+                        
+            ChannelBandwidth channelBandwidth = rfConfig.getRfConfig(radioType).getChannelBandwidth();
 
             Map<Integer, List<SurveySample>> sampleByChannelMap = new HashMap<>();
 
