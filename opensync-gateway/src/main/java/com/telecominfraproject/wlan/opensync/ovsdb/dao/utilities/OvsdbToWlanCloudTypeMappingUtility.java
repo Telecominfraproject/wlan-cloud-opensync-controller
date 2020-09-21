@@ -2,6 +2,7 @@ package com.telecominfraproject.wlan.opensync.ovsdb.dao.utilities;
 
 import com.telecominfraproject.wlan.client.models.ClientType;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
+import com.telecominfraproject.wlan.core.model.equipment.SecurityType;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpDeviceType;
 
 import com.telecominfraproject.wlan.servicemetric.apnode.models.StateUpDownError;
@@ -240,6 +241,19 @@ public class OvsdbToWlanCloudTypeMappingUtility {
 
         return ret;
 
+    }
+
+    public static SecurityType getCloudSecurityTypeFromOpensyncStats(sts.OpensyncStats.SecurityType statsSecurityType) {
+        switch (statsSecurityType) {
+            case SEC_OPEN:
+                return SecurityType.OPEN;
+            case SEC_PSK:
+                return SecurityType.PSK;
+            case SEC_RADIUS:
+                return SecurityType.RADIUS;
+            default:
+                return SecurityType.UNSUPPORTED;
+        }
     }
 
 }

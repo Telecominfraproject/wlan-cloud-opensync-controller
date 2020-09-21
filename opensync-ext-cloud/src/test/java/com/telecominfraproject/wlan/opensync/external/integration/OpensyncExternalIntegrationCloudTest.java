@@ -83,6 +83,7 @@ import sts.OpensyncStats.AssocType;
 import sts.OpensyncStats.Client;
 import sts.OpensyncStats.ClientReport;
 import sts.OpensyncStats.EventReport;
+import sts.OpensyncStats.EventReport.ClientAssocEvent;
 import sts.OpensyncStats.EventType;
 import sts.OpensyncStats.RadioBandType;
 import sts.OpensyncStats.Report;
@@ -769,6 +770,8 @@ public class OpensyncExternalIntegrationCloudTest {
 
     private List<EventReport> getOpensyncStatsEventReportsList() {
 
+
+        List<ClientAssocEvent> clientAssocEventList = new ArrayList<>();
         sts.OpensyncStats.EventReport.ClientAssocEvent.Builder clientAssocBuilder = EventReport.ClientAssocEvent
                 .getDefaultInstance().toBuilder();
         clientAssocBuilder.setAssocType(AssocType.ASSOC);
@@ -793,21 +796,28 @@ public class OpensyncExternalIntegrationCloudTest {
         clientAssocBuilder2.setSsid("ssid-1");
         clientAssocBuilder2.setStatus(1);
 
+        clientAssocEventList.add(clientAssocBuilder.build());
+        clientAssocEventList.add(clientAssocBuilder2.build());
+        
         List<EventReport> eventReportList = new ArrayList<>();
 
         EventReport.Builder eventReportBuilder = EventReport.getDefaultInstance().toBuilder();
-        eventReportBuilder.setClientAssocEvent(clientAssocBuilder.build());
-        eventReportBuilder.setEventType(EventType.CLIENT_ASSOC);
+
+        sts.OpensyncStats.EventReport.ClientSession.Builder clientSessionBuilder = sts.OpensyncStats.EventReport.ClientSession.getDefaultInstance().toBuilder();
+
+        clientSessionBuilder.setSessionId(1000L);
+
+        clientSessionBuilder.addAllClientAssocEvent(clientAssocEventList);
+        List<sts.OpensyncStats.EventReport.ClientSession> clientSessionList = new ArrayList<>();
+        clientSessionList.add(clientSessionBuilder.build());
+
+        eventReportBuilder.addAllClientSession(clientSessionList);
 
         eventReportList.add(eventReportBuilder.build());
 
-        eventReportBuilder = EventReport.getDefaultInstance().toBuilder();
-        eventReportBuilder.setClientAssocEvent(clientAssocBuilder2.build());
-        eventReportBuilder.setEventType(EventType.CLIENT_ASSOC);
-
-        eventReportList.add(eventReportBuilder.build());
 
         return eventReportList;
+
 
     }
 
