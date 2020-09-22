@@ -29,6 +29,7 @@ import com.telecominfraproject.wlan.client.session.models.ClientSession;
 import com.telecominfraproject.wlan.client.session.models.ClientSessionDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientSessionMetricDetails;
 import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherInterface;
+import com.telecominfraproject.wlan.core.model.entity.MinMaxAvgValueInt;
 import com.telecominfraproject.wlan.core.model.equipment.ChannelBandwidth;
 import com.telecominfraproject.wlan.core.model.equipment.DetectedAuthMode;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
@@ -69,6 +70,7 @@ import com.telecominfraproject.wlan.status.StatusServiceInterface;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSID;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSIDs;
 import com.telecominfraproject.wlan.status.equipment.report.models.EquipmentCapacityDetails;
+import com.telecominfraproject.wlan.status.equipment.report.models.EquipmentPerRadioUtilizationDetails;
 import com.telecominfraproject.wlan.status.equipment.report.models.OperatingSystemPerformance;
 import com.telecominfraproject.wlan.status.equipment.report.models.RadioUtilizationReport;
 import com.telecominfraproject.wlan.status.models.Status;
@@ -294,7 +296,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             for (sts.OpensyncStats.EventReport.ClientSession apEventClientSession : e.getClientSessionList()) {
 
                 LOG.info("Processing EventReport::ClientSession {}", apEventClientSession);
-                
+
                 processClientConnectEvent(customerId, equipmentId, locationId, e, apEventClientSession);
 
                 processClientDisconnectEvent(customerId, equipmentId, locationId, apEventClientSession);
@@ -1502,52 +1504,24 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             });
 
             apNodeMetrics.setClientMacAddresses(radioType, clientMacList);
-
-            // TODO: Radio Utilization will be calculated when the survey is
-            // enabled
-
             apNodeMetrics.setRadioUtilization(radioType, new ArrayList<RadioUtilization>());
 
         }
 
-        // Status radioUtilizationStatus =
-        // statusServiceInterface.getOrNull(customerId, equipmentId,
-        // StatusDataType.RADIO_UTILIZATION);
-        //
-        // if (radioUtilizationStatus != null) {
-        // RadioUtilizationReport radioUtilizationReport =
-        // (RadioUtilizationReport) radioUtilizationStatus
-        // .getDetails();
-        // }
-
         apNodeMetrics.setPeriodLengthSec(60);
 
-        // Now try to populate metrics for calculation of radio capacity
-        // see
-        // com.telecominfraproject.wlan.metrics.streaming.spark.equipmentreport.CapacityDStreamsConfig.toAggregatedStats(int,
-        // long, ApNodeMetric data)
-        // result.stats2g =
-        // toAggregatedRadioStats(data.getNoiseFloor2G(),data.getRadioUtilization2G());
-        // result.stats5g =
-        // toAggregatedRadioStats(data.getNoiseFloor5G(),data.getRadioUtilization5G());
-        // RadioUtilization
-        // private Integer assocClientTx;
-        // private Integer unassocClientTx;
-        // private Integer assocClientRx;
-        // private Integer unassocClientRx;
-        // private Integer nonWifi;
-        // private Integer timestampSeconds;
         Map<RadioType, Integer> avgNoiseFloor = new HashMap<>();
         new HashMap<>();
         Map<RadioType, EquipmentCapacityDetails> capacityDetails = new HashMap<>();
-        RadioUtilizationReport radioUtilizationReport = new RadioUtilizationReport();
+        Map<RadioType,EquipmentPerRadioUtilizationDetails> radioUtilizationDetailsMap = new HashMap<>();
 
         // populate it from report.survey
         for (Survey survey : report.getSurveyList()) {
 
-            int oBSS = 0;
-            int iBSS = 0;
-            int totalBusy = 0;
+            int busyRx = 0; /* Rx = Rx_obss + Rx_errr (self and obss errors) */
+            int busyTx = 0; /* Tx */
+            int busySelf = 0; /* Rx_self (derived from succesful Rx frames) */
+            int busy = 0; /* Busy = Rx + Tx + Interference */
             int totalDurationMs = 0;
             RadioType radioType = RadioType.UNSUPPORTED;
 
@@ -1559,62 +1533,67 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
                 // we need to perform a weighted average here because the
                 // samples are in percentage, and may be of different durations
-                iBSS += (surveySample.getBusySelf() + surveySample.getBusyTx()) * surveySample.getDurationMs();
-                oBSS += surveySample.getBusyRx() * surveySample.getDurationMs();
-                totalBusy += surveySample.getBusy() * surveySample.getDurationMs();
+
+
+                busyTx += surveySample.getBusyTx() * surveySample.getDurationMs();
+                busyRx += surveySample.getBusyRx() * surveySample.getDurationMs();
+                busy += surveySample.getBusy() * surveySample.getDurationMs();
+                busySelf += surveySample.getBusySelf() * surveySample.getDurationMs();
                 totalDurationMs += surveySample.getDurationMs();
                 noiseList.add(getNegativeSignedIntFrom8BitUnsigned(surveySample.getNoise()));
+
+
+            }
+            
+            if (totalDurationMs > 0) {
                 RadioUtilization radioUtil = new RadioUtilization();
-                radioUtil.setTimestampSeconds((int) ((survey.getTimestampMs() + surveySample.getOffsetMs()) / 1000));
-                radioUtil.setAssocClientTx(surveySample.getBusyTx());
-                radioUtil.setAssocClientRx(surveySample.getBusySelf());
-                // TODO not totally correct, NonWifi = totalBusy - iBSS - oBSS
-                radioUtil.setNonWifi(surveySample.getBusy() - surveySample.getBusyTx() - surveySample.getBusySelf());
+                radioUtil.setTimestampSeconds((int) ((survey.getTimestampMs()) / 1000));
+                int pctBusyTx = busyTx / totalDurationMs;
+                radioUtil.setAssocClientTx(pctBusyTx);
+                int pctBusyRx = busyRx / totalDurationMs;
+                radioUtil.setAssocClientRx(pctBusyRx);
+                double pctIBSS = (double) ((busyTx + busySelf) / totalDurationMs);
+                radioUtil.setIbss(pctIBSS);
+                int nonWifi = (busy - (busyTx + busyRx)) / totalDurationMs;
+                radioUtil.setNonWifi(nonWifi);
 
                 radioType = OvsdbToWlanCloudTypeMappingUtility
                         .getRadioTypeFromOpensyncStatsRadioBandType(survey.getBand());
-
                 if (radioType != RadioType.UNSUPPORTED) {
 
-                    if (!apNodeMetrics.getRadioUtilizationPerRadio().containsKey(radioType)) {
-                        List<RadioUtilization> radioUtilizationList = new ArrayList<>();
-                        radioUtilizationList.add(radioUtil);
-                        apNodeMetrics.getRadioUtilizationPerRadio().put(radioType, radioUtilizationList);
-                    } else {
-                        apNodeMetrics.getRadioUtilizationPerRadio().get(radioType).add(radioUtil);
-                    }
-                }
-            }
+                    List<RadioUtilization> radioUtilizationList = new ArrayList<>();
+                    radioUtilizationList.add(radioUtil);
+                    apNodeMetrics.getRadioUtilizationPerRadio().put(radioType, radioUtilizationList);
+                    int noiseAvg = (int) Math.round(DecibelUtils.getAverageDecibel(toIntArray(noiseList)));
+                    avgNoiseFloor.put(radioType, noiseAvg);
+                    apNodeMetrics.setNoiseFloor(radioType, noiseAvg);
+                    
+                    Long totalUtilization = Math.round((double) busy / totalDurationMs);
+                    Long totalNonWifi = totalUtilization - (busyTx + busyRx) / totalDurationMs;
 
-            if ((survey.getSurveyListCount() > 0) && (radioType != RadioType.UNSUPPORTED)) {
-                int noiseAvg = (int) Math.round(DecibelUtils.getAverageDecibel(toIntArray(noiseList)));
-                avgNoiseFloor.put(radioType, noiseAvg);
-                apNodeMetrics.setNoiseFloor(radioType, noiseAvg);
-            }
-            if (totalDurationMs > 0) {
-                Long totalUtilization = Math.round((double) totalBusy / totalDurationMs);
-                Long totalNonWifi = Math.round((double) totalBusy - (double) iBSS - ((double) oBSS / totalDurationMs));
-
-                EquipmentCapacityDetails cap = new EquipmentCapacityDetails();
-                cap.setUnavailableCapacity(totalNonWifi.intValue());
-                int avaiCapacity = 100 - totalNonWifi.intValue();
-                cap.setAvailableCapacity(avaiCapacity);
-                cap.setUsedCapacity(totalUtilization.intValue());
-                cap.setUnusedCapacity(avaiCapacity - totalUtilization.intValue());
-                cap.setTotalCapacity(100);
-
-                if (radioType != RadioType.UNSUPPORTED) {
+                    EquipmentCapacityDetails cap = new EquipmentCapacityDetails();
+                    cap.setUnavailableCapacity(totalNonWifi.intValue());
+                    int availableCapacity = (int) (100 - totalUtilization);
+                    cap.setAvailableCapacity(availableCapacity);
+                    cap.setUsedCapacity(totalUtilization.intValue());
+                    cap.setUnusedCapacity(availableCapacity - totalUtilization.intValue());
+                    cap.setTotalCapacity(100);
+                    
                     apNodeMetrics.setChannelUtilization(radioType, totalUtilization.intValue());
                     capacityDetails.put(radioType, cap);
+//                    EquipmentPerRadioUtilizationDetails details = new EquipmentPerRadioUtilizationDetails();
+//                    details.setWifiFromOtherBss(new MinMaxAvgValueInt());
+                    radioUtilizationDetailsMap.put(radioType, new EquipmentPerRadioUtilizationDetails());
+                    
                 }
+
             }
         }
 
-        new RadioStatistics();
-
         populateNetworkProbeMetrics(report, apNodeMetrics);
-
+        RadioUtilizationReport radioUtilizationReport = new RadioUtilizationReport();
         radioUtilizationReport.setAvgNoiseFloor(avgNoiseFloor);
+        radioUtilizationReport.setRadioUtilization(radioUtilizationDetailsMap);
         radioUtilizationReport.setCapacityDetails(capacityDetails);
 
         updateDeviceStatusRadioUtilizationReport(customerId, equipmentId, radioUtilizationReport);
