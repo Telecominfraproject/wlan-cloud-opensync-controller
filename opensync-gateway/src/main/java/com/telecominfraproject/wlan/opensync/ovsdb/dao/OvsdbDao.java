@@ -2383,7 +2383,7 @@ public class OvsdbDao {
             int keyRefresh, boolean uapsdEnabled, boolean apBridge, NetworkForwardMode networkForwardMode,
             String gateway, String inet, Map<String, String> dns, String ipAssignScheme, List<MacAddress> macBlockList,
             boolean rateLimitEnable, int ssidDlLimit, int ssidUlLimit, int clientDlLimit, int clientUlLimit,
-            int rtsCtsThreshold, Map<String, String> captiveMap, List<String> walledGardenAllowlist,
+            int rtsCtsThreshold, int fragThresholdBytes, int dtimPeriod, Map<String, String> captiveMap, List<String> walledGardenAllowlist,
             Map<Short, Set<String>> bonjourServiceMap) {
 
         List<Operation> operations = new ArrayList<>();
@@ -2486,6 +2486,12 @@ public class OvsdbDao {
             customOptions.put("client_ul_limit", String.valueOf(clientUlLimit * 1000));
             if (rtsCtsThreshold > 0) {
                 customOptions.put("rts_threshold", String.valueOf(rtsCtsThreshold));
+            }
+            if (fragThresholdBytes > 0) {
+                customOptions.put("frag_threshold", String.valueOf(fragThresholdBytes));
+            }
+            if (dtimPeriod > 0) {
+                customOptions.put("dtim_period", String.valueOf(dtimPeriod));
             }
 
             if (enable80211k) {
@@ -2769,14 +2775,14 @@ public class OvsdbDao {
                     ipAssignScheme = "dhcp";
                 }
 
-                ElementRadioConfiguration elementRadioConfiguration = apElementConfig.getRadioMap().get(radioType);
-
-
                 RadioConfiguration radioConfiguration = apElementConfig.getAdvancedRadioMap().get(radioType);
                 if (radioConfiguration == null) {
                     continue; // don't have a radio of this kind in the map
                 }
+                // TODO: Need this value from Profile/Config indicating intervals for beacons including TIM, i.e. every nth beacon
+                int dtimPeriod = 0;
                 int rtsCtsThreshold = radioConfiguration.getRtsCtsThreshold();
+                int fragThresholdBytes = radioConfiguration.getFragmentationThresholdBytes();
                 RadioMode radioMode = radioConfiguration.getRadioMode();
                 String minHwMode = "11n"; // min_hw_mode is 11ac, wifi 5, we can
                 // also take ++ (11ax) but 2.4GHz only
@@ -2903,7 +2909,7 @@ public class OvsdbDao {
                             ssidConfig.getVlanId(), rrmEnabled, enable80211r, mobilityDomain, enable80211v,
                             enable80211k, minHwMode, enabled, keyRefresh, uapsdEnabled, apBridge,
                             ssidConfig.getForwardMode(), gateway, inet, dns, ipAssignScheme, macBlockList,
-                            rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit, rtsCtsThreshold,
+                            rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit, rtsCtsThreshold,fragThresholdBytes,dtimPeriod,
                             captiveMap, walledGardenAllowlist, bonjourServiceMap);
 
                 } catch (IllegalStateException e) {
