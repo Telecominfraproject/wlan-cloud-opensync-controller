@@ -2484,15 +2484,10 @@ public class OvsdbDao {
             customOptions.put("ssid_dl_limit", String.valueOf(ssidDlLimit * 1000));
             customOptions.put("client_dl_limit", String.valueOf(clientDlLimit * 1000));
             customOptions.put("client_ul_limit", String.valueOf(clientUlLimit * 1000));
-            if (rtsCtsThreshold > 0) {
-                customOptions.put("rts_threshold", String.valueOf(rtsCtsThreshold));
-            }
-            if (fragThresholdBytes > 0) {
-                customOptions.put("frag_threshold", String.valueOf(fragThresholdBytes));
-            }
-            if (dtimPeriod > 0) {
-                customOptions.put("dtim_period", String.valueOf(dtimPeriod));
-            }
+            customOptions.put("rts_threshold", String.valueOf(rtsCtsThreshold));           
+            customOptions.put("frag_threshold", String.valueOf(fragThresholdBytes));
+            customOptions.put("dtim_period", String.valueOf(dtimPeriod));
+            
 
             if (enable80211k) {
                 customOptions.put("ieee80211k", String.valueOf(1));
@@ -2779,8 +2774,7 @@ public class OvsdbDao {
                 if (radioConfiguration == null) {
                     continue; // don't have a radio of this kind in the map
                 }
-                // TODO: Need this value from Profile/Config indicating intervals for beacons including TIM, i.e. every nth beacon
-                int dtimPeriod = 0;
+                int dtimPeriod = radioConfiguration.getDtimPeriod();
                 int rtsCtsThreshold = radioConfiguration.getRtsCtsThreshold();
                 int fragThresholdBytes = radioConfiguration.getFragmentationThresholdBytes();
                 RadioMode radioMode = radioConfiguration.getRadioMode();
