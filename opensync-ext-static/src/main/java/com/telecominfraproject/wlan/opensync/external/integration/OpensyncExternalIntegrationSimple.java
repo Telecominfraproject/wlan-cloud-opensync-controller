@@ -39,7 +39,7 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 	@Value("${tip.wlan.ovsdb.apProfileFileName:/app/config/ProfileAPExample.json}")
 	private String apProfileFileName;
 	
-	@Value("${tip.wlan.ovsdb.apProfileFileName:/app/config/ProfileRf.json}")
+	@Value("${tip.wlan.ovsdb.rfProfileFileName:/app/config/ProfileRf.json}")
 	private String rfProfileFileName;
 
 	@Value("${tip.wlan.ovsdb.ssidProfileFileName:/app/config/ProfileSsid.json}")
