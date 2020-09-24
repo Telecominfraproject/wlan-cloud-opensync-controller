@@ -38,6 +38,9 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 
 	@Value("${tip.wlan.ovsdb.apProfileFileName:/app/config/ProfileAPExample.json}")
 	private String apProfileFileName;
+	
+	@Value("${tip.wlan.ovsdb.apProfileFileName:/app/config/ProfileRf.json}")
+	private String rfProfileFileName;
 
 	@Value("${tip.wlan.ovsdb.ssidProfileFileName:/app/config/ProfileSsid.json}")
 	private String ssidProfileFileName;
@@ -86,6 +89,11 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 
 			com.telecominfraproject.wlan.profile.models.Profile apProfile = com.telecominfraproject.wlan.profile.models.Profile
 					.fromFile(apProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
+			
+			com.telecominfraproject.wlan.profile.models.Profile rfProfile = com.telecominfraproject.wlan.profile.models.Profile
+					.fromFile(rfProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
+			
+			apProfile.getChildProfileIds().add(rfProfile.getId());
 
 			List<com.telecominfraproject.wlan.profile.models.Profile> ssidProfiles = com.telecominfraproject.wlan.profile.models.Profile
 					.listFromFile(ssidProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
@@ -123,6 +131,7 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 			ret = new OpensyncAPConfig();
 			ret.setCustomerEquipment(equipment);
 			ret.setApProfile(apProfile);
+			ret.setRfProfile(rfProfile);
 			ret.setSsidProfile(ssidProfiles);
 			ret.setRadiusProfiles(radiusProfiles);
 			ret.setEquipmentLocation(location);
