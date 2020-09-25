@@ -45,7 +45,7 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 	@Value("${tip.wlan.ovsdb.ssidProfileFileName:/app/config/ProfileSsid.json}")
 	private String ssidProfileFileName;
 
-	@Value("${tip.wlan.ovsdb.ssidProfileFileName:/app/config/ProfileMetrics.json}")
+	@Value("${tip.wlan.ovsdb.metricsProfileFileName:/app/config/ProfileMetrics.json}")
 	private String metricsProfileFileName;
 
 	@Value("${tip.wlan.ovsdb.radiusProfileFileName:/app/config/ProfileRadius.json}")
