@@ -29,6 +29,7 @@ public class OpensyncAPConfig extends BaseJsonModel {
 
     private Equipment customerEquipment;
     private Profile apProfile;
+    private Profile rfProfile;
     private List<Profile> ssidProfile;
     private List<Profile> radiusProfiles;
     private Location equipmentLocation;
@@ -138,6 +139,14 @@ public class OpensyncAPConfig extends BaseJsonModel {
     public void setApProfile(Profile apProfile) {
         this.apProfile = apProfile;
     }
+    
+    public Profile getRfProfile() {
+    	return rfProfile;
+    }
+    
+    public void setRfProfile(Profile rfProfile) {
+    	this.rfProfile = rfProfile;
+    }
 
     public List<Profile> getSsidProfile() {
         return ssidProfile;
@@ -195,6 +204,8 @@ public class OpensyncAPConfig extends BaseJsonModel {
         }
         if (apProfile != null)
             ret.apProfile = apProfile.clone();
+        if (rfProfile != null)
+        	ret.rfProfile = rfProfile.clone();
         if (equipmentRouting != null)
             ret.equipmentRouting = equipmentRouting.clone();
         if (equipmentGateway != null)
