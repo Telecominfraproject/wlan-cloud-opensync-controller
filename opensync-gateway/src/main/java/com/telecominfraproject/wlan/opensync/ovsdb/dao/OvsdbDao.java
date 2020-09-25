@@ -60,6 +60,8 @@ import com.telecominfraproject.wlan.profile.bonjour.models.BonjourServiceSet;
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalAuthenticationType;
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalConfiguration;
 import com.telecominfraproject.wlan.profile.captiveportal.models.ManagedFileInfo;
+import com.telecominfraproject.wlan.profile.metrics.ServiceMetricConfigParameters;
+import com.telecominfraproject.wlan.profile.metrics.ServiceMetricsCollectionConfigProfile;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusProfile;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusServer;
@@ -2383,8 +2385,8 @@ public class OvsdbDao {
             int keyRefresh, boolean uapsdEnabled, boolean apBridge, NetworkForwardMode networkForwardMode,
             String gateway, String inet, Map<String, String> dns, String ipAssignScheme, List<MacAddress> macBlockList,
             boolean rateLimitEnable, int ssidDlLimit, int ssidUlLimit, int clientDlLimit, int clientUlLimit,
-            int rtsCtsThreshold, int fragThresholdBytes, int dtimPeriod, Map<String, String> captiveMap, List<String> walledGardenAllowlist,
-            Map<Short, Set<String>> bonjourServiceMap) {
+            int rtsCtsThreshold, int fragThresholdBytes, int dtimPeriod, Map<String, String> captiveMap,
+            List<String> walledGardenAllowlist, Map<Short, Set<String>> bonjourServiceMap) {
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
@@ -2484,10 +2486,10 @@ public class OvsdbDao {
             customOptions.put("ssid_dl_limit", String.valueOf(ssidDlLimit * 1000));
             customOptions.put("client_dl_limit", String.valueOf(clientDlLimit * 1000));
             customOptions.put("client_ul_limit", String.valueOf(clientUlLimit * 1000));
-            customOptions.put("rts_threshold", String.valueOf(rtsCtsThreshold));           
+            customOptions.put("rts_threshold", String.valueOf(rtsCtsThreshold));
             customOptions.put("frag_threshold", String.valueOf(fragThresholdBytes));
             customOptions.put("dtim_period", String.valueOf(dtimPeriod));
-            
+
 
             if (enable80211k) {
                 customOptions.put("ieee80211k", String.valueOf(1));
@@ -2903,8 +2905,8 @@ public class OvsdbDao {
                             ssidConfig.getVlanId(), rrmEnabled, enable80211r, mobilityDomain, enable80211v,
                             enable80211k, minHwMode, enabled, keyRefresh, uapsdEnabled, apBridge,
                             ssidConfig.getForwardMode(), gateway, inet, dns, ipAssignScheme, macBlockList,
-                            rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit, rtsCtsThreshold,fragThresholdBytes,dtimPeriod,
-                            captiveMap, walledGardenAllowlist, bonjourServiceMap);
+                            rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit, rtsCtsThreshold,
+                            fragThresholdBytes, dtimPeriod, captiveMap, walledGardenAllowlist, bonjourServiceMap);
 
                 } catch (IllegalStateException e) {
                     // could not provision this SSID, but still can go on
@@ -3225,6 +3227,38 @@ public class OvsdbDao {
             LOG.error("Error in configureWifiInet", e);
             throw new RuntimeException(e);
         }
+
+    }
+
+    public void configureStatsFromProfile(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
+
+
+        if (opensyncApConfig.getMetricsProfiles().isEmpty()) {
+            configureStats(ovsdbClient);
+        } else {
+
+            for (Profile metricsProfile : opensyncApConfig.getMetricsProfiles()) {
+
+
+                ServiceMetricsCollectionConfigProfile details = ((ServiceMetricsCollectionConfigProfile) metricsProfile
+                        .getDetails());
+
+                for (Entry<String, ServiceMetricConfigParameters> entry : details.getMetricConfigParameterMap()
+                        .entrySet()) {
+
+                    //TODO: implement me
+                    LOG.debug("Metrics Config Map Entry {}", entry);
+                    configureStats(ovsdbClient); // replace with profile values
+
+
+                }
+
+
+            }
+
+
+        }
+
 
     }
 

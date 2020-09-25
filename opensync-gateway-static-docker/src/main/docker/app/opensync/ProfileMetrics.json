@@ -1,0 +1,53 @@
+[
+{
+    "model_type": "Profile",
+    "id": 222,
+    "customerId": 2,
+    "profileType": "metrics",
+    "name": "Metrics-Profile-3-radios",
+    "details": {
+        "model_type": "ServiceMetricsCollectionConfigProfile",
+        "radioTypeList": [
+            "is2dot4GHz",
+            "is5GHzL",
+            "is5GHzU"
+        ],
+        "metricConfigParameterMap": {
+            "Neighbour": {
+                "model_type": "ServiceMetricConfigParameters",
+                "serviceMetricDataType": "Neighbour",
+                "samplingInterval": 30,
+                "reportingIntervalSeconds": 60
+            },
+            "ApSsid": {
+                "model_type": "ServiceMetricConfigParameters",
+                "serviceMetricDataType": "ApSsid",
+                "samplingInterval": 30,
+                "reportingIntervalSeconds": 60
+            },
+            "Channel": {
+                "model_type": "ServiceMetricConfigParameters",
+                "serviceMetricDataType": "Channel",
+                "samplingInterval": 30,
+                "reportingIntervalSeconds": 60
+            },
+            "ApNode": {
+                "model_type": "ServiceMetricConfigParameters",
+                "serviceMetricDataType": "ApNode",
+                "samplingInterval": 30,
+                "reportingIntervalSeconds": 60
+            },
+            "Client": {
+                "model_type": "ServiceMetricConfigParameters",
+                "serviceMetricDataType": "Client",
+                "samplingInterval": 30,
+                "reportingIntervalSeconds": 60
+            }
+        },
+        "profileType": "metrics"
+    },
+    "createdTimestamp": 1601066846980,
+    "lastModifiedTimestamp": 1601066846980,
+    "childProfileIds": []
+}
+]

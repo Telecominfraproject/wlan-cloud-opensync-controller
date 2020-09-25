@@ -764,6 +764,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 ret.setSsidProfile(
                         profileContainer.getChildrenOfType(equipmentConfig.getProfileId(), ProfileType.ssid));
+                
+                ret.setMetricsProfiles(profileContainer.getChildrenOfType(equipmentConfig.getProfileId(), ProfileType.metrics));
 
                 Set<Profile> radiusSet = new HashSet<>();
                 Set<Long> captiveProfileIds = new HashSet<>();

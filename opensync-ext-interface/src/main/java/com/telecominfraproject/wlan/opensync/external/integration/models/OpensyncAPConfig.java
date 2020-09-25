@@ -31,6 +31,7 @@ public class OpensyncAPConfig extends BaseJsonModel {
     private Profile apProfile;
     private Profile rfProfile;
     private List<Profile> ssidProfile;
+    private List<Profile> metricsProfile;
     private List<Profile> radiusProfiles;
     private Location equipmentLocation;
     private EquipmentRoutingRecord equipmentRouting;
@@ -195,6 +196,13 @@ public class OpensyncAPConfig extends BaseJsonModel {
             }
             ret.ssidProfile = ssidList;
         }
+        if (metricsProfile != null) {
+            List<Profile> metricsList = new ArrayList<Profile>();
+            for (Profile profile : metricsProfile) {
+                metricsList.add(profile.clone());
+            }
+            ret.metricsProfile = metricsList;
+        }
         if (bonjourGatewayProfiles != null) {
             List<Profile> bonjourGatewayProfilesList = new ArrayList<Profile>();
             for (Profile profile : bonjourGatewayProfiles) {
@@ -254,5 +262,13 @@ public class OpensyncAPConfig extends BaseJsonModel {
 
     public void setBlockedClients(List<MacAddress> blockedClients) {
         this.blockedClients = blockedClients;
+    }
+
+    public void setMetricsProfiles(List<Profile> metricsProfileList) {
+        metricsProfile = metricsProfileList;       
+    }
+    
+    public List<Profile> getMetricsProfiles() {
+        return metricsProfile;       
     }
 }

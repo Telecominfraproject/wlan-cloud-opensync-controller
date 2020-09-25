@@ -208,7 +208,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         }
 
         ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
-        ovsdbDao.configureStats(ovsdbClient);
+        ovsdbDao.configureStatsFromProfile(ovsdbClient, opensyncAPConfig);
 
         // Check if device stats is configured in Wifi_Stats_Config table,
         // provision it
@@ -273,7 +273,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         ovsdbDao.configureInterfaces(ovsdbClient);
         ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
-        ovsdbDao.configureStats(ovsdbClient);
+        ovsdbDao.configureStatsFromProfile(ovsdbClient,opensyncAPConfig);
 
         // Check if device stats is configured in Wifi_Stats_Config table,
         // provision it

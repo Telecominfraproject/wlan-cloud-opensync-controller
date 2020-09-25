@@ -130,7 +130,7 @@ public class OpensyncGatewayTipWlanOvsdbClientTest {
         Mockito.verify(ovsdbDao).removeAllStatsConfigs(ovsdbClient);
         Mockito.verify(ovsdbDao).configureWifiRadios(ovsdbClient, apConfig);
         Mockito.verify(ovsdbDao).configureSsids(ovsdbClient, apConfig);
-        Mockito.verify(ovsdbDao).configureStats(ovsdbClient);
+        Mockito.verify(ovsdbDao).configureStatsFromProfile(ovsdbClient, apConfig);
 
     }
 
