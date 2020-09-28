@@ -213,9 +213,9 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         // Check if device stats is configured in Wifi_Stats_Config table,
         // provision it
         // if needed
-        if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
-            ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
-        }
+//        if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
+//            ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
+//        }
 
         if (((ApNetworkConfiguration) opensyncAPConfig.getApProfile().getDetails()).getSyntheticClientEnabled()) {
             ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
@@ -278,13 +278,13 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         // Check if device stats is configured in Wifi_Stats_Config table,
         // provision it
         // if needed
-        if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
-            ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
-        }
-
-        if (((ApNetworkConfiguration) opensyncAPConfig.getApProfile().getDetails()).getSyntheticClientEnabled()) {
-            ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
-        }
+//        if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
+//            ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
+//        }
+//
+//        if (((ApNetworkConfiguration) opensyncAPConfig.getApProfile().getDetails()).getSyntheticClientEnabled()) {
+//            ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
+//        }
         LOG.debug("Finished processConfigChanged for {}", apId);
 
     }
