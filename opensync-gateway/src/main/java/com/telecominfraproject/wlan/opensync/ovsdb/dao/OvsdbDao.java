@@ -1,6 +1,7 @@
 package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -49,6 +50,8 @@ import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.CommandConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.InterfaceInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.PortInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiInetConfigInfo;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiOsuProvider;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiPasspointConfig;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiRadioConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiStatsConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiVifConfigInfo;
@@ -196,6 +199,10 @@ public class OvsdbDao {
     public static final String commandConfigDbTable = "Command_Config";
 
     public static final String commandStateDbTable = "Command_State";
+
+    public static final String wifiOsuProviderDbTable = "Wifi_OSU_Provider";
+
+    public static final String wifiPasspointConfigDbTable = "Wifi_Passpoint_Config";
 
     public static final String StartDebugEngineApCommand = "startPortForwardingSession.sh";
 
@@ -1360,6 +1367,74 @@ public class OvsdbDao {
 
         } catch (ExecutionException | InterruptedException | OvsdbClientException | TimeoutException e) {
             LOG.error("Error in getProvisionedWifiInetConfigs", e);
+            throw new RuntimeException(e);
+        }
+
+        return ret;
+    }
+
+    public Map<String, WifiPasspointConfig> getProvisionedWifiPasspointConfigs(OvsdbClient ovsdbClient) {
+        Map<String, WifiPasspointConfig> ret = new HashMap<>();
+
+        List<Operation> operations = new ArrayList<>();
+        List<Condition> conditions = new ArrayList<>();
+        List<String> columns = new ArrayList<>();
+        columns.addAll(Arrays.asList(WifiPasspointConfig.ovsdbColumns));
+
+
+        try {
+            LOG.debug("Retrieving WifiPasspointConfig:");
+
+            operations.add(new Select(wifiPasspointConfigDbTable, conditions, columns));
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            for (OperationResult res : result) {
+                LOG.debug("Op Result {}", res);
+            }
+
+            for (Row row : ((SelectResult) result[0]).getRows()) {
+                WifiPasspointConfig wifiPasspointConfig = new WifiPasspointConfig(row);
+                ret.put(wifiPasspointConfig.osuSsid, wifiPasspointConfig);
+            }
+
+            LOG.debug("Retrieved WifiPasspointConfig: {}", ret);
+
+        } catch (ExecutionException | InterruptedException | OvsdbClientException | TimeoutException e) {
+            LOG.error("Error in getWifiPasspointConfigs", e);
+            throw new RuntimeException(e);
+        }
+        return ret;
+    }
+
+
+    public Map<Uuid, WifiOsuProvider> getProvisionedWifiOsuProviders(OvsdbClient ovsdbClient) {
+        Map<Uuid, WifiOsuProvider> ret = new HashMap<>();
+        List<Operation> operations = new ArrayList<>();
+        List<Condition> conditions = new ArrayList<>();
+        List<String> columns = new ArrayList<>();
+        columns.addAll(Arrays.asList(WifiOsuProvider.ovsdbColumns));
+
+        try {
+            LOG.debug("Retrieving WifiOsuProvider:");
+
+            operations.add(new Select(wifiOsuProviderDbTable, conditions, columns));
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            for (OperationResult res : result) {
+                LOG.debug("Op Result {}", res);
+            }
+
+            for (Row row : ((SelectResult) result[0]).getRows()) {
+                WifiOsuProvider wifiOsuProvider = new WifiOsuProvider(row);
+                ret.put(wifiOsuProvider.uuid, wifiOsuProvider);
+            }
+
+            LOG.debug("Retrieved WifiOsuProvider: {}", ret);
+
+        } catch (ExecutionException | InterruptedException | OvsdbClientException | TimeoutException e) {
+            LOG.error("Error in getWifiOsuProviders", e);
             throw new RuntimeException(e);
         }
 
@@ -3235,6 +3310,37 @@ public class OvsdbDao {
             LOG.error("Error in configureWifiInet", e);
             throw new RuntimeException(e);
         }
+
+    }
+
+    public void configureWifiPasspoints(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
+
+        // TODO: Configure with information from Controller
+        Map<String, WifiPasspointConfig> passpointConfigs = getProvisionedWifiPasspointConfigs(ovsdbClient);
+        LOG.info("Current WifiPasspointConfigs {}", passpointConfigs);
+
+
+    }
+
+    public void configureWifiOsuProviders(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
+
+        // TODO: Configure with information from Controller
+        Map<Uuid, WifiOsuProvider> osuProviders = getProvisionedWifiOsuProviders(ovsdbClient);
+        LOG.info("Current WifiOsuProviders {}", osuProviders);
+
+    }
+
+    public void removeAllWifiPasspointConfigs(OvsdbClient ovsdbClient) {
+        // TODO: Delete PasspointConfigs
+        Map<String, WifiPasspointConfig> passpointConfigs = getProvisionedWifiPasspointConfigs(ovsdbClient);
+        LOG.info("Current WifiPasspointConfigs {}", passpointConfigs);
+
+    }
+
+    public void removeAllWifiOsuProviders(OvsdbClient ovsdbClient) {
+        // TODO: Delete OsuProviders
+        Map<Uuid, WifiOsuProvider> osuProviders = getProvisionedWifiOsuProviders(ovsdbClient);
+        LOG.info("Current WifiOsuProviders {}", osuProviders);
 
     }
 
