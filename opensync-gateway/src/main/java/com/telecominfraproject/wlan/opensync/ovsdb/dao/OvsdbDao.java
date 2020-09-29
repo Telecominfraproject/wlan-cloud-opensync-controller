@@ -22,12 +22,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import com.telecominfraproject.wlan.client.models.ClientType;
 import com.telecominfraproject.wlan.core.model.equipment.AutoOrManualValue;
 import com.telecominfraproject.wlan.core.model.equipment.ChannelBandwidth;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioBestApSettings;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
+import com.telecominfraproject.wlan.core.model.json.BaseJsonModel;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.ElementRadioConfiguration;
 import com.telecominfraproject.wlan.equipment.models.GettingDNS;
@@ -55,20 +55,28 @@ import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiVifConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpDbStatus;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpDeviceType;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpManufId;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.utilities.OvsdbStringConstants;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.utilities.OvsdbToWlanCloudTypeMappingUtility;
 import com.telecominfraproject.wlan.profile.bonjour.models.BonjourGatewayProfile;
 import com.telecominfraproject.wlan.profile.bonjour.models.BonjourServiceSet;
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalAuthenticationType;
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalConfiguration;
 import com.telecominfraproject.wlan.profile.captiveportal.models.ManagedFileInfo;
+import com.telecominfraproject.wlan.profile.metrics.ChannelUtilizationSurveyType;
 import com.telecominfraproject.wlan.profile.metrics.ServiceMetricConfigParameters;
+import com.telecominfraproject.wlan.profile.metrics.ServiceMetricRadioConfigParameters;
+import com.telecominfraproject.wlan.profile.metrics.ServiceMetricSurveyConfigParameters;
 import com.telecominfraproject.wlan.profile.metrics.ServiceMetricsCollectionConfigProfile;
+import com.telecominfraproject.wlan.profile.metrics.StatsReportFormat;
 import com.telecominfraproject.wlan.profile.models.Profile;
+import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusProfile;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusServer;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusServiceRegion;
 import com.telecominfraproject.wlan.profile.rf.models.RfConfiguration;
 import com.telecominfraproject.wlan.profile.rf.models.RfElementConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
+import com.telecominfraproject.wlan.servicemetric.models.ServiceMetricDataType;
 import com.vmware.ovsdb.exception.OvsdbClientException;
 import com.vmware.ovsdb.protocol.methods.RowUpdate;
 import com.vmware.ovsdb.protocol.methods.TableUpdate;
@@ -3239,9 +3247,13 @@ public class OvsdbDao {
     public void configureStatsFromProfile(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
 
 
+        LOG.debug("Metrics config from profile {}", opensyncApConfig.getMetricsProfiles());
+
         if (opensyncApConfig.getMetricsProfiles().isEmpty()) {
             configureStats(ovsdbClient);
         } else {
+
+            List<Operation> operations = new ArrayList<>();
 
             for (Profile metricsProfile : opensyncApConfig.getMetricsProfiles()) {
 
@@ -3249,17 +3261,124 @@ public class OvsdbDao {
                 ServiceMetricsCollectionConfigProfile details = ((ServiceMetricsCollectionConfigProfile) metricsProfile
                         .getDetails());
 
-                for (Entry<String, ServiceMetricConfigParameters> entry : details.getMetricConfigParameterMap()
-                        .entrySet()) {
+                for (ServiceMetricDataType dataType : details.getMetricConfigParameterMap().keySet()) {
 
-                    //TODO: implement me
-                    LOG.debug("Metrics Config Map Entry {}", entry);
-                    configureStats(ovsdbClient); // replace with profile values
+
+                    if (dataType.equals(ServiceMetricDataType.ApNode)
+                            || dataType.equals(ServiceMetricDataType.Neighbour)
+                            || dataType.equals(ServiceMetricDataType.Channel)) {
+
+
+                        details.getMetricConfigParameterMap().get(dataType).stream().forEach(c -> {
+                            ServiceMetricSurveyConfigParameters parameters = (ServiceMetricSurveyConfigParameters) c;
+
+
+                            Map<String, Integer> thresholdMap = new HashMap<>();
+                            thresholdMap.put("max_delay", parameters.getDelayMillisecondsThreshold());
+                            thresholdMap.put("util", parameters.getPercentUtilizationThreshold());
+
+                            @SuppressWarnings("unchecked")
+                            com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer> thresholds = com.vmware.ovsdb.protocol.operation.notation.Map
+                                    .of(thresholdMap);
+
+
+                            RadioType radioType = parameters.getRadioType();
+                            ChannelUtilizationSurveyType channelType = parameters.getChannelSurveyType();
+                            int scanInterval = parameters.getScanIntervalMillis();
+                            StatsReportFormat format = parameters.getStatsReportFormat();
+                            int reportingInterval = parameters.getReportingIntervalSeconds();
+                            int samplingInterval = parameters.getSamplingInterval();
+
+                            if (dataType.equals(ServiceMetricDataType.ApNode)
+                                    || dataType.equals(ServiceMetricDataType.Channel)) {
+                                provisionWifiStatsConfigFromProfile("survey", getAllowedChannels(ovsdbClient),
+                                        radioType, channelType, scanInterval, format, reportingInterval,
+                                        samplingInterval, operations, thresholds);
+                                if (dataType.equals(ServiceMetricDataType.ApNode)) {
+                                    // extra reports that are part of ApNode
+                                    // metric
+                                    if (channelType.equals(ChannelUtilizationSurveyType.ON_CHANNEL)) {
+                                        provisionWifiStatsConfigFromProfile("device", reportingInterval,
+                                                samplingInterval, operations);
+                                        if (((ApNetworkConfiguration) opensyncApConfig.getApProfile().getDetails())
+                                                .getSyntheticClientEnabled()) {
+                                            provisionWifiStatsConfigFromProfile("network_probe", reportingInterval,
+                                                    samplingInterval, operations);
+                                        }
+                                    }
+
+
+                                }
+                            } else if (dataType.equals(ServiceMetricDataType.Neighbour)) {
+                                provisionWifiStatsConfigFromProfile("neighbor", getAllowedChannels(ovsdbClient),
+                                        radioType, channelType, scanInterval, format, reportingInterval,
+                                        samplingInterval, operations, thresholds);
+                            }
+
+
+                        });
+
+
+                    } else if (dataType.equals(ServiceMetricDataType.ApSsid)
+                            || dataType.equals(ServiceMetricDataType.Client)) {
+                        details.getMetricConfigParameterMap().get(dataType).stream().forEach(c -> {
+                            ServiceMetricRadioConfigParameters parameters = (ServiceMetricRadioConfigParameters) c;
+
+                            RadioType radioType = parameters.getRadioType();
+                            int reportingInterval = parameters.getReportingIntervalSeconds();
+                            int samplingInterval = parameters.getSamplingInterval();
+
+                            provisionWifiStatsConfigFromProfile("client", radioType, reportingInterval,
+                                    samplingInterval, operations);
+
+                            // TODO: add when schema supports
+                            // provisionWifiStatsConfigFromProfile("event",
+                            // reportingInterval,
+                            // samplingInterval, operations);
+
+                            provisionWifiStatsConfigFromProfile("video_voice", reportingInterval, samplingInterval,
+                                    operations);
+                            LOG.debug("{}", BaseJsonModel.toPrettyJsonString(parameters));
+                        });
+                    } else {
+                        details.getMetricConfigParameterMap().get(dataType).stream().forEach(c -> {
+                            ServiceMetricConfigParameters parameters = (ServiceMetricConfigParameters) c;
+                            int reportingInterval = parameters.getReportingIntervalSeconds();
+                            int samplingInterval = parameters.getSamplingInterval();
+                            provisionWifiStatsConfigFromProfile("video_voice", reportingInterval, samplingInterval,
+                                    operations);
+                            // TODO: add when schema supports
+                            // provisionWifiStatsConfigFromProfile("event",
+                            // reportingInterval,
+                            // samplingInterval, operations);
+
+                            LOG.debug("{}", BaseJsonModel.toPrettyJsonString(parameters));
+                        });
+                    }
 
 
                 }
 
 
+            }
+
+            if (!operations.isEmpty()) {
+                LOG.debug("Sending batch of operations : {} ", operations);
+
+                try {
+                    CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+                    OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("Updated {}:", wifiStatsConfigDbTable);
+
+                        for (OperationResult res : result) {
+                            LOG.debug("Op Result {}", res);
+                        }
+                    }
+                } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
             }
 
 
@@ -3268,6 +3387,111 @@ public class OvsdbDao {
 
     }
 
+    private void provisionWifiStatsConfigFromProfile(String statsType, RadioType radioType, int reportingInterval,
+            int samplingInterval, List<Operation> operations) {
+
+
+        Map<String, Value> rowColumns = new HashMap<>();
+        rowColumns.put("radio_type",
+                new Atom<>(OvsdbToWlanCloudTypeMappingUtility.getOvsdbRadioFreqBandForRadioType(radioType)));
+        rowColumns.put("reporting_interval", new Atom<>(reportingInterval));
+        rowColumns.put("report_type", new Atom<>("raw"));
+        rowColumns.put("sampling_interval", new Atom<>(samplingInterval));
+        rowColumns.put("stats_type", new Atom<>(statsType));
+
+        Row updateRow = new Row(rowColumns);
+
+        Insert newStatConfig = new Insert(wifiStatsConfigDbTable, updateRow);
+        if (!operations.contains(newStatConfig)) {
+            operations.add(newStatConfig);
+        }
+
+
+    }
+
+    private void provisionWifiStatsConfigFromProfile(String statsType, int reportingInterval, int samplingInterval,
+            List<Operation> operations) {
+
+
+        Map<String, Value> rowColumns = new HashMap<>();
+        rowColumns.put("radio_type", new Atom<>(OvsdbStringConstants.OVSDB_FREQ_BAND_2pt4G));
+        rowColumns.put("reporting_interval", new Atom<>(reportingInterval));
+        rowColumns.put("report_type", new Atom<>("raw"));
+        rowColumns.put("sampling_interval", new Atom<>(samplingInterval));
+        rowColumns.put("stats_type", new Atom<>(statsType));
+
+        Row updateRow = new Row(rowColumns);
+
+        Insert newStatConfig = new Insert(wifiStatsConfigDbTable, updateRow);
+        if (!operations.contains(newStatConfig)) {
+            // don't want the same stat 2x
+            operations.add(newStatConfig);
+        }
+
+
+    }
+
+
+    private void provisionWifiStatsConfigFromProfile(String statsType, Map<String, Set<Integer>> allowedChannels,
+            RadioType radioType, ChannelUtilizationSurveyType channelType, int scanInterval, StatsReportFormat format,
+            int reportingInterval, int samplingInterval, List<Operation> operations,
+            com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer> thresholds) {
+
+
+        if (channelType.equals(ChannelUtilizationSurveyType.ON_CHANNEL)) {
+
+            Map<String, Value> rowColumns = new HashMap<>();
+            rowColumns.put("radio_type",
+                    new Atom<>(OvsdbToWlanCloudTypeMappingUtility.getOvsdbRadioFreqBandForRadioType(radioType)));
+            rowColumns.put("reporting_interval", new Atom<>(reportingInterval));
+            rowColumns.put("report_type", new Atom<>("raw"));
+            rowColumns.put("sampling_interval", new Atom<>(samplingInterval));
+            rowColumns.put("stats_type", new Atom<>(statsType));
+            rowColumns.put("survey_interval_ms", new Atom<>(scanInterval));
+            rowColumns.put("survey_type", new Atom<>(
+                    OvsdbToWlanCloudTypeMappingUtility.getOvsdbStatsSurveyTypeFromProfileSurveyType(channelType)));
+
+            Row updateRow = new Row(rowColumns);
+
+            Insert newStatConfig = new Insert(wifiStatsConfigDbTable, updateRow);
+            if (!operations.contains(newStatConfig)) {
+                operations.add(newStatConfig);
+            }
+
+        } else {
+
+
+            Map<String, Value> rowColumns = new HashMap<>();
+            com.vmware.ovsdb.protocol.operation.notation.Set channels = com.vmware.ovsdb.protocol.operation.notation.Set
+                    .of(allowedChannels
+                            .get(OvsdbToWlanCloudTypeMappingUtility.getOvsdbRadioFreqBandForRadioType(radioType)));
+            if (channels == null) {
+                channels = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
+            }
+            rowColumns.put("channel_list", channels);
+
+            rowColumns.put("radio_type",
+                    new Atom<>(OvsdbToWlanCloudTypeMappingUtility.getOvsdbRadioFreqBandForRadioType(radioType)));
+            rowColumns.put("reporting_interval", new Atom<>(reportingInterval));
+            rowColumns.put("report_type", new Atom<>("raw"));
+            rowColumns.put("stats_type", new Atom<>(statsType));
+            rowColumns.put("survey_type", new Atom<>(
+                    OvsdbToWlanCloudTypeMappingUtility.getOvsdbStatsSurveyTypeFromProfileSurveyType(channelType)));
+            rowColumns.put("sampling_interval", new Atom<>(samplingInterval));
+            rowColumns.put("survey_interval_ms", new Atom<>(scanInterval));
+            rowColumns.put("threshold", thresholds);
+            Row updateRow = new Row(rowColumns);
+            Insert newStatConfig = new Insert(wifiStatsConfigDbTable, updateRow);
+            if (!operations.contains(newStatConfig)) {
+                operations.add(newStatConfig);
+            }
+
+        }
+
+
+    }
+
+    @Deprecated
     public void configureStats(OvsdbClient ovsdbClient) {
 
         try {
@@ -3448,76 +3672,6 @@ public class OvsdbDao {
         });
 
     }
-
-    private void provisionWifiStatsConfigCapacity(Map<String, WifiRadioConfigInfo> radioConfigs,
-            Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs, List<Operation> operations) {
-
-        radioConfigs.values().stream().forEach(new Consumer<WifiRadioConfigInfo>() {
-
-            @Override
-            public void accept(WifiRadioConfigInfo rc) {
-                if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_capacity")) {
-                    //
-                    Map<String, Value> rowColumns = new HashMap<>();
-                    rowColumns.put("radio_type", new Atom<>(rc.freqBand));
-                    rowColumns.put("reporting_interval", new Atom<>(120));
-                    rowColumns.put("report_type", new Atom<>("raw"));
-                    rowColumns.put("sampling_interval", new Atom<>(10));
-                    rowColumns.put("stats_type", new Atom<>("capacity"));
-                    rowColumns.put("survey_interval_ms", new Atom<>(65));
-                    Row updateRow = new Row(rowColumns);
-                    operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
-
-                }
-            }
-        });
-
-    }
-
-    private void provisionWifiStatsConfigRssi(Map<String, WifiRadioConfigInfo> radioConfigs,
-            Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs, List<Operation> operations) {
-
-        radioConfigs.values().stream().forEach(new Consumer<WifiRadioConfigInfo>() {
-
-            @Override
-            public void accept(WifiRadioConfigInfo rc) {
-                if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_rssi")) {
-                    //
-                    Map<String, Value> rowColumns = new HashMap<>();
-                    rowColumns.put("radio_type", new Atom<>(rc.freqBand));
-                    rowColumns.put("reporting_interval", new Atom<>(120));
-                    rowColumns.put("report_type", new Atom<>("raw"));
-                    rowColumns.put("sampling_interval", new Atom<>(10));
-                    rowColumns.put("stats_type", new Atom<>("rssi"));
-                    rowColumns.put("survey_interval_ms", new Atom<>(65));
-                    Row updateRow = new Row(rowColumns);
-                    operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
-
-                }
-            }
-        });
-
-    }
-
-    private void provisionWifiStatsConfigSteering(Map<String, WifiRadioConfigInfo> radioConfigs,
-            Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs, List<Operation> operations) {
-
-
-        if (!provisionedWifiStatsConfigs.containsKey("2.4G_steering")) {
-            //
-            Map<String, Value> rowColumns = new HashMap<>();
-            rowColumns.put("radio_type", new Atom<>("2.4G"));
-            rowColumns.put("reporting_interval", new Atom<>(120));
-            rowColumns.put("report_type", new Atom<>("raw"));
-            rowColumns.put("stats_type", new Atom<>("steering"));
-            Row updateRow = new Row(rowColumns);
-            operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
-
-        }
-
-
-    }
-
 
     /**
      * @param ovsdbClient

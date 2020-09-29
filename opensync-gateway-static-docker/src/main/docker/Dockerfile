@@ -13,6 +13,7 @@ COPY app/opensync/EquipmentExample.json /app/opensync/EquipmentExample.json
 COPY app/opensync/ProfileAPExample.json /app/opensync/ProfileAPExample.json
 COPY app/opensync/ProfileSsid.json /app/opensync/ProfileSsid.json
 COPY app/opensync/LocationBuildingExample.json /app/opensync/LocationBuildingExample.json
+COPY app/opensync/ProfileMetrics.json /app/opensync/ProfileMetrics.json
 
 RUN chmod +x /app/run.sh
 

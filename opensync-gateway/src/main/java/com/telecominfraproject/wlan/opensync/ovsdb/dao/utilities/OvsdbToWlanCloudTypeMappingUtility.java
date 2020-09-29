@@ -1,11 +1,15 @@
 package com.telecominfraproject.wlan.opensync.ovsdb.dao.utilities;
 
+import java.util.Map;
+import java.util.Set;
+
 import com.telecominfraproject.wlan.client.models.ClientType;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.core.model.equipment.SecurityType;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpDeviceType;
-
+import com.telecominfraproject.wlan.profile.metrics.ChannelUtilizationSurveyType;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.StateUpDownError;
+import com.telecominfraproject.wlan.servicemetric.models.ServiceMetricDataType;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeState;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeState.FailureReason;
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.StreamingVideoType;
@@ -57,6 +61,41 @@ public class OvsdbToWlanCloudTypeMappingUtility {
                 return RadioType.UNSUPPORTED;
         }
 
+    }
+
+    public static String getOvsdbRadioFreqBandForRadioType(RadioType radioType) {
+
+        switch (radioType) {
+            case is2dot4GHz:
+                return OvsdbStringConstants.OVSDB_FREQ_BAND_2pt4G;
+            case is5GHz:
+                return OvsdbStringConstants.OVSDB_FREQ_BAND_5G;
+            case is5GHzL:
+                return OvsdbStringConstants.OVSDB_FREQ_BAND_5GL;
+            case is5GHzU:
+                return OvsdbStringConstants.OVSDB_FREQ_BAND_5GU;
+            default:
+                return OvsdbStringConstants.OVSDB_FREQ_BAND_2pt4G; // use 2.4,
+                                                                   // mostly for
+                                                                   // setting
+                                                                   // stats when
+                                                                   // no type is
+                                                                   // defined
+        }
+
+    }
+
+    public static String getOvsdbStatsSurveyTypeFromProfileSurveyType(ChannelUtilizationSurveyType surveyType) {
+        switch (surveyType) {
+            case FULL:
+                return "full";
+            case OFF_CHANNEL:
+                return "off-chan";
+            case ON_CHANNEL:
+                return "on-chan";
+            default:
+                return null;
+        }
     }
 
     public static RadioType getRadioTypeFromOpensyncStatsRadioBandType(RadioBandType band) {
@@ -254,6 +293,16 @@ public class OvsdbToWlanCloudTypeMappingUtility {
             default:
                 return SecurityType.UNSUPPORTED;
         }
+    }
+
+    public static String getOvsdbStatsTypeFromServiceMetricType(ServiceMetricDataType dataType) {
+
+
+       
+        if (dataType.equals(ServiceMetricDataType.ApNode)) {
+            return "survey";
+        }
+        return null;
     }
 
 }
