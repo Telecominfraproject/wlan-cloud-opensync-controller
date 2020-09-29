@@ -207,6 +207,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
         }
 
         long locationId = ce.getLocationId();
+        long profileId = ce.getProfileId();
 
         if (LOG.isTraceEnabled()) {
             // prepare a JSONPrinter to format protobuf messages as
@@ -231,7 +232,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             populateApClientMetrics(metricRecordList, report, customerId, equipmentId, locationId);
             populateApNodeMetrics(metricRecordList, report, customerId, equipmentId, locationId);
             populateNeighbourScanReports(metricRecordList, report, customerId, equipmentId, locationId);
-            populateChannelInfoReports(metricRecordList, report, customerId, equipmentId, locationId);
+            populateChannelInfoReports(metricRecordList, report, customerId, equipmentId, locationId, profileId);
             populateApSsidMetrics(metricRecordList, report, customerId, equipmentId, apId, locationId);
             // TODO: uncomment when AP support present
             populateSipCallReport(metricRecordList, report, customerId, equipmentId, apId, locationId);
@@ -2250,13 +2251,13 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
     }
 
     void populateChannelInfoReports(List<ServiceMetric> metricRecordList, Report report, int customerId,
-            long equipmentId, long locationId) {
+            long equipmentId, long locationId, long profileId) {
 
         LOG.debug("populateChannelInfoReports for Customer {} Equipment {}", customerId, equipmentId);
         
         ProfileContainer profileContainer = new ProfileContainer(
-        		profileServiceInterface.getProfileWithChildren(equipmentId));
-        RfConfiguration rfConfig = (RfConfiguration) profileContainer.getChildOfTypeOrNull(equipmentId, ProfileType.rf)
+        		profileServiceInterface.getProfileWithChildren(profileId));
+        RfConfiguration rfConfig = (RfConfiguration) profileContainer.getChildOfTypeOrNull(profileId, ProfileType.rf)
         		.getDetails();
 
         for (Survey survey : report.getSurveyList()) {
