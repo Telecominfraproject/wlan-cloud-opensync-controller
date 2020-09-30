@@ -3315,32 +3315,80 @@ public class OvsdbDao {
 
     public void configureWifiPasspoints(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
 
-        // TODO: Configure with information from Controller
-        Map<String, WifiPasspointConfig> passpointConfigs = getProvisionedWifiPasspointConfigs(ovsdbClient);
-        LOG.info("Current WifiPasspointConfigs {}", passpointConfigs);
+        try {
+            DatabaseSchema schema = ovsdbClient.getSchema(ovsdbName).get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+            if (schema.getTables().containsKey(wifiPasspointConfigDbTable)
+                    && schema.getTables().get(wifiPasspointConfigDbTable) != null) {
+                Map<Uuid, WifiOsuProvider> osuProviders = getProvisionedWifiOsuProviders(ovsdbClient);
+                LOG.info("Current WifiPasspointConfigs {}", osuProviders);
+            } else {
+                LOG.info("Table {} not present in {}. Cannot perform configureWifiPasspoints", wifiPasspointConfigDbTable,
+                        ovsdbName);
+            }
+        } catch (InterruptedException | ExecutionException | TimeoutException | OvsdbClientException e) {
+            LOG.error("Error in configureWifiPasspoints", e);
+            throw new RuntimeException(e);
+        }
 
 
     }
 
     public void configureWifiOsuProviders(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
 
-        // TODO: Configure with information from Controller
-        Map<Uuid, WifiOsuProvider> osuProviders = getProvisionedWifiOsuProviders(ovsdbClient);
-        LOG.info("Current WifiOsuProviders {}", osuProviders);
+
+        try {
+            DatabaseSchema schema = ovsdbClient.getSchema(ovsdbName).get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+            if (schema.getTables().containsKey(wifiOsuProviderDbTable)
+                    && schema.getTables().get(wifiOsuProviderDbTable) != null) {
+                Map<Uuid, WifiOsuProvider> osuProviders = getProvisionedWifiOsuProviders(ovsdbClient);
+                LOG.info("Current WifiOsuProviders {}", osuProviders);
+            } else {
+                LOG.info("Table {} not present in {}. Cannot configure Wifi Osu Providers", wifiOsuProviderDbTable,
+                        ovsdbName);
+            }
+        } catch (InterruptedException | ExecutionException | TimeoutException | OvsdbClientException e) {
+            LOG.error("Error in configureWifiOsuProviders", e);
+            throw new RuntimeException(e);
+        }
+
 
     }
 
     public void removeAllWifiPasspointConfigs(OvsdbClient ovsdbClient) {
-        // TODO: Delete PasspointConfigs
-        Map<String, WifiPasspointConfig> passpointConfigs = getProvisionedWifiPasspointConfigs(ovsdbClient);
-        LOG.info("Current WifiPasspointConfigs {}", passpointConfigs);
+        try {
+            DatabaseSchema schema = ovsdbClient.getSchema(ovsdbName).get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+            if (schema.getTables().containsKey(wifiPasspointConfigDbTable)
+                    && schema.getTables().get(wifiPasspointConfigDbTable) != null) {
+                Map<Uuid, WifiOsuProvider> osuProviders = getProvisionedWifiOsuProviders(ovsdbClient);
+                LOG.info("Current WifiPasspointConfigs {}", osuProviders);
+            } else {
+                LOG.info("Table {} not present in {}. Cannot remove Wifi Passpoint Configs", wifiPasspointConfigDbTable,
+                        ovsdbName);
+            }
+        } catch (InterruptedException | ExecutionException | TimeoutException | OvsdbClientException e) {
+            LOG.error("Error in removeAllWifiPasspointConfigs", e);
+            throw new RuntimeException(e);
+        }
+
 
     }
 
     public void removeAllWifiOsuProviders(OvsdbClient ovsdbClient) {
-        // TODO: Delete OsuProviders
-        Map<Uuid, WifiOsuProvider> osuProviders = getProvisionedWifiOsuProviders(ovsdbClient);
-        LOG.info("Current WifiOsuProviders {}", osuProviders);
+        try {
+            DatabaseSchema schema = ovsdbClient.getSchema(ovsdbName).get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+            if (schema.getTables().containsKey(wifiOsuProviderDbTable)
+                    && schema.getTables().get(wifiOsuProviderDbTable) != null) {
+                Map<Uuid, WifiOsuProvider> osuProviders = getProvisionedWifiOsuProviders(ovsdbClient);
+                LOG.info("Current WifiOsuProviders {}", osuProviders);
+            } else {
+                LOG.info("Table {} not present in {}. Cannot remove Wifi Osu Providers", wifiOsuProviderDbTable,
+                        ovsdbName);
+            }
+        } catch (InterruptedException | ExecutionException | TimeoutException | OvsdbClientException e) {
+            LOG.error("Error in removeAllWifiOsuProviders", e);
+            throw new RuntimeException(e);
+        }
+
 
     }
 
