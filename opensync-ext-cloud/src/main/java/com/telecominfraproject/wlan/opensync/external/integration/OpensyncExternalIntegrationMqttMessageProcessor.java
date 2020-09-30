@@ -47,6 +47,7 @@ import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileContainer;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
+import com.telecominfraproject.wlan.profile.rf.models.RfConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.RadioBasedSsidConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration.SecureMode;
@@ -206,6 +207,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
         }
 
         long locationId = ce.getLocationId();
+        long profileId = ce.getProfileId();
 
         if (LOG.isTraceEnabled()) {
             // prepare a JSONPrinter to format protobuf messages as
@@ -230,7 +232,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             populateApClientMetrics(metricRecordList, report, customerId, equipmentId, locationId);
             populateApNodeMetrics(metricRecordList, report, customerId, equipmentId, locationId);
             populateNeighbourScanReports(metricRecordList, report, customerId, equipmentId, locationId);
-            populateChannelInfoReports(metricRecordList, report, customerId, equipmentId, locationId);
+            populateChannelInfoReports(metricRecordList, report, customerId, equipmentId, locationId, profileId);
             populateApSsidMetrics(metricRecordList, report, customerId, equipmentId, apId, locationId);
             // TODO: uncomment when AP support present
             populateSipCallReport(metricRecordList, report, customerId, equipmentId, apId, locationId);
@@ -2249,9 +2251,14 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
     }
 
     void populateChannelInfoReports(List<ServiceMetric> metricRecordList, Report report, int customerId,
-            long equipmentId, long locationId) {
+            long equipmentId, long locationId, long profileId) {
 
         LOG.debug("populateChannelInfoReports for Customer {} Equipment {}", customerId, equipmentId);
+        
+        ProfileContainer profileContainer = new ProfileContainer(
+        		profileServiceInterface.getProfileWithChildren(profileId));
+        RfConfiguration rfConfig = (RfConfiguration) profileContainer.getChildOfTypeOrNull(profileId, ProfileType.rf)
+        		.getDetails();
 
         for (Survey survey : report.getSurveyList()) {
 

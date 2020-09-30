@@ -76,6 +76,8 @@ import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguratio
 import com.telecominfraproject.wlan.profile.radius.models.RadiusProfile;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusServer;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusServiceRegion;
+import com.telecominfraproject.wlan.profile.rf.models.RfConfiguration;
+import com.telecominfraproject.wlan.profile.rf.models.RfElementConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.telecominfraproject.wlan.servicemetric.models.ServiceMetricDataType;
 import com.vmware.ovsdb.exception.OvsdbClientException;
@@ -1796,13 +1798,16 @@ public class OvsdbDao {
 
         ApElementConfiguration apElementConfiguration = (ApElementConfiguration) opensyncAPConfig.getCustomerEquipment()
                 .getDetails();
+        RfConfiguration rfConfig = (RfConfiguration) opensyncAPConfig.getRfProfile().getDetails();
 
         for (RadioType radioType : apElementConfiguration.getRadioMap().keySet()) {
             Map<String, String> hwConfig = new HashMap<>();
 
             ElementRadioConfiguration elementRadioConfig = apElementConfiguration.getRadioMap().get(radioType);
+            RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(radioType);
             int channel = elementRadioConfig.getChannelNumber();
             ChannelBandwidth bandwidth = elementRadioConfig.getChannelBandwidth();
+            // ChannelBandwidth bandwidth = rfElementConfig.getChannelBandwidth();
             String ht_mode = null;
             switch (bandwidth) {
                 case is20MHz:
@@ -1827,6 +1832,7 @@ public class OvsdbDao {
 
             RadioConfiguration radioConfig = apElementConfiguration.getAdvancedRadioMap().get(radioType);
             int beaconInterval = radioConfig.getBeaconInterval();
+            // int beaconInterval = rfElementConfig.getBeaconInterval();
             boolean enabled = radioConfig.getRadioAdminState().equals(StateSetting.enabled);
 
             int txPower = 0;
@@ -2759,6 +2765,7 @@ public class OvsdbDao {
             SsidConfiguration ssidConfig = (SsidConfiguration) ssidProfile.getDetails();
             ApElementConfiguration apElementConfig = (ApElementConfiguration) opensyncApConfig.getCustomerEquipment()
                     .getDetails();
+            RfConfiguration rfConfig = (RfConfiguration) opensyncApConfig.getRfProfile().getDetails();
 
             for (RadioType radioType : ssidConfig.getAppliedRadios()) {
                 // Still put profiles on disabled radios for now.
@@ -2859,8 +2866,10 @@ public class OvsdbDao {
                 if (radioConfiguration == null) {
                     continue; // don't have a radio of this kind in the map
                 }
+                RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(radioType);
                 int dtimPeriod = radioConfiguration.getDtimPeriod();
                 int rtsCtsThreshold = radioConfiguration.getRtsCtsThreshold();
+                // int rtsCtsThreshold = rfElementConfig.getRtsCtsThreshold();
                 int fragThresholdBytes = radioConfiguration.getFragmentationThresholdBytes();
                 RadioMode radioMode = radioConfiguration.getRadioMode();
                 String minHwMode = "11n"; // min_hw_mode is 11ac, wifi 5, we can
