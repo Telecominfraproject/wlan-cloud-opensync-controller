@@ -47,7 +47,6 @@ import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileContainer;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
-import com.telecominfraproject.wlan.profile.rf.models.RfConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.RadioBasedSsidConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration.SecureMode;
@@ -2254,11 +2253,6 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             long equipmentId, long locationId, long profileId) {
 
         LOG.debug("populateChannelInfoReports for Customer {} Equipment {}", customerId, equipmentId);
-        
-        ProfileContainer profileContainer = new ProfileContainer(
-        		profileServiceInterface.getProfileWithChildren(profileId));
-        RfConfiguration rfConfig = (RfConfiguration) profileContainer.getChildOfTypeOrNull(profileId, ProfileType.rf)
-        		.getDetails();
 
         for (Survey survey : report.getSurveyList()) {
 
@@ -2280,7 +2274,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 continue;
             }
 
-            ChannelBandwidth channelBandwidth = rfConfig.getRfConfig(radioType).getChannelBandwidth();
+            ChannelBandwidth channelBandwidth = ((ApElementConfiguration) equipmentServiceInterface.get(equipmentId)
+                    .getDetails()).getRadioMap().get(radioType).getChannelBandwidth();
 
             Map<Integer, List<SurveySample>> sampleByChannelMap = new HashMap<>();
 

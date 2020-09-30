@@ -76,7 +76,6 @@ import com.telecominfraproject.wlan.profile.models.ProfileContainer;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.telecominfraproject.wlan.profile.network.models.RadioProfileConfiguration;
-import com.telecominfraproject.wlan.profile.rf.models.RfConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration.SecureMode;
 import com.telecominfraproject.wlan.routing.RoutingServiceInterface;
@@ -250,6 +249,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     }
                     if (!radioType.equals(RadioType.UNSUPPORTED)) {
                         advancedRadioConfiguration = RadioConfiguration.createWithDefaults(radioType);
+                        advancedRadioConfiguration.setAutoChannelSelection(StateSetting.disabled);
 
                         advancedRadioMap.put(radioType, advancedRadioConfiguration);
                         radioConfiguration = ElementRadioConfiguration.createWithDefaults(radioType);
@@ -382,7 +382,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         Set<RadioType> radioTypes = radioProfileMap.keySet();
 
         for (RadioType radioType : radioTypes) {
-            // SSID Profile Init
+            // SSID Profile set in AP Profile
             Profile ssidProfile = new Profile();
             ssidProfile.setCustomerId(ce.getCustomerId());
             ssidProfile.setName(autoProvisionedSsid + radioType.name() + " for " + ce.getName());
@@ -401,28 +401,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             ssidProfile = profileServiceInterface.create(ssidProfile);
 
             apProfile.getChildProfileIds().add(ssidProfile.getId());
+
+            apProfile = profileServiceInterface.update(apProfile);
         }
-        
-        // RF Profile Init
-        Profile rfProfile = new Profile();
-        rfProfile.setCustomerId(ce.getCustomerId());
-        rfProfile.setName("DefaultRf for " + ce.getName());
-        RfConfiguration rfConfig = RfConfiguration.createWithDefaults();
-        
-        // Override default values
-        for (RadioType radioType : radioTypes) {
-            rfConfig.getRfConfig(radioType).setRf(rfProfile.getName());
-        }
-
-        rfProfile.setDetails(rfConfig);
-        rfProfile = profileServiceInterface.create(rfProfile);
-
-        apProfile.getChildProfileIds().add(rfProfile.getId());
-
-
-        // Update AP profile with SSID and RF child profiles
-        apProfile = profileServiceInterface.update(apProfile);
-
 
         return apProfile;
     }
@@ -780,8 +761,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         profileServiceInterface.getProfileWithChildren(equipmentConfig.getProfileId()));
 
                 ret.setApProfile(profileContainer.getOrNull(equipmentConfig.getProfileId()));
-                
-                ret.setRfProfile(profileContainer.getChildOfTypeOrNull(equipmentConfig.getProfileId(), ProfileType.rf));
 
                 ret.setSsidProfile(
                         profileContainer.getChildrenOfType(equipmentConfig.getProfileId(), ProfileType.ssid));
