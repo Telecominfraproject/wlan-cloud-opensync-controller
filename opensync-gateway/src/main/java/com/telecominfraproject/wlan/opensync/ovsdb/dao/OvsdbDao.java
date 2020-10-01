@@ -40,6 +40,7 @@ import com.telecominfraproject.wlan.equipment.models.RadioMode;
 import com.telecominfraproject.wlan.equipment.models.StateSetting;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPHotspot20Config;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPInetState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
@@ -47,11 +48,12 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.BridgeInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.CommandConfigInfo;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.Hotspot20Config;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.Hotspot20IconConfig;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.Hotspot20OsuProviders;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.InterfaceInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.PortInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiInetConfigInfo;
-import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiOsuProvider;
-import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiPasspointConfig;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiRadioConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiStatsConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiVifConfigInfo;
@@ -73,6 +75,11 @@ import com.telecominfraproject.wlan.profile.metrics.StatsReportFormat;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.common.ManagedFileInfo;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
+import com.telecominfraproject.wlan.profile.passpoint.hotspot.models.Hotspot2Profile;
+import com.telecominfraproject.wlan.profile.passpoint.operator.models.OperatorProfile;
+import com.telecominfraproject.wlan.profile.passpoint.venue.models.VenueName;
+import com.telecominfraproject.wlan.profile.passpoint.venue.models.VenueProfile;
+import com.telecominfraproject.wlan.profile.passpoint.venue.models.VenueTypeAssignment;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusProfile;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusServer;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusServiceRegion;
@@ -201,14 +208,15 @@ public class OvsdbDao {
     public static final String commandConfigDbTable = "Command_Config";
 
     public static final String commandStateDbTable = "Command_State";
+    public static final String hotspot20IconConfigDbTable = "Hotspot20_Icon_Config";
 
-    public static final String wifiOsuProviderDbTable = "Wifi_OSU_Provider";
+    public static final String hotspot20OsuProvidersDbTable = "Hotspot20_OSU_Providers";
 
-    public static final String wifiPasspointConfigDbTable = "Wifi_Passpoint_Config";
+    public static final String hotspot20ConfigDbTable = "Hotspot20_Config";
 
-    public static final String StartDebugEngineApCommand = "startPortForwardingSession.sh";
+    public static final String StartDebugEngineApCommand = "startPortForwardingSession";
 
-    public static final String StopDebugEngineApCommand = "stopSession.sh";
+    public static final String StopDebugEngineApCommand = "stopSession";
 
 
     public static void translateDhcpFpValueToString(Entry<String, Value> c, Map<String, String> rowMap) {
@@ -1375,19 +1383,19 @@ public class OvsdbDao {
         return ret;
     }
 
-    public Map<String, WifiPasspointConfig> getProvisionedWifiPasspointConfigs(OvsdbClient ovsdbClient) {
-        Map<String, WifiPasspointConfig> ret = new HashMap<>();
+    public Map<String, Hotspot20Config> getProvisionedHotspot20Configs(OvsdbClient ovsdbClient) {
+        Map<String, Hotspot20Config> ret = new HashMap<>();
 
         List<Operation> operations = new ArrayList<>();
         List<Condition> conditions = new ArrayList<>();
         List<String> columns = new ArrayList<>();
-        columns.addAll(Arrays.asList(WifiPasspointConfig.ovsdbColumns));
+        columns.addAll(Arrays.asList(Hotspot20Config.ovsdbColumns));
 
 
         try {
-            LOG.debug("Retrieving WifiPasspointConfig:");
+            LOG.debug("Retrieving Hotspot20Config:");
 
-            operations.add(new Select(wifiPasspointConfigDbTable, conditions, columns));
+            operations.add(new Select(hotspot20ConfigDbTable, conditions, columns));
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
@@ -1396,11 +1404,11 @@ public class OvsdbDao {
             }
 
             for (Row row : ((SelectResult) result[0]).getRows()) {
-                WifiPasspointConfig wifiPasspointConfig = new WifiPasspointConfig(row);
-                ret.put(wifiPasspointConfig.osuSsid, wifiPasspointConfig);
+                Hotspot20Config hotspot20Config = new Hotspot20Config(row);
+                ret.put(hotspot20Config.osuSsid, hotspot20Config);
             }
 
-            LOG.debug("Retrieved WifiPasspointConfig: {}", ret);
+            LOG.debug("Retrieved Hotspot20Config: {}", ret);
 
         } catch (ExecutionException | InterruptedException | OvsdbClientException | TimeoutException e) {
             LOG.error("Error in getWifiPasspointConfigs", e);
@@ -1410,17 +1418,17 @@ public class OvsdbDao {
     }
 
 
-    public Map<Uuid, WifiOsuProvider> getProvisionedWifiOsuProviders(OvsdbClient ovsdbClient) {
-        Map<Uuid, WifiOsuProvider> ret = new HashMap<>();
+    public Map<Uuid, Hotspot20OsuProviders> getProvisionedHotspot20OsuProviders(OvsdbClient ovsdbClient) {
+        Map<Uuid, Hotspot20OsuProviders> ret = new HashMap<>();
         List<Operation> operations = new ArrayList<>();
         List<Condition> conditions = new ArrayList<>();
         List<String> columns = new ArrayList<>();
-        columns.addAll(Arrays.asList(WifiOsuProvider.ovsdbColumns));
+        columns.addAll(Arrays.asList(Hotspot20OsuProviders.ovsdbColumns));
 
         try {
-            LOG.debug("Retrieving WifiOsuProvider:");
+            LOG.debug("Retrieving Hotspot20_OSU_Providers:");
 
-            operations.add(new Select(wifiOsuProviderDbTable, conditions, columns));
+            operations.add(new Select(hotspot20OsuProvidersDbTable, conditions, columns));
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
@@ -1429,14 +1437,47 @@ public class OvsdbDao {
             }
 
             for (Row row : ((SelectResult) result[0]).getRows()) {
-                WifiOsuProvider wifiOsuProvider = new WifiOsuProvider(row);
-                ret.put(wifiOsuProvider.uuid, wifiOsuProvider);
+                Hotspot20OsuProviders hotspot20OsuProviders = new Hotspot20OsuProviders(row);
+                ret.put(hotspot20OsuProviders.uuid, hotspot20OsuProviders);
             }
 
-            LOG.debug("Retrieved WifiOsuProvider: {}", ret);
+            LOG.debug("Retrieved Hotspot20_OSU_Providers: {}", ret);
 
         } catch (ExecutionException | InterruptedException | OvsdbClientException | TimeoutException e) {
             LOG.error("Error in getWifiOsuProviders", e);
+            throw new RuntimeException(e);
+        }
+
+        return ret;
+    }
+
+    public Map<String, Hotspot20IconConfig> getProvisionedHotspot20IconConfig(OvsdbClient ovsdbClient) {
+        Map<String, Hotspot20IconConfig> ret = new HashMap<>();
+        List<Operation> operations = new ArrayList<>();
+        List<Condition> conditions = new ArrayList<>();
+        List<String> columns = new ArrayList<>();
+        columns.addAll(Arrays.asList(Hotspot20IconConfig.ovsdbColumns));
+
+        try {
+            LOG.debug("Retrieving Hotspot20_Icon_Config:");
+
+            operations.add(new Select(hotspot20IconConfigDbTable, conditions, columns));
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            for (OperationResult res : result) {
+                LOG.debug("Op Result {}", res);
+            }
+
+            for (Row row : ((SelectResult) result[0]).getRows()) {
+                Hotspot20IconConfig hotspot20IconConfig = new Hotspot20IconConfig(row);
+                ret.put(hotspot20IconConfig.name, hotspot20IconConfig);
+            }
+
+            LOG.debug("Retrieved Hotspot20_Icon_Config: {}", ret);
+
+        } catch (ExecutionException | InterruptedException | OvsdbClientException | TimeoutException e) {
+            LOG.error("Error in getProvisionedHotspot20IconConfig", e);
             throw new RuntimeException(e);
         }
 
@@ -1732,6 +1773,11 @@ public class OvsdbDao {
 
     public void removeAllSsids(OvsdbClient ovsdbClient) {
         try {
+
+            removeAllHotspot20Config(ovsdbClient);
+            removeAllHotspot20OsuProviders(ovsdbClient);
+            removeAllHotspot20IconConfig(ovsdbClient);
+
             List<Operation> operations = new ArrayList<>();
 
             operations.add(new Delete(wifiVifConfigDbTable));
@@ -1807,7 +1853,8 @@ public class OvsdbDao {
             RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(radioType);
             int channel = elementRadioConfig.getChannelNumber();
             ChannelBandwidth bandwidth = elementRadioConfig.getChannelBandwidth();
-            // ChannelBandwidth bandwidth = rfElementConfig.getChannelBandwidth();
+            // ChannelBandwidth bandwidth =
+            // rfElementConfig.getChannelBandwidth();
             String ht_mode = null;
             switch (bandwidth) {
                 case is20MHz:
@@ -3006,6 +3053,11 @@ public class OvsdbDao {
                 }
 
             }
+            if (opensyncApConfig.getHotspotConfig() != null) {
+                provisionHotspot2IconConfig(ovsdbClient, opensyncApConfig);
+                provisionHotspot20OsuProviders(ovsdbClient, opensyncApConfig);
+                provisionHotspot20Config(ovsdbClient, opensyncApConfig);
+            }
         }
 
     }
@@ -3322,82 +3374,270 @@ public class OvsdbDao {
 
     }
 
-    public void configureWifiPasspoints(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
-
+    public void provisionHotspot20Config(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
         try {
             DatabaseSchema schema = ovsdbClient.getSchema(ovsdbName).get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-            if (schema.getTables().containsKey(wifiPasspointConfigDbTable)
-                    && schema.getTables().get(wifiPasspointConfigDbTable) != null) {
-                Map<Uuid, WifiOsuProvider> osuProviders = getProvisionedWifiOsuProviders(ovsdbClient);
-                LOG.info("Current WifiPasspointConfigs {}", osuProviders);
+            if (schema.getTables().containsKey(hotspot20ConfigDbTable)
+                    && schema.getTables().get(hotspot20ConfigDbTable) != null) {
+                Map<String, Hotspot20Config> hotspot20ConfigMap = getProvisionedHotspot20Configs(ovsdbClient);
+
+                OpensyncAPHotspot20Config hs20cfg = opensyncApConfig.getHotspotConfig();
+
+                if (hs20cfg.getHotspot20ProfileSet() != null) {
+                    List<Operation> operations = new ArrayList<>();
+                    for (Profile hotspotProfile : hs20cfg.getHotspot20ProfileSet()) {
+                        OperatorProfile operatorProfile = null;
+
+                        if (hs20cfg.getHotspot20OperatorSet() != null) {
+                            List<Profile> operator = hs20cfg.getHotspot20OperatorSet().stream()
+                                    .filter(new Predicate<Profile>() {
+
+                                        @Override
+                                        public boolean test(Profile t) {
+                                            return hotspotProfile.getChildProfileIds().contains(t.getId());
+                                        }
+                                    }).collect(Collectors.toList());
+                            operatorProfile = (OperatorProfile) operator.get(0).getDetails();
+                        }
+
+                        VenueProfile venueProfile = null;
+                        if (hs20cfg.getHotspot20VenueSet() != null) {
+                            List<Profile> venue = hs20cfg.getHotspot20VenueSet().stream()
+                                    .filter(new Predicate<Profile>() {
+
+                                        @Override
+                                        public boolean test(Profile t) {
+                                            return hotspotProfile.getChildProfileIds().contains(t.getId());
+                                        }
+                                    }).collect(Collectors.toList());
+                            venueProfile = (VenueProfile) venue.get(0).getDetails();
+                        }
+                        // for (Profile hotspot20 : hotspot20ProfileList) {
+
+                        Hotspot2Profile hs2Profile = (Hotspot2Profile) hotspotProfile.getDetails();
+
+                        Map<String, Value> rowColumns = new HashMap<>();
+                        rowColumns.put("deauth_request_timeout", new Atom<>(hs2Profile.getDeauthRequestTimeout()));
+                        rowColumns.put("osen",
+                                new Atom<>(operatorProfile.isServerOnlyAuthenticatedL2EncryptionNetwork()));
+
+                        Set<Atom<String>> operatorFriendlyName = new HashSet<>();
+                        operatorProfile.getOperatorFriendlyName().stream()
+                                .forEach(c -> operatorFriendlyName.add(new Atom<>(c.getFormattedFriendlyName())));
+                        com.vmware.ovsdb.protocol.operation.notation.Set operatorFriendlyNameSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                                .of(operatorFriendlyName);
+                        rowColumns.put("operator_friendly_name", operatorFriendlyNameSet);
+
+                        rowColumns.put("enable", new Atom<>(hs2Profile.isEnableInterworkingAndHs20()));
+                        rowColumns.put("network_auth_type",
+                                new Atom<>("0" + hs2Profile.getNetworkAuthenticationType().getId()));
+                        rowColumns.put("gas_addr3_behavior", new Atom<>(hs2Profile.getGasAddr3Behaviour().getId()));
+                        rowColumns.put("operating_class", new Atom<>(hs2Profile.getOperatingClass()));
+                        rowColumns.put("anqp_domain_id", new Atom<>(hs2Profile.getAnqpDomainId()));
+
+                        Set<Atom<String>> connectionCapabilities = new HashSet<>();
+                        hs2Profile.getConnectionCapabilitySet().stream().forEach(
+                                c -> connectionCapabilities.add(new Atom<>(c.getConnectionCapabilitiesIpProtocol() + ":"
+                                        + c.getConnectionCapabilitiesPortNumber() + ":"
+                                        + c.getConnectionCapabilitiesStatus())));
+                        com.vmware.ovsdb.protocol.operation.notation.Set connectionCapabilitySet = com.vmware.ovsdb.protocol.operation.notation.Set
+                                .of(connectionCapabilities);
+                        rowColumns.put("connection_capability", connectionCapabilitySet);
+
+
+                        Set<Atom<String>> venueNames = new HashSet<>();
+                        Set<Atom<String>> venueUrls = new HashSet<>();
+                        int index = 1;
+                        for (VenueName venueName : venueProfile.getVenueNameSet()) {
+                            venueNames.add(new Atom<String>(venueName.getFormattedVenueName()));
+                            String url = String.valueOf(index) + ":" + venueName.getVenueUrl();
+                            venueUrls.add(new Atom<String>(url));
+                            index++;
+                        }
+                        com.vmware.ovsdb.protocol.operation.notation.Set venueNameSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                                .of(venueNames);
+                        com.vmware.ovsdb.protocol.operation.notation.Set venueUrlSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                                .of(venueUrls);
+                        rowColumns.put("venue_name", venueNameSet);
+                        rowColumns.put("venue_url", venueUrlSet);
+
+                        VenueTypeAssignment venueTypeAssignment = venueProfile.getVenueTypeAssignment();
+                            String groupType = String.valueOf(venueTypeAssignment.getVenueGroupId()) + ":"
+                                    + venueTypeAssignment.getVenueTypeId();
+
+
+                        rowColumns.put("venue_group_type", new Atom<>(groupType));
+
+
+                        Row row = new Row(rowColumns);
+
+                        Insert newHs20Config = new Insert(hotspot20ConfigDbTable, row);
+
+                        operations.add(newHs20Config);
+
+                        // }
+
+
+                    }
+
+
+                    CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+                    OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+                    for (OperationResult res : result) {
+                        LOG.debug("provisionHotspot20Config Op Result {}", res);
+                    }
+
+                }
+
+
+                LOG.info("Current Hotspot20_Config {}", hotspot20ConfigMap);
             } else {
-                LOG.info("Table {} not present in {}. Cannot perform configureWifiPasspoints", wifiPasspointConfigDbTable,
+                LOG.info("Table {} not present in {}. Cannot provision Hotspot20_Config", hotspot20ConfigDbTable,
                         ovsdbName);
             }
         } catch (InterruptedException | ExecutionException | TimeoutException | OvsdbClientException e) {
-            LOG.error("Error in configureWifiPasspoints", e);
+            LOG.error("Error in provisionHotspot20Config", e);
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    public void provisionHotspot20OsuProviders(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
+        try {
+            DatabaseSchema schema = ovsdbClient.getSchema(ovsdbName).get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+            if (schema.getTables().containsKey(hotspot20OsuProvidersDbTable)
+                    && schema.getTables().get(hotspot20OsuProvidersDbTable) != null) {
+                Map<Uuid, Hotspot20OsuProviders> hotspot20OsuProvidersMap = getProvisionedHotspot20OsuProviders(
+                        ovsdbClient);
+
+                OpensyncAPHotspot20Config hs20cfg = opensyncApConfig.getHotspotConfig();
+
+                if (hs20cfg.getHotspot20ProviderSet() != null && hs20cfg.getHotspot20ProviderSet().size() > 0) {
+
+                }
+
+
+                LOG.info("Current Hotspot20_OSU_Providers {}", hotspot20OsuProvidersMap);
+            } else {
+                LOG.info("Table {} not present in {}. Cannot provision Hotspot20_OSU_Providers",
+                        hotspot20OsuProvidersDbTable, ovsdbName);
+            }
+        } catch (InterruptedException | ExecutionException | TimeoutException | OvsdbClientException e) {
+            LOG.error("Error in provisionHotspot20OsuProviders", e);
             throw new RuntimeException(e);
         }
 
 
     }
 
-    public void configureWifiOsuProviders(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
-
-
+    public void provisionHotspot2IconConfig(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
         try {
             DatabaseSchema schema = ovsdbClient.getSchema(ovsdbName).get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-            if (schema.getTables().containsKey(wifiOsuProviderDbTable)
-                    && schema.getTables().get(wifiOsuProviderDbTable) != null) {
-                Map<Uuid, WifiOsuProvider> osuProviders = getProvisionedWifiOsuProviders(ovsdbClient);
-                LOG.info("Current WifiOsuProviders {}", osuProviders);
+            if (schema.getTables().containsKey(hotspot20IconConfigDbTable)
+                    && schema.getTables().get(hotspot20IconConfigDbTable) != null) {
+                Map<String, Hotspot20IconConfig> osuProviders = getProvisionedHotspot20IconConfig(ovsdbClient);
+
+                OpensyncAPHotspot20Config hs20cfg = opensyncApConfig.getHotspotConfig();
+
+                if (hs20cfg.getHotspot20ProviderSet() != null && hs20cfg.getHotspot20ProviderSet().size() > 0) {
+
+                }
+
+
+                LOG.info("Current Hotspot20_Icon_Config {}", osuProviders);
             } else {
-                LOG.info("Table {} not present in {}. Cannot configure Wifi Osu Providers", wifiOsuProviderDbTable,
-                        ovsdbName);
+                LOG.info("Table {} not present in {}. Cannot provision Hotspot20_Icon_Config",
+                        hotspot20IconConfigDbTable, ovsdbName);
             }
         } catch (InterruptedException | ExecutionException | TimeoutException | OvsdbClientException e) {
-            LOG.error("Error in configureWifiOsuProviders", e);
+            LOG.error("Error in provisionHotspot2IconConfig", e);
             throw new RuntimeException(e);
         }
 
 
     }
 
-    public void removeAllWifiPasspointConfigs(OvsdbClient ovsdbClient) {
+    public void removeAllHotspot20Config(OvsdbClient ovsdbClient) {
         try {
             DatabaseSchema schema = ovsdbClient.getSchema(ovsdbName).get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-            if (schema.getTables().containsKey(wifiPasspointConfigDbTable)
-                    && schema.getTables().get(wifiPasspointConfigDbTable) != null) {
-                Map<Uuid, WifiOsuProvider> osuProviders = getProvisionedWifiOsuProviders(ovsdbClient);
-                LOG.info("Current WifiPasspointConfigs {}", osuProviders);
-            } else {
-                LOG.info("Table {} not present in {}. Cannot remove Wifi Passpoint Configs", wifiPasspointConfigDbTable,
-                        ovsdbName);
+            if (schema.getTables().containsKey(hotspot20ConfigDbTable)
+                    && schema.getTables().get(hotspot20ConfigDbTable) != null) {
+                List<Operation> operations = new ArrayList<>();
+
+                operations.add(new Delete(hotspot20ConfigDbTable));
+
+                CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+                OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Removed all existing hotspot configs from {}:", hotspot20ConfigDbTable);
+
+                    for (OperationResult res : result) {
+                        LOG.debug("Op Result {}", res);
+                    }
+                }
             }
         } catch (InterruptedException | ExecutionException | TimeoutException | OvsdbClientException e) {
-            LOG.error("Error in removeAllWifiPasspointConfigs", e);
+            LOG.error("Error in removeAllHotspot20Config", e);
             throw new RuntimeException(e);
         }
 
 
     }
 
-    public void removeAllWifiOsuProviders(OvsdbClient ovsdbClient) {
+    public void removeAllHotspot20OsuProviders(OvsdbClient ovsdbClient) {
         try {
             DatabaseSchema schema = ovsdbClient.getSchema(ovsdbName).get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-            if (schema.getTables().containsKey(wifiOsuProviderDbTable)
-                    && schema.getTables().get(wifiOsuProviderDbTable) != null) {
-                Map<Uuid, WifiOsuProvider> osuProviders = getProvisionedWifiOsuProviders(ovsdbClient);
-                LOG.info("Current WifiOsuProviders {}", osuProviders);
-            } else {
-                LOG.info("Table {} not present in {}. Cannot remove Wifi Osu Providers", wifiOsuProviderDbTable,
-                        ovsdbName);
+            if (schema.getTables().containsKey(hotspot20OsuProvidersDbTable)
+                    && schema.getTables().get(hotspot20OsuProvidersDbTable) != null) {
+                List<Operation> operations = new ArrayList<>();
+
+                operations.add(new Delete(hotspot20OsuProvidersDbTable));
+
+                CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+                OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Removed all existing hotspot osu providers from {}:", hotspot20OsuProvidersDbTable);
+
+                    for (OperationResult res : result) {
+                        LOG.debug("Op Result {}", res);
+                    }
+                }
             }
         } catch (InterruptedException | ExecutionException | TimeoutException | OvsdbClientException e) {
-            LOG.error("Error in removeAllWifiOsuProviders", e);
+            LOG.error("Error in removeAllHotspot20OsuProviders", e);
             throw new RuntimeException(e);
         }
 
+
+    }
+
+    public void removeAllHotspot20IconConfig(OvsdbClient ovsdbClient) {
+        try {
+            DatabaseSchema schema = ovsdbClient.getSchema(ovsdbName).get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+            if (schema.getTables().containsKey(hotspot20IconConfigDbTable)
+                    && schema.getTables().get(hotspot20IconConfigDbTable) != null) {
+                List<Operation> operations = new ArrayList<>();
+
+                operations.add(new Delete(hotspot20IconConfigDbTable));
+
+                CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+                OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Removed all existing hotspot icon configs from {}:", hotspot20IconConfigDbTable);
+
+                    for (OperationResult res : result) {
+                        LOG.debug("Op Result {}", res);
+                    }
+                }
+            }
+        } catch (InterruptedException | ExecutionException | TimeoutException | OvsdbClientException e) {
+            LOG.error("Error in removeAllHotspot20IconConfig", e);
+            throw new RuntimeException(e);
+        }
 
     }
 

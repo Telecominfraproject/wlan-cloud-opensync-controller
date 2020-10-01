@@ -196,9 +196,6 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         } catch (Exception e) {
             LOG.warn("Could not provision Bridge->Port->Interface mapping.", e);
         }
-        
-        ovsdbDao.removeAllWifiPasspointConfigs(ovsdbClient);
-        ovsdbDao.removeAllWifiOsuProviders(ovsdbClient);
         ovsdbDao.removeAllSsids(ovsdbClient); // always
         ovsdbDao.removeWifiRrm(ovsdbClient);
 
@@ -207,9 +204,6 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             ovsdbDao.configureInterfaces(ovsdbClient);
             ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
-            ovsdbDao.configureWifiOsuProviders(ovsdbClient, opensyncAPConfig);
-            ovsdbDao.configureWifiPasspoints(ovsdbClient, opensyncAPConfig);
-
         }
 
         ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
@@ -271,8 +265,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             LOG.warn("AP with id " + apId + " does not have a config to apply.");
             return;
         }
-        ovsdbDao.removeAllWifiPasspointConfigs(ovsdbClient);
-        ovsdbDao.removeAllWifiOsuProviders(ovsdbClient);
+
         ovsdbDao.removeAllSsids(ovsdbClient); // always
         ovsdbDao.removeWifiRrm(ovsdbClient);
         ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
@@ -281,8 +274,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         ovsdbDao.configureInterfaces(ovsdbClient);
         ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
-        ovsdbDao.configureWifiOsuProviders(ovsdbClient, opensyncAPConfig);
-        ovsdbDao.configureWifiPasspoints(ovsdbClient, opensyncAPConfig);
+      
         ovsdbDao.configureStatsFromProfile(ovsdbClient, opensyncAPConfig);
 
         // Check if device stats is configured in Wifi_Stats_Config table,

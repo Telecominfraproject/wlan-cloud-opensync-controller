@@ -7,28 +7,27 @@ import java.util.Set;
 import com.vmware.ovsdb.protocol.operation.notation.Row;
 import com.vmware.ovsdb.protocol.operation.notation.Uuid;
 
-public class WifiOsuProvider implements Cloneable {
+public class Hotspot20OsuProviders implements Cloneable {
 
-    public static String[] ovsdbColumns = { "_version", "osu_nai", "icon", "server_uri", "method_list", "_uuid",
+    public static String[] ovsdbColumns = { "_version", "osu_nai", "osu_icons", "server_uri", "method_list", "_uuid",
             "osu_friendly_name", "service_description" };
     public Uuid version;
     public Set<String> osuNai;
-    public Set<String> icon;
+    public Set<String> osuIcons;
     public String serverUri;
     public Set<Integer> methodList;
     public Uuid uuid;
     public Set<String> osuFriendlyName;
     public Set<String> serviceDescription;
 
-
-    public WifiOsuProvider() {
+    public Hotspot20OsuProviders() {
     }
 
-    public WifiOsuProvider(Row row) {
+    public Hotspot20OsuProviders(Row row) {
         this.version = row.getUuidColumn("_version");
         this.uuid = row.getUuidColumn("_uuid");
         this.osuNai = row.getSetColumn("osu_nai");
-        this.icon = row.getSetColumn("icon");
+        this.osuIcons = row.getSetColumn("osu_icons");
         if ((row.getColumns().get("server_uri") != null) && row.getColumns().get("server_uri").getClass()
                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
             this.serverUri = row.getStringColumn("server_uri");
@@ -40,15 +39,15 @@ public class WifiOsuProvider implements Cloneable {
 
 
     @Override
-    public WifiOsuProvider clone() {
+    public Hotspot20OsuProviders clone() {
         try {
-            WifiOsuProvider ret = (WifiOsuProvider) super.clone();
+            Hotspot20OsuProviders ret = (Hotspot20OsuProviders) super.clone();
 
             if (osuNai != null) {
                 ret.osuNai = new HashSet<>(this.osuNai);
             }
-            if (icon != null) {
-                ret.icon = new HashSet<>(this.icon);
+            if (osuIcons != null) {
+                ret.osuIcons = new HashSet<>(this.osuIcons);
             }
             if (methodList != null) {
                 ret.methodList = new HashSet<>(this.methodList);
@@ -68,14 +67,15 @@ public class WifiOsuProvider implements Cloneable {
 
     @Override
     public String toString() {
-        return String.format(
-                "WifiOsuProvider [version=%s, osuNai=%s, icon=%s, serverUri=%s, methodList=%s, uuid=%s, osuFriendlyName=%s, serviceDescription=%s]",
-                version, osuNai, icon, serverUri, methodList, uuid, osuFriendlyName, serviceDescription);
+        return "Hotspot20OsuProviders [version=" + version + ", osuNai=" + osuNai + ", osuIcons=" + osuIcons
+                + ", serverUri=" + serverUri + ", methodList=" + methodList + ", uuid=" + uuid + ", osuFriendlyName="
+                + osuFriendlyName + ", serviceDescription=" + serviceDescription + "]";
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(icon, methodList, osuFriendlyName, osuNai, serverUri, serviceDescription, uuid, version);
+        return Objects.hash(methodList, osuFriendlyName, osuIcons, osuNai, serverUri, serviceDescription, uuid,
+                version);
     }
 
     @Override
@@ -83,16 +83,17 @@ public class WifiOsuProvider implements Cloneable {
         if (this == obj) {
             return true;
         }
-        if (!(obj instanceof WifiOsuProvider)) {
+        if (!(obj instanceof Hotspot20OsuProviders)) {
             return false;
         }
-        WifiOsuProvider other = (WifiOsuProvider) obj;
-        return Objects.equals(icon, other.icon) && Objects.equals(methodList, other.methodList)
-                && Objects.equals(osuFriendlyName, other.osuFriendlyName) && Objects.equals(osuNai, other.osuNai)
+        Hotspot20OsuProviders other = (Hotspot20OsuProviders) obj;
+        return Objects.equals(methodList, other.methodList) && Objects.equals(osuFriendlyName, other.osuFriendlyName)
+                && Objects.equals(osuIcons, other.osuIcons) && Objects.equals(osuNai, other.osuNai)
                 && Objects.equals(serverUri, other.serverUri)
                 && Objects.equals(serviceDescription, other.serviceDescription) && Objects.equals(uuid, other.uuid)
                 && Objects.equals(version, other.version);
     }
 
+  
 
 }

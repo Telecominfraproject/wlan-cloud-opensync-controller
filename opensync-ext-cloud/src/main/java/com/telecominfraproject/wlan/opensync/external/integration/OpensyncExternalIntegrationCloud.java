@@ -62,6 +62,7 @@ import com.telecominfraproject.wlan.opensync.external.integration.controller.Ope
 import com.telecominfraproject.wlan.opensync.external.integration.controller.OpensyncCloudGatewayController.ListOfEquipmentCommandResponses;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPHotspot20Config;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPInetState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
@@ -401,28 +402,28 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             ssidProfile.setDetails(ssidConfig);
             ssidProfile = profileServiceInterface.create(ssidProfile);
 
-            apProfile.getChildProfileIds().add(ssidProfile.getId());        
-		}
-		
-		// RF Profile Init
-		Profile rfProfile = new Profile();
-		rfProfile.setCustomerId(ce.getCustomerId());
-		rfProfile.setName("DefaultRf for " + ce.getName());
-		RfConfiguration rfConfig = RfConfiguration.createWithDefaults();
-		
-		// Override default values
-		for (RadioType radioType : radioTypes) {
-		    rfConfig.getRfConfig(radioType).setRf(rfProfile.getName());
-		}
-		
-		rfProfile.setDetails(rfConfig);
-		rfProfile = profileServiceInterface.create(rfProfile);
-		
-		apProfile.getChildProfileIds().add(rfProfile.getId());
-		
-	
-		// Update AP profile with SSID and RF child profiles
-		apProfile = profileServiceInterface.update(apProfile);
+            apProfile.getChildProfileIds().add(ssidProfile.getId());
+        }
+
+        // RF Profile Init
+        Profile rfProfile = new Profile();
+        rfProfile.setCustomerId(ce.getCustomerId());
+        rfProfile.setName("DefaultRf for " + ce.getName());
+        RfConfiguration rfConfig = RfConfiguration.createWithDefaults();
+
+        // Override default values
+        for (RadioType radioType : radioTypes) {
+            rfConfig.getRfConfig(radioType).setRf(rfProfile.getName());
+        }
+
+        rfProfile.setDetails(rfConfig);
+        rfProfile = profileServiceInterface.create(rfProfile);
+
+        apProfile.getChildProfileIds().add(rfProfile.getId());
+
+
+        // Update AP profile with SSID and RF child profiles
+        apProfile = profileServiceInterface.update(apProfile);
 
         return apProfile;
     }
@@ -780,19 +781,31 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         profileServiceInterface.getProfileWithChildren(equipmentConfig.getProfileId()));
 
                 ret.setApProfile(profileContainer.getOrNull(equipmentConfig.getProfileId()));
-                
+
                 ret.setRfProfile(profileContainer.getChildOfTypeOrNull(equipmentConfig.getProfileId(), ProfileType.rf));
 
                 ret.setSsidProfile(
                         profileContainer.getChildrenOfType(equipmentConfig.getProfileId(), ProfileType.ssid));
-                
-                ret.setMetricsProfiles(profileContainer.getChildrenOfType(equipmentConfig.getProfileId(), ProfileType.metrics));
+
+                ret.setMetricsProfiles(
+                        profileContainer.getChildrenOfType(equipmentConfig.getProfileId(), ProfileType.metrics));
 
                 Set<Profile> radiusSet = new HashSet<>();
                 Set<Long> captiveProfileIds = new HashSet<>();
                 Set<Long> bonjourGatewayProfileIds = new HashSet<>();
 
+                OpensyncAPHotspot20Config hotspotConfig = new OpensyncAPHotspot20Config();
+
+                Set<Profile> hotspot20ProfileSet = new HashSet<>();
+                Set<Profile> hotspot20OperatorSet = new HashSet<>();
+                Set<Profile> hotspot20VenueSet = new HashSet<>();
+                Set<Profile> hotspot20ProviderSet = new HashSet<>();
+
                 for (Profile ssidProfile : ret.getSsidProfile()) {
+
+                    hotspot20ProfileSet
+                            .addAll(profileContainer.getChildrenOfType(ssidProfile.getId(), ProfileType.hotspot_2pt0));
+                    
 
                     radiusSet.addAll(profileContainer.getChildrenOfType(ssidProfile.getId(), ProfileType.radius));
                     if (ssidProfile.getDetails() != null) {
@@ -807,6 +820,23 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         }
                     }
                 }
+
+
+
+                if (hotspot20ProfileSet.size() > 0) {
+                    for (Profile hotspot20Profile : hotspot20ProfileSet) {
+                        hotspot20OperatorSet.addAll(profileContainer.getChildrenOfType(hotspot20Profile.getId(), ProfileType.operator));
+                        hotspot20VenueSet.addAll(profileContainer.getChildrenOfType(hotspot20Profile.getId(), ProfileType.venue));
+                        hotspot20ProviderSet.addAll(profileContainer.getChildrenOfType(hotspot20Profile.getId(), ProfileType.id_provider));
+                    }
+                    hotspotConfig.setHotspot20OperatorSet(hotspot20OperatorSet);
+                    hotspotConfig.setHotspot20ProfileSet(hotspot20ProfileSet);
+                    hotspotConfig.setHotspot20ProviderSet(hotspot20ProviderSet);
+                    hotspotConfig.setHotspot20VenueSet(hotspot20VenueSet);
+                    
+                    ret.setHotspotConfig(hotspotConfig);
+                }
+
                 ret.setRadiusProfiles(new ArrayList<>(radiusSet));
                 ret.setCaptiveProfiles(profileServiceInterface.get(captiveProfileIds));
                 ret.setBonjourGatewayProfiles(profileServiceInterface.get(bonjourGatewayProfileIds));
@@ -1276,7 +1306,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 || opensyncAPState.getFirmwareUrl().equals(OvsdbStringConstants.OVSDB_AWLAN_AP_FACTORY_RESET)
                 || opensyncAPState.getFirmwareUrl().equals(OvsdbStringConstants.OVSDB_AWLAN_AP_FACTORY_RESET)
                 || opensyncAPState.getFirmwareUrl().equals("")) {
-            
+
             fwUpgradeState = EquipmentUpgradeState.undefined;
 
         } else {

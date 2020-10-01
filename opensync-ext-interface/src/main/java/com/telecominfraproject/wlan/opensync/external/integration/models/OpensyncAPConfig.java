@@ -28,6 +28,7 @@ public class OpensyncAPConfig extends BaseJsonModel {
     private static final long serialVersionUID = 3917975477206236668L;
 
     private Equipment customerEquipment;
+    private OpensyncAPHotspot20Config hotspotConfig;
     private Profile apProfile;
     private Profile rfProfile;
     private List<Profile> ssidProfile;
@@ -133,6 +134,14 @@ public class OpensyncAPConfig extends BaseJsonModel {
         this.customerEquipment = customerEquipment;
     }
 
+    public OpensyncAPHotspot20Config getHotspotConfig() {
+        return hotspotConfig;
+    }
+
+    public void setHotspotConfig(OpensyncAPHotspot20Config hotspotConfig) {
+        this.hotspotConfig = hotspotConfig;
+    }
+
     public Profile getApProfile() {
         return apProfile;
     }
@@ -187,6 +196,8 @@ public class OpensyncAPConfig extends BaseJsonModel {
 
         if (customerEquipment != null)
             ret.customerEquipment = customerEquipment.clone();
+        if (hotspotConfig != null)
+            ret.hotspotConfig = hotspotConfig.clone();
         if (equipmentLocation != null)
             ret.equipmentLocation = equipmentLocation.clone();
         if (ssidProfile != null) {
