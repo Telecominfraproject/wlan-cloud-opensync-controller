@@ -14,7 +14,7 @@
 	<properties>
 		<docker.fabric.version>0.28.0</docker.fabric.version>
 		<docker.push.registry>tip-tip-wlan-cloud-docker-repo.jfrog.io</docker.push.registry>
-        <timestamp>${maven.build.timestamp}</timestamp>
+        	<timestamp>${maven.build.timestamp}</timestamp>
    		<maven.build.timestamp.format>yyyy-MM-dd</maven.build.timestamp.format> 		
 	</properties>
 
