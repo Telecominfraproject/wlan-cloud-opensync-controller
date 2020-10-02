@@ -11,9 +11,11 @@
 	<name>opensync-gateway-cloud-docker</name>
 	<description>Docker definition for opensync gateway that uses cloud configuration</description>
 
-	<properties>
+	<properties>	
 		<docker.fabric.version>0.28.0</docker.fabric.version>
 		<docker.push.registry>tip-tip-wlan-cloud-docker-repo.jfrog.io</docker.push.registry>
+        <timestamp>${maven.build.timestamp}</timestamp>
+   		<maven.build.timestamp.format>yyyy-MM-dd</maven.build.timestamp.format> 		
 	</properties>
 
 	<dependencies>
@@ -38,6 +40,9 @@
 						<image>
 							<name>opensync-gateway-cloud:${project.version}</name>
 							<build>
+                            <tags>
+                            	<tag>${project.version}-${timestamp}</tag>
+                            </tags> 							
 								<filter>@</filter>
 								<cleanup>try</cleanup>
 								<dockerFileDir>${project.basedir}/src/main/docker</dockerFileDir>
