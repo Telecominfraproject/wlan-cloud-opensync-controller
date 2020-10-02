@@ -42,7 +42,7 @@
 							<build>
 								<tags>
 									<tag>${project.version}-${timestamp}</tag>
-							   </tags> 								
+								</tags> 								
 								<filter>@</filter>
 								<cleanup>try</cleanup>
 								<dockerFileDir>${project.basedir}/src/main/docker</dockerFileDir>
@@ -65,9 +65,9 @@
                                                 <image>
                                                         <name>opensync-gateway-and-mqtt:${project.version}</name>
                                                         <build>
-                                                           <tags>
-                                                              <tag>${project.version}-${timestamp}</tag>
-                                                           </tags>
+                                                            <tags>
+                                                               <tag>${project.version}-${timestamp}</tag>
+                                                            </tags>
                                                                 <filter>@</filter>
                                                                 <cleanup>try</cleanup>
                                                                 <dockerFileDir>${project.basedir}/src/main/docker-opensync-gateway-and-mqtt</dockerFileDir>
