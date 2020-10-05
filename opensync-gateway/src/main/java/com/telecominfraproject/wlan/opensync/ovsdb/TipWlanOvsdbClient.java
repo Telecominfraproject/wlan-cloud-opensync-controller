@@ -59,6 +59,9 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.manager.collectionIntervalSec.deviceStats:120}")
     private long collectionIntervalSecDeviceStats;
 
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.preventClientCnAlteration:false}")
+    private boolean preventClientCnAlteration;
+
     @Autowired
     private SslContext sslContext;
 
@@ -196,6 +199,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         } catch (Exception e) {
             LOG.warn("Could not provision Bridge->Port->Interface mapping.", e);
         }
+        ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
         ovsdbDao.removeAllSsids(ovsdbClient); // always
         ovsdbDao.removeWifiRrm(ovsdbClient);
 
@@ -204,10 +208,12 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             ovsdbDao.configureInterfaces(ovsdbClient);
             ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
+            ovsdbDao.configureStatsFromProfile(ovsdbClient, opensyncAPConfig);
+            if (((ApNetworkConfiguration) opensyncAPConfig.getApProfile().getDetails()).getSyntheticClientEnabled()) {
+                ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
+            }
         }
 
-        ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
-        ovsdbDao.configureStatsFromProfile(ovsdbClient, opensyncAPConfig);
 
         // Check if device stats is configured in Wifi_Stats_Config table,
         // provision it
@@ -274,7 +280,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         ovsdbDao.configureInterfaces(ovsdbClient);
         ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
-      
+
         ovsdbDao.configureStatsFromProfile(ovsdbClient, opensyncAPConfig);
 
         // Check if device stats is configured in Wifi_Stats_Config table,

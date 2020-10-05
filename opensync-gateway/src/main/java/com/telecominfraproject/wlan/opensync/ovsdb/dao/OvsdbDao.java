@@ -550,7 +550,7 @@ public class OvsdbDao {
             // mqtt_settings:ins:'["map",[["broker","testportal.123wlan.com"],["topics","/ap/dev-ap-0300/opensync"],["qos","0"],["port","1883"],["remote_log","1"]]]'
             Map<String, String> newMqttSettings = new HashMap<>();
             newMqttSettings.put("broker", mqttBrokerAddress);
-            newMqttSettings.put("topics", "/ap/" + clientCn + "_" + ret.serialNumber + "/opensync");
+            newMqttSettings.put("topics", "/ap/" + clientCn + "/opensync");
             newMqttSettings.put("port", "" + mqttBrokerListenPort);
             newMqttSettings.put("compress", "zlib");
             newMqttSettings.put("qos", "0");
@@ -3423,7 +3423,7 @@ public class OvsdbDao {
 
                         Set<Atom<String>> operatorFriendlyName = new HashSet<>();
                         operatorProfile.getOperatorFriendlyName().stream()
-                                .forEach(c -> operatorFriendlyName.add(new Atom<>(c.getFormattedFriendlyName())));
+                                .forEach(c -> operatorFriendlyName.add(new Atom<>(c.getAsDuple())));
                         com.vmware.ovsdb.protocol.operation.notation.Set operatorFriendlyNameSet = com.vmware.ovsdb.protocol.operation.notation.Set
                                 .of(operatorFriendlyName);
                         rowColumns.put("operator_friendly_name", operatorFriendlyNameSet);
@@ -3449,7 +3449,7 @@ public class OvsdbDao {
                         Set<Atom<String>> venueUrls = new HashSet<>();
                         int index = 1;
                         for (VenueName venueName : venueProfile.getVenueNameSet()) {
-                            venueNames.add(new Atom<String>(venueName.getFormattedVenueName()));
+                            venueNames.add(new Atom<String>(venueName.getAsDuple()));
                             String url = String.valueOf(index) + ":" + venueName.getVenueUrl();
                             venueUrls.add(new Atom<String>(url));
                             index++;
@@ -3644,9 +3644,7 @@ public class OvsdbDao {
     public void configureStatsFromProfile(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
 
 
-        LOG.debug("Metrics config from profile {}", opensyncApConfig.getMetricsProfiles());
-
-        if (opensyncApConfig.getMetricsProfiles().isEmpty()) {
+        if (opensyncApConfig.getMetricsProfiles() == null || opensyncApConfig.getMetricsProfiles().isEmpty()) {
             configureStats(ovsdbClient);
         } else {
 
