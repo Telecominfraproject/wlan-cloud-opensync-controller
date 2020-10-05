@@ -103,13 +103,19 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
                     // successfully connected - register it in our
                     // connectedClients table
-                    // In Plume's environment clientCn is not unique that's why
-                    // we are augmenting it
-                    // with the serialNumber and using it as a key (equivalent
-                    // of KDC unique qrCode)
-                    String key = clientCn;
-                    if (!preventClientCnAlteration) {
-                        key = clientCn + "_" + connectNodeInfo.serialNumber;
+                    String key = null;
+                    // can clientCn be altered
+                    if (preventClientCnAlteration) {
+                        key = clientCn;
+                    } else {
+                        // does clientCn already end with the AP serial number, if so, use
+                        // this
+                        if (clientCn.endsWith("_" + connectNodeInfo.serialNumber)) {
+                            key = clientCn;
+                        } else {
+                            // append the serial number
+                            key = clientCn + "_" + connectNodeInfo.serialNumber;
+                        }
                     }
                     ovsdbSessionMapInterface.newSession(key, ovsdbClient);
 
@@ -191,9 +197,21 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         LOG.debug("Starting Client connect");
         connectNodeInfo = ovsdbDao.updateConnectNodeInfoOnConnect(ovsdbClient, clientCn, connectNodeInfo);
 
-        String apId = clientCn;
-        if (!preventClientCnAlteration) {
-            apId = clientCn + "_" + connectNodeInfo.serialNumber;
+        // successfully connected - register it in our
+        // connectedClients table
+        String apId = null;
+        // can clientCn be altered
+        if (preventClientCnAlteration) {
+            apId = clientCn;
+        } else {
+            // does clientCn already end with the AP serial number, if so, use
+            // this
+            if (clientCn.endsWith("_" + connectNodeInfo.serialNumber)) {
+                apId = clientCn;
+            } else {
+                // append the serial number
+                apId = clientCn + "_" + connectNodeInfo.serialNumber;
+            }
         }
 
         LOG.debug("Client connect for AP {}", apId);
@@ -274,20 +292,6 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
         ovsdbDao.configureStatsFromProfile(ovsdbClient, opensyncAPConfig);
 
-        // Check if device stats is configured in Wifi_Stats_Config table,
-        // provision it
-        // if needed
-        // if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) !=
-        // collectionIntervalSecDeviceStats) {
-        // ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient,
-        // collectionIntervalSecDeviceStats);
-        // }
-        //
-        // if (((ApNetworkConfiguration)
-        // opensyncAPConfig.getApProfile().getDetails()).getSyntheticClientEnabled())
-        // {
-        // ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
-        // }
         LOG.debug("Finished processConfigChanged for {}", apId);
 
     }
