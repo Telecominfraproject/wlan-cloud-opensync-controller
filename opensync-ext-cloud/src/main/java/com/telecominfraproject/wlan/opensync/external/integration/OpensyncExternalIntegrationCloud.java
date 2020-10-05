@@ -229,7 +229,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 ce.setSerial(connectNodeInfo.serialNumber);
                 ce.setDetails(ApElementConfiguration.createWithDefaults());
                 ce.setCustomerId(autoProvisionedCustomerId);
-                ce.setName(ce.getEquipmentType().name() + "_" + ce.getSerial());
+                ce.setName(apId);
 
                 ApElementConfiguration apElementConfig = (ApElementConfiguration) ce.getDetails();
                 apElementConfig.setDeviceName(ce.getName());

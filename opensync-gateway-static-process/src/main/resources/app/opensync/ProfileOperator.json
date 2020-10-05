@@ -1,0 +1,35 @@
+[
+{
+    "model_type": "Profile",
+    "id": 5555,
+    "customerId": 2,
+    "profileType": "operator",
+    "name": "TipWlan-Hotspot20-Operator",
+    "details": {
+        "model_type": "OperatorProfile",
+        "domainName": "telecominfraproject.atlassian.net",
+        "serverOnlyAuthenticatedL2EncryptionNetwork": false,
+        "x509CertificateLocation": "/etc/ca.pem",
+        "operatorFriendlyName": [
+            {
+                "model_type": "Hotspot20Duple",
+                "locale": "en_CA",
+                "language": "eng",
+                "friendlyName": "default Friendly Operator Name",
+                "formattedFriendlyName": "eng:default Friendly Operator Name"
+            },
+            {
+                "model_type": "Hotspot20Duple",
+                "locale": "fr_CA",
+                "language": "fra",
+                "friendlyName": "Nom de l'opérateur convivial par défaut",
+                "formattedFriendlyName": "fra:Nom de l'opérateur convivial par défaut"
+            }
+        ],
+        "profileType": "operator"
+    },
+    "createdTimestamp": 1601595306885,
+    "lastModifiedTimestamp": 1601595306885,
+    "childProfileIds": []
+}
+]

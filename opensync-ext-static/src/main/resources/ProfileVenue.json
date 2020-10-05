@@ -1,0 +1,40 @@
+[
+{
+    "model_type": "Profile",
+    "id": 6666,
+    "customerId": 2,
+    "profileType": "venue",
+    "name": "TipWlan-Hotspot20-Venue",
+    "details": {
+        "model_type": "VenueProfile",
+        "venueNameSet": [
+            {
+                "model_type": "VenueName",
+                "locale": "en_CA",
+                "language": "eng",
+                "venueName": "Example venue",
+                "venueUrl": "http://www.example.com/info-eng",
+                "formattedVenueName": "eng:Example venue"
+            },
+            {
+                "model_type": "VenueName",
+                "locale": "fr_CA",
+                "language": "fra",
+                "venueName": "Exemple de lieu",
+                "venueUrl": "http://www.example.com/info-fra",
+                "formattedVenueName": "fra:Exemple de lieu"
+            }
+        ],
+        "venueTypeAssignment": {
+            "model_type": "VenueTypeAssignment",
+            "venueDescription": "Research and Development Facility",
+            "venueGroupId": 2,
+            "venueTypeId": 8
+        },
+        "profileType": "venue"
+    },
+    "createdTimestamp": 1601595306891,
+    "lastModifiedTimestamp": 1601595306891,
+    "childProfileIds": []
+}
+]

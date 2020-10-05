@@ -2,8 +2,10 @@ package com.telecominfraproject.wlan.opensync.external.integration.models;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class ConnectNodeInfo implements Cloneable {
+
     public Map<String, String> mqttSettings = new HashMap<>();
     public Map<String, String> versionMatrix = new HashMap<>();
     public Map<String, String> wifiRadioStates = new HashMap<>();
@@ -45,13 +47,45 @@ public class ConnectNodeInfo implements Cloneable {
     }
 
     @Override
-    public String toString() {
-        return String.format(
-                "ConnectNodeInfo [mqttSettings=%s, redirectorAddr=%s, managerAddr=%s, skuNumber=%s, serialNumber=%s, "
-                        + "macAddress=%s, ipV4Address=%s, platformVersion=%s, firmwareVersion=%s, revision=%s, model=%s, ifName=%s, lanIpV4Address=%s, lanIfName=%s, lanIfType=%s, lanMacAddress=%s, ifType=%s, wifiRadioStates=%s, versionMatrix=%s]",
-                mqttSettings, redirectorAddr, managerAddr, skuNumber, serialNumber, macAddress, ipV4Address,
-                platformVersion, firmwareVersion, revision, model, ifName, lanIpV4Address, lanIfName, lanIfType,
-                lanMacAddress, ifType, wifiRadioStates, versionMatrix);
+    public int hashCode() {
+        return Objects.hash(country, firmwareVersion, ifName, ifType, ipV4Address, lanIfName, lanIfType, lanIpV4Address,
+                lanMacAddress, macAddress, managerAddr, model, mqttSettings, platformVersion, redirectorAddr, revision,
+                serialNumber, skuNumber, versionMatrix, wifiRadioStates);
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!(obj instanceof ConnectNodeInfo)) {
+            return false;
+        }
+        ConnectNodeInfo other = (ConnectNodeInfo) obj;
+        return Objects.equals(country, other.country) && Objects.equals(firmwareVersion, other.firmwareVersion)
+                && Objects.equals(ifName, other.ifName) && Objects.equals(ifType, other.ifType)
+                && Objects.equals(ipV4Address, other.ipV4Address) && Objects.equals(lanIfName, other.lanIfName)
+                && Objects.equals(lanIfType, other.lanIfType) && Objects.equals(lanIpV4Address, other.lanIpV4Address)
+                && Objects.equals(lanMacAddress, other.lanMacAddress) && Objects.equals(macAddress, other.macAddress)
+                && Objects.equals(managerAddr, other.managerAddr) && Objects.equals(model, other.model)
+                && Objects.equals(mqttSettings, other.mqttSettings)
+                && Objects.equals(platformVersion, other.platformVersion)
+                && Objects.equals(redirectorAddr, other.redirectorAddr) && Objects.equals(revision, other.revision)
+                && Objects.equals(serialNumber, other.serialNumber) && Objects.equals(skuNumber, other.skuNumber)
+                && Objects.equals(versionMatrix, other.versionMatrix)
+                && Objects.equals(wifiRadioStates, other.wifiRadioStates);
+    }
+
+    @Override
+    public String toString() {
+        return "ConnectNodeInfo [mqttSettings=" + mqttSettings + ", versionMatrix=" + versionMatrix
+                + ", wifiRadioStates=" + wifiRadioStates + ", redirectorAddr=" + redirectorAddr + ", managerAddr="
+                + managerAddr + ", skuNumber=" + skuNumber + ", serialNumber=" + serialNumber + ", macAddress="
+                + macAddress + ", ipV4Address=" + ipV4Address + ", platformVersion=" + platformVersion
+                + ", firmwareVersion=" + firmwareVersion + ", revision=" + revision + ", model=" + model + ", ifName="
+                + ifName + ", ifType=" + ifType + ", country=" + country + ", lanIpV4Address=" + lanIpV4Address
+                + ", lanIfName=" + lanIfName + ", lanIfType=" + lanIfType + ", lanMacAddress=" + lanMacAddress + "]";
+    }
+
 
 }

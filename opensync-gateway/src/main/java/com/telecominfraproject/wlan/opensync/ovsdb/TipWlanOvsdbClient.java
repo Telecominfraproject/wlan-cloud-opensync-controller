@@ -107,7 +107,10 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                     // we are augmenting it
                     // with the serialNumber and using it as a key (equivalent
                     // of KDC unique qrCode)
-                    String key = clientCn + "_" + connectNodeInfo.serialNumber;
+                    String key = clientCn;
+                    if (!preventClientCnAlteration) {
+                        key = clientCn + "_" + connectNodeInfo.serialNumber;
+                    }
                     ovsdbSessionMapInterface.newSession(key, ovsdbClient);
 
                     extIntegrationInterface.apConnected(key, connectNodeInfo);
@@ -188,7 +191,10 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         LOG.debug("Starting Client connect");
         connectNodeInfo = ovsdbDao.updateConnectNodeInfoOnConnect(ovsdbClient, clientCn, connectNodeInfo);
 
-        String apId = clientCn + "_" + connectNodeInfo.serialNumber;
+        String apId = clientCn;
+        if (!preventClientCnAlteration) {
+            apId = clientCn + "_" + connectNodeInfo.serialNumber;
+        }
 
         LOG.debug("Client connect for AP {}", apId);
 
@@ -213,21 +219,6 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                 ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
             }
         }
-
-
-        // Check if device stats is configured in Wifi_Stats_Config table,
-        // provision it
-        // if needed
-        // if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) !=
-        // collectionIntervalSecDeviceStats) {
-        // ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient,
-        // collectionIntervalSecDeviceStats);
-        // }
-
-        if (((ApNetworkConfiguration) opensyncAPConfig.getApProfile().getDetails()).getSyntheticClientEnabled()) {
-            ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
-        }
-        // ovsdbDao.configureWifiInet(ovsdbClient);
 
         LOG.debug("Client connect Done");
         return connectNodeInfo;
