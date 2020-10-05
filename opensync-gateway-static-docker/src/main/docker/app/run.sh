@@ -27,6 +27,7 @@ OVSDB_PROPS+=" -Dtip.wlan.ovsdb.operatorProfileFileName=$OVSDB_OPERATORPROFILE_C
 OVSDB_PROPS+=" -Dtip.wlan.ovsdb.venueProfileFileName=$OVSDB_VENUEPROFILE_CONFIG_FILE"
 OVSDB_PROPS+=" -Dtip.wlan.ovsdb.rfProfileFileName=$OVSDB_RFPROFILE_CONFIG_FILE"
 OVSDB_PROPS+=" -Dtip.wlan.ovsdb.ssidProfileFileName=$OVSDB_SSIDPROFILE_CONFIG_FILE"
+OVSDB_PROPS+=" -Dtip.wlan.preventClientCnAlteration=$OVSDB_PREVENT_CLIENTCN_ALTERATION"
 OVSDB_PROPS+=" -Dtip.wlan.ovsdb.radiusProfileFileName=$OVSDB_RADIUSPROFILE_CONFIG_FILE"
 OVSDB_PROPS+=" -Dtip.wlan.ovsdb.captiveProfileFileName=$OVSDB_CAPTIVEPROFILE_CONFIG_FILE"
 OVSDB_PROPS+=" -Dtip.wlan.ovsdb.bonjourProfileFileName=$OVSDB_BONJOURPROFILE_CONFIG_FILE"
