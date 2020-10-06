@@ -13,7 +13,7 @@ public class Hotspot20OsuProviders implements Cloneable {
             "osu_friendly_name", "service_description" };
     public Uuid version;
     public Set<String> osuNai;
-    public Set<String> osuIcons;
+    public Set<Uuid> osuIcons;
     public String serverUri;
     public Set<Integer> methodList;
     public Uuid uuid;

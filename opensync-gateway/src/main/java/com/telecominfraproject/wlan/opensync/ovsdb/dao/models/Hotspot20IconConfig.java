@@ -1,8 +1,6 @@
 package com.telecominfraproject.wlan.opensync.ovsdb.dao.models;
 
-import java.util.HashSet;
 import java.util.Objects;
-import java.util.Set;
 
 import com.vmware.ovsdb.protocol.operation.notation.Row;
 import com.vmware.ovsdb.protocol.operation.notation.Uuid;
@@ -12,15 +10,6 @@ public class Hotspot20IconConfig implements Cloneable {
     public static String[] ovsdbColumns = { "_version", "name", "path", "url", "lang_code", "height", "img_type",
             "_uuid", "width" };
 
-    // _version "uuid"
-    // name {"key":{"maxLength":128,"minLength":1,"type":"string"}}
-    // path {"key":{"maxLength":32,"minLength":1,"type":"string"}}
-    // url {"key":{"maxLength":256,"minLength":1,"type":"string"}}
-    // lang_code {"key":{"maxLength":8,"minLength":1,"type":"string"}}
-    // height {"key":"integer","min":0}
-    // img_type {"key":{"maxLength":32,"minLength":1,"type":"string"}}
-    // _uuid "uuid"
-    // width {"key":"integer","min":0}
     public String name;
     public String path;
     public String url;
@@ -38,6 +27,10 @@ public class Hotspot20IconConfig implements Cloneable {
     public Hotspot20IconConfig(Row row) {
         this.version = row.getUuidColumn("_version");
         this.uuid = row.getUuidColumn("_uuid");
+        if ((row.getColumns().get("name") != null) && row.getColumns().get("name").getClass()
+                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+            this.name = row.getStringColumn("name");
+        }
         if ((row.getColumns().get("path") != null) && row.getColumns().get("path").getClass()
                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
             this.path = row.getStringColumn("path");

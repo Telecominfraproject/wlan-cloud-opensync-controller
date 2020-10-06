@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -76,7 +77,14 @@ import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.common.ManagedFileInfo;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.telecominfraproject.wlan.profile.passpoint.hotspot.models.Hotspot2Profile;
+import com.telecominfraproject.wlan.profile.passpoint.models.Hotspot20Duple;
 import com.telecominfraproject.wlan.profile.passpoint.operator.models.OperatorProfile;
+import com.telecominfraproject.wlan.profile.passpoint.provider.models.AuthenticationParameterTypes;
+import com.telecominfraproject.wlan.profile.passpoint.provider.models.CredentialType;
+import com.telecominfraproject.wlan.profile.passpoint.provider.models.EapMethods;
+import com.telecominfraproject.wlan.profile.passpoint.provider.models.Hotspot20IdProviderProfile;
+import com.telecominfraproject.wlan.profile.passpoint.provider.models.NonEapInnerAuthenticationTypes;
+import com.telecominfraproject.wlan.profile.passpoint.provider.models.OsuIcon;
 import com.telecominfraproject.wlan.profile.passpoint.venue.models.VenueName;
 import com.telecominfraproject.wlan.profile.passpoint.venue.models.VenueProfile;
 import com.telecominfraproject.wlan.profile.passpoint.venue.models.VenueTypeAssignment;
@@ -296,7 +304,6 @@ public class OvsdbDao {
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             throw new RuntimeException(e);
         }
-
         LOG.debug("ConnectNodeInfo created {}", ret);
 
         return ret;
@@ -1166,6 +1173,47 @@ public class OvsdbDao {
         return ret;
     }
 
+    public List<String> getWifiVifStates(OvsdbClient ovsdbClient, String ssidName) {
+        List<String> ret = new ArrayList<>();
+
+        List<Operation> operations = new ArrayList<>();
+        List<Condition> conditions = new ArrayList<>();
+        conditions.add(new Condition("ssid", Function.EQUALS, new Atom<>(ssidName)));
+        List<String> columns = new ArrayList<>();
+        columns.add("mac");
+
+
+        try {
+            LOG.debug("Retrieving WifiVifState:");
+
+            operations.add(new Select(wifiVifStateDbTable, conditions, columns));
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            for (OperationResult res : result) {
+                LOG.debug("Op Result {}", res);
+            }
+
+            for (Row row : ((SelectResult) result[0]).getRows()) {
+
+
+                String mac = getSingleValueFromSet(row, "mac");
+                if (mac != null) {
+                    ret.add(mac);
+                }
+
+            }
+
+            LOG.debug("Retrieved WifiVifState: {}", ret);
+
+        } catch (ExecutionException | InterruptedException | OvsdbClientException | TimeoutException e) {
+            LOG.error("Error in getWifiVifStates", e);
+            throw new RuntimeException(e);
+        }
+
+        return ret;
+    }
+
     public Map<String, WifiVifConfigInfo> getProvisionedWifiVifConfigs(OvsdbClient ovsdbClient) {
         Map<String, WifiVifConfigInfo> ret = new HashMap<>();
 
@@ -1418,8 +1466,8 @@ public class OvsdbDao {
     }
 
 
-    public Map<Uuid, Hotspot20OsuProviders> getProvisionedHotspot20OsuProviders(OvsdbClient ovsdbClient) {
-        Map<Uuid, Hotspot20OsuProviders> ret = new HashMap<>();
+    public Map<String, Hotspot20OsuProviders> getProvisionedHotspot20OsuProviders(OvsdbClient ovsdbClient) {
+        Map<String, Hotspot20OsuProviders> ret = new HashMap<>();
         List<Operation> operations = new ArrayList<>();
         List<Condition> conditions = new ArrayList<>();
         List<String> columns = new ArrayList<>();
@@ -1438,7 +1486,7 @@ public class OvsdbDao {
 
             for (Row row : ((SelectResult) result[0]).getRows()) {
                 Hotspot20OsuProviders hotspot20OsuProviders = new Hotspot20OsuProviders(row);
-                ret.put(hotspot20OsuProviders.uuid, hotspot20OsuProviders);
+                ret.put(hotspot20OsuProviders.serverUri, hotspot20OsuProviders);
             }
 
             LOG.debug("Retrieved Hotspot20_OSU_Providers: {}", ret);
@@ -3047,18 +3095,23 @@ public class OvsdbDao {
                             rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit, rtsCtsThreshold,
                             fragThresholdBytes, dtimPeriod, captiveMap, walledGardenAllowlist, bonjourServiceMap);
 
+
                 } catch (IllegalStateException e) {
                     // could not provision this SSID, but still can go on
                     LOG.warn("could not provision SSID {} on {}", ssidConfig.getSsid(), freqBand);
                 }
 
             }
-            if (opensyncApConfig.getHotspotConfig() != null) {
-                provisionHotspot2IconConfig(ovsdbClient, opensyncApConfig);
-                provisionHotspot20OsuProviders(ovsdbClient, opensyncApConfig);
-                provisionHotspot20Config(ovsdbClient, opensyncApConfig);
-            }
+
         }
+
+    }
+
+    public void configureHotspots(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
+
+        provisionHotspot2IconConfig(ovsdbClient, opensyncApConfig);
+        provisionHotspot20OsuProviders(ovsdbClient, opensyncApConfig);
+        provisionHotspot20Config(ovsdbClient, opensyncApConfig);
 
     }
 
@@ -3412,11 +3465,61 @@ public class OvsdbDao {
                                     }).collect(Collectors.toList());
                             venueProfile = (VenueProfile) venue.get(0).getDetails();
                         }
-                        // for (Profile hotspot20 : hotspot20ProfileList) {
 
                         Hotspot2Profile hs2Profile = (Hotspot2Profile) hotspotProfile.getDetails();
 
                         Map<String, Value> rowColumns = new HashMap<>();
+
+
+                        Map<String, Hotspot20OsuProviders> osuProviders = getProvisionedHotspot20OsuProviders(
+                                ovsdbClient);
+                        List<Profile> providerList = new ArrayList<>();
+                        if (hs20cfg.getHotspot20ProviderSet() != null) {
+                            providerList = hs20cfg.getHotspot20ProviderSet().stream().filter(new Predicate<Profile>() {
+
+                                @Override
+                                public boolean test(Profile t) {
+                                    return hotspotProfile.getChildProfileIds().contains(t.getId());
+                                }
+                            }).collect(Collectors.toList());
+
+                        }
+
+                        Set<Uuid> osuProvidersUuids = new HashSet<>();
+                        Set<Uuid> osuIconUuids = new HashSet<>();
+                        Set<Atom<String>> osuNai = new HashSet<>();
+                        for (Profile provider : providerList) {
+                            Hotspot20IdProviderProfile providerProfile = (Hotspot20IdProviderProfile) provider
+                                    .getDetails();
+                            if (osuProviders.containsKey(providerProfile.getOsuServerUri())) {
+                                osuProvidersUuids.add(osuProviders.get(providerProfile.getOsuServerUri()).uuid);
+                                osuIconUuids.addAll(osuProviders.get(providerProfile.getOsuServerUri()).osuIcons);
+                                osuProviders.get(providerProfile.getOsuServerUri()).osuNai.stream().forEach(n -> {
+                                    osuNai.add(new Atom<String>(n));
+                                });
+                            }
+                        }
+
+
+                        if (osuProvidersUuids.size() > 0) {
+                            com.vmware.ovsdb.protocol.operation.notation.Set providerUuids = com.vmware.ovsdb.protocol.operation.notation.Set
+                                    .of(osuProvidersUuids);
+                            rowColumns.put("osu_providers", providerUuids);
+                        }
+
+                        if (osuIconUuids.size() > 0) {
+                            com.vmware.ovsdb.protocol.operation.notation.Set iconUuids = com.vmware.ovsdb.protocol.operation.notation.Set
+                                    .of(osuIconUuids);
+                            rowColumns.put("operator_icons", iconUuids);
+                        }
+
+                        if (osuNai.size() > 0) {
+                            com.vmware.ovsdb.protocol.operation.notation.Set osuNaiSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                                    .of(osuNai);
+                            rowColumns.put("nai_realm", osuNaiSet);
+
+                        }
+
                         rowColumns.put("deauth_request_timeout", new Atom<>(hs2Profile.getDeauthRequestTimeout()));
                         rowColumns.put("osen",
                                 new Atom<>(operatorProfile.isServerOnlyAuthenticatedL2EncryptionNetwork()));
@@ -3472,10 +3575,11 @@ public class OvsdbDao {
 
 
                         rowColumns.put("venue_group_type", new Atom<>(groupType));
-                        
+
                         Map<String, WifiVifConfigInfo> vifConfigMap = getProvisionedWifiVifConfigs(ovsdbClient);
 
                         Set<Uuid> vifConfigs = new HashSet<>();
+                        List<Atom<String>> hessids = new ArrayList<>();
                         for (String ssid : hs2Profile.getAssociatedSsids()) {
                             if (vifConfigMap != null) {
                                 vifConfigMap.keySet().stream().forEach(k -> {
@@ -3487,6 +3591,11 @@ public class OvsdbDao {
                             }
 
 
+                            List<String> vifStates = getWifiVifStates(ovsdbClient, ssid);
+                            for (String mac : vifStates) {
+                                hessids.add(new Atom<>(mac));
+                            }
+                            
                         }
 
                         if (vifConfigs.size() > 0) {
@@ -3494,7 +3603,14 @@ public class OvsdbDao {
                                     .of(vifConfigs);
                             rowColumns.put("vif_config", vifConfigUuids);
                         }
+                        
+                        if (hessids.size() > 0) {
+                            
+                            rowColumns.put("hessid", new Atom<>(hessids.get(0)));
+                        }
+                        
                         Row row = new Row(rowColumns);
+
 
                         Insert newHs20Config = new Insert(hotspot20ConfigDbTable, row);
 
@@ -3533,17 +3649,54 @@ public class OvsdbDao {
             DatabaseSchema schema = ovsdbClient.getSchema(ovsdbName).get(ovsdbTimeoutSec, TimeUnit.SECONDS);
             if (schema.getTables().containsKey(hotspot20OsuProvidersDbTable)
                     && schema.getTables().get(hotspot20OsuProvidersDbTable) != null) {
-                Map<Uuid, Hotspot20OsuProviders> hotspot20OsuProvidersMap = getProvisionedHotspot20OsuProviders(
-                        ovsdbClient);
+                Map<String, Hotspot20OsuProviders> osuProviders = getProvisionedHotspot20OsuProviders(ovsdbClient);
 
                 OpensyncAPHotspot20Config hs20cfg = opensyncApConfig.getHotspotConfig();
-
+                Set<Operation> operations = new HashSet<>();
                 if (hs20cfg.getHotspot20ProviderSet() != null && hs20cfg.getHotspot20ProviderSet().size() > 0) {
+
+
+                    for (Profile provider : hs20cfg.getHotspot20ProviderSet()) {
+                        Hotspot20IdProviderProfile providerProfile = (Hotspot20IdProviderProfile) provider.getDetails();
+                        Map<String, Value> rowColumns = new HashMap<>();
+
+                        getNaiRealmsForOsuProvider(providerProfile, rowColumns);
+                        getOsuIconUuidsForOsuProvider(ovsdbClient, providerProfile, rowColumns);
+                        getOsuProviderFriendlyNames(providerProfile, rowColumns);
+                        getOsuProviderMethodList(providerProfile, rowColumns);
+                        if (providerProfile.getOsuServerUri() != null) {
+                            rowColumns.put("server_uri", new Atom<>(providerProfile.getOsuServerUri()));
+                        }
+                        getOsuProviderServiceDescriptions(providerProfile, rowColumns);
+
+                        Row row = new Row(rowColumns);
+
+                        if (!osuProviders.containsKey(providerProfile.getOsuServerUri())) {
+                            Insert newOsuProvider = new Insert(hotspot20OsuProvidersDbTable, row);
+                            operations.add(newOsuProvider);
+                        } else {
+                            List<Condition> conditions = new ArrayList<>();
+                            conditions.add(new Condition("server_uri", Function.EQUALS,
+                                    new Atom<>(providerProfile.getOsuServerUri())));
+                            Update updatedOsuProvider = new Update(hotspot20OsuProvidersDbTable, conditions, row);
+                            operations.add(updatedOsuProvider);
+                        }
+
+                    }
+
 
                 }
 
+                if (operations.size() > 0) {
+                    CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName,
+                            List.copyOf(operations));
+                    OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
-                LOG.info("Current Hotspot20_OSU_Providers {}", hotspot20OsuProvidersMap);
+                    for (OperationResult res : result) {
+                        LOG.debug("provisionHotspot20OsuProviders Op Result {}", res);
+                    }
+                }
+
             } else {
                 LOG.info("Table {} not present in {}. Cannot provision Hotspot20_OSU_Providers",
                         hotspot20OsuProvidersDbTable, ovsdbName);
@@ -3556,21 +3709,208 @@ public class OvsdbDao {
 
     }
 
+
+    protected void getOsuProviderServiceDescriptions(Hotspot20IdProviderProfile providerProfile,
+            Map<String, Value> rowColumns) {
+        Set<Atom<String>> serviceDescriptions = new HashSet<>();
+        for (Hotspot20Duple serviceDescription : providerProfile.getOsuServiceDescription()) {
+            serviceDescriptions.add(new Atom<String>(serviceDescription.getAsDuple()));
+        }
+
+        if (serviceDescriptions.size() > 0) {
+            com.vmware.ovsdb.protocol.operation.notation.Set serviceDescriptionSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                    .of(serviceDescriptions);
+            rowColumns.put("service_description", serviceDescriptionSet);
+        }
+    }
+
+
+    protected void getOsuProviderMethodList(Hotspot20IdProviderProfile providerProfile, Map<String, Value> rowColumns) {
+        Set<Atom<Integer>> methods = new HashSet<>();
+        for (Integer method : providerProfile.getOsuMethodList()) {
+            methods.add(new Atom<Integer>(method));
+        }
+        if (methods.size() > 0) {
+            com.vmware.ovsdb.protocol.operation.notation.Set methodsSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                    .of(methods);
+            rowColumns.put("method_list", methodsSet);
+        }
+    }
+
+
+    protected void getOsuProviderFriendlyNames(Hotspot20IdProviderProfile providerProfile,
+            Map<String, Value> rowColumns) {
+        Set<Atom<String>> providerFriendlyNames = new HashSet<>();
+        for (Hotspot20Duple friendlyName : providerProfile.getOsuFriendlyName()) {
+            providerFriendlyNames.add(new Atom<String>(friendlyName.getAsDuple()));
+        }
+
+        if (providerFriendlyNames.size() > 0) {
+            com.vmware.ovsdb.protocol.operation.notation.Set providerFriendlyNamesSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                    .of(providerFriendlyNames);
+            rowColumns.put("osu_friendly_name", providerFriendlyNamesSet);
+        }
+    }
+
+
+    protected void getOsuIconUuidsForOsuProvider(OvsdbClient ovsdbClient, Hotspot20IdProviderProfile providerProfile,
+            Map<String, Value> rowColumns) {
+        Map<String, Hotspot20IconConfig> osuIconsMap = getProvisionedHotspot20IconConfig(ovsdbClient);
+        Set<Uuid> iconsSet = new HashSet<>();
+        if (osuIconsMap.size() > 0) {
+            for (OsuIcon icon : providerProfile.getOsuIconList()) {
+                if (osuIconsMap.containsKey(icon.getIconName())) {
+                    iconsSet.add(osuIconsMap.get(icon.getIconName()).uuid);
+                }
+            }
+        }
+
+        if (iconsSet.size() > 0) {
+            com.vmware.ovsdb.protocol.operation.notation.Set iconUuidSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                    .of(iconsSet);
+            rowColumns.put("osu_icons", iconUuidSet);
+        }
+    }
+
+
+    protected void getNaiRealmsForOsuProvider(Hotspot20IdProviderProfile providerProfile,
+            Map<String, Value> rowColumns) {
+        Set<Atom<String>> naiRealms = new HashSet<>();
+        providerProfile.getNaiRealmList().stream().forEach(c -> {
+
+            StringBuffer naiBuffer = new StringBuffer();
+            naiBuffer.append(Integer.toString(c.getEncoding()));
+            naiBuffer.append(",");
+            Iterator<String> realmsIterator = c.getNaiRealms().iterator();
+            if (realmsIterator != null) {
+                while (realmsIterator.hasNext()) {
+                    String realm = realmsIterator.next();
+                    naiBuffer.append(realm);
+                    if (realmsIterator.hasNext()) {
+                        naiBuffer.append(";");
+                    }
+                }
+
+            }
+
+            if (c.getEapMap() == null || c.getEapMap().isEmpty()) {
+                naiRealms.add(new Atom<String>(naiBuffer.toString()));
+            } else {
+                naiBuffer.append(",");
+
+                Map<String, Set<String>> eapMap = c.getEapMap();
+                eapMap.entrySet().stream().forEach(e -> {
+
+                    String eapMethodName = e.getKey();
+                    String eapMethodId = String.valueOf(EapMethods.getByName(eapMethodName).getId());
+                    naiBuffer.append(eapMethodId);
+
+                    for (String credential : e.getValue()) {
+
+                        String[] keyValue = credential.split(":");
+                        String keyId = String.valueOf(AuthenticationParameterTypes.getByName(keyValue[0]).getId());
+                        if (keyValue[0]
+                                .equals(AuthenticationParameterTypes.non_eap_inner_authentication_type.getName())) {
+
+                            String valueId = String
+                                    .valueOf(NonEapInnerAuthenticationTypes.getByName(keyValue[1]).getId());
+
+                            naiBuffer.append("[");
+                            naiBuffer.append(keyId);
+                            naiBuffer.append(":");
+                            naiBuffer.append(valueId);
+                            naiBuffer.append("]");
+
+                        } else if (keyValue[0].equals(AuthenticationParameterTypes.credential_type.getName())
+                                || keyValue[0].equals(
+                                        AuthenticationParameterTypes.tunneled_eap_method_credential_type.getName())) {
+
+                            String valueId = String.valueOf(CredentialType.getByName(keyValue[1]).getId());
+
+                            naiBuffer.append("[");
+                            naiBuffer.append(keyId);
+                            naiBuffer.append(":");
+                            naiBuffer.append(valueId);
+                            naiBuffer.append("]");
+
+
+                        }
+                    }
+                    naiBuffer.append(",");
+
+
+                });
+                String naiRealm = naiBuffer.toString();
+                if (naiRealm.endsWith(",")) {
+                    naiRealm = naiRealm.substring(0, naiRealm.lastIndexOf(","));
+                }
+                naiRealms.add(new Atom<String>(naiRealm));
+
+
+            }
+
+
+        });
+
+        com.vmware.ovsdb.protocol.operation.notation.Set naiRealmsSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                .of(naiRealms);
+        rowColumns.put("osu_nai", naiRealmsSet);
+    }
+
     public void provisionHotspot2IconConfig(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
         try {
             DatabaseSchema schema = ovsdbClient.getSchema(ovsdbName).get(ovsdbTimeoutSec, TimeUnit.SECONDS);
             if (schema.getTables().containsKey(hotspot20IconConfigDbTable)
                     && schema.getTables().get(hotspot20IconConfigDbTable) != null) {
-                Map<String, Hotspot20IconConfig> osuProviders = getProvisionedHotspot20IconConfig(ovsdbClient);
+                Map<String, Hotspot20IconConfig> osuIconConfigs = getProvisionedHotspot20IconConfig(ovsdbClient);
 
                 OpensyncAPHotspot20Config hs20cfg = opensyncApConfig.getHotspotConfig();
-
+                Set<Operation> operations = new HashSet<>();
                 if (hs20cfg.getHotspot20ProviderSet() != null && hs20cfg.getHotspot20ProviderSet().size() > 0) {
 
+
+                    for (Profile provider : hs20cfg.getHotspot20ProviderSet()) {
+                        Hotspot20IdProviderProfile providerProfile = (Hotspot20IdProviderProfile) provider.getDetails();
+                        for (OsuIcon osuIcon : providerProfile.getOsuIconList()) {
+                            // ovsdbColumns = { "name", "path", "url",
+                            // "lang_code", "height", "img_type", "width" };
+                            Map<String, Value> rowColumns = new HashMap<>();
+                            rowColumns.put("name", new Atom<>(osuIcon.getIconName()));
+                            rowColumns.put("path", new Atom<>(osuIcon.getFilePath()));
+                            rowColumns.put("url", new Atom<>(osuIcon.getImageUrl()));
+                            rowColumns.put("lang_code", new Atom<>(osuIcon.getLanguageCode()));
+                            rowColumns.put("height", new Atom<>(osuIcon.getIconHeight()));
+                            rowColumns.put("img_type", new Atom<>(OsuIcon.ICON_TYPE));
+                            rowColumns.put("width", new Atom<>(osuIcon.getIconWidth()));
+
+                            Row row = new Row(rowColumns);
+
+                            if (!osuIconConfigs.containsKey(osuIcon.getIconName())) {
+                                Insert newHs20Config = new Insert(hotspot20IconConfigDbTable, row);
+                                operations.add(newHs20Config);
+                            } else {
+                                List<Condition> conditions = new ArrayList<>();
+                                conditions
+                                        .add(new Condition("name", Function.EQUALS, new Atom<>(osuIcon.getIconName())));
+                                Update newHs20Config = new Update(hotspot20IconConfigDbTable, conditions, row);
+                                operations.add(newHs20Config);
+                            }
+
+                        }
+                    }
+
+
+                }
+                if (operations.size() > 0) {
+                    CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName,
+                            List.copyOf(operations));
+                    OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+                    for (OperationResult res : result) {
+                        LOG.debug("provisionHotspot20Config Op Result {}", res);
+                    }
                 }
 
-
-                LOG.info("Current Hotspot20_Icon_Config {}", osuProviders);
             } else {
                 LOG.info("Table {} not present in {}. Cannot provision Hotspot20_Icon_Config",
                         hotspot20IconConfigDbTable, ovsdbName);

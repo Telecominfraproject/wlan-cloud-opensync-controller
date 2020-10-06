@@ -207,6 +207,9 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             ovsdbDao.configureInterfaces(ovsdbClient);
             ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
+            if (opensyncAPConfig.getHotspotConfig() != null) {
+                ovsdbDao.configureHotspots(ovsdbClient, opensyncAPConfig);
+            }
             ovsdbDao.configureStatsFromProfile(ovsdbClient, opensyncAPConfig);
             if (((ApNetworkConfiguration) opensyncAPConfig.getApProfile().getDetails()).getSyntheticClientEnabled()) {
                 ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
@@ -264,7 +267,9 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         ovsdbDao.configureInterfaces(ovsdbClient);
         ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
-
+        if (opensyncAPConfig.getHotspotConfig() != null) {
+            ovsdbDao.configureHotspots(ovsdbClient, opensyncAPConfig);
+        }
         ovsdbDao.configureStatsFromProfile(ovsdbClient, opensyncAPConfig);
 
         LOG.debug("Finished processConfigChanged for {}", apId);
