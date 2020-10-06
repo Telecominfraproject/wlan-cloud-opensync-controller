@@ -103,20 +103,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
                     // successfully connected - register it in our
                     // connectedClients table
-                    String key = null;
-                    // can clientCn be altered
-                    if (preventClientCnAlteration) {
-                        key = clientCn;
-                    } else {
-                        // does clientCn already end with the AP serial number, if so, use
-                        // this
-                        if (clientCn.endsWith("_" + connectNodeInfo.serialNumber)) {
-                            key = clientCn;
-                        } else {
-                            // append the serial number
-                            key = clientCn + "_" + connectNodeInfo.serialNumber;
-                        }
-                    }
+                    String key = alterClientCnIfRequired(clientCn, connectNodeInfo);
                     ovsdbSessionMapInterface.newSession(key, ovsdbClient);
 
                     extIntegrationInterface.apConnected(key, connectNodeInfo);
@@ -142,6 +129,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                 }
 
             }
+
 
             @Override
             public void disconnected(OvsdbClient ovsdbClient) {
@@ -199,20 +187,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
         // successfully connected - register it in our
         // connectedClients table
-        String apId = null;
-        // can clientCn be altered
-        if (preventClientCnAlteration) {
-            apId = clientCn;
-        } else {
-            // does clientCn already end with the AP serial number, if so, use
-            // this
-            if (clientCn.endsWith("_" + connectNodeInfo.serialNumber)) {
-                apId = clientCn;
-            } else {
-                // append the serial number
-                apId = clientCn + "_" + connectNodeInfo.serialNumber;
-            }
-        }
+        String apId = alterClientCnIfRequired(clientCn, connectNodeInfo);
 
         LOG.debug("Client connect for AP {}", apId);
 
@@ -859,4 +834,21 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
     }
 
+    public String alterClientCnIfRequired(String clientCn, ConnectNodeInfo connectNodeInfo) {
+        String key;
+        // can clientCn be altered
+        if (preventClientCnAlteration) {
+            key = clientCn;
+        } else {
+            // does clientCn already end with the AP serial number, if so, use
+            // this
+            if (clientCn.endsWith("_" + connectNodeInfo.serialNumber)) {
+                key = clientCn;
+            } else {
+                // append the serial number
+                key = clientCn + "_" + connectNodeInfo.serialNumber;
+            }
+        }
+        return key;
+    }
 }

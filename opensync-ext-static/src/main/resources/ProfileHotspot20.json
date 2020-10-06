@@ -1,55 +1,74 @@
 [
-{
-    "model_type": "Profile",
-    "id": 7777,
-    "customerId": 2,
-    "profileType": "hotspot_2pt0",
-    "name": "TipWlan-Hotspot20-Config",
-    "details": {
-        "model_type": "Hotspot2Profile",
-        "enableInterworkingAndHs20": true,
-        "hessid": null,
-        "accessNetworkType": "free_public_network",
-        "networkAuthenticationType": "acceptance_of_terms_and_conditions",
-        "additionalStepsRequiredForAccess": 0,
-        "deauthRequestTimeout": 0,
-        "operatingClass": 0,
-        "termsAndConditionsFile": {
-            "model_type": "ManagedFileInfo",
-            "md5checksum": null,
-            "lastModifiedTimestamp": null,
-            "apExportUrl": "https://localhost:9091/filestore/termsAndConditions",
-            "fileCategory": "ExternalPolicyConfiguration",
-            "fileType": "TEXT",
-            "altSlot": false
+ {
+        "model_type": "Profile",
+        "id": 8,
+        "customerId": 2,
+        "profileType": "hotspot_2pt0",
+        "name": "TipWlan-Hotspot20-Config",
+        "details": {
+            "model_type": "Hotspot2Profile",
+            "enableInterworkingAndHs20": true,
+            "hessid": null,
+            "accessNetworkType": "free_public_network",
+            "networkAuthenticationType": "acceptance_of_terms_and_conditions",
+            "additionalStepsRequiredForAccess": 0,
+            "deauthRequestTimeout": 0,
+            "operatingClass": 0,
+            "termsAndConditionsFile": {
+                "model_type": "ManagedFileInfo",
+                "md5checksum": null,
+                "lastModifiedTimestamp": null,
+                "apExportUrl": "https://localhost:9091/filestore/termsAndConditions",
+                "fileCategory": "ExternalPolicyConfiguration",
+                "fileType": "TEXT",
+                "altSlot": false
+            },
+            "whitelistDomain": null,
+            "emergencyServicesReachable": true,
+            "unauthenticatedEmergencyServiceAccessible": false,
+            "internetConnectivity": true,
+            "connectionCapabilitySet": [
+                {
+                    "model_type": "ConnectionCapability",
+                    "connectionCapabilitiesPortNumber": 8888,
+                    "connectionCapabilitiesIpProtocol": "TCP",
+                    "connectionCapabilitiesStatus": "open"
+                }
+            ],
+            "ipAddressTypeAvailability": "public_IPv4_address_available",
+            "qosMapSetConfiguration": null,
+            "apGeospatialLocation": null,
+            "apCivicLocation": null,
+            "apPublicLocationIdUri": null,
+            "gasAddr3Behaviour": "p2pSpecWorkaroundFromRequest",
+            "anqpDomainId": 1234,
+            "disableDownstreamGroupAddressedForwarding": false,
+            "enable2pt4GHz": true,
+            "enable5GHz": true,
+            "associatedSsids": [
+                "TipWlan-cloud-3-radios"
+            ],
+            "mccMnc3gppCellularNetworkInfo": [
+                {
+                    "model_type": "MccMnc",
+                    "mcc": 302,
+                    "mnc": 720,
+                    "iso": "ca",
+                    "country": "Canada",
+                    "countryCode": 1,
+                    "network": "Rogers AT&T Wireless",
+                    "mccMncPairing": "302,720"
+                }
+            ],
+            "profileType": "hotspot_2pt0",
+            "mccMncList": "302,720"
         },
-        "whitelistDomain": null,
-        "emergencyServicesReachable": true,
-        "unauthenticatedEmergencyServiceAccessible": false,
-        "internetConnectivity": true,
-        "connectionCapabilitySet": [
-            {
-                "model_type": "ConnectionCapability",
-                "connectionCapabilitiesPortNumber": 8888,
-                "connectionCapabilitiesIpProtocol": "TCP",
-                "connectionCapabilitiesStatus": "open"
-            }
-        ],
-        "ipAddressTypeAvailability": "public_IPv4_address_available",
-        "qosMapSetConfiguration": null,
-        "apGeospatialLocation": null,
-        "apCivicLocation": null,
-        "apPublicLocationIdUri": null,
-        "gasAddr3Behaviour": "p2pSpecWorkaroundFromRequest",
-        "anqpDomainId": 1234,
-        "disableDownstreamGroupAddressedForwarding": false,
-        "profileType": "hotspot_2pt0"
-    },
-    "createdTimestamp": 1601595307355,
-    "lastModifiedTimestamp": 1601595307355,
-    "childProfileIds": [
-        5555,
-        6666
-    ]
-}
+        "createdTimestamp": 1601961452370,
+        "lastModifiedTimestamp": 1601961452370,
+        "childProfileIds": [
+            5,
+            6,
+            7
+        ]
+    }
 ]

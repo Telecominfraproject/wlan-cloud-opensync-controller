@@ -1,0 +1,98 @@
+[
+    {
+        "model_type": "Profile",
+        "id": 7,
+        "customerId": 2,
+        "profileType": "id_provider",
+        "name": "TipWlan-Hotspot20-OSU-Provider",
+        "details": {
+            "model_type": "Hotspot20IdProviderProfile",
+            "domainName": "example.com",
+            "mccMncList": [
+                {
+                    "model_type": "MccMnc",
+                    "mcc": 302,
+                    "mnc": 720,
+                    "iso": "ca",
+                    "country": "Canada",
+                    "countryCode": 1,
+                    "network": "Rogers AT&T Wireless",
+                    "mccMncPairing": "302,720"
+                }
+            ],
+            "naiRealmList": [
+                {
+                    "model_type": "NaiRealmInformation",
+                    "naiRealms": [
+                        "example.net",
+                        "example.com"
+                    ],
+                    "encoding": 0,
+                    "eapMethods": [
+                        "EAP-TLS with certificate"
+                    ],
+                    "eapMap": {
+                        "EAP-TLS with certificate": [
+                            "Softoken",
+                            "Certificate"
+                        ]
+                    }
+                }
+            ],
+            "osuIconList": [
+                {
+                    "model_type": "OsuIcon",
+                    "iconWidth": 32,
+                    "iconHeight": 32,
+                    "languageCode": "eng",
+                    "iconLocale": "en_CA",
+                    "iconName": "icon32.png",
+                    "filePath": "/tmp/icon32.png",
+                    "hs20IconString": "32:32:eng:image/png:icon32.png:/tmp/icon32.png"
+                }
+            ],
+            "radiusProfileAuth": "Radius-Profile",
+            "radiusProfileAccounting": "Radius-Profile",
+            "osuSsid": "TipWlan-cloud-3-radios",
+            "osuServerUri": "https://example.com/osu/",
+            "osuFriendlyName": {
+                "model_type": "Hotspot20Duple",
+                "locale": "en_CA",
+                "dupleIso3Language": "eng",
+                "dupleName": "Example provider",
+                "defaultDupleSeparator": ":",
+                "asDuple": "eng:Example provider"
+            },
+            "osuNaiStandalone": "anonymous@example.com",
+            "osuNaiShared": "anonymous@example.com",
+            "osuMethodList": [
+                1,
+                0
+            ],
+            "osuServiceDescription": [
+                {
+                    "model_type": "Hotspot20Duple",
+                    "locale": "en_CA",
+                    "dupleIso3Language": "eng",
+                    "dupleName": "Example services",
+                    "defaultDupleSeparator": ":",
+                    "asDuple": "eng:Example services"
+                },
+                {
+                    "model_type": "Hotspot20Duple",
+                    "locale": "fr_CA",
+                    "dupleIso3Language": "fra",
+                    "dupleName": "Exemples de services",
+                    "defaultDupleSeparator": ":",
+                    "asDuple": "fra:Exemples de services"
+                }
+            ],
+            "profileType": "id_provider"
+        },
+        "createdTimestamp": 1601961451981,
+        "lastModifiedTimestamp": 1601961451981,
+        "childProfileIds": [
+          1
+        ]
+    }
+    ]

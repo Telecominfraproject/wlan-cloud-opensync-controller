@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import javax.annotation.PostConstruct;
 
@@ -59,6 +58,9 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 
     @Value("${tip.wlan.ovsdb.hotspot20ProfileFileName:/app/config/ProfileHotspot20.json}")
     private String hotspot20ProfileFileName;
+
+    @Value("${tip.wlan.ovsdb.idProviderProfileFileName:/app/config/ProfileIdProvider.json}")
+    private String idProviderProfileFileName;
 
     @Value("${tip.wlan.ovsdb.radiusProfileFileName:/app/config/ProfileRadius.json}")
     private String radiusProfileFileName;
@@ -118,6 +120,8 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
                     .listFromFile(operatorProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
             List<com.telecominfraproject.wlan.profile.models.Profile> venueProfiles = com.telecominfraproject.wlan.profile.models.Profile
                     .listFromFile(venueProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
+            List<com.telecominfraproject.wlan.profile.models.Profile> providerProfiles = com.telecominfraproject.wlan.profile.models.Profile
+                    .listFromFile(idProviderProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
 
 
             ssidProfiles.stream().forEach(p -> apProfile.getChildProfileIds().add(p.getId()));
@@ -161,7 +165,8 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
                     new HashSet<com.telecominfraproject.wlan.profile.models.Profile>(operatorProfiles));
             hotspotConfig.setHotspot20VenueSet(
                     new HashSet<com.telecominfraproject.wlan.profile.models.Profile>(venueProfiles));
-
+            hotspotConfig.setHotspot20ProviderSet(
+                    new HashSet<com.telecominfraproject.wlan.profile.models.Profile>(providerProfiles));
 
             ret = new OpensyncAPConfig();
             ret.setCustomerEquipment(equipment);

@@ -3434,7 +3434,12 @@ public class OvsdbDao {
                         rowColumns.put("gas_addr3_behavior", new Atom<>(hs2Profile.getGasAddr3Behaviour().getId()));
                         rowColumns.put("operating_class", new Atom<>(hs2Profile.getOperatingClass()));
                         rowColumns.put("anqp_domain_id", new Atom<>(hs2Profile.getAnqpDomainId()));
-
+                        Set<Atom<String>> mccMnc = new HashSet<>();
+                        hs2Profile.getMccMnc3gppCellularNetworkInfo().stream()
+                                .forEach(c -> mccMnc.add(new Atom<>(c.getMccMncPairing())));
+                        com.vmware.ovsdb.protocol.operation.notation.Set mccMncSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                                .of(mccMnc);
+                        rowColumns.put("mcc_mnc", mccMncSet);
                         Set<Atom<String>> connectionCapabilities = new HashSet<>();
                         hs2Profile.getConnectionCapabilitySet().stream().forEach(
                                 c -> connectionCapabilities.add(new Atom<>(c.getConnectionCapabilitiesIpProtocol() + ":"
@@ -3462,13 +3467,33 @@ public class OvsdbDao {
                         rowColumns.put("venue_url", venueUrlSet);
 
                         VenueTypeAssignment venueTypeAssignment = venueProfile.getVenueTypeAssignment();
-                            String groupType = String.valueOf(venueTypeAssignment.getVenueGroupId()) + ":"
-                                    + venueTypeAssignment.getVenueTypeId();
+                        String groupType = String.valueOf(venueTypeAssignment.getVenueGroupId()) + ":"
+                                + venueTypeAssignment.getVenueTypeId();
 
 
                         rowColumns.put("venue_group_type", new Atom<>(groupType));
+                        
+                        Map<String, WifiVifConfigInfo> vifConfigMap = getProvisionedWifiVifConfigs(ovsdbClient);
+
+                        Set<Uuid> vifConfigs = new HashSet<>();
+                        for (String ssid : hs2Profile.getAssociatedSsids()) {
+                            if (vifConfigMap != null) {
+                                vifConfigMap.keySet().stream().forEach(k -> {
+                                    if (k.endsWith(ssid)) {
+                                        WifiVifConfigInfo vifConfig = vifConfigMap.get(k);
+                                        vifConfigs.add(vifConfig.uuid);
+                                    }
+                                });
+                            }
 
 
+                        }
+
+                        if (vifConfigs.size() > 0) {
+                            com.vmware.ovsdb.protocol.operation.notation.Set vifConfigUuids = com.vmware.ovsdb.protocol.operation.notation.Set
+                                    .of(vifConfigs);
+                            rowColumns.put("vif_config", vifConfigUuids);
+                        }
                         Row row = new Row(rowColumns);
 
                         Insert newHs20Config = new Insert(hotspot20ConfigDbTable, row);
