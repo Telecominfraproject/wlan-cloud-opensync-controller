@@ -1,5 +1,5 @@
 [
-    {
+{
         "model_type": "Profile",
         "id": 7,
         "customerId": 2,
@@ -29,12 +29,19 @@
                     ],
                     "encoding": 0,
                     "eapMethods": [
+                        "EAP-MSCHAP-V2 with username/password",
+                        "EAP-TTLS with username/password",
                         "EAP-TLS with certificate"
                     ],
                     "eapMap": {
+                        "EAP-MSCHAP-V2 with username/password": [
+                            "Non-EAP Inner Authentication Type:MSCHAPV2"
+                        ],
+                        "EAP-TTLS with username/password": [
+                            "Credential Type:username/password"
+                        ],
                         "EAP-TLS with certificate": [
-                            "Softoken",
-                            "Certificate"
+                            "Credential Type:username/password"
                         ]
                     }
                 }
@@ -48,6 +55,7 @@
                     "iconLocale": "en_CA",
                     "iconName": "icon32.png",
                     "filePath": "/tmp/icon32.png",
+                    "imageUrl": "https://localhost:9096",
                     "hs20IconString": "32:32:eng:image/png:icon32.png:/tmp/icon32.png"
                 }
             ],
@@ -55,14 +63,24 @@
             "radiusProfileAccounting": "Radius-Profile",
             "osuSsid": "TipWlan-cloud-3-radios",
             "osuServerUri": "https://example.com/osu/",
-            "osuFriendlyName": {
-                "model_type": "Hotspot20Duple",
-                "locale": "en_CA",
-                "dupleIso3Language": "eng",
-                "dupleName": "Example provider",
-                "defaultDupleSeparator": ":",
-                "asDuple": "eng:Example provider"
-            },
+            "osuFriendlyName": [
+                {
+                    "model_type": "Hotspot20Duple",
+                    "locale": "en_CA",
+                    "dupleIso3Language": "eng",
+                    "dupleName": "Example provider",
+                    "defaultDupleSeparator": ":",
+                    "asDuple": "eng:Example provider"
+                },
+                {
+                    "model_type": "Hotspot20Duple",
+                    "locale": "fr_CA",
+                    "dupleIso3Language": "fra",
+                    "dupleName": "Exemple de fournisseur",
+                    "defaultDupleSeparator": ":",
+                    "asDuple": "fra:Exemple de fournisseur"
+                }
+            ],
             "osuNaiStandalone": "anonymous@example.com",
             "osuNaiShared": "anonymous@example.com",
             "osuMethodList": [
@@ -89,10 +107,8 @@
             ],
             "profileType": "id_provider"
         },
-        "createdTimestamp": 1601961451981,
-        "lastModifiedTimestamp": 1601961451981,
-        "childProfileIds": [
-          1
-        ]
+        "createdTimestamp": 1602015574295,
+        "lastModifiedTimestamp": 1602015574295,
+        "childProfileIds": []
     }
     ]

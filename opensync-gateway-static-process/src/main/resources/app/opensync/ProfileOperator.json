@@ -1,5 +1,5 @@
 [
- {
+{
         "model_type": "Profile",
         "id": 5,
         "customerId": 2,
@@ -30,8 +30,8 @@
             ],
             "profileType": "operator"
         },
-        "createdTimestamp": 1601961451776,
-        "lastModifiedTimestamp": 1601961451776,
+        "createdTimestamp": 1602015573969,
+        "lastModifiedTimestamp": 1602015573969,
         "childProfileIds": []
     }
 ]
