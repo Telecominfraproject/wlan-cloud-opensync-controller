@@ -1,7 +1,7 @@
 [
 {
         "model_type": "Profile",
-        "id": 8,
+        "id": 9,
         "customerId": 2,
         "profileType": "hotspot_2pt0",
         "name": "TipWlan-Hotspot20-Config",
@@ -45,9 +45,10 @@
             "disableDownstreamGroupAddressedForwarding": false,
             "enable2pt4GHz": true,
             "enable5GHz": true,
-            "associatedSsids": [
-                "TipWlan-cloud-3-radios"
+            "associatedAccessSsidNames": [
+                "TipWlan-cloud-hotspot-access"
             ],
+            "osuSsidName": "TipWlan-cloud-3-radios",
             "mccMnc3gppCellularNetworkInfo": [
                 {
                     "model_type": "MccMnc",
@@ -60,15 +61,23 @@
                     "mccMncPairing": "302,720"
                 }
             ],
+            "operatorProfileName": "TipWlan-Hotspot20-Operator",
+            "venueProfileName": "TipWlan-Hotspot20-Venue",
+            "idProviderProfileNames": [
+                "TipWlan-Hotspot20-OSU-Provider"
+            ],
             "profileType": "hotspot_2pt0",
-            "mccMncList": "302,720"
+            "mccMncList": "302,720",
+            "associatedSsids": [
+                "TipWlan-cloud-hotspot-access"
+            ]
         },
-        "createdTimestamp": 1602015574677,
-        "lastModifiedTimestamp": 1602015574677,
+        "createdTimestamp": 1602113059532,
+        "lastModifiedTimestamp": 1602113059532,
         "childProfileIds": [
-            5,
             6,
-            7
+            7,
+            8
         ]
     }
 ]

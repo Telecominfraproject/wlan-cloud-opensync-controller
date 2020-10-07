@@ -1,7 +1,7 @@
 [
 {
         "model_type": "Profile",
-        "id": 7,
+        "id": 8,
         "customerId": 2,
         "profileType": "id_provider",
         "name": "TipWlan-Hotspot20-OSU-Provider",
@@ -29,19 +29,16 @@
                     ],
                     "encoding": 0,
                     "eapMethods": [
-                        "EAP-MSCHAP-V2 with username/password",
                         "EAP-TTLS with username/password",
                         "EAP-TLS with certificate"
                     ],
                     "eapMap": {
-                        "EAP-MSCHAP-V2 with username/password": [
+                        "EAP-TTLS with username/password": [
+                            "Credential Type:username/password",
                             "Non-EAP Inner Authentication Type:MSCHAPV2"
                         ],
-                        "EAP-TTLS with username/password": [
-                            "Credential Type:username/password"
-                        ],
                         "EAP-TLS with certificate": [
-                            "Credential Type:username/password"
+                            "Credential Type:Certificate"
                         ]
                     }
                 }
@@ -107,8 +104,8 @@
             ],
             "profileType": "id_provider"
         },
-        "createdTimestamp": 1602015574295,
-        "lastModifiedTimestamp": 1602015574295,
+        "createdTimestamp": 1602113059086,
+        "lastModifiedTimestamp": 1602113059086,
         "childProfileIds": []
     }
     ]
