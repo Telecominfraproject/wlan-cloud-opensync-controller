@@ -6,8 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.After;
@@ -66,7 +68,9 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
 import com.telecominfraproject.wlan.profile.models.Profile;
+import com.telecominfraproject.wlan.profile.models.ProfileType;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
+import com.telecominfraproject.wlan.profile.rf.models.RfConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.telecominfraproject.wlan.routing.RoutingServiceInterface;
 import com.telecominfraproject.wlan.status.StatusServiceInterface;
@@ -272,18 +276,37 @@ public class OpensyncExternalIntegrationCloudTest {
         customer.setDetails(customerDetails);
 
         Mockito.when(customerServiceInterface.getOrNull(ArgumentMatchers.anyInt())).thenReturn(customer);
+        
+        Profile rfProfile = new Profile();
+        rfProfile.setId(1);
+        rfProfile.setName("testRfProfile");
+        rfProfile.setDetails(RfConfiguration.createWithDefaults());
+        rfProfile.setProfileType(ProfileType.rf);
 
         Profile apProfile = new Profile();
         apProfile.setDetails(ApNetworkConfiguration.createWithDefaults());
+        apProfile.setName("testApProfile");
+        apProfile.setProfileType(ProfileType.equipment_ap);
 
         Profile ssidProfile = new Profile();
+        ssidProfile.setId(2);
         ssidProfile.setDetails(SsidConfiguration.createWithDefaults());
-
-        apProfile.setChildProfileIds(ImmutableSet.of(ssidProfile.getId()));
+        
+        Set<Long> childProfileIds = new HashSet<>();
+        childProfileIds.add(rfProfile.getId()); 
+        childProfileIds.add(ssidProfile.getId());   
+        apProfile.setChildProfileIds(childProfileIds);
 
         Mockito.when(profileServiceInterface.create(ArgumentMatchers.any(Profile.class))).thenReturn(apProfile)
-                .thenReturn(ssidProfile);
+                .thenReturn(ssidProfile).thenReturn(rfProfile);
         Mockito.when(profileServiceInterface.update(ArgumentMatchers.any(Profile.class))).thenReturn(apProfile);
+        
+        List<Profile> profileList = new ArrayList<>();
+        profileList.add(apProfile);
+        profileList.add(rfProfile);
+        profileList.add(ssidProfile);
+        
+        Mockito.when(profileServiceInterface.getProfileWithChildren(ArgumentMatchers.anyLong())).thenReturn(profileList);
 
         Equipment equipment = new Equipment();
         equipment.setCustomerId(2);
@@ -586,11 +609,32 @@ public class OpensyncExternalIntegrationCloudTest {
         equipment.setCustomerId(1);
         equipment.setEquipmentType(EquipmentType.AP);
         equipment.setInventoryId(apId);
+        equipment.setProfileId(1);
         equipment.setDetails(ApElementConfiguration.createWithDefaults());
 
         Mockito.when(equipmentServiceInterface.getByInventoryIdOrNull(apId)).thenReturn(equipment);
         Mockito.when(equipmentServiceInterface.get(equipment.getId())).thenReturn(equipment);
         Mockito.when(equipmentServiceInterface.update(equipment)).thenReturn(equipment);
+        
+        Profile rfProfile = new Profile();
+        rfProfile.setName("testRfProfile");
+        rfProfile.setId(2);
+        rfProfile.setDetails(RfConfiguration.createWithDefaults());
+        rfProfile.setProfileType(ProfileType.rf);
+        Set<Long> childProfileIds = new HashSet<>();
+        childProfileIds.add(rfProfile.getId());
+        
+        Profile apProfile = new Profile();
+        apProfile.setName("testApProfile");
+        apProfile.setId(1);
+        apProfile.setProfileType(ProfileType.equipment_ap);
+        apProfile.setChildProfileIds(childProfileIds);
+        
+        List<Profile> profileList = new ArrayList<>();
+        profileList.add(apProfile);
+        profileList.add(rfProfile);
+        
+        Mockito.when(profileServiceInterface.getProfileWithChildren(ArgumentMatchers.anyLong())).thenReturn(profileList);
 
         Mockito.when(ovsdbSessionMapInterface.getSession(apId)).thenReturn(session);
 

@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -78,6 +77,7 @@ import com.telecominfraproject.wlan.profile.models.ProfileType;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.telecominfraproject.wlan.profile.network.models.RadioProfileConfiguration;
 import com.telecominfraproject.wlan.profile.rf.models.RfConfiguration;
+import com.telecominfraproject.wlan.profile.rf.models.RfElementConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration.SecureMode;
 import com.telecominfraproject.wlan.routing.RoutingServiceInterface;
@@ -251,11 +251,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     }
                     if (!radioType.equals(RadioType.UNSUPPORTED)) {
                         advancedRadioConfiguration = RadioConfiguration.createWithDefaults(radioType);
-                        advancedRadioConfiguration.setAutoChannelSelection(StateSetting.disabled);
 
                         advancedRadioMap.put(radioType, advancedRadioConfiguration);
                         radioConfiguration = ElementRadioConfiguration.createWithDefaults(radioType);
-                        radioConfiguration.setAutoChannelSelection(false);
                         radioMap.put(radioType, radioConfiguration);
                     }
                 }
@@ -287,6 +285,36 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     // one:
                     Profile apProfile = createDefaultApProfile(ce, connectNodeInfo);
                     profileId = apProfile.getId();
+                    
+                    // Initialize equipment from RF Profile
+                    ProfileContainer profileContainer = new ProfileContainer(
+                    		profileServiceInterface.getProfileWithChildren(profileId));
+                    RfConfiguration rfConfig = (RfConfiguration) profileContainer.getChildOfTypeOrNull(profileId, ProfileType.rf)
+                    		.getDetails();
+                    ApElementConfiguration config = (ApElementConfiguration) ce.getDetails();
+                    Map<RadioType, ElementRadioConfiguration> baseRadioMap = config.getRadioMap();
+                    Map<RadioType, RadioConfiguration> advRadioMap = config.getAdvancedRadioMap();
+                    for (RadioType rType : config.getRadioMap().keySet()) {
+                    	ElementRadioConfiguration elementRadioConfig = baseRadioMap.get(rType);
+                    	RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(rType);
+                    	
+                    	elementRadioConfig.setClientDisconnectThresholdDb(rfElementConfig.getClientDisconnectThresholdDb());
+                    	elementRadioConfig.setEirpTxPower(rfElementConfig.getEirpTxPower());
+                    	elementRadioConfig.setPerimeterDetectionEnabled(rfElementConfig.getPerimeterDetectionEnabled());
+                    	elementRadioConfig.setProbeResponseThresholdDb(rfElementConfig.getProbeResponseThresholdDb());
+                    	elementRadioConfig.setRxCellSizeDb(rfElementConfig.getRxCellSizeDb());
+                    }
+                    for (RadioType rType : config.getAdvancedRadioMap().keySet()) {
+                    	RadioConfiguration radioConfig = advRadioMap.get(rType);
+                    	RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(rType);
+                    	
+                    	radioConfig.setBestApSettings(rfElementConfig.getBestApSettings());
+                    	radioConfig.setManagementRate(rfElementConfig.getManagementRate());
+                    }
+                    config.setAdvancedRadioMap(advRadioMap);
+                    config.setRadioMap(baseRadioMap);
+                    
+                    ce.setDetails(config);
                 }
 
                 ce.setProfileId(profileId);
@@ -903,7 +931,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return; // we don't have the required info to get the
                     // radio type yet
         }
-
+        ApElementConfiguration apElementConfig = (ApElementConfiguration) apNode.getDetails();
+        
+        ProfileContainer profileContainer = new ProfileContainer(
+        		profileServiceInterface.getProfileWithChildren(apNode.getProfileId()));
+        RfConfiguration rfConfig = (RfConfiguration) profileContainer.getChildOfTypeOrNull(apNode.getProfileId(), ProfileType.rf)
+        		.getDetails();
 
         for (OpensyncAPVIFState vifState : vifStateTables) {
 
@@ -935,11 +968,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     vifState.getAssociatedClients());
 
             RadioType radioType = null;
-            Optional<ElementRadioConfiguration> radioConfiguration = ((ApElementConfiguration) apNode.getDetails())
-                    .getRadioMap().values().stream().filter(t -> (t.getActiveChannel() == channel)).findFirst();
-
-            if (radioConfiguration.isPresent()) {
-                radioType = radioConfiguration.get().getRadioType();
+            Map<RadioType, RfElementConfiguration> rfElementMap = rfConfig.getRfConfigMap();
+            Map<RadioType, ElementRadioConfiguration> elementRadioMap = apElementConfig.getRadioMap();
+            for (RadioType rType : elementRadioMap.keySet()) {
+            	boolean autoChannelSelection = rfElementMap.get(rType).getAutoChannelSelection();
+            	if (elementRadioMap.get(rType).getActiveChannel(autoChannelSelection) == channel) {
+            		radioType = rType;
+            		break;
+            	}
             }
 
             updateActiveBssids(customerId, equipmentId, apId, ssid, radioType, bssid, numClients);

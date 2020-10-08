@@ -2280,8 +2280,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 continue;
             }
 
-            ChannelBandwidth channelBandwidth = ((ApElementConfiguration) equipmentServiceInterface.get(equipmentId)
-                    .getDetails()).getRadioMap().get(radioType).getChannelBandwidth();
+            ChannelBandwidth channelBandwidth = rfConfig.getRfConfig(radioType).getChannelBandwidth();
 
             Map<Integer, List<SurveySample>> sampleByChannelMap = new HashMap<>();
 
