@@ -9,6 +9,7 @@ RUN mkdir -p /opt/tip-wlan/certs
 COPY maven/app.jar /app
 COPY app/opensync/logback.xml /app/opensync/logback.xml
 COPY app/run.sh /app
+COPY app/commit.properties /app
 
 RUN chmod +x /app/run.sh
 
