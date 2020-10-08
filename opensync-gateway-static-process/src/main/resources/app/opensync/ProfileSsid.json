@@ -7,7 +7,7 @@
         "name": "TipWlan-cloud-hotspot-access",
         "details": {
             "model_type": "SsidConfiguration",
-            "ssid": "Default-SSID-1602113058718",
+            "ssid": "TipWlan-cloud-hotspot-access",
             "appliedRadios": [
                 "is5GHzU",
                 "is5GHzL",
