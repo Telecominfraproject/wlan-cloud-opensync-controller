@@ -7,11 +7,10 @@ import com.vmware.ovsdb.protocol.operation.notation.Uuid;
 
 public class Hotspot20IconConfig implements Cloneable {
 
-    public static String[] ovsdbColumns = { "_version", "name", "path", "url", "lang_code", "height", "img_type",
+    public static String[] ovsdbColumns = { "_version", "name", "url", "lang_code", "height", "img_type",
             "_uuid", "width" };
 
     public String name;
-    public String path;
     public String url;
     public String langCode;
     public Integer height;
@@ -30,10 +29,6 @@ public class Hotspot20IconConfig implements Cloneable {
         if ((row.getColumns().get("name") != null) && row.getColumns().get("name").getClass()
                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
             this.name = row.getStringColumn("name");
-        }
-        if ((row.getColumns().get("path") != null) && row.getColumns().get("path").getClass()
-                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
-            this.path = row.getStringColumn("path");
         }
         if ((row.getColumns().get("url") != null) && row.getColumns().get("url").getClass()
                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
@@ -74,14 +69,14 @@ public class Hotspot20IconConfig implements Cloneable {
 
     @Override
     public String toString() {
-        return "Hotspot20IconConfig [name=" + name + ", path=" + path + ", url=" + url + ", langCode=" + langCode
+        return "Hotspot20IconConfig [name=" + name + ", url=" + url + ", langCode=" + langCode
                 + ", height=" + height + ", imgType=" + imgType + ", width=" + width + ", uuid=" + uuid + ", version="
                 + version + "]";
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(height, imgType, langCode, name, path, url, uuid, version, width);
+        return Objects.hash(height, imgType, langCode, name, url, uuid, version, width);
     }
 
     @Override
@@ -95,7 +90,7 @@ public class Hotspot20IconConfig implements Cloneable {
         Hotspot20IconConfig other = (Hotspot20IconConfig) obj;
         return Objects.equals(height, other.height) && Objects.equals(imgType, other.imgType)
                 && Objects.equals(langCode, other.langCode) && Objects.equals(name, other.name)
-                && Objects.equals(path, other.path) && Objects.equals(url, other.url)
+                && Objects.equals(url, other.url)
                 && Objects.equals(uuid, other.uuid) && Objects.equals(version, other.version)
                 && Objects.equals(width, other.width);
     }

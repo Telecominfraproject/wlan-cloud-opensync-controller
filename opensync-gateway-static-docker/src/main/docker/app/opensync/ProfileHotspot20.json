@@ -1,83 +1,72 @@
 [
 {
-        "model_type": "Profile",
-        "id": 9,
-        "customerId": 2,
-        "profileType": "hotspot_2pt0",
-        "name": "TipWlan-Hotspot20-Config",
-        "details": {
-            "model_type": "Hotspot2Profile",
-            "enableInterworkingAndHs20": true,
-            "hessid": null,
-            "accessNetworkType": "free_public_network",
-            "networkAuthenticationType": "acceptance_of_terms_and_conditions",
-            "additionalStepsRequiredForAccess": 0,
-            "deauthRequestTimeout": 0,
-            "operatingClass": 0,
-            "termsAndConditionsFile": {
-                "model_type": "ManagedFileInfo",
-                "md5checksum": null,
-                "lastModifiedTimestamp": null,
-                "apExportUrl": "https://localhost:9091/filestore/termsAndConditions",
-                "fileCategory": "ExternalPolicyConfiguration",
-                "fileType": "TEXT",
-                "altSlot": false
-            },
-            "whitelistDomain": null,
-            "emergencyServicesReachable": true,
-            "unauthenticatedEmergencyServiceAccessible": false,
-            "internetConnectivity": true,
-            "connectionCapabilitySet": [
-                {
-                    "model_type": "ConnectionCapability",
-                    "connectionCapabilitiesPortNumber": 8888,
-                    "connectionCapabilitiesIpProtocol": "TCP",
-                    "connectionCapabilitiesStatus": "open"
-                }
-            ],
-            "ipAddressTypeAvailability": "public_IPv4_address_available",
-            "qosMapSetConfiguration": null,
-            "apGeospatialLocation": null,
-            "apCivicLocation": null,
-            "apPublicLocationIdUri": null,
-            "gasAddr3Behaviour": "p2pSpecWorkaroundFromRequest",
-            "anqpDomainId": 1234,
-            "disableDownstreamGroupAddressedForwarding": false,
-            "enable2pt4GHz": true,
-            "enable5GHz": true,
-            "associatedAccessSsidNames": [
-                "TipWlan-cloud-hotspot-access"
-            ],
-            "osuSsidName": "TipWlan-cloud-3-radios",
-            "mccMnc3gppCellularNetworkInfo": [
-                {
-                    "model_type": "MccMnc",
-                    "mcc": 302,
-                    "mnc": 720,
-                    "iso": "ca",
-                    "country": "Canada",
-                    "countryCode": 1,
-                    "network": "Rogers AT&T Wireless",
-                    "mccMncPairing": "302,720"
-                }
-            ],
-            "operatorProfileName": "TipWlan-Hotspot20-Operator",
-            "venueProfileName": "TipWlan-Hotspot20-Venue",
-            "idProviderProfileNames": [
-                "TipWlan-Hotspot20-OSU-Provider"
-            ],
-            "profileType": "hotspot_2pt0",
-            "mccMncList": "302,720",
-            "associatedSsids": [
-                "TipWlan-cloud-hotspot-access"
-            ]
+    "model_type": "Profile",
+    "id": 10,
+    "customerId": 2,
+    "profileType": "hotspot_2pt0",
+    "name": "TipWlan-Hotspot20-Config",
+    "details": {
+        "model_type": "Hotspot2Profile",
+        "enableInterworkingAndHs20": true,
+        "hessid": null,
+        "accessNetworkType": "free_public_network",
+        "networkAuthenticationType": "acceptance_of_terms_and_conditions",
+        "additionalStepsRequiredForAccess": 0,
+        "deauthRequestTimeout": 0,
+        "operatingClass": 0,
+        "termsAndConditionsFile": {
+            "model_type": "ManagedFileInfo",
+            "md5checksum": null,
+            "lastModifiedTimestamp": null,
+            "apExportUrl": "https://localhost:9091/filestore/termsAndConditions",
+            "fileCategory": "ExternalPolicyConfiguration",
+            "fileType": "TEXT",
+            "altSlot": false
         },
-        "createdTimestamp": 1602113059532,
-        "lastModifiedTimestamp": 1602113059532,
-        "childProfileIds": [
-            6,
-            7,
-            8
+        "whitelistDomain": null,
+        "emergencyServicesReachable": true,
+        "unauthenticatedEmergencyServiceAccessible": false,
+        "internetConnectivity": true,
+        "connectionCapabilitySet": [
+            {
+                "model_type": "ConnectionCapability",
+                "connectionCapabilitiesPortNumber": 8888,
+                "connectionCapabilitiesIpProtocol": "TCP",
+                "connectionCapabilitiesStatus": "open"
+            }
+        ],
+        "ipAddressTypeAvailability": "public_IPv4_address_available",
+        "qosMapSetConfiguration": null,
+        "apGeospatialLocation": null,
+        "apCivicLocation": null,
+        "apPublicLocationIdUri": null,
+        "gasAddr3Behaviour": "p2pSpecWorkaroundFromRequest",
+        "anqpDomainId": 1234,
+        "disableDownstreamGroupAddressedForwarding": false,
+        "enable2pt4GHz": true,
+        "enable5GHz": true,
+        "associatedAccessSsidNames": [
+            "TipWlan-cloud-hotspot-access"
+        ],
+        "osuSsidName": "TipWlan-cloud-3-radios",
+        "operatorProfileName": "TipWlan-Hotspot20-Operator",
+        "venueProfileName": "TipWlan-Hotspot20-Venue",
+        "idProviderProfileNames": [
+            "TipWlan-Hotspot20-OSU-Provider-2",
+            "TipWlan-Hotspot20-OSU-Provider"
+        ],
+        "profileType": "hotspot_2pt0",
+        "associatedSsids": [
+            "TipWlan-cloud-hotspot-access"
         ]
-    }
+    },
+    "createdTimestamp": 1602182806040,
+    "lastModifiedTimestamp": 1602182806040,
+    "childProfileIds": [
+        6,
+        7,
+        8,
+        9
+    ]
+}
 ]

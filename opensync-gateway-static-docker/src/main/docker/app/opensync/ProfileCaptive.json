@@ -1,11 +1,10 @@
-[
-  {
-	"model_type": "Profile",
-	"id": 2,
-	"customerId": 2,
-	"profileType": "captive_portal",
-	"name": "Captive-portal",
-      "details": {
+{
+    "model_type": "Profile",
+    "id": 14,
+    "customerId": 2,
+    "profileType": "captive_portal",
+    "name": "Captive-portal",
+    "details": {
         "model_type": "CaptivePortalConfiguration",
         "name": "Captive-portal",
         "browserTitle": "Access the network as Guest",
@@ -18,7 +17,15 @@
         "logoFile": null,
         "backgroundFile": null,
         "walledGardenAllowlist": [],
-        "usernamePasswordFile": null,
+        "usernamePasswordFile": {
+            "model_type": "ManagedFileInfo",
+            "md5checksum": null,
+            "lastModifiedTimestamp": null,
+            "apExportUrl": "userList",
+            "fileCategory": "UsernamePasswordList",
+            "fileType": "TEXT",
+            "altSlot": true
+        },
         "authenticationType": "guest",
         "radiusAuthMethod": "CHAP",
         "maxUsersWithSameCredentials": 42,
@@ -27,12 +34,100 @@
         "backgroundRepeat": "no_repeat",
         "radiusServiceName": null,
         "expiryType": "unlimited",
-        "userList": [],
+        "userList": [
+            {
+                "model_type": "TimedAccessUserRecord",
+                "username": "customer",
+                "password": "testing123",
+                "activationTime": 1602183994956,
+                "expirationTime": 1602212794956,
+                "numDevices": 1,
+                "userDetails": {
+                    "model_type": "TimedAccessUserDetails",
+                    "firstName": "Pac",
+                    "lastName": "Man",
+                    "passwordNeedsReset": false
+                },
+                "userMacAddresses": [
+                    {
+                        "model_type": "MacAddress",
+                        "address": "fKtg5upO",
+                        "addressAsString": "7c:ab:60:e6:ea:4e"
+                    }
+                ],
+                "lastModifiedTimestamp": 0
+            },
+            {
+                "model_type": "TimedAccessUserRecord",
+                "username": "customer",
+                "password": "testing123",
+                "activationTime": 1602183994957,
+                "expirationTime": 1602187594957,
+                "numDevices": 0,
+                "userDetails": {
+                    "model_type": "TimedAccessUserDetails",
+                    "firstName": "Q",
+                    "lastName": "Bert",
+                    "passwordNeedsReset": false
+                },
+                "userMacAddresses": [
+                    {
+                        "model_type": "MacAddress",
+                        "address": "wJrQdqho",
+                        "addressAsString": "c0:9a:d0:76:a8:68"
+                    }
+                ],
+                "lastModifiedTimestamp": 0
+            },
+            {
+                "model_type": "TimedAccessUserRecord",
+                "username": "customer2",
+                "password": "testing1234",
+                "activationTime": 1602183994957,
+                "expirationTime": 1602788794957,
+                "numDevices": 1,
+                "userDetails": {
+                    "model_type": "TimedAccessUserDetails",
+                    "firstName": "Duke",
+                    "lastName": "Nukem",
+                    "passwordNeedsReset": false
+                },
+                "userMacAddresses": [
+                    {
+                        "model_type": "MacAddress",
+                        "address": "fKtg5upN",
+                        "addressAsString": "7c:ab:60:e6:ea:4d"
+                    }
+                ],
+                "lastModifiedTimestamp": 0
+            },
+            {
+                "model_type": "TimedAccessUserRecord",
+                "username": "customer2",
+                "password": "testing1234",
+                "activationTime": 1602183994957,
+                "expirationTime": 1602270394957,
+                "numDevices": 0,
+                "userDetails": {
+                    "model_type": "TimedAccessUserDetails",
+                    "firstName": "Missile",
+                    "lastName": "Commander",
+                    "passwordNeedsReset": false
+                },
+                "userMacAddresses": [
+                    {
+                        "model_type": "MacAddress",
+                        "address": "wJrQdqhj",
+                        "addressAsString": "c0:9a:d0:76:a8:63"
+                    }
+                ],
+                "lastModifiedTimestamp": 0
+            }
+        ],
         "macAllowList": [],
         "profileType": "captive_portal"
-      },
-      "createdTimestamp": 1595341820188,
-      "lastModifiedTimestamp": 1595341820188,
-      "childProfileIds": []
-    }
-]
+    },
+    "createdTimestamp": 1602183994959,
+    "lastModifiedTimestamp": 1602183994959,
+    "childProfileIds": []
+}
