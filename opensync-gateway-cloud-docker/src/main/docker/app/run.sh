@@ -66,7 +66,7 @@ else
   SSC_URL=https://${ALL_IN_ONE_HOST}:9092
   PROV_URL=https://${ALL_IN_ONE_HOST}:9092
 fi
-  // SSC URLs
+  # SSC URLs
   HOST_PROPS+=" -Dtip.wlan.cloudEventDispatcherBaseUrl=$SSC_URL"
   HOST_PROPS+=" -Dtip.wlan.statusServiceBaseUrl=$SSC_URL"
   HOST_PROPS+=" -Dtip.wlan.routingServiceBaseUrl=$SSC_URL"
@@ -75,7 +75,7 @@ fi
   HOST_PROPS+=" -Dtip.wlan.clientServiceBaseUrl=$SSC_URL"
   HOST_PROPS+=" -Dtip.wlan.serviceMetricServiceBaseUrl=$SSC_URL"
 
-  // PROV URLs
+  # PROV URLs
   HOST_PROPS+=" -Dtip.wlan.customerServiceBaseUrl=$PROV_URL"
   HOST_PROPS+=" -Dtip.wlan.portalUserServiceBaseUrl=$PROV_URL"
   HOST_PROPS+=" -Dtip.wlan.firmwareServiceBaseUrl=$PROV_URL"
