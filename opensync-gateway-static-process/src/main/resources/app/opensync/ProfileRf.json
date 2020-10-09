@@ -65,7 +65,8 @@
                     "mlComputed": true,
                     "dropInSnrPercentage": 30,
                     "minLoadFactor": 40
-                }
+                },
+                "minAutoCellSize": -80
             },
             "is2dot4GHz": {
                 "model_type": "RfElementConfiguration",
@@ -125,7 +126,8 @@
                     "mlComputed": true,
                     "dropInSnrPercentage": 20,
                     "minLoadFactor": 50
-                }
+                },
+                "minAutoCellSize": -80
             },
             "is5GHzU": {
                 "model_type": "RfElementConfiguration",
@@ -185,7 +187,8 @@
                     "mlComputed": true,
                     "dropInSnrPercentage": 30,
                     "minLoadFactor": 40
-                }
+                },
+                "minAutoCellSize": -80
             },
             "is5GHzL": {
                 "model_type": "RfElementConfiguration",
@@ -245,7 +248,8 @@
                     "mlComputed": true,
                     "dropInSnrPercentage": 30,
                     "minLoadFactor": 40
-                }
+                },
+                "minAutoCellSize": -80
             }
         },
         "profileType": "rf"

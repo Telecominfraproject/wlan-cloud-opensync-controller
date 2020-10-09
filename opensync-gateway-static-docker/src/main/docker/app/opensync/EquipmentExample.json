@@ -38,8 +38,6 @@
         "channelNumber": 6,
         "manualChannelNumber": 6,
         "backupChannelNumber": 11,
-        "autoChannelSelection": false,
-        "channelBandwidth": "is20MHz",
         "bannedChannels": [],
         "allowedChannels": [],
         "rxCellSizeDb": {
@@ -62,13 +60,6 @@
           "auto": false,
           "value": 32
         },
-        "bestApEnabled": null,
-        "neighbouringListApConfig": {
-          "model_type": "NeighbouringAPListConfiguration",
-          "minSignal": -85,
-          "maxAps": 25
-        },
-        "minAutoCellSize": -80,
         "perimeterDetectionEnabled": true,
         "bestAPSteerType": "both",
         "deauthAttackDetection": null,
@@ -81,8 +72,6 @@
         "channelNumber": 149,
         "manualChannelNumber": 149,
         "backupChannelNumber": 154,
-        "autoChannelSelection": false,
-        "channelBandwidth": "is80MHz",
         "bannedChannels": [],
         "allowedChannels": [],
         "rxCellSizeDb": {
@@ -105,13 +94,6 @@
           "auto": false,
           "value": 32
         },
-        "bestApEnabled": null,
-        "neighbouringListApConfig": {
-          "model_type": "NeighbouringAPListConfiguration",
-          "minSignal": -85,
-          "maxAps": 25
-        },
-        "minAutoCellSize": -80,
         "perimeterDetectionEnabled": true,
         "bestAPSteerType": "both",
         "deauthAttackDetection": null,
@@ -124,8 +106,6 @@
         "channelNumber": 36,
         "manualChannelNumber": 36,
         "backupChannelNumber": 44,
-        "autoChannelSelection": false,
-        "channelBandwidth": "is80MHz",
         "bannedChannels": [],
         "allowedChannels": [],
         "rxCellSizeDb": {
@@ -148,13 +128,6 @@
           "auto": false,
           "value": 32
         },
-        "bestApEnabled": null,
-        "neighbouringListApConfig": {
-          "model_type": "NeighbouringAPListConfiguration",
-          "minSignal": -85,
-          "maxAps": 25
-        },
-        "minAutoCellSize": -80,
         "perimeterDetectionEnabled": true,
         "bestAPSteerType": "both",
         "deauthAttackDetection": null,
@@ -168,40 +141,18 @@
         "radioType": "is2dot4GHz",
         "radioAdminState": "enabled",
         "fragmentationThresholdBytes": 2346,
-        "rtsCtsThreshold": 65535,
-        "autoChannelSelection": "disabled",
         "radioMode": "modeN",
-        "mimoMode": "twoByTwo",
         "wmmState": "enabled",
         "uapsdState": "enabled",
-        "maxNumClients": 100,
         "stationIsolation": "disabled",
-        "multicastRate": "auto",
         "managementRate": "auto",
-        "activeScanSettings": {
-          "model_type": "ActiveScanSettings",
-          "enabled": true,
-          "scanFrequencySeconds": 10,
-          "scanDurationMillis": 65
-        },
-        "channelHopSettings": {
-          "model_type": "ChannelHopSettings",
-          "noiseFloorThresholdInDB": -75,
-          "noiseFloorThresholdTimeInSeconds": 180,
-          "nonWifiThresholdInPercentage": 50,
-          "nonWifiThresholdTimeInSeconds": 180,
-          "obssHopMode": "NON_WIFI"
-        },
         "bestApSettings": {
           "model_type": "RadioBestApSettings",
           "mlComputed": true,
           "dropInSnrPercentage": 20,
           "minLoadFactor": 50
         },
-        "forceScanDuringVoice": "disabled",
         "legacyBSSRate": "enabled",
-        "beaconInterval": 100,
-        "dtimPeriod": 2,
         "deauthAttackDetection": null
       },
       "is5GHzU": {
@@ -209,40 +160,18 @@
         "radioType": "is5GHzU",
         "radioAdminState": "enabled",
         "fragmentationThresholdBytes": 2346,
-        "rtsCtsThreshold": 65535,
-        "autoChannelSelection": "disabled",
         "radioMode": "modeAC",
-        "mimoMode": "twoByTwo",
         "wmmState": "enabled",
         "uapsdState": "enabled",
-        "maxNumClients": 100,
         "stationIsolation": "disabled",
-        "multicastRate": "auto",
         "managementRate": "auto",
-        "activeScanSettings": {
-          "model_type": "ActiveScanSettings",
-          "enabled": true,
-          "scanFrequencySeconds": 10,
-          "scanDurationMillis": 65
-        },
-        "channelHopSettings": {
-          "model_type": "ChannelHopSettings",
-          "noiseFloorThresholdInDB": -75,
-          "noiseFloorThresholdTimeInSeconds": 180,
-          "nonWifiThresholdInPercentage": 50,
-          "nonWifiThresholdTimeInSeconds": 180,
-          "obssHopMode": "NON_WIFI"
-        },
         "bestApSettings": {
           "model_type": "RadioBestApSettings",
           "mlComputed": true,
           "dropInSnrPercentage": 30,
           "minLoadFactor": 40
         },
-        "forceScanDuringVoice": "disabled",
         "legacyBSSRate": "enabled",
-        "beaconInterval": 100,
-        "dtimPeriod": 2,
         "deauthAttackDetection": null
       },
       "is5GHzL": {
@@ -250,40 +179,18 @@
         "radioType": "is5GHzL",
         "radioAdminState": "enabled",
         "fragmentationThresholdBytes": 2346,
-        "rtsCtsThreshold": 65535,
-        "autoChannelSelection": "disabled",
         "radioMode": "modeAC",
-        "mimoMode": "twoByTwo",
         "wmmState": "enabled",
         "uapsdState": "enabled",
-        "maxNumClients": 100,
         "stationIsolation": "disabled",
-        "multicastRate": "auto",
         "managementRate": "auto",
-        "activeScanSettings": {
-          "model_type": "ActiveScanSettings",
-          "enabled": true,
-          "scanFrequencySeconds": 10,
-          "scanDurationMillis": 65
-        },
-        "channelHopSettings": {
-          "model_type": "ChannelHopSettings",
-          "noiseFloorThresholdInDB": -75,
-          "noiseFloorThresholdTimeInSeconds": 180,
-          "nonWifiThresholdInPercentage": 50,
-          "nonWifiThresholdTimeInSeconds": 180,
-          "obssHopMode": "NON_WIFI"
-        },
         "bestApSettings": {
           "model_type": "RadioBestApSettings",
           "mlComputed": true,
           "dropInSnrPercentage": 30,
           "minLoadFactor": 40
         },
-        "forceScanDuringVoice": "disabled",
         "legacyBSSRate": "enabled",
-        "beaconInterval": 100,
-        "dtimPeriod": 2,
         "deauthAttackDetection": null
       }
     }
