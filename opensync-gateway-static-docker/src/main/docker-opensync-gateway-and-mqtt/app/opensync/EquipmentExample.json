@@ -153,6 +153,7 @@
           "minLoadFactor": 50
         },
         "legacyBSSRate": "enabled",
+        "beaconInterval": 100,
         "deauthAttackDetection": null
       },
       "is5GHzU": {
