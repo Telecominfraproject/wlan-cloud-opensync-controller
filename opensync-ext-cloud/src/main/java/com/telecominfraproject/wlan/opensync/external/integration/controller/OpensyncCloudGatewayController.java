@@ -14,10 +14,6 @@ import java.util.function.Consumer;
 
 import javax.servlet.http.HttpServletRequest;
 
-import com.telecominfraproject.wlan.core.model.role.PortalUserRole;
-import com.telecominfraproject.wlan.core.model.service.GatewayType;
-import com.telecominfraproject.wlan.core.client.PingClient;
-import com.telecominfraproject.wlan.datastore.exceptions.DsEntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,8 +26,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.telecominfraproject.wlan.core.client.PingClient;
+import com.telecominfraproject.wlan.core.model.equipment.RadioType;
+import com.telecominfraproject.wlan.core.model.service.GatewayType;
 import com.telecominfraproject.wlan.core.model.service.ServiceInstanceInformation;
 import com.telecominfraproject.wlan.core.server.container.ConnectorProperties;
+import com.telecominfraproject.wlan.datastore.exceptions.DsEntityNotFoundException;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWBaseCommand;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWBlinkRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWChangeRedirectorHost;
@@ -41,6 +41,7 @@ import com.telecominfraproject.wlan.equipmentgateway.models.CEGWCommandResultCod
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWConfigChangeNotification;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWFirmwareDownloadRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWFirmwareFlashRequest;
+import com.telecominfraproject.wlan.equipmentgateway.models.CEGWNewChannelRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRadioResetRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRebootRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRouteCheck;
@@ -201,6 +202,9 @@ public class OpensyncCloudGatewayController {
                         ret.add(sendClientBlocklistChangeNotification(session,
                                 (CEGWClientBlocklistChangeNotification) command));
                         break;
+                    case NewChannelRequest:
+                        ret.add(sendNewChannelRequest(session, (CEGWNewChannelRequest) command));
+                        break;
                     default:
                         LOG.warn("[{}] Failed to deliver command {}, unsupported command type", inventoryId, command);
                         ret.add(new EquipmentCommandResponse(
@@ -289,6 +293,10 @@ public class OpensyncCloudGatewayController {
         return sendMessage(session, command.getInventoryId(), command);
     }
 
+    private EquipmentCommandResponse sendNewChannelRequest(OvsdbSession session, CEGWNewChannelRequest command) {
+        return sendMessage(session, command.getInventoryId(), command);
+    }
+
     /**
      * Deliver a message in payload to the CE
      *
@@ -318,6 +326,12 @@ public class OpensyncCloudGatewayController {
             tipwlanOvsdbClient.startDebugEngine(inventoryId, gatewayHostname, gatewayPort);
         } else if (command instanceof CEGWStopDebugEngine) {
             tipwlanOvsdbClient.stopDebugEngine(inventoryId);
+        } else if (command instanceof CEGWNewChannelRequest) {
+            CEGWNewChannelRequest request = (CEGWNewChannelRequest) command;
+            Map<RadioType, Integer> newBackupChannels = request.getNewBackupChannels();
+            String resultDetails = tipwlanOvsdbClient.processNewChannelsRequest(inventoryId, newBackupChannels);
+            response.setResultDetail(resultDetails);
+
         } else if (command instanceof CEGWFirmwareDownloadRequest) {
 
             CEGWFirmwareDownloadRequest dlRequest = (CEGWFirmwareDownloadRequest) command;
@@ -375,7 +389,7 @@ public class OpensyncCloudGatewayController {
                             registeredGateway.getHostname(), registeredGateway.getPort());
             }
 
-      
+
         }
 
         return response;

@@ -29,7 +29,6 @@ import com.telecominfraproject.wlan.client.session.models.ClientSession;
 import com.telecominfraproject.wlan.client.session.models.ClientSessionDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientSessionMetricDetails;
 import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherInterface;
-import com.telecominfraproject.wlan.core.model.entity.MinMaxAvgValueInt;
 import com.telecominfraproject.wlan.core.model.equipment.ChannelBandwidth;
 import com.telecominfraproject.wlan.core.model.equipment.DetectedAuthMode;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
@@ -1515,7 +1514,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
         Map<RadioType, Integer> avgNoiseFloor = new HashMap<>();
         new HashMap<>();
         Map<RadioType, EquipmentCapacityDetails> capacityDetails = new HashMap<>();
-        Map<RadioType,EquipmentPerRadioUtilizationDetails> radioUtilizationDetailsMap = new HashMap<>();
+        Map<RadioType, EquipmentPerRadioUtilizationDetails> radioUtilizationDetailsMap = new HashMap<>();
 
         // populate it from report.survey
         for (Survey survey : report.getSurveyList()) {
@@ -1546,7 +1545,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
 
             }
-            
+
             if (totalDurationMs > 0) {
                 RadioUtilization radioUtil = new RadioUtilization();
                 radioUtil.setTimestampSeconds((int) ((survey.getTimestampMs()) / 1000));
@@ -1554,7 +1553,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 radioUtil.setAssocClientTx(pctBusyTx);
                 int pctBusyRx = busyRx / totalDurationMs;
                 radioUtil.setAssocClientRx(pctBusyRx);
-                double pctIBSS = (double) ((busyTx + busySelf) / totalDurationMs);
+                double pctIBSS = (busyTx + busySelf) / totalDurationMs;
                 radioUtil.setIbss(pctIBSS);
                 int nonWifi = (busy - (busyTx + busyRx)) / totalDurationMs;
                 radioUtil.setNonWifi(nonWifi);
@@ -1569,9 +1568,9 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                     int noiseAvg = (int) Math.round(DecibelUtils.getAverageDecibel(toIntArray(noiseList)));
                     avgNoiseFloor.put(radioType, noiseAvg);
                     apNodeMetrics.setNoiseFloor(radioType, noiseAvg);
-                    
+
                     Long totalUtilization = Math.round((double) busy / totalDurationMs);
-                    Long totalNonWifi = totalUtilization - (busyTx + busyRx) / totalDurationMs;
+                    Long totalNonWifi = totalUtilization - ((busyTx + busyRx) / totalDurationMs);
 
                     EquipmentCapacityDetails cap = new EquipmentCapacityDetails();
                     cap.setUnavailableCapacity(totalNonWifi.intValue());
@@ -1580,13 +1579,14 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                     cap.setUsedCapacity(totalUtilization.intValue());
                     cap.setUnusedCapacity(availableCapacity - totalUtilization.intValue());
                     cap.setTotalCapacity(100);
-                    
+
                     apNodeMetrics.setChannelUtilization(radioType, totalUtilization.intValue());
                     capacityDetails.put(radioType, cap);
-//                    EquipmentPerRadioUtilizationDetails details = new EquipmentPerRadioUtilizationDetails();
-//                    details.setWifiFromOtherBss(new MinMaxAvgValueInt());
+                    // EquipmentPerRadioUtilizationDetails details = new
+                    // EquipmentPerRadioUtilizationDetails();
+                    // details.setWifiFromOtherBss(new MinMaxAvgValueInt());
                     radioUtilizationDetailsMap.put(radioType, new EquipmentPerRadioUtilizationDetails());
-                    
+
                 }
 
             }
@@ -2254,9 +2254,9 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             long equipmentId, long locationId, long profileId) {
 
         LOG.debug("populateChannelInfoReports for Customer {} Equipment {}", customerId, equipmentId);
-        
+
         ProfileContainer profileContainer = new ProfileContainer(
-        		profileServiceInterface.getProfileWithChildren(profileId));
+                profileServiceInterface.getProfileWithChildren(profileId));
         RfConfiguration rfConfig = (RfConfiguration) profileContainer.getChildOfTypeOrNull(profileId, ProfileType.rf)
         		.getDetails();
 

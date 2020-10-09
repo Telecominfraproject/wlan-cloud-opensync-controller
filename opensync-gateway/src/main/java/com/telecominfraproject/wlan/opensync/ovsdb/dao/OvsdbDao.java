@@ -3502,10 +3502,10 @@ public class OvsdbDao {
                                     mccMncBuffer.append(mccMnc.getMccMncPairing());
                                     mccMncBuffer.append(";");
                                 }
-                                
+
                             }
                         }
-                        
+
                         String mccMncString = mccMncBuffer.toString();
                         if (mccMncString.endsWith(";")) {
                             mccMncString = mccMncString.substring(0, mccMncString.lastIndexOf(";"));
@@ -3516,7 +3516,7 @@ public class OvsdbDao {
                         com.vmware.ovsdb.protocol.operation.notation.Set naiRealmsSet = com.vmware.ovsdb.protocol.operation.notation.Set
                                 .of(naiRealms);
                         rowColumns.put("nai_realm", naiRealmsSet);
-                        
+
                         if (osuProvidersUuids.size() > 0) {
                             com.vmware.ovsdb.protocol.operation.notation.Set providerUuids = com.vmware.ovsdb.protocol.operation.notation.Set
                                     .of(osuProvidersUuids);
@@ -3534,7 +3534,7 @@ public class OvsdbDao {
                                     .of(domainNames);
                             rowColumns.put("domain_name", domainNameSet);
                         }
-                        
+
                         hs2Profile.getIpAddressTypeAvailability();
                         rowColumns.put("deauth_request_timeout", new Atom<>(hs2Profile.getDeauthRequestTimeout()));
                         rowColumns.put("osen",
@@ -3693,9 +3693,15 @@ public class OvsdbDao {
                         Hotspot20IdProviderProfile providerProfile = (Hotspot20IdProviderProfile) provider.getDetails();
                         Map<String, Value> rowColumns = new HashMap<>();
                         rowColumns.put("osu_nai", new Atom<>(providerProfile.getOsuNaiStandalone()));
-                        // rowColumns.put("osu_nai2", new
-                        // Atom<>(providerProfile.getOsuNaiShared()));
-
+                        // TODO: temporary check schema until AP has delivered
+                        // changes.
+                        if (schema.getTables().get(hotspot20OsuProvidersDbTable).getColumns().containsKey("osu_nai2")) {
+                            rowColumns.put("osu_nai2", new Atom<>(providerProfile.getOsuNaiShared()));
+                        }
+                        if (schema.getTables().get(hotspot20OsuProvidersDbTable).getColumns()
+                                .containsKey("osu_provider_name")) {
+                            rowColumns.put("osu_provider_name", new Atom<>(provider.getName()));
+                        }
                         getOsuIconUuidsForOsuProvider(ovsdbClient, providerProfile, rowColumns);
                         getOsuProviderFriendlyNames(providerProfile, rowColumns);
                         getOsuProviderMethodList(providerProfile, rowColumns);
@@ -3885,7 +3891,7 @@ public class OvsdbDao {
 
         });
 
-       
+
     }
 
     public void provisionHotspot2IconConfig(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
@@ -3907,7 +3913,9 @@ public class OvsdbDao {
                             // "lang_code", "height", "img_type", "width" };
                             Map<String, Value> rowColumns = new HashMap<>();
                             rowColumns.put("name", new Atom<>(osuIcon.getIconName()));
-                            rowColumns.put("path", new Atom<>(osuIcon.getFilePath()));
+                            if (schema.getTables().get(hotspot20IconConfigDbTable).getColumns().containsKey("path")) {
+                                rowColumns.put("path", new Atom<>(osuIcon.getFilePath()));
+                            }
                             rowColumns.put("url", new Atom<>(osuIcon.getImageUrl()));
                             rowColumns.put("lang_code", new Atom<>(osuIcon.getLanguageCode()));
                             rowColumns.put("height", new Atom<>(osuIcon.getIconHeight()));
@@ -4826,6 +4834,47 @@ public class OvsdbDao {
             LOG.error("Error in removeRrm", e);
             throw new RuntimeException(e);
         }
+    }
+
+    public void processNewChannelsRequest(OvsdbClient ovsdbClient, Map<RadioType, Integer> channelMap) {
+
+        LOG.info("OvsdbDao::processNewChannelsRequest {}", channelMap);
+        try {
+            List<Operation> operations = new ArrayList<>();
+
+
+            channelMap.entrySet().stream().forEach(c -> {
+                String freqBand = OvsdbToWlanCloudTypeMappingUtility.getOvsdbRadioFreqBandForRadioType(c.getKey());
+                List<Condition> conditions = new ArrayList<>();
+                conditions.add(new Condition("freq_band", Function.EQUALS, new Atom<>(freqBand)));
+                Map<String, Value> updateColumns = new HashMap<>();
+                updateColumns.put("backup_channel", new Atom<>(c.getValue()));
+                Row row = new Row(updateColumns);
+                operations.add(new Update(wifiRrmConfigDbTable, conditions, row));
+            });
+
+
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("processNewChannelsRequest::Update backup channel(s) for {}:", wifiRrmConfigDbTable);
+
+                for (OperationResult res : result) {
+                    LOG.debug("Op Result {}", res);
+                }
+            }
+
+            LOG.info("Updated Wifi_RRM_Config");
+
+        } catch (ExecutionException e) {
+            LOG.error("Error in processNewChannelsRequest", e);
+        } catch (OvsdbClientException | TimeoutException | InterruptedException e) {
+            LOG.error("Error in processNewChannelsRequest", e);
+            throw new RuntimeException(e);
+        }
+
+
     }
 
 }

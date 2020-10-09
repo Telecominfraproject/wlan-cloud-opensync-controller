@@ -9,10 +9,11 @@ import com.vmware.ovsdb.protocol.operation.notation.Uuid;
 
 public class Hotspot20OsuProviders implements Cloneable {
 
-    public static String[] ovsdbColumns = { "_version", "osu_nai", "osu_icons", "server_uri", "method_list", "_uuid",
-            "osu_friendly_name", "service_description" };
+    public static String[] ovsdbColumns = { "_version", "osu_nai", "osu_nai2", "osu_icons", "osu_provider_name",
+            "server_uri", "method_list", "_uuid", "osu_friendly_name", "service_description" };
     public Uuid version;
-    public Set<String> osuNai;
+    public String osuNai;
+    public String osuNai2;
     public Set<Uuid> osuIcons;
     public String serverUri;
     public Set<Integer> methodList;
@@ -26,7 +27,14 @@ public class Hotspot20OsuProviders implements Cloneable {
     public Hotspot20OsuProviders(Row row) {
         this.version = row.getUuidColumn("_version");
         this.uuid = row.getUuidColumn("_uuid");
-        this.osuNai = row.getSetColumn("osu_nai");
+        if ((row.getColumns().get("osu_nai") != null) && row.getColumns().get("osu_nai").getClass()
+                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+            this.osuNai = row.getStringColumn("osu_nai");
+        }
+        if ((row.getColumns().get("osu_nai2") != null) && row.getColumns().get("osu_nai2").getClass()
+                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+            this.osuNai2 = row.getStringColumn("osu_nai2");
+        }
         this.osuIcons = row.getSetColumn("osu_icons");
         if ((row.getColumns().get("server_uri") != null) && row.getColumns().get("server_uri").getClass()
                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
@@ -43,9 +51,6 @@ public class Hotspot20OsuProviders implements Cloneable {
         try {
             Hotspot20OsuProviders ret = (Hotspot20OsuProviders) super.clone();
 
-            if (osuNai != null) {
-                ret.osuNai = new HashSet<>(this.osuNai);
-            }
             if (osuIcons != null) {
                 ret.osuIcons = new HashSet<>(this.osuIcons);
             }
@@ -66,15 +71,8 @@ public class Hotspot20OsuProviders implements Cloneable {
     }
 
     @Override
-    public String toString() {
-        return "Hotspot20OsuProviders [version=" + version + ", osuNai=" + osuNai + ", osuIcons=" + osuIcons
-                + ", serverUri=" + serverUri + ", methodList=" + methodList + ", uuid=" + uuid + ", osuFriendlyName="
-                + osuFriendlyName + ", serviceDescription=" + serviceDescription + "]";
-    }
-
-    @Override
     public int hashCode() {
-        return Objects.hash(methodList, osuFriendlyName, osuIcons, osuNai, serverUri, serviceDescription, uuid,
+        return Objects.hash(methodList, osuFriendlyName, osuIcons, osuNai, osuNai2, serverUri, serviceDescription, uuid,
                 version);
     }
 
@@ -89,11 +87,17 @@ public class Hotspot20OsuProviders implements Cloneable {
         Hotspot20OsuProviders other = (Hotspot20OsuProviders) obj;
         return Objects.equals(methodList, other.methodList) && Objects.equals(osuFriendlyName, other.osuFriendlyName)
                 && Objects.equals(osuIcons, other.osuIcons) && Objects.equals(osuNai, other.osuNai)
-                && Objects.equals(serverUri, other.serverUri)
+                && Objects.equals(osuNai2, other.osuNai2) && Objects.equals(serverUri, other.serverUri)
                 && Objects.equals(serviceDescription, other.serviceDescription) && Objects.equals(uuid, other.uuid)
                 && Objects.equals(version, other.version);
     }
 
-  
+    @Override
+    public String toString() {
+        return "Hotspot20OsuProviders [version=" + version + ", osuNai=" + osuNai + ", osuNai2=" + osuNai2
+                + ", osuIcons=" + osuIcons + ", serverUri=" + serverUri + ", methodList=" + methodList + ", uuid="
+                + uuid + ", osuFriendlyName=" + osuFriendlyName + ", serviceDescription=" + serviceDescription + "]";
+    }
+
 
 }
