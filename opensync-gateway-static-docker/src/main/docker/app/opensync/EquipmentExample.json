@@ -201,7 +201,6 @@
         "forceScanDuringVoice": "disabled",
         "legacyBSSRate": "enabled",
         "beaconInterval": 100,
-        "dtimPeriod": 2,
         "deauthAttackDetection": null
       },
       "is5GHzU": {
@@ -242,7 +241,6 @@
         "forceScanDuringVoice": "disabled",
         "legacyBSSRate": "enabled",
         "beaconInterval": 100,
-        "dtimPeriod": 2,
         "deauthAttackDetection": null
       },
       "is5GHzL": {
@@ -283,7 +281,6 @@
         "forceScanDuringVoice": "disabled",
         "legacyBSSRate": "enabled",
         "beaconInterval": 100,
-        "dtimPeriod": 2,
         "deauthAttackDetection": null
       }
     }
