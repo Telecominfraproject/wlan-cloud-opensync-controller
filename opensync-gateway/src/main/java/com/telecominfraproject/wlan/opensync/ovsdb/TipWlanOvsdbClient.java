@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 
 import com.google.common.collect.ImmutableMap;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
+import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExternalIntegrationInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExternalIntegrationInterface.RowUpdateOperation;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbClientInterface;
@@ -856,4 +857,20 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         }
         return key;
     }
+    
+    public  String processNewChannelsRequest(String apId, Map<RadioType,Integer> channelMap) {
+        LOG.debug("TipWlanOvsdbClient::processNewChannelsRequest for AP {}", apId);
+
+        try {
+            OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
+            OvsdbClient ovsdbClient = session.getOvsdbClient();
+            ovsdbDao.processNewChannelsRequest(ovsdbClient,channelMap);
+            LOG.debug("TipWlanOvsdbClient::processNewChannelsRequest change backup channels for AP   {}", apId);
+            return "Triggered a factory reset of AP  " + apId;
+        } catch (Exception e) {
+            LOG.error("TipWlanOvsdbClient::processNewChannelsRequest failed to change backup channels for AP {}", apId, e);
+            return " failed to change backup channels for AP " + apId;
+        }
+    }
+
 }

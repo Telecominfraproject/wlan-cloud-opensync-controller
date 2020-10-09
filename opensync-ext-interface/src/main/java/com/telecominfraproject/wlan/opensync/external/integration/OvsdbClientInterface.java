@@ -1,9 +1,11 @@
 package com.telecominfraproject.wlan.opensync.external.integration;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
+import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 
 public interface OvsdbClientInterface {
 
@@ -29,5 +31,7 @@ public interface OvsdbClientInterface {
     String processRebootRequest(String apId, boolean switchBanks);
     
     String processFactoryResetRequest(String apId);
+    
+    String processNewChannelsRequest(String apId, Map<RadioType,Integer> channelMap);
 
 }
