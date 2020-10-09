@@ -192,6 +192,9 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
     public void processMqttMessage(String topic, Report report) {
         LOG.info("Received OpensyncStatsReport on topic {} for ap {}\n{}", topic, report.getNodeID(), report);
 
+        report.getVideoVoiceReportList().stream().forEach(v -> {
+            LOG.info("VideoVoiceReport {}", v);
+        });
         report.getEventReportList().stream().forEach(e -> {
             LOG.info("Received EventReport {}", e);
         });
