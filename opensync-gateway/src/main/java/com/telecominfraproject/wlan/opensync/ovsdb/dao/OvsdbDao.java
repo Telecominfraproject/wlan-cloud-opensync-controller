@@ -1903,9 +1903,7 @@ public class OvsdbDao {
             ElementRadioConfiguration elementRadioConfig = apElementConfiguration.getRadioMap().get(radioType);
             RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(radioType);
             int channel = elementRadioConfig.getChannelNumber();
-            ChannelBandwidth bandwidth = elementRadioConfig.getChannelBandwidth();
-            // ChannelBandwidth bandwidth =
-            // rfElementConfig.getChannelBandwidth();
+            ChannelBandwidth bandwidth = rfElementConfig.getChannelBandwidth();
             String ht_mode = null;
             switch (bandwidth) {
                 case is20MHz:
@@ -1926,11 +1924,10 @@ public class OvsdbDao {
                 default:
                     ht_mode = null;
             }
-            elementRadioConfig.getAutoChannelSelection();
+            rfElementConfig.getAutoChannelSelection();
 
             RadioConfiguration radioConfig = apElementConfiguration.getAdvancedRadioMap().get(radioType);
-            int beaconInterval = radioConfig.getBeaconInterval();
-            // int beaconInterval = rfElementConfig.getBeaconInterval();
+            int beaconInterval = rfElementConfig.getBeaconInterval();
             boolean enabled = radioConfig.getRadioAdminState().equals(StateSetting.enabled);
 
             int txPower = 0;
@@ -2966,8 +2963,7 @@ public class OvsdbDao {
                 }
                 RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(radioType);
                 int dtimPeriod = radioConfiguration.getDtimPeriod();
-                int rtsCtsThreshold = radioConfiguration.getRtsCtsThreshold();
-                // int rtsCtsThreshold = rfElementConfig.getRtsCtsThreshold();
+                int rtsCtsThreshold = rfElementConfig.getRtsCtsThreshold();
                 int fragThresholdBytes = radioConfiguration.getFragmentationThresholdBytes();
                 RadioMode radioMode = radioConfiguration.getRadioMode();
                 String minHwMode = "11n"; // min_hw_mode is 11ac, wifi 5, we can
@@ -4840,7 +4836,6 @@ public class OvsdbDao {
         }
     }
 
-
     public void processNewChannelsRequest(OvsdbClient ovsdbClient, Map<RadioType, Integer> channelMap) {
 
         LOG.info("OvsdbDao::processNewChannelsRequest {}", channelMap);
@@ -4881,6 +4876,5 @@ public class OvsdbDao {
 
 
     }
-
 
 }
