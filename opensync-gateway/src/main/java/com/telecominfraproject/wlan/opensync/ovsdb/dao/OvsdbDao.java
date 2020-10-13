@@ -3486,6 +3486,7 @@ public class OvsdbDao {
                         Set<Atom<String>> domainNames = new HashSet<>();
                         StringBuffer mccMncBuffer = new StringBuffer();
                         Set<Atom<String>> naiRealms = new HashSet<>();
+                        Set<Atom<String>> roamingOis = new HashSet<>();
                         for (Profile provider : providerList) {
                             Hotspot20IdProviderProfile providerProfile = (Hotspot20IdProviderProfile) provider
                                     .getDetails();
@@ -3493,6 +3494,11 @@ public class OvsdbDao {
                                 Hotspot20OsuProviders hotspot2OsuProviders = osuProviders
                                         .get(providerProfile.getOsuServerUri());
 
+                                StringBuffer roamingOiOctets = new StringBuffer();
+                                providerProfile.getRoamingOi().stream().forEach(o -> {
+                                    roamingOiOctets.append(Byte.toString(o));
+                                });
+                                roamingOis.add(new Atom<>(roamingOiOctets.toString()));
                                 osuProvidersUuids.add(hotspot2OsuProviders.uuid);
                                 osuIconUuids.addAll(hotspot2OsuProviders.osuIcons);
                                 domainNames.add(new Atom<>(providerProfile.getDomainName()));
@@ -3512,6 +3518,10 @@ public class OvsdbDao {
                         }
 
                         rowColumns.put("mcc_mnc", new Atom<>(mccMncString));
+
+                        com.vmware.ovsdb.protocol.operation.notation.Set roamingOiSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                                .of(roamingOis);
+                        rowColumns.put("roaming_oi", roamingOiSet);
 
                         com.vmware.ovsdb.protocol.operation.notation.Set naiRealmsSet = com.vmware.ovsdb.protocol.operation.notation.Set
                                 .of(naiRealms);
@@ -3539,6 +3549,8 @@ public class OvsdbDao {
                         rowColumns.put("deauth_request_timeout", new Atom<>(hs2Profile.getDeauthRequestTimeout()));
                         rowColumns.put("osen",
                                 new Atom<>(operatorProfile.isServerOnlyAuthenticatedL2EncryptionNetwork()));
+
+                        rowColumns.put("tos", new Atom<>(hs2Profile.getTermsAndConditionsFile().getApExportUrl()));
 
                         Set<Atom<String>> operatorFriendlyName = new HashSet<>();
                         operatorProfile.getOperatorFriendlyName().stream()
