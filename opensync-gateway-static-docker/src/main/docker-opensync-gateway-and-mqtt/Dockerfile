@@ -32,6 +32,7 @@ COPY app/opensync/ProfileHotspot20.json /app/opensync/ProfileHotspot20.json
 COPY app/opensync/ProfileOperator.json /app/opensync/ProfileOperator.json
 COPY app/opensync/ProfileVenue.json /app/opensync/ProfileVenue.json
 COPY app/opensync/ProfileIdProvider.json /app/opensync/ProfileIdProvider.json
+COPY app/opensync/ProfileBonjour.json /app/opensync/ProfileBonjour.json
 COPY app/commit.properties /app
 
 VOLUME ["/app/logs", "/app/config"]

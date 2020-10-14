@@ -835,7 +835,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                             .addAll(profileContainer.getChildrenOfType(ssidProfile.getId(), ProfileType.hotspot_2pt0));
                     
 
-                    radiusSet.addAll(profileContainer.getChildrenOfType(ssidProfile.getId(), ProfileType.radius));
+                    radiusSet.addAll(profileContainer.getChildrenOfType(ret.getApProfile().getId(), ProfileType.radius));
                     if (ssidProfile.getDetails() != null) {
                         Long captivePortId = ((SsidConfiguration) ssidProfile.getDetails()).getCaptivePortalId();
                         if (captivePortId != null) {
