@@ -82,11 +82,11 @@ import com.telecominfraproject.wlan.profile.passpoint.models.IPv4PasspointAddres
 import com.telecominfraproject.wlan.profile.passpoint.models.IPv6PasspointAddressType;
 import com.telecominfraproject.wlan.profile.passpoint.models.MccMnc;
 import com.telecominfraproject.wlan.profile.passpoint.operator.models.OperatorProfile;
-import com.telecominfraproject.wlan.profile.passpoint.provider.models.AuthenticationParameterTypes;
-import com.telecominfraproject.wlan.profile.passpoint.provider.models.CredentialType;
 import com.telecominfraproject.wlan.profile.passpoint.provider.models.EapMethods;
 import com.telecominfraproject.wlan.profile.passpoint.provider.models.Hotspot20IdProviderProfile;
-import com.telecominfraproject.wlan.profile.passpoint.provider.models.NonEapInnerAuthenticationTypes;
+import com.telecominfraproject.wlan.profile.passpoint.provider.models.NaiRealmEapAuthInnerNonEap;
+import com.telecominfraproject.wlan.profile.passpoint.provider.models.NaiRealmEapAuthParam;
+import com.telecominfraproject.wlan.profile.passpoint.provider.models.NaiRealmEapCredType;
 import com.telecominfraproject.wlan.profile.passpoint.provider.models.OsuIcon;
 import com.telecominfraproject.wlan.profile.passpoint.venue.models.VenueName;
 import com.telecominfraproject.wlan.profile.passpoint.venue.models.VenueProfile;
@@ -3859,12 +3859,12 @@ public class OvsdbDao {
                     for (String credential : e.getValue()) {
 
                         String[] keyValue = credential.split(":");
-                        String keyId = String.valueOf(AuthenticationParameterTypes.getByName(keyValue[0]).getId());
+                        String keyId = String.valueOf(NaiRealmEapAuthParam.getByName(keyValue[0]).getId());
                         if (keyValue[0]
-                                .equals(AuthenticationParameterTypes.non_eap_inner_authentication_type.getName())) {
+                                .equals(NaiRealmEapAuthParam.NAI_REALM_EAP_AUTH_NON_EAP_INNER_AUTH.getName())) {
 
                             String valueId = String
-                                    .valueOf(NonEapInnerAuthenticationTypes.getByName(keyValue[1]).getId());
+                                    .valueOf(NaiRealmEapAuthInnerNonEap.getByName(keyValue[1]).getId());
 
                             naiBuffer.append("[");
                             naiBuffer.append(keyId);
@@ -3872,11 +3872,11 @@ public class OvsdbDao {
                             naiBuffer.append(valueId);
                             naiBuffer.append("]");
 
-                        } else if (keyValue[0].equals(AuthenticationParameterTypes.credential_type.getName())
+                        } else if (keyValue[0].equals(NaiRealmEapAuthParam.NAI_REALM_EAP_AUTH_CRED_TYPE.getName())
                                 || keyValue[0].equals(
-                                        AuthenticationParameterTypes.tunneled_eap_method_credential_type.getName())) {
+                                        NaiRealmEapAuthParam.NAI_REALM_EAP_AUTH_TUNNELED_CRED_TYPE.getName())) {
 
-                            String valueId = String.valueOf(CredentialType.getByName(keyValue[1]).getId());
+                            String valueId = String.valueOf(NaiRealmEapCredType.getByName(keyValue[1]).getId());
 
                             naiBuffer.append("[");
                             naiBuffer.append(keyId);
