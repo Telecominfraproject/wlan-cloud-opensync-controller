@@ -1403,7 +1403,12 @@ public class OvsdbDao {
                 wifiInetConfigInfo.enabled = row.getBooleanColumn("enabled");
                 wifiInetConfigInfo.ifName = row.getStringColumn("if_name");
                 wifiInetConfigInfo.ifType = row.getStringColumn("if_type");
-                wifiInetConfigInfo.ipAssignScheme = row.getStringColumn("ip_assign_scheme");
+                String ipAssignSchemeTemp = getSingleValueFromSet(row, "ip_assign_scheme");
+                if (ipAssignSchemeTemp != null) {
+                    wifiInetConfigInfo.ipAssignScheme = ipAssignSchemeTemp;
+                } else {
+                    wifiInetConfigInfo.ipAssignScheme = "none";
+                }
                 wifiInetConfigInfo.network = row.getBooleanColumn("network");
                 if ((row.getColumns().get("inet_addr") != null) && row.getColumns().get("inet_addr").getClass()
                         .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
@@ -3860,11 +3865,9 @@ public class OvsdbDao {
 
                         String[] keyValue = credential.split(":");
                         String keyId = String.valueOf(NaiRealmEapAuthParam.getByName(keyValue[0]).getId());
-                        if (keyValue[0]
-                                .equals(NaiRealmEapAuthParam.NAI_REALM_EAP_AUTH_NON_EAP_INNER_AUTH.getName())) {
+                        if (keyValue[0].equals(NaiRealmEapAuthParam.NAI_REALM_EAP_AUTH_NON_EAP_INNER_AUTH.getName())) {
 
-                            String valueId = String
-                                    .valueOf(NaiRealmEapAuthInnerNonEap.getByName(keyValue[1]).getId());
+                            String valueId = String.valueOf(NaiRealmEapAuthInnerNonEap.getByName(keyValue[1]).getId());
 
                             naiBuffer.append("[");
                             naiBuffer.append(keyId);
@@ -3873,8 +3876,8 @@ public class OvsdbDao {
                             naiBuffer.append("]");
 
                         } else if (keyValue[0].equals(NaiRealmEapAuthParam.NAI_REALM_EAP_AUTH_CRED_TYPE.getName())
-                                || keyValue[0].equals(
-                                        NaiRealmEapAuthParam.NAI_REALM_EAP_AUTH_TUNNELED_CRED_TYPE.getName())) {
+                                || keyValue[0]
+                                        .equals(NaiRealmEapAuthParam.NAI_REALM_EAP_AUTH_TUNNELED_CRED_TYPE.getName())) {
 
                             String valueId = String.valueOf(NaiRealmEapCredType.getByName(keyValue[1]).getId());
 
