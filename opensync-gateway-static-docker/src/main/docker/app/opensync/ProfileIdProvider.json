@@ -77,9 +77,6 @@
                 "hs20IconString": "32:32:eng:image/png:icon32usa:/tmp/icon32usa.png"
             }
         ],
-        "radiusProfileAuth": "Radius-Profile",
-        "radiusProfileAccounting": "Radius-Profile",
-        "osuSsid": "TipWlan-cloud-3-radios",
         "osuServerUri": "https://example.com/osu/rogers/",
         "osuFriendlyName": [
             {
@@ -207,9 +204,6 @@
                 "hs20IconString": "32:32:eng:image/png:icon32usa:/tmp/icon32usa.png"
             }
         ],
-        "radiusProfileAuth": "Radius-Profile",
-        "radiusProfileAccounting": "Radius-Profile",
-        "osuSsid": "TipWlan-cloud-3-radios",
         "osuServerUri": "https://example.com/osu/telus/",
         "osuFriendlyName": [
             {
