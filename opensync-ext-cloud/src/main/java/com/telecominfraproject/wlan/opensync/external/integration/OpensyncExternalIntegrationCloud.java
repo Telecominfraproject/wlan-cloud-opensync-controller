@@ -34,6 +34,8 @@ import com.telecominfraproject.wlan.core.model.equipment.AutoOrManualValue;
 import com.telecominfraproject.wlan.core.model.equipment.EquipmentType;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
+import com.telecominfraproject.wlan.core.model.equipment.SourceSelectionValue;
+import com.telecominfraproject.wlan.core.model.equipment.SourceType;
 import com.telecominfraproject.wlan.core.model.pagination.PaginationContext;
 import com.telecominfraproject.wlan.core.model.pagination.PaginationResponse;
 import com.telecominfraproject.wlan.customer.models.Customer;
@@ -285,36 +287,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     // one:
                     Profile apProfile = createDefaultApProfile(ce, connectNodeInfo);
                     profileId = apProfile.getId();
-                    
-                    // Initialize equipment from RF Profile
-                    ProfileContainer profileContainer = new ProfileContainer(
-                    		profileServiceInterface.getProfileWithChildren(profileId));
-                    RfConfiguration rfConfig = (RfConfiguration) profileContainer.getChildOfTypeOrNull(profileId, ProfileType.rf)
-                    		.getDetails();
-                    ApElementConfiguration config = (ApElementConfiguration) ce.getDetails();
-                    Map<RadioType, ElementRadioConfiguration> baseRadioMap = config.getRadioMap();
-                    Map<RadioType, RadioConfiguration> advRadioMap = config.getAdvancedRadioMap();
-                    for (RadioType rType : config.getRadioMap().keySet()) {
-                    	ElementRadioConfiguration elementRadioConfig = baseRadioMap.get(rType);
-                    	RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(rType);
-                    	
-                    	elementRadioConfig.setClientDisconnectThresholdDb(rfElementConfig.getClientDisconnectThresholdDb());
-                    	elementRadioConfig.setEirpTxPower(rfElementConfig.getEirpTxPower());
-                    	elementRadioConfig.setPerimeterDetectionEnabled(rfElementConfig.getPerimeterDetectionEnabled());
-                    	elementRadioConfig.setProbeResponseThresholdDb(rfElementConfig.getProbeResponseThresholdDb());
-                    	elementRadioConfig.setRxCellSizeDb(rfElementConfig.getRxCellSizeDb());
-                    }
-                    for (RadioType rType : config.getAdvancedRadioMap().keySet()) {
-                    	RadioConfiguration radioConfig = advRadioMap.get(rType);
-                    	RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(rType);
-                    	
-                    	radioConfig.setBestApSettings(rfElementConfig.getBestApSettings());
-                    	radioConfig.setManagementRate(rfElementConfig.getManagementRate());
-                    }
-                    config.setAdvancedRadioMap(advRadioMap);
-                    config.setRadioMap(baseRadioMap);
-                    
-                    ce.setDetails(config);
                 }
 
                 ce.setProfileId(profileId);
@@ -1086,8 +1058,19 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             }
 
             if (radioState.getTxPower() > 0) {
-                apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                        .setEirpTxPower(AutoOrManualValue.createManualInstance(radioState.getTxPower()));
+            	SourceType txPowerSource = apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
+            			.getEirpTxPower().getSource();
+            	// Preserve the source while updating the value
+            	if (txPowerSource == SourceType.auto) {
+	                apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
+	                	.setEirpTxPower(SourceSelectionValue.createAutomaticInstance(radioState.getTxPower()));
+            	} else if (txPowerSource == SourceType.profile) {
+	                apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
+                    	.setEirpTxPower(SourceSelectionValue.createProfileInstance(radioState.getTxPower()));
+            	} else {
+	                apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
+	                	.setEirpTxPower(SourceSelectionValue.createManualInstance(radioState.getTxPower()));
+            	}
 
                 LOG.debug("Updated TxPower from Wifi_Radio_State table change for AP {}", apId);
             }

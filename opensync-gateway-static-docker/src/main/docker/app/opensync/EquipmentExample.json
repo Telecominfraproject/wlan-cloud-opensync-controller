@@ -41,23 +41,23 @@
         "bannedChannels": [],
         "allowedChannels": [],
         "rxCellSizeDb": {
-          "model_type": "AutoOrManualValue",
-          "auto": true,
+          "model_type": "SourceSelectionValue",
+        "source": "auto",
           "value": -90
         },
         "probeResponseThresholdDb": {
-          "model_type": "AutoOrManualValue",
-          "auto": true,
+          "model_type": "SourceSelectionValue",
+        "source": "auto",
           "value": -90
         },
         "clientDisconnectThresholdDb": {
-          "model_type": "AutoOrManualValue",
-          "auto": true,
+          "model_type": "SourceSelectionValue",
+        	 "source": "auto",
           "value": -90
         },
         "eirpTxPower": {
-          "model_type": "AutoOrManualValue",
-          "auto": false,
+          "model_type": "SourceSelectionValue",
+        	 "source": "auto",
           "value": 32
         },
         "perimeterDetectionEnabled": true,
@@ -75,23 +75,23 @@
         "bannedChannels": [],
         "allowedChannels": [],
         "rxCellSizeDb": {
-          "model_type": "AutoOrManualValue",
-          "auto": true,
+          "model_type": "SourceSelectionValue",
+        	 "source": "auto",
           "value": -90
         },
         "probeResponseThresholdDb": {
-          "model_type": "AutoOrManualValue",
-          "auto": true,
+          "model_type": "SourceSelectionValue",
+        	 "source": "auto",
           "value": -90
         },
         "clientDisconnectThresholdDb": {
-          "model_type": "AutoOrManualValue",
-          "auto": true,
+          "model_type": "SourceSelectionValue",
+        	 "source": "auto",
           "value": -90
         },
         "eirpTxPower": {
-          "model_type": "AutoOrManualValue",
-          "auto": false,
+          "model_type": "SourceSelectionValue",
+        	 "source": "auto",
           "value": 32
         },
         "perimeterDetectionEnabled": true,
@@ -109,23 +109,23 @@
         "bannedChannels": [],
         "allowedChannels": [],
         "rxCellSizeDb": {
-          "model_type": "AutoOrManualValue",
-          "auto": true,
+          "model_type": "SourceSelectionValue",
+        	 "source": "auto",
           "value": -90
         },
         "probeResponseThresholdDb": {
-          "model_type": "AutoOrManualValue",
-          "auto": true,
+          "model_type": "SourceSelectionValue",
+        	 "source": "auto",
           "value": -90
         },
         "clientDisconnectThresholdDb": {
-          "model_type": "AutoOrManualValue",
-          "auto": true,
+          "model_type": "SourceSelectionValue",
+        	 "source": "auto",
           "value": -90
         },
         "eirpTxPower": {
-          "model_type": "AutoOrManualValue",
-          "auto": false,
+          "model_type": "SourceSelectionValue",
+        	 "source": "auto",
           "value": 32
         },
         "perimeterDetectionEnabled": true,
@@ -141,16 +141,23 @@
         "radioType": "is2dot4GHz",
         "radioAdminState": "enabled",
         "fragmentationThresholdBytes": 2346,
-        "radioMode": "modeN",
         "wmmState": "enabled",
         "uapsdState": "enabled",
         "stationIsolation": "disabled",
-        "managementRate": "auto",
+        "managementRate": {
+          "model_type": "SourceSelectionManagement",
+          "source": "auto",
+          "value": "auto"
+        },
         "bestApSettings": {
-          "model_type": "RadioBestApSettings",
-          "mlComputed": true,
-          "dropInSnrPercentage": 20,
-          "minLoadFactor": 50
+        "model_type": "SourceSelectionSteering",
+          "source": "auto",
+          "value": {
+	          "model_type": "RadioBestApSettings",
+	          "mlComputed": true,
+	          "dropInSnrPercentage": 30,
+	          "minLoadFactor": 40
+          }
         },
         "legacyBSSRate": "enabled",
         "deauthAttackDetection": null
@@ -160,16 +167,23 @@
         "radioType": "is5GHzU",
         "radioAdminState": "enabled",
         "fragmentationThresholdBytes": 2346,
-        "radioMode": "modeAC",
         "wmmState": "enabled",
         "uapsdState": "enabled",
         "stationIsolation": "disabled",
-        "managementRate": "auto",
+        "managementRate": {
+          "model_type": "SourceSelectionManagement",
+          "source": "auto",
+          "value": "auto"
+        },
         "bestApSettings": {
-          "model_type": "RadioBestApSettings",
-          "mlComputed": true,
-          "dropInSnrPercentage": 30,
-          "minLoadFactor": 40
+        "model_type": "SourceSelectionSteering",
+          "source": "auto",
+          "value": {
+	          "model_type": "RadioBestApSettings",
+	          "mlComputed": true,
+	          "dropInSnrPercentage": 30,
+	          "minLoadFactor": 40
+          }
         },
         "legacyBSSRate": "enabled",
         "deauthAttackDetection": null
@@ -179,16 +193,23 @@
         "radioType": "is5GHzL",
         "radioAdminState": "enabled",
         "fragmentationThresholdBytes": 2346,
-        "radioMode": "modeAC",
         "wmmState": "enabled",
         "uapsdState": "enabled",
         "stationIsolation": "disabled",
-        "managementRate": "auto",
+        "managementRate": {
+          "model_type": "SourceSelectionManagement",
+          "source": "auto",
+          "value": "auto"
+        },
         "bestApSettings": {
-          "model_type": "RadioBestApSettings",
-          "mlComputed": true,
-          "dropInSnrPercentage": 30,
-          "minLoadFactor": 40
+        "model_type": "SourceSelectionSteering",
+          "source": "auto",
+          "value": {
+	          "model_type": "RadioBestApSettings",
+	          "mlComputed": true,
+	          "dropInSnrPercentage": 30,
+	          "minLoadFactor": 40
+          }
         },
         "legacyBSSRate": "enabled",
         "deauthAttackDetection": null

@@ -29,6 +29,7 @@ import com.telecominfraproject.wlan.core.model.equipment.ChannelBandwidth;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioBestApSettings;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
+import com.telecominfraproject.wlan.core.model.equipment.SourceType;
 import com.telecominfraproject.wlan.core.model.json.BaseJsonModel;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.ElementRadioConfiguration;
@@ -1937,12 +1938,14 @@ public class OvsdbDao {
             boolean enabled = radioConfig.getRadioAdminState().equals(StateSetting.enabled);
 
             int txPower = 0;
-            if (!elementRadioConfig.getEirpTxPower().isAuto()) {
-                txPower = elementRadioConfig.getEirpTxPower().getValue();
+            if (elementRadioConfig.getEirpTxPower().getSource() == SourceType.profile) {
+            	txPower = rfElementConfig.getEirpTxPower();
+            } else {
+                txPower = (int) elementRadioConfig.getEirpTxPower().getValue();
             }
 
             String hwMode = null;
-            switch (radioConfig.getRadioMode()) {
+            switch (rfElementConfig.getRadioMode()) {
                 case modeA:
                     hwMode = "11a";
                     break;
@@ -2972,7 +2975,7 @@ public class OvsdbDao {
                 int dtimPeriod = radioConfiguration.getDtimPeriod();
                 int rtsCtsThreshold = rfElementConfig.getRtsCtsThreshold();
                 int fragThresholdBytes = radioConfiguration.getFragmentationThresholdBytes();
-                RadioMode radioMode = radioConfiguration.getRadioMode();
+                RadioMode radioMode = rfElementConfig.getRadioMode();
                 String minHwMode = "11n"; // min_hw_mode is 11ac, wifi 5, we can
                 // also take ++ (11ax) but 2.4GHz only
                 // Wifi4 --
@@ -4718,6 +4721,7 @@ public class OvsdbDao {
 
         ApElementConfiguration apElementConfig = (ApElementConfiguration) opensyncApConfig.getCustomerEquipment()
                 .getDetails();
+        RfConfiguration rfConfig = (RfConfiguration) opensyncApConfig.getRfProfile().getDetails();
         for (RadioType radioType : apElementConfig.getRadioMap().keySet()) {
             String freqBand = null;
             if (radioType == RadioType.is2dot4GHz) {
@@ -4730,24 +4734,42 @@ public class OvsdbDao {
                 freqBand = "5G";
             }
 
+            
             ElementRadioConfiguration elementRadioConfig = apElementConfig.getRadioMap().get(radioType);
-            if (elementRadioConfig == null) {
+            RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(radioType);
+            if (elementRadioConfig == null || rfElementConfig == null) {
                 continue; // don't have a radio of this kind in the map
+            }
+            AutoOrManualValue rxCellSizeDb = null;
+            AutoOrManualValue probeResponseThresholdDb = null;
+            AutoOrManualValue clientDisconnectThresholdDb = null;
+            if (elementRadioConfig != null && rfElementConfig != null) {
+            	rxCellSizeDb = getSourcedValue(elementRadioConfig.getRxCellSizeDb().getSource(), 
+            			rfElementConfig.getRxCellSizeDb(), elementRadioConfig.getRxCellSizeDb().getValue());
+            			
+            	probeResponseThresholdDb = getSourcedValue(elementRadioConfig.getProbeResponseThresholdDb().getSource(),  
+            			rfElementConfig.getProbeResponseThresholdDb(), elementRadioConfig.getProbeResponseThresholdDb().getValue());
+            			
+            	clientDisconnectThresholdDb = getSourcedValue(elementRadioConfig.getClientDisconnectThresholdDb().getSource(),  
+            			rfElementConfig.getClientDisconnectThresholdDb(), elementRadioConfig.getClientDisconnectThresholdDb().getValue());
             }
 
             RadioConfiguration radioConfig = apElementConfig.getAdvancedRadioMap().get(radioType);
             ManagementRate managementRate = null;
             RadioBestApSettings bestApSettings = null;
-            if (radioConfig != null) {
-                managementRate = radioConfig.getManagementRate();
-                bestApSettings = radioConfig.getBestApSettings();
+            if (radioConfig != null && rfElementConfig != null) {
+            	managementRate = radioConfig.getManagementRate().getSource() == SourceType.profile ? 
+            			rfElementConfig.getManagementRate() : radioConfig.getManagementRate().getValue();
+            			
+            	bestApSettings = radioConfig.getBestApSettings().getSource() == SourceType.profile ? 
+            			rfElementConfig.getBestApSettings() : radioConfig.getBestApSettings().getValue();
             }
 
             if (freqBand != null) {
                 try {
                     configureWifiRrm(ovsdbClient, freqBand, elementRadioConfig.getBackupChannelNumber(),
-                            elementRadioConfig.getRxCellSizeDb(), elementRadioConfig.getProbeResponseThresholdDb(),
-                            elementRadioConfig.getClientDisconnectThresholdDb(), managementRate, bestApSettings);
+                            rxCellSizeDb, probeResponseThresholdDb, clientDisconnectThresholdDb,
+                            managementRate, bestApSettings);
                 } catch (OvsdbClientException e) {
                     LOG.error("configureRrm failed with OvsdbClient exception.", e);
                     throw new RuntimeException(e);
@@ -4895,6 +4917,15 @@ public class OvsdbDao {
         }
 
 
+    }
+    
+    public AutoOrManualValue getSourcedValue(SourceType source, int profileValue, int equipmentValue) {
+    	if (source == SourceType.profile) {
+    		return AutoOrManualValue.createManualInstance(profileValue);
+    	} else if (source == SourceType.auto) {
+    		return AutoOrManualValue.createAutomaticInstance(equipmentValue);
+    	}
+    	return AutoOrManualValue.createManualInstance(equipmentValue);
     }
 
 }
