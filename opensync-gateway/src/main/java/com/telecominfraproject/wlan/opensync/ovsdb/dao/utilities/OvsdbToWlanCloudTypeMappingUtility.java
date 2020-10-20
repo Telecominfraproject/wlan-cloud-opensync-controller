@@ -1,11 +1,9 @@
 package com.telecominfraproject.wlan.opensync.ovsdb.dao.utilities;
 
-import java.util.Map;
-import java.util.Set;
-
 import com.telecominfraproject.wlan.client.models.ClientType;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.core.model.equipment.SecurityType;
+import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpDeviceType;
 import com.telecominfraproject.wlan.profile.metrics.ChannelUtilizationSurveyType;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.StateUpDownError;
@@ -303,6 +301,24 @@ public class OvsdbToWlanCloudTypeMappingUtility {
             return "survey";
         }
         return null;
+    }
+    
+    public static String getAlteredClientCnIfRequired(String clientCn, ConnectNodeInfo connectNodeInfo, boolean preventClientCnAlteration) {
+        String key;
+        // can clientCn be altered
+        if (preventClientCnAlteration) {
+            key = clientCn;
+        } else {
+            // does clientCn already end with the AP serial number, if so, use
+            // this
+            if (clientCn.endsWith("_" + connectNodeInfo.serialNumber)) {
+                key = clientCn;
+            } else {
+                // append the serial number
+                key = clientCn + "_" + connectNodeInfo.serialNumber;
+            }
+        }
+        return key;
     }
 
 }

@@ -539,7 +539,7 @@ public class OvsdbDao {
     }
 
     public ConnectNodeInfo updateConnectNodeInfoOnConnect(OvsdbClient ovsdbClient, String clientCn,
-            ConnectNodeInfo incomingConnectNodeInfo) {
+            ConnectNodeInfo incomingConnectNodeInfo, boolean preventCnAlteration) {
         ConnectNodeInfo ret = incomingConnectNodeInfo.clone();
 
         try {
@@ -560,7 +560,8 @@ public class OvsdbDao {
             // mqtt_settings:ins:'["map",[["broker","testportal.123wlan.com"],["topics","/ap/dev-ap-0300/opensync"],["qos","0"],["port","1883"],["remote_log","1"]]]'
             Map<String, String> newMqttSettings = new HashMap<>();
             newMqttSettings.put("broker", mqttBrokerAddress);
-            newMqttSettings.put("topics", "/ap/" + clientCn + "/opensync");
+            String mqttClientName = OvsdbToWlanCloudTypeMappingUtility.getAlteredClientCnIfRequired(clientCn, incomingConnectNodeInfo, preventCnAlteration);
+            newMqttSettings.put("topics", "/ap/" + mqttClientName + "/opensync");         
             newMqttSettings.put("port", "" + mqttBrokerListenPort);
             newMqttSettings.put("compress", "zlib");
             newMqttSettings.put("qos", "0");
@@ -803,7 +804,7 @@ public class OvsdbDao {
         return set;
     }
 
-    public <T> T getSingleValueFromSet(Row row, String columnName) {
+    public static <T> T getSingleValueFromSet(Row row, String columnName) {
 
         Set<T> set = row != null ? row.getSetColumn(columnName) : null;
         T ret = (set != null) && !set.isEmpty() ? set.iterator().next() : null;
@@ -2596,8 +2597,9 @@ public class OvsdbDao {
                 String vlanIfName = bridge + vlanId;
                 if (!wifiInetConfigInfoMap.containsKey(vlanIfName)) {
                     // we need to make a VLAN, before we do anything else
-                    createInetConfigForVlan(ovsdbClient, bridge, (networkForwardMode == NetworkForwardMode.NAT),
-                            vlanIfName, vlanId, gateway, inet, ipAssignScheme, dns);
+                    boolean isNAT = wifiInetConfigInfoMap.get(bridge).nat;
+                    createInetConfigForVlan(ovsdbClient, bridge, isNAT, vlanIfName, vlanId, gateway, inet,
+                            ipAssignScheme, dns);
                 }
 
                 bridge = vlanIfName;
@@ -2718,15 +2720,15 @@ public class OvsdbDao {
             updateVifConfigsSetForRadio(ovsdbClient, ssid, radioFreqBand, operations, updateColumns, vifConfigUuid);
 
             Map<String, WifiInetConfigInfo> inetConfigs = getProvisionedWifiInetConfigs(ovsdbClient);
+            boolean isNAT = inetConfigs.get(bridge).nat;
 
             if (inetConfigs.containsKey(ifName)) {
-                updateWifiInetConfig(ovsdbClient, vlanId, ifName, enabled, networkForwardMode == NetworkForwardMode.NAT,
-                        "vif", gateway, inet, dns, ipAssignScheme, vifConfigUuid);
+                updateWifiInetConfig(ovsdbClient, vlanId, ifName, enabled, isNAT, "vif", bridge, gateway, inet, dns,
+                        ipAssignScheme, vifConfigUuid);
             } else {
                 LOG.debug("No corresponding WifiInetConfig for this Interface");
-                insertWifiInetConfigForVif(ovsdbClient, vlanId, ifName, enabled,
-                        networkForwardMode == NetworkForwardMode.NAT, "vif", gateway, inet, dns, ipAssignScheme,
-                        vifConfigUuid);
+                insertWifiInetConfigForVif(ovsdbClient, vlanId, ifName, enabled, isNAT, "vif", bridge, gateway, inet,
+                        dns, ipAssignScheme, vifConfigUuid);
             }
 
             LOG.info("Provisioned SSID {} on interface {} / {}", ssid, ifName, radioFreqBand);
@@ -3320,7 +3322,7 @@ public class OvsdbDao {
     }
 
     private void updateWifiInetConfig(OvsdbClient ovsdbClient, int vlanId, String ifName, boolean enabled,
-            boolean isNAT, String ifType, String gateway, String inet, Map<String, String> dns, String ipAssignScheme,
+            boolean isNAT, String ifType, String gateway, String inet, String parentIfName, Map<String, String> dns, String ipAssignScheme,
             Uuid vifConfigUuid) {
 
         List<Operation> operations = new ArrayList<>();
@@ -3329,31 +3331,34 @@ public class OvsdbDao {
         conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(ifName)));
 
         try {
+//            /usr/plume/tools/ovsh i Wifi_Inet_Config NAT:=false enabled:=true if_name:=home-ap-24 if_type:=vif ip_assign_scheme:=none network:=true
+
+                    
             /// usr/plume/tools/ovsh i Wifi_Inet_Config NAT:=false enabled:=true
             /// if_name:=home-ap-24 if_type:=vif ip_assign_scheme:=none
             /// network:=true
             // dhcpd
             updateColumns.put("if_name", new Atom<>(ifName));
             updateColumns.put("if_type", new Atom<>(ifType));
-            updateColumns.put("if_uuid", new Atom<>(vifConfigUuid.toString()));
+//            updateColumns.put("if_uuid", new Atom<>(vifConfigUuid.toString()));
             updateColumns.put("enabled", new Atom<>(enabled));
             updateColumns.put("NAT", new Atom<>(isNAT));
-
+//            updateColumns.put("parent_ifname", new Atom<>(parentIfName));
             // mtu // specified in interface, should take that value when
             // implemented
-            updateColumns.put("mtu", new Atom<>(1500));
+//            updateColumns.put("mtu", new Atom<>(1500));
             updateColumns.put("network", new Atom<>(true));
 
-            updateColumns.put("ip_assign_scheme", new Atom<>(ipAssignScheme));
-            updateColumns.put("dhcp_sniff", new Atom<>(true));
+            updateColumns.put("ip_assign_scheme", new Atom<>("none"));
+//            updateColumns.put("dhcp_sniff", new Atom<>(true));
 
-            if (ipAssignScheme.equals("static")) {
-                updateColumns.put("dns", com.vmware.ovsdb.protocol.operation.notation.Map.of(dns));
-                updateColumns.put("inet_addr", new Atom<>(inet));
-                updateColumns.put("gateway", new Atom<>(gateway));
-                // netmask
-                // broadcast
-            }
+//            if (ipAssignScheme.equals("static")) {
+//                updateColumns.put("dns", com.vmware.ovsdb.protocol.operation.notation.Map.of(dns));
+//                updateColumns.put("inet_addr", new Atom<>(inet));
+//                updateColumns.put("gateway", new Atom<>(gateway));
+//                // netmask
+//                // broadcast
+//            }
 
 
             Row row = new Row(updateColumns);
@@ -3376,7 +3381,7 @@ public class OvsdbDao {
     }
 
     private void insertWifiInetConfigForVif(OvsdbClient ovsdbClient, int vlanId, String ifName, boolean enabled,
-            boolean isNAT, String ifType, String gateway, String inet, Map<String, String> dns, String ipAssignScheme,
+            boolean isNAT, String ifType, String gateway, String inet, String parentIfName, Map<String, String> dns, String ipAssignScheme,
             Uuid vifConfigUuid) {
 
         List<Operation> operations = new ArrayList<>();
@@ -3389,27 +3394,28 @@ public class OvsdbDao {
             // dhcpd
             insertColumns.put("if_name", new Atom<>(ifName));
             insertColumns.put("if_type", new Atom<>(ifType));
-            insertColumns.put("if_uuid", new Atom<>(vifConfigUuid.toString()));
+//            insertColumns.put("if_uuid", new Atom<>(vifConfigUuid.toString()));
             insertColumns.put("enabled", new Atom<>(enabled));
             insertColumns.put("NAT", new Atom<>(isNAT));
+//            insertColumns.put("parent_ifname", new Atom<>(parentIfName));
 
             // mtu // specified in interface, should take that value when
             // implemented
-            insertColumns.put("mtu", new Atom<>(1500));
+//            insertColumns.put("mtu", new Atom<>(1500));
             insertColumns.put("network", new Atom<>(true));
-            insertColumns.put("dhcp_sniff", new Atom<>(true));
+//            insertColumns.put("dhcp_sniff", new Atom<>(true));
 
-            insertColumns.put("ip_assign_scheme", new Atom<>(ipAssignScheme));
+            insertColumns.put("ip_assign_scheme", new Atom<>("none"));
 
-            if (ipAssignScheme.equals("static")) {
-
-                if (inet != null) {
-                    insertColumns.put("inet_addr", new Atom<>(inet));
-                }
-                insertColumns.put("netmask", new Atom<>("255.255.255.0"));
-                // netmask
-                // broadcast
-            }
+//            if (ipAssignScheme.equals("static")) {
+//
+//                if (inet != null) {
+//                    insertColumns.put("inet_addr", new Atom<>(inet));
+//                }
+//                insertColumns.put("netmask", new Atom<>("255.255.255.0"));
+//                // netmask
+//                // broadcast
+//            }
 
 
             Row row = new Row(insertColumns);
@@ -4145,10 +4151,9 @@ public class OvsdbDao {
                             provisionWifiStatsConfigFromProfile("client", radioType, reportingInterval,
                                     samplingInterval, operations);
 
-                            // TODO: add when schema supports
-                            // provisionWifiStatsConfigFromProfile("event",
-                            // reportingInterval,
-                            // samplingInterval, operations);
+                            provisionWifiStatsConfigFromProfile("event",
+                                    reportingInterval,
+                                    samplingInterval, operations);
 
                             provisionWifiStatsConfigFromProfile("video_voice", reportingInterval, samplingInterval,
                                     operations);

@@ -104,6 +104,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
                     // successfully connected - register it in our
                     // connectedClients table
+                    
                     String key = alterClientCnIfRequired(clientCn, connectNodeInfo);
                     ovsdbSessionMapInterface.newSession(key, ovsdbClient);
 
@@ -184,7 +185,8 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             ConnectNodeInfo connectNodeInfo) {
 
         LOG.debug("Starting Client connect");
-        connectNodeInfo = ovsdbDao.updateConnectNodeInfoOnConnect(ovsdbClient, clientCn, connectNodeInfo);
+        connectNodeInfo = ovsdbDao.updateConnectNodeInfoOnConnect(ovsdbClient, clientCn, connectNodeInfo,
+                preventClientCnAlteration);
 
         // successfully connected - register it in our
         // connectedClients table
@@ -857,18 +859,19 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         }
         return key;
     }
-    
-    public  String processNewChannelsRequest(String apId, Map<RadioType,Integer> channelMap) {
+
+    public String processNewChannelsRequest(String apId, Map<RadioType, Integer> channelMap) {
         LOG.debug("TipWlanOvsdbClient::processNewChannelsRequest for AP {}", apId);
 
         try {
             OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
             OvsdbClient ovsdbClient = session.getOvsdbClient();
-            ovsdbDao.processNewChannelsRequest(ovsdbClient,channelMap);
+            ovsdbDao.processNewChannelsRequest(ovsdbClient, channelMap);
             LOG.debug("TipWlanOvsdbClient::processNewChannelsRequest change backup channels for AP   {}", apId);
             return "Triggered a factory reset of AP  " + apId;
         } catch (Exception e) {
-            LOG.error("TipWlanOvsdbClient::processNewChannelsRequest failed to change backup channels for AP {}", apId, e);
+            LOG.error("TipWlanOvsdbClient::processNewChannelsRequest failed to change backup channels for AP {}", apId,
+                    e);
             return " failed to change backup channels for AP " + apId;
         }
     }
