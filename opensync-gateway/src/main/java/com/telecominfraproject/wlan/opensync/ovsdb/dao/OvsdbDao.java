@@ -244,6 +244,7 @@ public class OvsdbDao {
 
 
     public ConnectNodeInfo getConnectNodeInfo(OvsdbClient ovsdbClient) {
+        
         ConnectNodeInfo ret = new ConnectNodeInfo();
 
         try {
@@ -311,6 +312,9 @@ public class OvsdbDao {
 
         return ret;
     }
+
+   
+
 
     private void fillInRadioInterfaceNames(OvsdbClient ovsdbClient, ConnectNodeInfo ret) {
         try {
@@ -2678,7 +2682,8 @@ public class OvsdbDao {
             customOptions.put("client_dl_limit", String.valueOf(clientDlLimit * 1000));
             customOptions.put("client_ul_limit", String.valueOf(clientUlLimit * 1000));
             customOptions.put("rts_threshold", String.valueOf(rtsCtsThreshold));
-            customOptions.put("frag_threshold", String.valueOf(fragThresholdBytes));
+            // TODO: the frag_threshold is not supported on the AP
+            // customOptions.put("frag_threshold", String.valueOf(fragThresholdBytes));
             customOptions.put("dtim_period", String.valueOf(dtimPeriod));
 
 
