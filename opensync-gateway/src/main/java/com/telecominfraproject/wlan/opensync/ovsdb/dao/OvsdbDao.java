@@ -4733,7 +4733,10 @@ public class OvsdbDao {
             } else if (radioType == RadioType.is5GHz) {
                 freqBand = "5G";
             }
-
+            
+            if (rfConfig == null) {
+            	continue;
+            }
             
             ElementRadioConfiguration elementRadioConfig = apElementConfig.getRadioMap().get(radioType);
             RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(radioType);
