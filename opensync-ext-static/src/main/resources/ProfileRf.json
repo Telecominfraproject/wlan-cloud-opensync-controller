@@ -10,6 +10,8 @@
             "is5GHz": {
                 "model_type": "RfElementConfiguration",
                 "rf": "TipWlan-rf",
+                "radioType": "is5GHz",
+                "radioMode": "modeAC",
                 "beaconInterval": 100,
                 "forceScanDuringVoice": "disabled",
                 "rtsCtsThreshold": 65535,
@@ -25,26 +27,10 @@
                     "scanDurationMillis": 65
                 },
                 "managementRate": "auto",
-                "rxCellSizeDb": {
-                    "model_type": "AutoOrManualValue",
-                    "auto": true,
-                    "value": -90
-                },
-                "probeResponseThresholdDb": {
-                    "model_type": "AutoOrManualValue",
-                    "auto": true,
-                    "value": -90
-                },
-                "clientDisconnectThresholdDb": {
-                    "model_type": "AutoOrManualValue",
-                    "auto": true,
-                    "value": -90
-                },
-                "eirpTxPower": {
-                    "model_type": "AutoOrManualValue",
-                    "auto": true,
-                    "value": 18
-                },
+                "rxCellSizeDb": -90,
+                "probeResponseThresholdDb": -90,
+                "clientDisconnectThresholdDb": -90,
+                "eirpTxPower": 18,
                 "bestApEnabled": null,
                 "neighbouringListApConfig": {
                     "model_type": "NeighbouringAPListConfiguration",
@@ -65,11 +51,14 @@
                     "mlComputed": true,
                     "dropInSnrPercentage": 30,
                     "minLoadFactor": 40
-                }
+                },
+                "minAutoCellSize": -65
             },
             "is2dot4GHz": {
                 "model_type": "RfElementConfiguration",
                 "rf": "TipWlan-rf",
+                "radioType": "is2dot4GHz",
+                "radioMode": "modeN",
                 "beaconInterval": 100,
                 "forceScanDuringVoice": "disabled",
                 "rtsCtsThreshold": 65535,
@@ -85,26 +74,10 @@
                     "scanDurationMillis": 65
                 },
                 "managementRate": "auto",
-                "rxCellSizeDb": {
-                    "model_type": "AutoOrManualValue",
-                    "auto": true,
-                    "value": -90
-                },
-                "probeResponseThresholdDb": {
-                    "model_type": "AutoOrManualValue",
-                    "auto": true,
-                    "value": -90
-                },
-                "clientDisconnectThresholdDb": {
-                    "model_type": "AutoOrManualValue",
-                    "auto": true,
-                    "value": -90
-                },
-                "eirpTxPower": {
-                    "model_type": "AutoOrManualValue",
-                    "auto": true,
-                    "value": 18
-                },
+                "rxCellSizeDb": -90,
+                "probeResponseThresholdDb": -90,
+                "clientDisconnectThresholdDb": -90,
+                "eirpTxPower": 18,
                 "bestApEnabled": null,
                 "neighbouringListApConfig": {
                     "model_type": "NeighbouringAPListConfiguration",
@@ -125,11 +98,14 @@
                     "mlComputed": true,
                     "dropInSnrPercentage": 20,
                     "minLoadFactor": 50
-                }
+                },
+                "minAutoCellSize": -65
             },
             "is5GHzU": {
                 "model_type": "RfElementConfiguration",
                 "rf": "TipWlan-rf",
+                "radioType": "is5GHzU",
+                "radioMode": "modeAC",
                 "beaconInterval": 100,
                 "forceScanDuringVoice": "disabled",
                 "rtsCtsThreshold": 65535,
@@ -145,26 +121,10 @@
                     "scanDurationMillis": 65
                 },
                 "managementRate": "auto",
-                "rxCellSizeDb": {
-                    "model_type": "AutoOrManualValue",
-                    "auto": true,
-                    "value": -90
-                },
-                "probeResponseThresholdDb": {
-                    "model_type": "AutoOrManualValue",
-                    "auto": true,
-                    "value": -90
-                },
-                "clientDisconnectThresholdDb": {
-                    "model_type": "AutoOrManualValue",
-                    "auto": true,
-                    "value": -90
-                },
-                "eirpTxPower": {
-                    "model_type": "AutoOrManualValue",
-                    "auto": true,
-                    "value": 18
-                },
+                "rxCellSizeDb": -90,
+                "probeResponseThresholdDb": -90,
+                "clientDisconnectThresholdDb": -90,
+                "eirpTxPower": 18,
                 "bestApEnabled": null,
                 "neighbouringListApConfig": {
                     "model_type": "NeighbouringAPListConfiguration",
@@ -185,11 +145,14 @@
                     "mlComputed": true,
                     "dropInSnrPercentage": 30,
                     "minLoadFactor": 40
-                }
+                },
+                "minAutoCellSize": -65
             },
             "is5GHzL": {
                 "model_type": "RfElementConfiguration",
                 "rf": "TipWlan-rf",
+                "radioType": "is5GHzL",
+                "radioMode": "modeAC",
                 "beaconInterval": 100,
                 "forceScanDuringVoice": "disabled",
                 "rtsCtsThreshold": 65535,
@@ -205,26 +168,10 @@
                     "scanDurationMillis": 65
                 },
                 "managementRate": "auto",
-                "rxCellSizeDb": {
-                    "model_type": "AutoOrManualValue",
-                    "auto": true,
-                    "value": -90
-                },
-                "probeResponseThresholdDb": {
-                    "model_type": "AutoOrManualValue",
-                    "auto": true,
-                    "value": -90
-                },
-                "clientDisconnectThresholdDb": {
-                    "model_type": "AutoOrManualValue",
-                    "auto": true,
-                    "value": -90
-                },
-                "eirpTxPower": {
-                    "model_type": "AutoOrManualValue",
-                    "auto": true,
-                    "value": 18
-                },
+                "rxCellSizeDb": -90,
+                "probeResponseThresholdDb": -90,
+                "clientDisconnectThresholdDb": -90,
+                "eirpTxPower": 18,
                 "bestApEnabled": null,
                 "neighbouringListApConfig": {
                     "model_type": "NeighbouringAPListConfiguration",
@@ -245,7 +192,8 @@
                     "mlComputed": true,
                     "dropInSnrPercentage": 30,
                     "minLoadFactor": 40
-                }
+                },
+                "minAutoCellSize": -65
             }
         },
         "profileType": "rf"
