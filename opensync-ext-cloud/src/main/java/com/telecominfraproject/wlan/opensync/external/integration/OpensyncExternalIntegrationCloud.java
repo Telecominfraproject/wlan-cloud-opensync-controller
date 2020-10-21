@@ -1066,7 +1066,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 	                	.setEirpTxPower(SourceSelectionValue.createAutomaticInstance(radioState.getTxPower()));
             	} else if (txPowerSource == SourceType.profile) {
 	                apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                    	.setEirpTxPower(SourceSelectionValue.createProfileInstance(radioState.getTxPower()));
+	                	.setEirpTxPower(SourceSelectionValue.createProfileInstance(radioState.getTxPower()));
             	} else {
 	                apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
 	                	.setEirpTxPower(SourceSelectionValue.createManualInstance(radioState.getTxPower()));
