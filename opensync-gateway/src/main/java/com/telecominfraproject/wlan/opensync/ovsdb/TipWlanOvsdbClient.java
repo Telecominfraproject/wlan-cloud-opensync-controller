@@ -57,7 +57,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.listenPort:6640}")
     private int ovsdbListenPort;
 
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.manager.collectionIntervalSec.deviceStats:120}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.manager.collectionIntervalSec.deviceStats:60}")
     private long collectionIntervalSecDeviceStats;
 
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.preventClientCnAlteration:false}")
@@ -218,6 +218,10 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                 ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
             }
         }
+        
+        if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
+            ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
+        }
 
         LOG.debug("Client connect Done");
         return connectNodeInfo;
@@ -274,7 +278,9 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             ovsdbDao.configureHotspots(ovsdbClient, opensyncAPConfig);
         }
         ovsdbDao.configureStatsFromProfile(ovsdbClient, opensyncAPConfig);
-
+        if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
+            ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
+        }
         LOG.debug("Finished processConfigChanged for {}", apId);
 
     }
