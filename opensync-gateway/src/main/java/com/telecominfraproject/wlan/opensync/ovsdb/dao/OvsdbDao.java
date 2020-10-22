@@ -2729,6 +2729,7 @@ public class OvsdbDao {
 
             Map<String, WifiInetConfigInfo> inetConfigs = getProvisionedWifiInetConfigs(ovsdbClient);
             boolean isNAT = inetConfigs.get(bridge).nat;
+            ipAssignScheme = inetConfigs.get(bridge).ipAssignScheme;
 
             if (inetConfigs.containsKey(ifName)) {
                 updateWifiInetConfig(ovsdbClient, vlanId, ifName, enabled, isNAT, "vif", bridge, gateway, inet, dns,
@@ -3348,7 +3349,7 @@ public class OvsdbDao {
             // dhcpd
             updateColumns.put("if_name", new Atom<>(ifName));
             updateColumns.put("if_type", new Atom<>(ifType));
-//            updateColumns.put("if_uuid", new Atom<>(vifConfigUuid.toString()));
+            updateColumns.put("if_uuid", new Atom<>(vifConfigUuid.toString()));
             updateColumns.put("enabled", new Atom<>(enabled));
             updateColumns.put("NAT", new Atom<>(isNAT));
 //            updateColumns.put("parent_ifname", new Atom<>(parentIfName));
@@ -3357,8 +3358,8 @@ public class OvsdbDao {
 //            updateColumns.put("mtu", new Atom<>(1500));
             updateColumns.put("network", new Atom<>(true));
 
-            updateColumns.put("ip_assign_scheme", new Atom<>("none"));
-//            updateColumns.put("dhcp_sniff", new Atom<>(true));
+            updateColumns.put("ip_assign_scheme", new Atom<>(ipAssignScheme));
+            updateColumns.put("dhcp_sniff", new Atom<>(true));
 
 //            if (ipAssignScheme.equals("static")) {
 //                updateColumns.put("dns", com.vmware.ovsdb.protocol.operation.notation.Map.of(dns));
@@ -3402,7 +3403,7 @@ public class OvsdbDao {
             // dhcpd
             insertColumns.put("if_name", new Atom<>(ifName));
             insertColumns.put("if_type", new Atom<>(ifType));
-//            insertColumns.put("if_uuid", new Atom<>(vifConfigUuid.toString()));
+            insertColumns.put("if_uuid", new Atom<>(vifConfigUuid.toString()));
             insertColumns.put("enabled", new Atom<>(enabled));
             insertColumns.put("NAT", new Atom<>(isNAT));
 //            insertColumns.put("parent_ifname", new Atom<>(parentIfName));
@@ -3411,9 +3412,9 @@ public class OvsdbDao {
             // implemented
 //            insertColumns.put("mtu", new Atom<>(1500));
             insertColumns.put("network", new Atom<>(true));
-//            insertColumns.put("dhcp_sniff", new Atom<>(true));
+            insertColumns.put("dhcp_sniff", new Atom<>(true));
 
-            insertColumns.put("ip_assign_scheme", new Atom<>("none"));
+            insertColumns.put("ip_assign_scheme", new Atom<>(ipAssignScheme));
 
 //            if (ipAssignScheme.equals("static")) {
 //
