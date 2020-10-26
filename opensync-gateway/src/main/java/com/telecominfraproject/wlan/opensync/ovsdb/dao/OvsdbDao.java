@@ -1373,6 +1373,9 @@ public class OvsdbDao {
 		columns.add("mtu");
 		columns.add("netmask");
 		columns.add("vlan_id");
+		columns.add("gateway");
+		columns.add("dns");
+		columns.add("dhcpd");
 
 		try {
 			LOG.debug("Retrieving WifiInetConfig:");
@@ -1422,6 +1425,9 @@ public class OvsdbDao {
 						.equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
 					wifiInetConfigInfo.vlanId = row.getIntegerColumn("vlan_id").intValue();
 				}
+				wifiInetConfigInfo.dns = row.getMapColumn("dns");
+				wifiInetConfigInfo.dhcpd = row.getMapColumn("dhcpd");
+				wifiInetConfigInfo.gateway = getSingleValueFromSet(row, "gateway");
 				ret.put(wifiInetConfigInfo.ifName, wifiInetConfigInfo);
 			}
 
@@ -3110,57 +3116,13 @@ public class OvsdbDao {
 	private void createInetConfigForVlan(OvsdbClient ovsdbClient, String parentIfName, boolean isNAT, String vlanIfName,
 			int vlanId, String gateway, String inet, String ipAssignScheme, Map<String, String> dns, boolean isUpdate) {
 		try {
+
+			Map<String, WifiInetConfigInfo> wifiInetConfigsMap = getProvisionedWifiInetConfigs(ovsdbClient);
+			WifiInetConfigInfo parentWifiInetConfig = wifiInetConfigsMap.get(parentIfName);
+
 			List<Operation> operations = new ArrayList<>();
 			Map<String, Value> tableColumns = new HashMap<>();
-			Map<String, String> parentDhcpd = null;
-			String parentNetmask = null;
 
-//			if (ipAssignScheme == null) {
-
-				List<String> parentTableColumns = new ArrayList<>();
-				parentTableColumns.add("gateway");
-				parentTableColumns.add("if_name");
-				parentTableColumns.add("if_type");
-				parentTableColumns.add("inet_addr");
-				parentTableColumns.add("netmask");
-				parentTableColumns.add("dhcpd");
-				parentTableColumns.add("dns");
-				parentTableColumns.add("ip_assign_scheme");
-
-				List<Condition> parentTableConditions = new ArrayList<>();
-				parentTableConditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(parentIfName)));
-				operations.add(new Select(wifiInetStateDbTable, parentTableConditions, parentTableColumns));
-				CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-
-				OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
-				String parentInetAddr = null;
-				String parentGateway = null;
-				Map<String, String> parentDns = null;
-
-				String parentIpAssignScheme = null;
-				for (Row row : ((SelectResult) result[0]).getRows()) {
-					parentGateway = getSingleValueFromSet(row, "gateway");
-					if ((row.getColumns().get("inet_addr") != null) && row.getColumns().get("inet_addr").getClass()
-							.equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
-						parentInetAddr = row.getStringColumn("inet_addr");
-					}
-					if ((row.getColumns().get("netmask") != null) && row.getColumns().get("netmask").getClass()
-							.equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
-						parentNetmask = row.getStringColumn("netmask");
-					}
-					parentDns = row.getMapColumn("dns");
-					parentDhcpd = row.getMapColumn("dhcpd");
-					parentIpAssignScheme = getSingleValueFromSet(row, "ip_assign_scheme");
-
-				}
-
-				inet = parentInetAddr;
-				gateway = parentGateway;
-				dns = parentDns;
-				ipAssignScheme = parentIpAssignScheme;
-
-//			}
 			tableColumns.put("if_type", new Atom<>("vlan"));
 			tableColumns.put("vlan_id", new Atom<>(vlanId));
 			tableColumns.put("if_name", new Atom<>(vlanIfName));
@@ -3170,26 +3132,31 @@ public class OvsdbDao {
 			tableColumns.put("network", new Atom<>(true));
 			tableColumns.put("mtu", new Atom<>(1500));
 			tableColumns.put("dhcp_sniff", new Atom<>(true));
-tableColumns.put("ip_assign_scheme",new Atom<>(ipAssignScheme));
-			if (ipAssignScheme.equals("static")) {
-
-				tableColumns.put("dns", com.vmware.ovsdb.protocol.operation.notation.Map.of(dns));
-				tableColumns.put("dhcpd", com.vmware.ovsdb.protocol.operation.notation.Map.of(parentDhcpd));
-				if (gateway != null) {
-					tableColumns.put("gateway", new Atom<>(gateway));
-				}
-				if (parentNetmask != null) {
-					tableColumns.put("netmask", new Atom<>(parentNetmask));
-				}
-				if (inet != null) {
-					String[] inetAddrOctets = inet.split("\\.");
-					if (inetAddrOctets.length == 4) {
-						// change the subnet octet to be the vlan
-						tableColumns.put("inet_addr", new Atom<>(
-								inetAddrOctets[0] + "." + inetAddrOctets[1] + "." + vlanId + "." + inetAddrOctets[3]));
+			if (parentWifiInetConfig != null) {
+				tableColumns.put("ip_assign_scheme", new Atom<>(parentWifiInetConfig.ipAssignScheme));
+				if (parentWifiInetConfig.ipAssignScheme.equals("static")) {
+					tableColumns.put("dns",
+							com.vmware.ovsdb.protocol.operation.notation.Map.of(parentWifiInetConfig.dns));
+					tableColumns.put("dhcpd",
+							com.vmware.ovsdb.protocol.operation.notation.Map.of(parentWifiInetConfig.dhcpd));
+					if (parentWifiInetConfig.gateway != null) {
+						tableColumns.put("gateway", new Atom<>(parentWifiInetConfig.gateway));
 					}
-				}
+					if (parentWifiInetConfig.netmask != null) {
+						tableColumns.put("netmask", new Atom<>(parentWifiInetConfig.netmask));
+					}
+					if (parentWifiInetConfig.inetAddr != null) {
+						String[] inetAddrOctets = parentWifiInetConfig.inetAddr.split("\\.");
+						if (inetAddrOctets.length == 4) {
+							// change the subnet octet to be the vlan
+							tableColumns.put("inet_addr", new Atom<>(inetAddrOctets[0] + "." + inetAddrOctets[1] + "."
+									+ vlanId + "." + inetAddrOctets[3]));
+						}
+					}
 
+				}
+			} else {
+				tableColumns.put("ip_assign_scheme", new Atom<>(ipAssignScheme));
 			}
 
 			Row row = new Row(tableColumns);
@@ -3203,8 +3170,8 @@ tableColumns.put("ip_assign_scheme",new Atom<>(ipAssignScheme));
 				operations.add(new Insert(wifiInetConfigDbTable, row));
 			}
 
-			 fResult = ovsdbClient.transact(ovsdbName, operations);
-			 result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+			CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+			OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
 			LOG.debug("Provisioned Vlan {}", vlanId);
 
