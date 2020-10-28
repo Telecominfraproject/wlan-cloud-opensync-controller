@@ -2753,9 +2753,9 @@ public class OvsdbDao {
 			Map<String, WifiInetConfigInfo> inetConfigs = getProvisionedWifiInetConfigs(ovsdbClient);
 
 			if (inetConfigs.containsKey(vifInterfaceName)) {
-				configureInetInterface(ovsdbClient, vifInterfaceName, enabled, "vif", true);
+				configureInetInterface(ovsdbClient, vifInterfaceName, enabled, "vif", true, (networkForwardMode == NetworkForwardMode.NAT));
 			} else {
-				configureInetInterface(ovsdbClient, vifInterfaceName, enabled, "vif", false);
+				configureInetInterface(ovsdbClient, vifInterfaceName, enabled, "vif", false, (networkForwardMode == NetworkForwardMode.NAT));
 			}
 
 			LOG.info("Provisioned SSID {} on interface {} / {}", ssid, vifInterfaceName, radioFreqBand);
@@ -3160,12 +3160,22 @@ public class OvsdbDao {
 			tableColumns.put("parent_ifname", new Atom<>(parentIfName));
 			tableColumns.put("enabled", new Atom<>(true));
 			tableColumns.put("network", new Atom<>(true));
-			if (parentIfName.equals(defaultLanInterfaceName)) {
-				tableColumns.put("ip_assign_scheme", new Atom<>("static"));
-			} else {
-				tableColumns.put("ip_assign_scheme", new Atom<>("dhcp"));
-			}
 			tableColumns.put("dhcp_sniff", new Atom<>(true));
+
+			WifiInetConfigInfo parent = getProvisionedWifiInetConfigs(ovsdbClient).get(parentIfName);
+			if (parent == null)
+				throw new RuntimeException("Cannot get parent interface " + parentIfName + " for vlan " + vlanId);
+
+			tableColumns.put("ip_assign_scheme", new Atom<>(parent.ipAssignScheme));
+			tableColumns.put("NAT", new Atom<>(parent.nat));
+			tableColumns.put("mtu", new Atom<>(1500));
+
+			if (parent.ipAssignScheme.equals("static")) {
+				String[] inetAddress = parent.inetAddr.split("\\.");
+				String vlanAddress = inetAddress[0] + "." + inetAddress[1] + "." + vlanId + "." + inetAddress[3];
+				tableColumns.put("inet_addr", new Atom<>(vlanAddress));
+				tableColumns.put("netmask", new Atom<>(parent.netmask));
+			} 
 
 			Row row = new Row(tableColumns);
 			operations.clear();
@@ -3337,7 +3347,7 @@ public class OvsdbDao {
 	}
 
 	private void configureInetInterface(OvsdbClient ovsdbClient, String ifName, boolean enabled, String ifType,
-			boolean isUpdate) {
+			boolean isUpdate, boolean isNat) {
 
 		try {
 
@@ -3348,10 +3358,8 @@ public class OvsdbDao {
 			tableColumns.put("enabled", new Atom<>(enabled));
 			tableColumns.put("network", new Atom<>(true));
 			tableColumns.put("if_name", new Atom<>(ifName));
-			tableColumns.put("dhcp_sniff", new Atom<>(true));
-			tableColumns.put("ip_assign_scheme", new Atom<>("dhcp"));
-			tableColumns.put("NAT", new Atom<>(false));
-			
+			tableColumns.put("NAT", new Atom<>(isNat));
+
 			Row row = new Row(tableColumns);
 			if (isUpdate) {
 				List<Condition> conditions = new ArrayList<>();
