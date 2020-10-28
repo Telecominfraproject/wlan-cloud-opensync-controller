@@ -3,7 +3,6 @@ package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
-import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
@@ -27,21 +26,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
-import org.springframework.util.ResourceUtils;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.github.fge.jackson.JsonLoader;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
-import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPInetState;
-import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioState;
-import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
 import com.vmware.ovsdb.exception.OvsdbClientException;
-import com.vmware.ovsdb.jsonrpc.v1.util.JsonUtil;
-import com.vmware.ovsdb.protocol.methods.RowUpdate;
-import com.vmware.ovsdb.protocol.methods.TableUpdate;
-import com.vmware.ovsdb.protocol.methods.TableUpdates;
 import com.vmware.ovsdb.protocol.operation.notation.Atom;
 import com.vmware.ovsdb.protocol.operation.notation.Row;
 import com.vmware.ovsdb.protocol.operation.notation.Uuid;
@@ -388,94 +377,6 @@ public class OvsdbDaoTest {
     }
 
     @Test
-    public void testOvsdbDaoGetOpensyncAPVIFState() throws Exception {
-
-        String path = "src/test/resources/Wifi_VIF_State-home-ap-24.json";
-
-        File file = new File(path);
-        String absolutePath = file.getAbsolutePath();
-        File jsonFile = ResourceUtils.getFile(absolutePath);
-
-        JsonNode jn = JsonLoader.fromFile(jsonFile);
-        Row row = JsonUtil.deserializeNoException(jn.toString(), Row.class);
-        RowUpdate rowUpdate = new RowUpdate();
-        rowUpdate.setNew(row);
-
-        path = "src/test/resources/Wifi_VIF_State-home-ap-l50.json";
-        file = new File(path);
-        absolutePath = file.getAbsolutePath();
-        jsonFile = ResourceUtils.getFile(absolutePath);
-        jn = JsonLoader.fromFile(jsonFile);
-        Row row1 = JsonUtil.deserializeNoException(jn.toString(), Row.class);
-
-        RowUpdate rowUpdate1 = new RowUpdate();
-        rowUpdate1.setNew(row1);
-
-        path = "src/test/resources/Wifi_VIF_State-home-ap-u50.json";
-        file = new File(path);
-        absolutePath = file.getAbsolutePath();
-        jsonFile = ResourceUtils.getFile(absolutePath);
-        jn = JsonLoader.fromFile(jsonFile);
-        Row row2 = JsonUtil.deserializeNoException(jn.toString(), Row.class);
-
-        RowUpdate rowUpdate2 = new RowUpdate();
-        rowUpdate2.setNew(row2);
-
-        List<OpensyncAPVIFState> vifStateList = ovsdbDao.getOpensyncApVifStateForRowUpdate(rowUpdate, "SomeAPId", ovsdbClient);
-        assert (vifStateList.size() == 1);
-        vifStateList.addAll(ovsdbDao.getOpensyncApVifStateForRowUpdate(rowUpdate1, "SomeAPId", ovsdbClient));
-        assert (vifStateList.size() == 2);
-        vifStateList.addAll(ovsdbDao.getOpensyncApVifStateForRowUpdate(rowUpdate2, "SomeAPId", ovsdbClient));
-        assert (vifStateList.size() == 3);
-
-
-    }
-
-    @Test
-    public void testOvsdbDaoGetOpensyncAPRadioState() throws Exception {
-
-        String path = "src/test/resources/Wifi_Radio_State-home-ap-24.json";
-
-        File file = new File(path);
-        String absolutePath = file.getAbsolutePath();
-        File jsonFile = ResourceUtils.getFile(absolutePath);
-
-        JsonNode jn = JsonLoader.fromFile(jsonFile);
-        Row row = JsonUtil.deserializeNoException(jn.toString(), Row.class);
-        RowUpdate rowUpdate = new RowUpdate();
-        rowUpdate.setNew(row);
-
-        path = "src/test/resources/Wifi_Radio_State-home-ap-l50.json";
-        file = new File(path);
-        absolutePath = file.getAbsolutePath();
-        jsonFile = ResourceUtils.getFile(absolutePath);
-        jn = JsonLoader.fromFile(jsonFile);
-        Row row1 = JsonUtil.deserializeNoException(jn.toString(), Row.class);
-
-        RowUpdate rowUpdate1 = new RowUpdate();
-        rowUpdate1.setNew(row1);
-
-        path = "src/test/resources/Wifi_Radio_State-home-ap-u50.json";
-        file = new File(path);
-        absolutePath = file.getAbsolutePath();
-        jsonFile = ResourceUtils.getFile(absolutePath);
-        jn = JsonLoader.fromFile(jsonFile);
-        Row row2 = JsonUtil.deserializeNoException(jn.toString(), Row.class);
-
-        RowUpdate rowUpdate2 = new RowUpdate();
-        rowUpdate2.setNew(row2);
-
-        TableUpdate tableUpdate = new TableUpdate(ImmutableMap.of(row.getUuidColumn("_uuid").getUuid(), rowUpdate,
-                row1.getUuidColumn("_uuid").getUuid(), rowUpdate1, row2.getUuidColumn("_uuid").getUuid(), rowUpdate2));
-        TableUpdates tableUpdates = new TableUpdates(ImmutableMap.of(OvsdbDao.wifiRadioStateDbTable, tableUpdate));
-
-        List<OpensyncAPRadioState> radioStateList = ovsdbDao.getOpensyncAPRadioState(tableUpdates, "SomeAPId",
-                ovsdbClient);
-        assert (radioStateList.size() == 3);
-
-    }
-
-    @Test
     public void testObsdbDaoEnableNetworkProbe() throws Exception {
 
         Uuid rowUuid = Uuid.of(UUID.randomUUID());
@@ -521,48 +422,5 @@ public class OvsdbDaoTest {
 
     }
 
-    @Test
-    public void testOvsdbDaoGetOpensyncAPInetState() throws Exception {
-
-        String path = "src/test/resources/Wifi_Inet_State-home-ap-24.json";
-
-        File file = new File(path);
-        String absolutePath = file.getAbsolutePath();
-        File jsonFile = ResourceUtils.getFile(absolutePath);
-
-        JsonNode jn = JsonLoader.fromFile(jsonFile);
-        Row row = JsonUtil.deserializeNoException(jn.toString(), Row.class);
-        RowUpdate rowUpdate = new RowUpdate();
-        rowUpdate.setNew(row);
-
-        path = "src/test/resources/Wifi_Inet_State-home-ap-l50.json";
-        file = new File(path);
-        absolutePath = file.getAbsolutePath();
-        jsonFile = ResourceUtils.getFile(absolutePath);
-        jn = JsonLoader.fromFile(jsonFile);
-        Row row1 = JsonUtil.deserializeNoException(jn.toString(), Row.class);
-
-        RowUpdate rowUpdate1 = new RowUpdate();
-        rowUpdate1.setNew(row1);
-
-        path = "src/test/resources/Wifi_Inet_State-home-ap-u50.json";
-        file = new File(path);
-        absolutePath = file.getAbsolutePath();
-        jsonFile = ResourceUtils.getFile(absolutePath);
-        jn = JsonLoader.fromFile(jsonFile);
-        Row row2 = JsonUtil.deserializeNoException(jn.toString(), Row.class);
-
-        RowUpdate rowUpdate2 = new RowUpdate();
-        rowUpdate2.setNew(row2);
-        
-        List<OpensyncAPInetState> inetStateList = ovsdbDao.getOpensyncApInetStateForRowUpdate(rowUpdate, "SomeAPId", ovsdbClient);
-        assert (inetStateList.size() == 1);
-        inetStateList.addAll(ovsdbDao.getOpensyncApInetStateForRowUpdate(rowUpdate1, "SomeAPId", ovsdbClient));
-        assert (inetStateList.size() == 2);
-        inetStateList.addAll(ovsdbDao.getOpensyncApInetStateForRowUpdate(rowUpdate2, "SomeAPId", ovsdbClient));
-        assert (inetStateList.size() == 3);
-
-
-    }
 
 }

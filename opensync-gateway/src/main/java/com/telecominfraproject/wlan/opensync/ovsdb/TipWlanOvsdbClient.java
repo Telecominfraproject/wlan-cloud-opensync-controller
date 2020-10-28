@@ -196,11 +196,11 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
         OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
 
-        try {
-            ovsdbDao.provisionBridgePortInterface(ovsdbClient);
-        } catch (Exception e) {
-            LOG.warn("Could not provision Bridge->Port->Interface mapping.", e);
-        }
+//        try {
+//            ovsdbDao.provisionBridgePortInterface(ovsdbClient);
+//        } catch (Exception e) {
+//            LOG.warn("Could not provision Bridge->Port->Interface mapping.", e);
+//        }
         ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
         ovsdbDao.removeAllSsids(ovsdbClient); // always
         ovsdbDao.removeWifiRrm(ovsdbClient);
@@ -360,7 +360,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
         CompletableFuture<TableUpdates> awCf = ovsdbClient.monitor(OvsdbDao.ovsdbName,
                 OvsdbDao.dhcpLeasedIpDbTable + "_" + key,
-                new MonitorRequests(ImmutableMap.of(OvsdbDao.dhcpLeasedIpDbTable, new MonitorRequest())),
+                new MonitorRequests(ImmutableMap.of(OvsdbDao.dhcpLeasedIpDbTable, new MonitorRequest(new MonitorSelect(true, true, true, true)))),
                 new MonitorCallback() {
 
                     @Override
@@ -581,7 +581,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         CompletableFuture<TableUpdates> isCf = ovsdbClient
                 .monitor(OvsdbDao.ovsdbName, OvsdbDao.wifiInetStateDbTable + "_" + key,
                         new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiInetStateDbTable,
-                                new MonitorRequest(new MonitorSelect(false, true, true, true)))),
+                                new MonitorRequest(new MonitorSelect(true, true, true, true)))),
                         new MonitorCallback() {
 
                             @Override
@@ -729,14 +729,10 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
     @Override
     public String processFirmwareFlash(String apId, String firmwareVersion, String username) {
         OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
-        OvsdbClient ovsdbClient = session.getOvsdbClient();
         try {
             ovsdbDao.configureFirmwareFlash(session.getOvsdbClient(), apId, firmwareVersion, username);
         } catch (Exception e) {
-            LOG.error("Failed to flash firmware for " + apId + " " + e.getLocalizedMessage());
-            monitorOvsdbStateTables(ovsdbClient, apId); // turn back on so we
-                                                        // can go forward and
-                                                        // recover
+            LOG.error("Failed to flash firmware for " + apId + " " + e.getLocalizedMessage());         
             return "Failed to flash firmware for " + apId + " " + e.getLocalizedMessage();
 
         }
