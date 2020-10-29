@@ -1268,7 +1268,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         protocolStatus.setDetails(protocolStatusData);
                         protocolStatus = statusServiceInterface.update(protocolStatus);
                         LOG.info("Updated IpV4Addr for AP {} to {} from Wifi_Inet_State change for if_name {}", apId,
-                                ((EquipmentProtocolStatusData) protocolStatus.getDetails()).getReportedIpV4Addr(), inetState.ifName);
+                                ((EquipmentProtocolStatusData) protocolStatus.getDetails()).getReportedIpV4Addr(),
+                                inetState.ifName);
                         LOG.debug("ProtocolStatus for AP {} updated to {}", apId, protocolStatus);
 
                     } catch (UnknownHostException e) {
@@ -1279,45 +1280,60 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             }
 
-            if (inetState.getVlanId() > 1) {
-
-                if (!lanStatusData.getVlanStatusDataMap().containsKey(inetState.getVlanId())) {
-                    lanStatusData.getVlanStatusDataMap().put(inetState.getVlanId(), new VLANStatusData());
-                }
+            if (inetState.getIfType().equals("vlan") && inetState.parentIfName != null
+                    && inetState.parentIfName.equals(defaultWanInterfaceName)) {
 
                 try {
-                    lanStatusData.getVlanStatusDataMap().get(inetState.getVlanId())
-                            .setGateway(InetAddress.getByName(inetState.getGateway()));
 
-                    String primaryDns = inetState.getDns().get("primary");
-                    if (primaryDns != null) {
-                        lanStatusData.getVlanStatusDataMap().get(inetState.getVlanId())
-                                .setDnsServer1(InetAddress.getByName(primaryDns));
-                    }
-                    lanStatusData.getVlanStatusDataMap().get(inetState.getVlanId())
-                            .setSubnetMask(InetAddress.getByName(inetState.getNetmask()));
+                    VLANStatusData vlanStatusData = new VLANStatusData();
 
-                    String dhcpOption = inetState.getDhcpd().get("dhcp_option");
-                    if (dhcpOption != null) {
-                        String dhcpServer = dhcpOption.split(",")[1];
-                        if (dhcpServer != null) {
-                            lanStatusData.getVlanStatusDataMap().get(inetState.getVlanId())
-                                    .setDhcpServer(InetAddress.getByName(dhcpServer));
+                    if (inetState.gateway != null)
+                        vlanStatusData.setGateway(InetAddress.getByName(inetState.getGateway()));
+
+                    if (inetState.dns != null) {
+                        String primaryDns = inetState.dns.get("primary");
+                        if (primaryDns != null) {
+                            vlanStatusData
+                                    .setDnsServer1(InetAddress.getByName(primaryDns));
+                        }
+                        String secondaryDns = inetState.dns.get("secondary");
+                        if (secondaryDns != null) {
+                            vlanStatusData
+                                    .setDnsServer2(InetAddress.getByName(secondaryDns));
                         }
                     }
+
+                    if (inetState.netmask != null) {
+                        vlanStatusData
+                                .setSubnetMask(InetAddress.getByName(inetState.netmask));
+                    }
+                    if (inetState.dhcpd != null) {
+                        String dhcpOption = inetState.dhcpd.get("dhcp_option");
+                        if (dhcpOption != null) {
+                            String dhcpServer = dhcpOption.split(",")[1];
+                            if (dhcpServer != null) {
+                                vlanStatusData
+                                        .setDhcpServer(InetAddress.getByName(dhcpServer));
+                            }
+                        }
+                    }
+                    
                     String inetAddr = inetState.getInetAddr();
                     if (inetAddr != null) {
-                        lanStatusData.getVlanStatusDataMap().get(inetState.getVlanId())
+                        vlanStatusData
                                 .setIpBase(InetAddress.getByName(inetAddr));
                     }
+                    lanStatusData.getVlanStatusDataMap().put(inetState.vlanId, vlanStatusData);
+                    lanStatus.setDetails(lanStatusData);
+                    lanStatus = statusServiceInterface.update(lanStatus);
 
+                    LOG.info("LANINFO updated for VLAN {}", lanStatus);
+                    
                 } catch (UnknownHostException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
+                   LOG.error("Unknown Host while configuring LANINFO", e);
                 }
 
-                lanStatus.setDetails(lanStatusData);
-                lanStatus = statusServiceInterface.update(lanStatus);
+               
 
             }
         }
