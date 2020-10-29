@@ -2049,41 +2049,44 @@ public class OvsdbDao {
 
 	public void configureInterfaces(OvsdbClient ovsdbClient) {
 
-		configureWanInterfaces(ovsdbClient);
-		configureLanInterfaces(ovsdbClient);
+		configureWanInterfacesForDhcpSniffing(ovsdbClient);
+		configureLanInterfacesforDhcpSniffing(ovsdbClient);
 
 	}
 
-	private void configureLanInterfaces(OvsdbClient ovsdbClient) {
+    private void configureLanInterfacesforDhcpSniffing(OvsdbClient ovsdbClient) {
+        List<Operation> operations = new ArrayList<>();
+        Map<String, Value> updateColumns = new HashMap<>();
+        List<Condition> conditions = new ArrayList<>();
+        conditions.add(new Condition("if_name", Function.NOT_EQUALS, new Atom<>(defaultWanInterfaceName)));
+        conditions.add(new Condition("parent_ifname", Function.NOT_EQUALS, new Atom<>(defaultWanInterfaceName)));
+        updateColumns.put("dhcp_sniff", new Atom<>(true));
+
+        Row row = new Row(updateColumns);
+        operations.add(new Update(wifiInetConfigDbTable, conditions, row));
+
+        try {
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            for (OperationResult res : result) {
+                LOG.debug("Op Result {}", res);
+            }
+        } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
+            LOG.error("OvsdbDao::configureLanInterfaces failed.", e);
+            throw new RuntimeException(e);
+
+        }
+
+    }
+
+	private void configureWanInterfacesForDhcpSniffing(OvsdbClient ovsdbClient) {
 		List<Operation> operations = new ArrayList<>();
 		Map<String, Value> updateColumns = new HashMap<>();
 		List<Condition> conditions = new ArrayList<>();
-		conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(defaultLanInterfaceName)));
-		updateColumns.put("dhcp_sniff", new Atom<>(true));
+		conditions.add(new Condition("if_name", Function.NOT_EQUALS, new Atom<>(defaultLanInterfaceName)));
+		conditions.add(new Condition("parent_ifname", Function.NOT_EQUALS, new Atom<>(defaultLanInterfaceName)));
 
-		Row row = new Row(updateColumns);
-		operations.add(new Update(wifiInetConfigDbTable, conditions, row));
-
-		try {
-			CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-			OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
-			for (OperationResult res : result) {
-				LOG.debug("Op Result {}", res);
-			}
-		} catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
-			LOG.error("OvsdbDao::configureLanInterfaces failed.", e);
-			throw new RuntimeException(e);
-
-		}
-
-	}
-
-	private void configureWanInterfaces(OvsdbClient ovsdbClient) {
-		List<Operation> operations = new ArrayList<>();
-		Map<String, Value> updateColumns = new HashMap<>();
-		List<Condition> conditions = new ArrayList<>();
-		conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(defaultWanInterfaceName)));
 		updateColumns.put("dhcp_sniff", new Atom<>(true));
 
 		Row row = new Row(updateColumns);
@@ -3359,6 +3362,7 @@ public class OvsdbDao {
 			tableColumns.put("network", new Atom<>(true));
 			tableColumns.put("if_name", new Atom<>(ifName));
 			tableColumns.put("NAT", new Atom<>(isNat));
+			tableColumns.put("dhcp_sniff", new Atom<>(true));
 
 			Row row = new Row(tableColumns);
 			if (isUpdate) {
