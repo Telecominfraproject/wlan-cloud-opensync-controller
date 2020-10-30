@@ -196,7 +196,7 @@ public class OvsdbDaoTest {
 
     }
 
-    @Test
+    @Test(expected = RuntimeException.class)
     public void testFailGetConnectNodeInfo() throws Exception {
 
         Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList())).thenReturn(futureResult);
