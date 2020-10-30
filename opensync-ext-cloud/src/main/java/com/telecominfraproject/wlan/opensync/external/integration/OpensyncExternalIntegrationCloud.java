@@ -336,7 +336,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     ce.getCustomerId(), ce.getId());
 
             updateApStatus(ce, connectNodeInfo);
-
+            
+            removeNonWifiClients(ce,connectNodeInfo);
+            
             OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
             ovsdbSession.setRoutingId(equipmentRoutingRecord.getId());
             ovsdbSession.setEquipmentId(ce.getId());
@@ -586,6 +588,32 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         } catch (Exception e) {
             LOG.debug("Exception in updateApStatus", e);
         }
+
+    }
+
+    private void removeNonWifiClients(Equipment ce, ConnectNodeInfo connectNodeInfo) {
+        // need to make sure that this AP didn't accidentally get registered as
+        // a client previously via a partial DHCP lease event
+        LOG.info("Checking for non-wifi client types for Equipment {}", ce);
+        com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(ce.getCustomerId(),
+                ce.getBaseMacAddress());
+
+        if (client != null) {
+            ClientSession clientSession = clientServiceInterface.getSessionOrNull(ce.getCustomerId(), ce.getId(),
+                    ce.getBaseMacAddress());
+            if (clientSession != null) {
+                clientSession = clientServiceInterface.deleteSession(ce.getCustomerId(), ce.getId(),
+                        client.getMacAddress());
+                LOG.info("Removed invalid client session {}", clientSession);
+            }
+            client = clientServiceInterface.delete(ce.getCustomerId(), client.getMacAddress());
+            LOG.info("Removed invalid client type {}", client);
+        } else {
+            LOG.info("No clients with MAC address {} registered for customer {}", ce.getBaseMacAddress(),
+                    ce.getCustomerId());
+        }
+
+        LOG.info("Finished checking for and removing non-wifi client types for Equipment {}", ce);
 
     }
 
@@ -1293,47 +1321,40 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     if (inetState.dns != null) {
                         String primaryDns = inetState.dns.get("primary");
                         if (primaryDns != null) {
-                            vlanStatusData
-                                    .setDnsServer1(InetAddress.getByName(primaryDns));
+                            vlanStatusData.setDnsServer1(InetAddress.getByName(primaryDns));
                         }
                         String secondaryDns = inetState.dns.get("secondary");
                         if (secondaryDns != null) {
-                            vlanStatusData
-                                    .setDnsServer2(InetAddress.getByName(secondaryDns));
+                            vlanStatusData.setDnsServer2(InetAddress.getByName(secondaryDns));
                         }
                     }
 
                     if (inetState.netmask != null) {
-                        vlanStatusData
-                                .setSubnetMask(InetAddress.getByName(inetState.netmask));
+                        vlanStatusData.setSubnetMask(InetAddress.getByName(inetState.netmask));
                     }
                     if (inetState.dhcpd != null) {
                         String dhcpOption = inetState.dhcpd.get("dhcp_option");
                         if (dhcpOption != null) {
                             String dhcpServer = dhcpOption.split(",")[1];
                             if (dhcpServer != null) {
-                                vlanStatusData
-                                        .setDhcpServer(InetAddress.getByName(dhcpServer));
+                                vlanStatusData.setDhcpServer(InetAddress.getByName(dhcpServer));
                             }
                         }
                     }
-                    
+
                     String inetAddr = inetState.getInetAddr();
                     if (inetAddr != null) {
-                        vlanStatusData
-                                .setIpBase(InetAddress.getByName(inetAddr));
+                        vlanStatusData.setIpBase(InetAddress.getByName(inetAddr));
                     }
                     lanStatusData.getVlanStatusDataMap().put(inetState.vlanId, vlanStatusData);
                     lanStatus.setDetails(lanStatusData);
                     lanStatus = statusServiceInterface.update(lanStatus);
 
                     LOG.info("LANINFO updated for VLAN {}", lanStatus);
-                    
-                } catch (UnknownHostException e) {
-                   LOG.error("Unknown Host while configuring LANINFO", e);
-                }
 
-               
+                } catch (UnknownHostException e) {
+                    LOG.error("Unknown Host while configuring LANINFO", e);
+                }
 
             }
         }
