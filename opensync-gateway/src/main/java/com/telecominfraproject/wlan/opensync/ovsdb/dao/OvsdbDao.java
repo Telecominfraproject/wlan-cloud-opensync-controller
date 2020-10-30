@@ -1,8 +1,5 @@
 package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 
-import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -36,8 +33,6 @@ import com.telecominfraproject.wlan.core.model.equipment.SourceType;
 import com.telecominfraproject.wlan.core.model.json.BaseJsonModel;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.ElementRadioConfiguration;
-import com.telecominfraproject.wlan.equipment.models.GettingDNS;
-import com.telecominfraproject.wlan.equipment.models.GettingIP;
 import com.telecominfraproject.wlan.equipment.models.ManagementRate;
 import com.telecominfraproject.wlan.equipment.models.NetworkForwardMode;
 import com.telecominfraproject.wlan.equipment.models.RadioConfiguration;
@@ -302,6 +297,8 @@ public class OvsdbDao {
             if ((ret.ipV4Address == null) || (ret.macAddress == null)) {
                 // when not found - look them up for if_name = br-lan
                 fillInWanIpAddressAndMac(ovsdbClient, ret, defaultLanInterfaceType, defaultLanInterfaceName);
+                
+                if (ret.ipV4Address == null) throw new RuntimeException("Could not get inet address for Lan and Wan network interfaces. Node is not ready to connect.");
             }
             fillInLanIpAddressAndMac(ovsdbClient, ret, defaultLanInterfaceType);
 
