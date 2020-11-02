@@ -126,7 +126,7 @@ public class OpensyncGatewayTipWlanOvsdbClientTest {
         Mockito.verify(ovsdbSessionMapInterface).getSession("Test_Client_21P10C68818122");
         Mockito.verify(ovsdbSession).getOvsdbClient();
         Mockito.verify(opensyncExternalIntegrationInterface).getApConfig("Test_Client_21P10C68818122");
-        Mockito.verify(ovsdbDao).removeAllSsids(ovsdbClient);
+        Mockito.verify(ovsdbDao).removeAllSsids(ovsdbClient, apConfig);
         Mockito.verify(ovsdbDao).removeAllStatsConfigs(ovsdbClient);
         Mockito.verify(ovsdbDao).configureWifiRadios(ovsdbClient, apConfig);
         Mockito.verify(ovsdbDao).configureSsids(ovsdbClient, apConfig);

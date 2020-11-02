@@ -1891,8 +1891,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
         }
     }
 
-    void handleClientSessionMetricsUpdate(int customerId, long equipmentId, long locationId, RadioType radioType,
-            long timestamp, sts.OpensyncStats.Client client) {
+    ClientSession handleClientSessionMetricsUpdate(int customerId, long equipmentId, long locationId,
+            RadioType radioType, long timestamp, sts.OpensyncStats.Client client) {
         try
 
         {
@@ -1904,13 +1904,10 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
             boolean isReassociation = true;
             if (clientInstance == null) {
-                clientInstance = new com.telecominfraproject.wlan.client.models.Client();
-                clientInstance.setCustomerId(customerId);
-                clientInstance.setMacAddress(new MacAddress(client.getMacAddress()));
-                clientInstance.setDetails(new ClientInfoDetails());
-                clientInstance = clientServiceInterface.create(clientInstance);
 
-                isReassociation = false;
+                LOG.info("Cannot get client instance for {}", client.getMacAddress());
+                return null;
+
             }
 
             LOG.info("Client {}", clientInstance);
@@ -1919,18 +1916,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                     clientInstance.getMacAddress());
 
             if (clientSession == null) {
-
-                clientSession = new ClientSession();
-                clientSession.setCustomerId(customerId);
-                clientSession.setEquipmentId(equipmentId);
-                clientSession.setLocationId(locationId);
-                clientSession.setMacAddress(clientInstance.getMacAddress());
-                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
-                clientSessionDetails.setSsid(client.getSsid());
-                clientSessionDetails.setRadioType(radioType);
-                clientSessionDetails.setSessionId(clientInstance.getMacAddress().getAddressAsLong());
-                clientSession.setDetails(new ClientSessionDetails());
-                clientSession = clientServiceInterface.updateSession(clientSession);
+                LOG.info("Cannot get client session for {}", clientInstance.getMacAddress());
+                return null;
             }
 
             ClientSessionDetails latestClientSessionDetails = clientSession.getDetails();
@@ -1961,7 +1948,6 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                     }).collect(Collectors.toList());
 
             if (!ssidConfigList.isEmpty()) {
-
                 Profile ssidProfile = ssidConfigList.iterator().next();
                 SsidConfiguration ssidConfig = (SsidConfiguration) ssidProfile.getDetails();
                 if (ssidConfig.getSecureMode().equals(SecureMode.open)) {
@@ -1979,7 +1965,6 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                         || ssidConfig.getSecureMode().equals(SecureMode.wpa2EAP)
                         || ssidConfig.getSecureMode().equals(SecureMode.wpa2OnlyEAP)) {
                     latestClientSessionDetails.setSecurityType(SecurityType.RADIUS);
-
                     latestClientSessionDetails.setEapDetails(new ClientEapDetails());
                 } else {
                     latestClientSessionDetails.setSecurityType(SecurityType.UNSUPPORTED);
@@ -2009,9 +1994,11 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
             LOG.debug("Updated client session {}", clientSession);
 
+            return clientSession;
         } catch (Exception e) {
             LOG.error("Error while attempting to create ClientSession and Info", e);
         }
+        return null;
     }
 
     ClientSessionMetricDetails calculateClientSessionMetricDetails(sts.OpensyncStats.Client client, long timestamp) {
@@ -2134,9 +2121,11 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
                         if (client.hasConnected() && client.getConnected() && client.hasMacAddress()) {
                             // update metrics for connected client
-                            numConnectedClients += 1;
-                            handleClientSessionMetricsUpdate(customerId, equipmentId, locationId, radioType,
+                            ClientSession session = handleClientSessionMetricsUpdate(customerId, equipmentId, locationId, radioType,
                                     clientReport.getTimestampMs(), client);
+                            if (session != null) {
+                                numConnectedClients += 1;
+                            }
                         } else {
                             // Make sure, if we have a session for this client,
                             // it
@@ -2258,7 +2247,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
         ProfileContainer profileContainer = new ProfileContainer(
                 profileServiceInterface.getProfileWithChildren(profileId));
         RfConfiguration rfConfig = (RfConfiguration) profileContainer.getChildOfTypeOrNull(profileId, ProfileType.rf)
-        		.getDetails();
+                .getDetails();
 
         for (Survey survey : report.getSurveyList()) {
 

@@ -336,9 +336,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     ce.getCustomerId(), ce.getId());
 
             updateApStatus(ce, connectNodeInfo);
-            
-            removeNonWifiClients(ce,connectNodeInfo);
-            
+
+            removeNonWifiClients(ce, connectNodeInfo);
+
             OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
             ovsdbSession.setRoutingId(equipmentRoutingRecord.getId());
             ovsdbSession.setEquipmentId(ce.getId());
@@ -1228,10 +1228,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         activeBssidsStatus = statusServiceInterface.update(activeBssidsStatus);
 
-        if (LOG.isTraceEnabled()) {
-            LOG.trace("Processing Wifi_VIF_State table update for AP {}, updated ACTIVE_BSSID Status {}", apId,
-                    activeBssidsStatus.toPrettyString());
-        }
+        LOG.info("Processing Wifi_VIF_State table update for AP {}, updated ACTIVE_BSSID Status {}", apId,
+                activeBssidsStatus);
+
     }
 
     @Override
@@ -1415,9 +1414,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 isReassociation = false;
 
             }
-            ClientInfoDetails clientDetails = (ClientInfoDetails) clientInstance.getDetails();
-
-            clientInstance.setDetails(clientDetails);
 
             clientInstance = clientServiceInterface.update(clientInstance);
 
@@ -1432,16 +1428,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientSession.setLocationId(ce.getLocationId());
                 ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
                 clientSessionDetails.setIsReassociation(isReassociation);
-                clientSessionDetails.setSessionId(clientInstance.getMacAddress().getAddressAsLong());
                 clientSession.setDetails(clientSessionDetails);
-
                 clientSession = clientServiceInterface.updateSession(clientSession);
             }
 
             ClientSessionDetails clientSessionDetails = clientSession.getDetails();
             clientSessionDetails.setAssociationState(AssociationState._802_11_Associated);
             clientSessionDetails.setAssocTimestamp(System.currentTimeMillis());
-            clientSessionDetails.setSessionId(clientInstance.getMacAddress().getAddressAsLong());
             clientSession.getDetails().mergeSession(clientSessionDetails);
 
             clientSession = clientServiceInterface.updateSession(clientSession);
@@ -1772,29 +1765,29 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
-        Set<MacAddress> macAddressSet = new HashSet<>();
-        macAddressSet.add(new MacAddress(deletedClientMac));
-        List<ClientSession> clientSessionList = clientServiceInterface.getSessions(customerId, macAddressSet);
+        com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
+                new MacAddress(deletedClientMac));
+        ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
+                new MacAddress(deletedClientMac));
 
-        for (ClientSession session : clientSessionList) {
-
-            ClientSessionDetails clientSessionDetails = session.getDetails();
-
-            if ((clientSessionDetails.getAssociationState() != null)
-                    && !clientSessionDetails.getAssociationState().equals(AssociationState.Disconnected)) {
-                clientSessionDetails.setDisconnectByClientTimestamp(System.currentTimeMillis());
-                clientSessionDetails.setAssociationState(AssociationState.Disconnected);
-
-                session.setDetails(clientSessionDetails);
-                session = clientServiceInterface.updateSession(session);
-
-                if (LOG.isTraceEnabled()) {
-                    LOG.trace("wifiAssociatedClientsDbTableDelete Updated client session, set to disconnected {}",
-                            session.toPrettyString());
+        if (client != null) {
+            if (clientSession != null) {
+                if (!clientSession.getDetails().getAssociationState().equals(AssociationState.Disconnected)) {
+                    clientSession.getDetails().setAssociationState(AssociationState.Disconnected);
+                    clientSession = clientServiceInterface.updateSession(clientSession);
+                    LOG.info("Session {} for client {} is now disconnected.", clientSession, client.getMacAddress());
                 }
             }
+        } else {
+            if (clientSession != null) {
 
+                clientSession = clientServiceInterface.deleteSession(customerId, equipmentId,
+                        new MacAddress(deletedClientMac));
+
+                LOG.info("No client {} found, delete session {}", new MacAddress(deletedClientMac), clientSession);
+            }
         }
+
 
     }
 
@@ -1839,34 +1832,34 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     continue;
 
                 }
-
                 MacAddress clientMacAddress = new MacAddress(dhcpLeasedIps.get("hwaddr"));
-                if (clientMacAddress.equals(equipmentServiceInterface.get(equipmentId).getBaseMacAddress())) {
-                    LOG.info("Not a client device {} ", dhcpLeasedIps);
-                    com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface
-                            .getOrNull(customerId, clientMacAddress);
-                    if (client != null) {
 
-                        // In case somehow this equipment has accidentally been
-                        // tagged as a client, remove
-
-                        ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                                clientMacAddress);
-
-                        if (clientSession != null) {
-                            LOG.info("Deleting invalid client session {}",
-                                    clientServiceInterface.deleteSession(customerId, equipmentId, clientMacAddress));
-                        }
-
-                        LOG.info("Deleting invalid client {}",
-                                clientServiceInterface.delete(customerId, clientMacAddress));
-
-                    }
-                    continue;
-                }
                 com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
                         clientMacAddress);
-                if (client != null) {
+
+                if (client == null) {
+                    LOG.info("Cannot find client instance for {}", clientMacAddress);
+                    continue;
+                } else if (clientMacAddress.equals(equipmentServiceInterface.get(equipmentId).getBaseMacAddress())) {
+                    LOG.info("Not a client device {} ", dhcpLeasedIps);
+
+
+                    // In case somehow this equipment has accidentally been
+                    // tagged as a client, remove
+
+                    ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
+                            clientMacAddress);
+
+                    if (clientSession != null) {
+                        LOG.info("Deleting invalid client session {}",
+                                clientServiceInterface.deleteSession(customerId, equipmentId, clientMacAddress));
+                    }
+
+                    LOG.info("Deleting invalid client {}", clientServiceInterface.delete(customerId, clientMacAddress));
+
+
+                    continue;
+                } else {
                     LOG.info("Client {} already exists on the cloud, update client values", dhcpLeasedIps);
 
                     ClientInfoDetails clientDetails = (ClientInfoDetails) client.getDetails();
@@ -1902,6 +1895,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                     // In this case, we might have a session, as the client
                     // already exists on the cloud, update if required
+
                     ClientSession session = updateClientSession(customerId, equipmentId, locationId, dhcpLeasedIps,
                             clientMacAddress);
                     if (session != null) {
@@ -1909,15 +1903,61 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                     }
 
+                }
+            }
+
+            if (!clientSessionList.isEmpty()) {
+                LOG.info("Updating client sessions {}", clientSessionList);
+                clientSessionList = clientServiceInterface.updateSessions(clientSessionList);
+                LOG.info("Updated client sessions {}", clientSessionList);
+            }
+
+        } else if (rowUpdateOperation.equals(RowUpdateOperation.MODIFY)
+                || rowUpdateOperation.equals(RowUpdateOperation.INIT)) {
+
+            List<ClientSession> clientSessionList = new ArrayList<>();
+
+            for (Map<String, String> dhcpLeasedIps : dhcpAttributes) {
+
+                if (!dhcpLeasedIps.containsKey("hwaddr")) {
+
+                    LOG.info("Cannot update a client {} that has no hwaddr.", dhcpLeasedIps);
+                    continue;
+
+                }
+
+                MacAddress clientMacAddress = new MacAddress(dhcpLeasedIps.get("hwaddr"));
+
+                com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
+                        clientMacAddress);
+                if (client == null) {
+                    LOG.info("Cannot find client instance for {}", clientMacAddress);
+                    continue;
+                } else if (clientMacAddress.equals(equipmentServiceInterface.get(equipmentId).getBaseMacAddress())) {
+
+                    LOG.info("Not a client device {} ", dhcpLeasedIps);
+
+
+                    // In case somehow this equipment has accidentally been
+                    // tagged as a client, remove
+
+                    ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
+                            clientMacAddress);
+
+                    if (clientSession != null) {
+                        LOG.info("Deleting invalid client session {}",
+                                clientServiceInterface.deleteSession(customerId, equipmentId, clientMacAddress));
+                    }
+
+                    LOG.info("Deleting invalid client {}", clientServiceInterface.delete(customerId, clientMacAddress));
+
+
+                    continue;
+
                 } else {
 
-                    client = new com.telecominfraproject.wlan.client.models.Client();
 
-                    client.setCustomerId(customerId);
-                    client.setMacAddress(clientMacAddress);
-
-                    ClientInfoDetails clientDetails = new ClientInfoDetails();
-
+                    ClientInfoDetails clientDetails = (ClientInfoDetails) client.getDetails();
                     if (dhcpLeasedIps.containsKey("hostname")) {
 
                         clientDetails.setHostName(dhcpLeasedIps.get("hostname"));
@@ -1944,120 +1984,18 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                     client.setDetails(clientDetails);
 
-                    client = clientServiceInterface.create(client);
+                    client = clientServiceInterface.update(client);
 
-                    LOG.info("Created Client {}.", client);
-                }
+                    LOG.info("Updated Client {}.", client);
 
-                // we might have a session, update if required
-                ClientSession session = updateClientSession(customerId, equipmentId, locationId, dhcpLeasedIps,
-                        clientMacAddress);
-                if (session != null) {
-                    clientSessionList.add(session);
-                }
+                    // check if there is a session for this client
 
-            }
-
-            if (!clientSessionList.isEmpty()) {
-                LOG.info("Updating client sessions {}", clientSessionList);
-                clientSessionList = clientServiceInterface.updateSessions(clientSessionList);
-                LOG.info("Updated client sessions {}", clientSessionList);
-            }
-
-        } else if (rowUpdateOperation.equals(RowUpdateOperation.MODIFY)
-                || rowUpdateOperation.equals(RowUpdateOperation.INIT)) {
-
-            List<ClientSession> clientSessionList = new ArrayList<>();
-
-            for (Map<String, String> dhcpLeasedIps : dhcpAttributes) {
-
-                if (!dhcpLeasedIps.containsKey("hwaddr")) {
-
-                    LOG.info("Cannot update a client {} that has no hwaddr.", dhcpLeasedIps);
-                    continue;
-
-                }
-
-                MacAddress clientMacAddress = new MacAddress(dhcpLeasedIps.get("hwaddr"));
-
-                if (clientMacAddress.equals(equipmentServiceInterface.get(equipmentId).getBaseMacAddress())) {
-
-                    LOG.info("Not a client device {} ", dhcpLeasedIps);
-                    com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface
-                            .getOrNull(customerId, clientMacAddress);
-                    if (client != null) {
-
-                        // In case somehow this equipment has accidentally been
-                        // tagged as a client, remove
-
-                        ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                                clientMacAddress);
-
-                        if (clientSession != null) {
-                            LOG.info("Deleting invalid client session {}",
-                                    clientServiceInterface.deleteSession(customerId, equipmentId, clientMacAddress));
-                        }
-
-                        LOG.info("Deleting invalid client {}",
-                                clientServiceInterface.delete(customerId, clientMacAddress));
+                    ClientSession session = updateClientSession(customerId, equipmentId, locationId, dhcpLeasedIps,
+                            clientMacAddress);
+                    if (session != null) {
+                        clientSessionList.add(session);
 
                     }
-                    continue;
-
-                }
-
-                com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
-                        clientMacAddress);
-                if (client == null) {
-                    LOG.info("Client {} does not exist on the cloud. Creating...", dhcpLeasedIps);
-                    client = new com.telecominfraproject.wlan.client.models.Client();
-                    client.setCustomerId(customerId);
-                    client.setMacAddress(clientMacAddress);
-                    ClientInfoDetails clientDetails = new ClientInfoDetails();
-
-                    client.setDetails(clientDetails);
-
-                    client = clientServiceInterface.create(client);
-
-                }
-
-                ClientInfoDetails clientDetails = (ClientInfoDetails) client.getDetails();
-                if (dhcpLeasedIps.containsKey("hostname")) {
-
-                    clientDetails.setHostName(dhcpLeasedIps.get("hostname"));
-
-                }
-
-                if (dhcpLeasedIps.containsKey("fingerprint")) {
-
-                    clientDetails.setApFingerprint(dhcpLeasedIps.get("fingerprint"));
-                }
-
-                if (dhcpLeasedIps.containsKey("device_type")) {
-
-                    DhcpFpDeviceType dhcpFpDeviceType = DhcpFpDeviceType.getByName(dhcpLeasedIps.get("device_type"));
-                    ClientType clientType = OvsdbToWlanCloudTypeMappingUtility
-                            .getClientTypeForDhcpFpDeviceType(dhcpFpDeviceType);
-
-                    LOG.debug("Translate from ovsdb {} to cloud {}", dhcpFpDeviceType, clientType);
-
-                    clientDetails.setClientType(clientType.getId());
-
-                }
-
-                client.setDetails(clientDetails);
-
-                client = clientServiceInterface.update(client);
-
-                LOG.info("Updated Client {}.", client);
-
-                // check if there is a session for this client
-
-                ClientSession session = updateClientSession(customerId, equipmentId, locationId, dhcpLeasedIps,
-                        clientMacAddress);
-                if (session != null) {
-                    clientSessionList.add(session);
-
                 }
 
             }
@@ -2096,7 +2034,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         //         "manuf_id":
 
         if (session == null) {
-            session = new ClientSession();
+            return null;
         }
         session.setCustomerId(customerId);
         session.setEquipmentId(equipmentId);

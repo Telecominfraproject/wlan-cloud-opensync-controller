@@ -193,14 +193,15 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
         LOG.debug("Client {} connect for AP {}", clientCn, apId);
 
-        ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
-        ovsdbDao.removeAllSsids(ovsdbClient); // always
-        ovsdbDao.removeWifiRrm(ovsdbClient);
-
         OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
 
         if (opensyncAPConfig != null) {
+            ovsdbDao.removeAllPasspointConfigs(ovsdbClient);
+            ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
+            ovsdbDao.removeAllSsids(ovsdbClient, opensyncAPConfig); // always
+            ovsdbDao.removeWifiRrm(ovsdbClient);
             ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
+            ovsdbDao.configureInterfaces(ovsdbClient);
             ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
             if (opensyncAPConfig.getHotspotConfig() != null) {
@@ -210,9 +211,12 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             if (((ApNetworkConfiguration) opensyncAPConfig.getApProfile().getDetails()).getSyntheticClientEnabled()) {
                 ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
             }
+        } else {
+            ovsdbDao.removeAllPasspointConfigs(ovsdbClient);
+            ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
+            ovsdbDao.removeAllSsids(ovsdbClient); // always
+            ovsdbDao.removeWifiRrm(ovsdbClient);
         }
-
-        ovsdbDao.configureInterfaces(ovsdbClient);
 
         if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
             ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
@@ -262,18 +266,18 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             return;
         }
 
-        ovsdbDao.removeAllSsids(ovsdbClient); // always
+        ovsdbDao.removeAllPasspointConfigs(ovsdbClient);
+        ovsdbDao.removeAllSsids(ovsdbClient, opensyncAPConfig); // always
         ovsdbDao.removeWifiRrm(ovsdbClient);
         ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
 
         ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
+        ovsdbDao.configureInterfaces(ovsdbClient);
         ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
         if (opensyncAPConfig.getHotspotConfig() != null) {
             ovsdbDao.configureHotspots(ovsdbClient, opensyncAPConfig);
         }
-        ovsdbDao.configureInterfaces(ovsdbClient);
-
         ovsdbDao.configureStatsFromProfile(ovsdbClient, opensyncAPConfig);
         if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
             ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
@@ -507,7 +511,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
     private void monitorAwlanNodeDbTable(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
         CompletableFuture<TableUpdates> awCf = ovsdbClient.monitor(OvsdbDao.ovsdbName,
                 OvsdbDao.awlanNodeDbTable + "_" + key,
-                new MonitorRequests(ImmutableMap.of(OvsdbDao.awlanNodeDbTable, new MonitorRequest())),
+                new MonitorRequests(ImmutableMap.of(OvsdbDao.awlanNodeDbTable, new MonitorRequest(new MonitorSelect(true, false, false, true)))),
                 new MonitorCallback() {
 
                     @Override
@@ -615,7 +619,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
         CompletableFuture<TableUpdates> rsCf = ovsdbClient.monitor(OvsdbDao.ovsdbName,
                 OvsdbDao.wifiRadioStateDbTable + "_" + key,
-                new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiRadioStateDbTable, new MonitorRequest())),
+                new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiRadioStateDbTable, new MonitorRequest(new MonitorSelect(true, false, false, true)))),
                 new MonitorCallback() {
 
                     @Override
@@ -636,7 +640,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
         CompletableFuture<TableUpdates> vsCf = ovsdbClient.monitor(OvsdbDao.ovsdbName,
                 OvsdbDao.wifiVifStateDbTable + "_" + key,
-                new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiVifStateDbTable, new MonitorRequest())),
+                new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiVifStateDbTable, new MonitorRequest(new MonitorSelect(true, true, true, true)))),
                 new MonitorCallback() {
 
                     @Override
