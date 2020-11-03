@@ -1702,10 +1702,25 @@ public class OvsdbDao {
     public void removeAllSsids(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
         Map<String, WifiVifConfigInfo> currentWifiVifConfigInfo = getProvisionedWifiVifConfigs(ovsdbClient);
         Map<String, WifiRadioConfigInfo> currentWifiRadioConfigInfo = getProvisionedWifiRadioConfigs(ovsdbClient);
-
         List<WifiVifConfigInfo> vifConfigsToDelete = new ArrayList<>();
 
+        // This is essentially a cleanup call, if there are multiple same ssid's
+        // under a single radio we will remove them, and re-create them only
+        // according to the profiles
+        Map<String, WifiVifConfigInfo> vifConfigsBySsid = new HashMap<>();
+        currentWifiVifConfigInfo.entrySet().stream().forEach(e -> {
+            if (vifConfigsBySsid.containsKey(e.getValue().ssid)) {
+                vifConfigsToDelete.add(e.getValue());
+                vifConfigsToDelete.add(vifConfigsBySsid.get(e.getValue().ssid));
+            } else {
+                vifConfigsBySsid.put(e.getKey(), e.getValue());
+            }
+        });
 
+        LOG.debug("VifConfigs by SSID {}", vifConfigsBySsid);
+        LOG.debug("vifConfigsToDelete {}", vifConfigsToDelete);
+        // Now add any VIFs we have configurations for that are not in the new
+        // Profiles to the delete list
         for (Entry<String, WifiVifConfigInfo> vifConfigInfo : currentWifiVifConfigInfo.entrySet()) {
             LOG.debug("Checking {}", vifConfigInfo.getKey());
             WifiRadioConfigInfo radioConfigInfo = null;
@@ -1750,7 +1765,9 @@ public class OvsdbDao {
 
         for (WifiVifConfigInfo vifConfigInfo : vifConfigsToDelete) {
             List<Condition> conditions = new ArrayList<>();
-            conditions.add(new Condition("_uuid", Function.EQUALS, new Atom<>(vifConfigInfo.uuid)));
+            conditions.add(new Condition("ssid", Function.EQUALS, new Atom<>(vifConfigInfo.ssid)));
+            conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(vifConfigInfo.ifName)));
+
             operations.add(new Delete(wifiVifConfigDbTable, conditions));
         }
 
@@ -1759,26 +1776,44 @@ public class OvsdbDao {
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
             if (LOG.isDebugEnabled()) {
-                LOG.debug("Removed existing SSIDs from {}:", wifiVifConfigDbTable);
+                LOG.debug("Removed SSIDs no longer in use from {}:", wifiVifConfigDbTable);
 
                 for (OperationResult res : result) {
                     LOG.debug("Op Result {}", res);
                 }
             }
 
+            // get the new list of configured VIFs (these are what remain after
+            // the deletes)
+            // we want to see if any of these VIFs has a Vlan that we want to
+            // save if that Vlan was also used by other VIFs that have been
+            // deleted
+            currentWifiVifConfigInfo = getProvisionedWifiVifConfigs(ovsdbClient);
+            Set<Integer> configuredVlanIds = new HashSet<>();
+            for (WifiVifConfigInfo vifConfig : currentWifiVifConfigInfo.values()) {
+                if (vifConfig.vlanId > 1)
+                    configuredVlanIds.add(vifConfig.vlanId);
+            }
             operations = new ArrayList<>();
-            // Add vifs to delete
+            // Add if_names from the vifs to delete, and from any vlans not in
+            // the configuredVlanId list above
             for (WifiVifConfigInfo vifConfigInfo : vifConfigsToDelete) {
                 List<Condition> conditions = new ArrayList<>();
                 conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(vifConfigInfo.ifName)));
                 operations.add(new Delete(wifiInetConfigDbTable, conditions));
+                // remove any vlans that are no longer used by other vif configs
+                if (vifConfigInfo.vlanId > 1 && !configuredVlanIds.contains(vifConfigInfo.vlanId)) {
+                    conditions = new ArrayList<>();
+                    conditions.add(new Condition("vlan_id", Function.EQUALS, new Atom<>(vifConfigInfo.vlanId)));
+                    operations.add(new Delete(wifiInetConfigDbTable, conditions));
+                }
             }
 
             fResult = ovsdbClient.transact(ovsdbName, operations);
             result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
             if (LOG.isDebugEnabled()) {
-                LOG.debug("Removed existing InetConfigs from {}:", wifiVifConfigDbTable);
+                LOG.debug("Removed existing InetConfigs from {}:", wifiInetConfigDbTable);
 
                 for (OperationResult res : result) {
                     LOG.debug("Op Result {}", res);
@@ -2600,6 +2635,8 @@ public class OvsdbDao {
             if (vlanId > 1) {
                 createVlanNetworkInterfaces(ovsdbClient, vlanId);
                 updateColumns.put("vlan_id", new Atom<>(vlanId));
+            } else {
+                updateColumns.put("vlan_id", new com.vmware.ovsdb.protocol.operation.notation.Set());
             }
 
             updateColumns.put("mode", new Atom<>("ap"));
@@ -3088,9 +3125,20 @@ public class OvsdbDao {
                 boolean enabled = ssidConfig.getSsidAdminState().equals(StateSetting.enabled);
 
                 try {
+                    Map<String, WifiVifConfigInfo> provisionedVifs = getProvisionedWifiVifConfigs(ovsdbClient);
+
+                    List<String> interfaces = new ArrayList<>();
+                    interfaces.add(ifName);
+                    for (int i = 1; i <= 7; ++i) {
+                        interfaces.add(ifName + "_" + Integer.toString(i));
+                    }
+                    for (String key : provisionedVifs.keySet()) {
+                        if (key.contains(ifName)) {
+                            interfaces.remove(provisionedVifs.get(key).ifName);
+                        }
+                    }
 
                     boolean isUpdate = false;
-                    Map<String, WifiVifConfigInfo> provisionedVifs = getProvisionedWifiVifConfigs(ovsdbClient);
                     for (String key : provisionedVifs.keySet()) {
                         if (key.contains(ifName) && key.contains(ssidConfig.getSsid())) {
                             isUpdate = true;
@@ -3100,25 +3148,19 @@ public class OvsdbDao {
                     }
 
                     if (!isUpdate) {
-                        int numberOfInterfaces = 0;
-                        for (String key : getProvisionedWifiVifConfigs(ovsdbClient).keySet()) {
-                            if (key.startsWith(ifName)) {
-                                numberOfInterfaces++;
-                            }
-                        }
-
-                        if (numberOfInterfaces >= maxInterfacesPerRadio) {
+                        if (interfaces.isEmpty()) {
                             // this cannot occur, log error, do not try to
                             // provision
                             throw new IllegalStateException("Cannot provision more than " + maxInterfacesPerRadio
                                     + " interfaces per Wifi Radio");
-                        }
+                        } else {
+                            // for a new interface, take the lowest available
+                            // interface for this radio type.
+                            Collections.sort(interfaces);
+                            LOG.debug("Available VIF Interfaces for freqBand {} sorted {}", freqBand, interfaces);
+                            ifName = interfaces.get(0);
+                            LOG.debug("Select ifName {} for new VIF on freqBand {} ", ifName, freqBand);
 
-                        if (numberOfInterfaces > 0) {
-                            // 1st interface has no number, 2nd has '_1', 3rd
-                            // has
-                            // '_2' etc.
-                            ifName = ifName + "_" + numberOfInterfaces;
                         }
                     }
 
