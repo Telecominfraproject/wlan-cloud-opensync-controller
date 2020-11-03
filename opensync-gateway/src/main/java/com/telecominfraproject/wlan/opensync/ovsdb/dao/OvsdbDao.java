@@ -1784,8 +1784,7 @@ public class OvsdbDao {
                     LOG.debug("Op Result {}", res);
                 }
             }
-            
-            
+
 
         } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
             LOG.error("Error in removeAllSsids", e);
@@ -3057,12 +3056,21 @@ public class OvsdbDao {
                     } else if (ssidSecurityMode.equals("wpa2OnlyEAP") || ssidSecurityMode.equals("wpa2OnlyRadius")) {
                         security.put("mode", "2");
                         getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
+                        if (ssidConfig.getRadiusAccountingServiceName() != null) {
+                            getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
+                        }
                     } else if (ssidSecurityMode.equals("wpa2EAP") || ssidSecurityMode.equals("wpa2Radius")) {
                         security.put("mode", "mixed");
                         getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
+                        if (ssidConfig.getRadiusAccountingServiceName() != null) {
+                            getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
+                        }
                     } else if (ssidSecurityMode.equals("wpaEAP") || ssidSecurityMode.equals("wpaRadius")) {
                         security.put("mode", "1");
                         getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
+                        if (ssidConfig.getRadiusAccountingServiceName() != null) {
+                            getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
+                        }
                     } else if (ssidSecurityMode.equals("wep")) {
                         security.put("key", ssidConfig.getKeyStr());
                         security.put("mode", "1");
@@ -3232,6 +3240,57 @@ public class OvsdbDao {
 
     }
 
+    private void getRadiusAccountingConfiguration(OpensyncAPConfig opensyncApConfig, SsidConfiguration ssidConfig,
+            Map<String, String> security) {
+
+
+        LOG.debug("getRadiusAccountingConfiguration for ssidConfig {} from radiusProfiles {}", ssidConfig,
+                opensyncApConfig.getRadiusProfiles());
+
+        List<Profile> radiusServiceList = opensyncApConfig.getRadiusProfiles().stream()
+                .filter(new Predicate<Profile>() {
+
+                    @Override
+                    public boolean test(Profile p) {
+                        return p.getName().equals((ssidConfig.getRadiusAccountingServiceName()));
+                    }
+                }).collect(Collectors.toList());
+
+        if (radiusServiceList != null && radiusServiceList.size() > 0) {
+            Profile profileRadius = radiusServiceList.get(0);
+            String region = opensyncApConfig.getEquipmentLocation().getName();
+            List<RadiusServer> radiusServerList = new ArrayList<>();
+            RadiusProfile radiusProfileDetails = ((RadiusProfile) profileRadius.getDetails());
+            RadiusServiceRegion radiusServiceRegion = radiusProfileDetails.findServiceRegion(region);
+            if (radiusServiceRegion != null) {
+                radiusServerList = radiusServiceRegion.findServerConfiguration(ssidConfig.getRadiusServiceName());
+                if (radiusServerList != null && radiusServerList.size() > 0) {
+                    RadiusServer rServer = radiusServerList.get(0);
+                    if (rServer != null) {
+                        security.put("radius_acct_ip",
+                                rServer.getIpAddress() != null ? rServer.getIpAddress().getHostAddress() : null);
+                        security.put("radius_acct_port",
+                                rServer.getAuthPort() != null ? String.valueOf(rServer.getAuthPort()) : null);
+                        security.put("radius_acct_secret", rServer.getSecret());
+                    }
+                    LOG.info(
+                            "set Radius Accounting server attributes radius_acct_ip {} radius_acct_port {} radius_acct_secret {}",
+                            security.get("radius_acct_ip"), security.get("radius_acct_port"),
+                            security.get("radius_acct_secret"));
+                } else {
+                    LOG.warn("Could not get RadiusServerConfiguration for {} from RadiusProfile {}",
+                            ssidConfig.getRadiusServiceName(), profileRadius);
+                }
+            } else {
+                LOG.warn("Could not get RadiusServiceRegion {} from RadiusProfile {}", region, profileRadius);
+            }
+        } else {
+            LOG.warn("Could not find radius profile {} in {}", ssidConfig.getRadiusServiceName(),
+                    opensyncApConfig.getRadiusProfiles());
+        }
+
+    }
+
     private void getRadiusConfiguration(OpensyncAPConfig opensyncApConfig, SsidConfiguration ssidConfig,
             Map<String, String> security) {
 
@@ -3263,6 +3322,10 @@ public class OvsdbDao {
                         security.put("radius_server_port",
                                 rServer.getAuthPort() != null ? String.valueOf(rServer.getAuthPort()) : null);
                         security.put("radius_server_secret", rServer.getSecret());
+                        LOG.info(
+                                "set Radius server attributes radius_server_ip {} radius_server_port {} radius_server_secret {}",
+                                security.get("radius_server_ip"), security.get("radius_server_port"),
+                                security.get("radius_server_secret"));
                     }
                 } else {
                     LOG.warn("Could not get RadiusServerConfiguration for {} from RadiusProfile {}",
