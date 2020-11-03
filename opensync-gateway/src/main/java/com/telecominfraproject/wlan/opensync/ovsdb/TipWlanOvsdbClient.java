@@ -200,10 +200,12 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
             ovsdbDao.removeAllSsids(ovsdbClient, opensyncAPConfig); // always
             ovsdbDao.removeWifiRrm(ovsdbClient);
+            ovsdbDao.removeAllGreTunnels(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureInterfaces(ovsdbClient);
             ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
+            ovsdbDao.configureGreTunnels(ovsdbClient, opensyncAPConfig);
             if (opensyncAPConfig.getHotspotConfig() != null) {
                 ovsdbDao.configureHotspots(ovsdbClient, opensyncAPConfig);
             }
@@ -216,6 +218,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
             ovsdbDao.removeAllSsids(ovsdbClient); // always
             ovsdbDao.removeWifiRrm(ovsdbClient);
+            ovsdbDao.removeAllGreTunnels(ovsdbClient, null);
         }
 
         if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
@@ -268,6 +271,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
         ovsdbDao.removeAllPasspointConfigs(ovsdbClient);
         ovsdbDao.removeAllSsids(ovsdbClient, opensyncAPConfig); // always
+        ovsdbDao.removeAllGreTunnels(ovsdbClient, opensyncAPConfig);
         ovsdbDao.removeWifiRrm(ovsdbClient);
         ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
 
@@ -275,6 +279,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         ovsdbDao.configureInterfaces(ovsdbClient);
         ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
+        ovsdbDao.configureGreTunnels(ovsdbClient, opensyncAPConfig);
         if (opensyncAPConfig.getHotspotConfig() != null) {
             ovsdbDao.configureHotspots(ovsdbClient, opensyncAPConfig);
         }
