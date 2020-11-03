@@ -3,6 +3,7 @@ package com.telecominfraproject.wlan.opensync.external.integration.models;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import com.telecominfraproject.wlan.core.model.entity.CountryCode;
@@ -34,6 +35,7 @@ public class OpensyncAPConfig extends BaseJsonModel {
     private List<Profile> ssidProfile;
     private List<Profile> metricsProfile;
     private List<Profile> radiusProfiles;
+    private List<Profile> greTunnelProfiles;
     private Location equipmentLocation;
     private EquipmentRoutingRecord equipmentRouting;
     private EquipmentGatewayRecord equipmentGateway;
@@ -235,6 +237,12 @@ public class OpensyncAPConfig extends BaseJsonModel {
                 ret.radiusProfiles.add(radiusProfile);
             }
         }
+        if (greTunnelProfiles != null) {
+            ret.greTunnelProfiles = new ArrayList<>();
+            for (Profile greTunnelProfile : this.greTunnelProfiles) {
+                ret.greTunnelProfiles.add(greTunnelProfile);
+            }
+        }
         if (captiveProfiles != null) {
             ret.captiveProfiles = new ArrayList<>();
             for (Profile cpConfig : this.captiveProfiles) {
@@ -257,6 +265,16 @@ public class OpensyncAPConfig extends BaseJsonModel {
 
     public void setRadiusProfiles(List<Profile> radiusProfiles) {
         this.radiusProfiles = radiusProfiles;
+    }
+
+    
+    public List<Profile> getGreTunnelProfiles() {
+        return greTunnelProfiles;
+    }
+
+    
+    public void setGreTunnelProfiles(List<Profile> greTunnelProfiles) {
+        this.greTunnelProfiles = greTunnelProfiles;
     }
 
     public List<Profile> getCaptiveProfiles() {
@@ -282,4 +300,35 @@ public class OpensyncAPConfig extends BaseJsonModel {
     public List<Profile> getMetricsProfiles() {
         return metricsProfile;       
     }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(apProfile, blockedClients, bonjourGatewayProfiles, captiveProfiles, customerEquipment,
+                equipmentGateway, equipmentLocation, equipmentRouting, greTunnelProfiles, hotspotConfig, metricsProfile,
+                radiusProfiles, rfProfile, ssidProfile);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!(obj instanceof OpensyncAPConfig)) {
+            return false;
+        }
+        OpensyncAPConfig other = (OpensyncAPConfig) obj;
+        return Objects.equals(apProfile, other.apProfile) && Objects.equals(blockedClients, other.blockedClients)
+                && Objects.equals(bonjourGatewayProfiles, other.bonjourGatewayProfiles)
+                && Objects.equals(captiveProfiles, other.captiveProfiles)
+                && Objects.equals(customerEquipment, other.customerEquipment)
+                && Objects.equals(equipmentGateway, other.equipmentGateway)
+                && Objects.equals(equipmentLocation, other.equipmentLocation)
+                && Objects.equals(equipmentRouting, other.equipmentRouting)
+                && Objects.equals(greTunnelProfiles, other.greTunnelProfiles)
+                && Objects.equals(hotspotConfig, other.hotspotConfig)
+                && Objects.equals(metricsProfile, other.metricsProfile)
+                && Objects.equals(radiusProfiles, other.radiusProfiles) && Objects.equals(rfProfile, other.rfProfile)
+                && Objects.equals(ssidProfile, other.ssidProfile);
+    }
+    
 }
