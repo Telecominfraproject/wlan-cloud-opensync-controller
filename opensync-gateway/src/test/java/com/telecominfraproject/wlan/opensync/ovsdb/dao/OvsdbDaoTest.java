@@ -33,9 +33,9 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
-import com.telecominfraproject.wlan.profile.gre.tunnels.GreTunnelProfile;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
+import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.vmware.ovsdb.exception.OvsdbClientException;
 import com.vmware.ovsdb.protocol.operation.notation.Atom;
 import com.vmware.ovsdb.protocol.operation.notation.Row;
@@ -130,23 +130,23 @@ public class OvsdbDaoTest {
         Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList()))
                 .thenReturn(selectionFutureResult);
         Mockito.when(selectionFutureResult.get(30, TimeUnit.SECONDS)).thenReturn(operationResult);
-        Profile greProfile = new Profile();
-        greProfile.setCustomerId(2);
-        greProfile.setId(1L);
-        greProfile.setName("gre1");
-        greProfile.setProfileType(ProfileType.gre_tunnel);
-        GreTunnelProfile tunnelProfileDetails = GreTunnelProfile.createWithDefaults();
+        Profile apProfile = new Profile();
+        apProfile.setCustomerId(2);
+        apProfile.setId(1L);
+        apProfile.setName("ApProfile");
+        apProfile.setProfileType(ProfileType.equipment_ap);
+        ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
+        
         tunnelProfileDetails.setGreLocalInetAddr(InetAddress.getByName("10.0.10.10"));
         tunnelProfileDetails.setGreRemoteInetAddr(InetAddress.getByName("192.168.0.10"));
         tunnelProfileDetails.setGreTunnelName("gre1");
         tunnelProfileDetails.setGreParentIfName("wan");
-        greProfile.setDetails(tunnelProfileDetails);
-        List<Profile> greTunnelList = ImmutableList.of(greProfile);
+        apProfile.setDetails(tunnelProfileDetails);
         OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
-        Mockito.when(apConfig.getGreTunnelProfiles()).thenReturn(greTunnelList);
+        Mockito.when(apConfig.getApProfile()).thenReturn(apProfile);
         ovsdbDao.removeAllGreTunnels(ovsdbClient, apConfig);
         
-        Mockito.verify(apConfig, Mockito.times(2)).getGreTunnelProfiles();
+        Mockito.verify(apConfig, Mockito.times(2)).getApProfile();
         Mockito.verify(ovsdbClient, Mockito.times(1)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
 
     }
@@ -173,27 +173,25 @@ public class OvsdbDaoTest {
         Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList()))
                 .thenReturn(selectionFutureResult);
         Mockito.when(selectionFutureResult.get(30, TimeUnit.SECONDS)).thenReturn(operationResult);
-        Profile greProfile = new Profile();
-        greProfile.setCustomerId(2);
-        greProfile.setId(1L);
-        greProfile.setName("gre1");
-        greProfile.setProfileType(ProfileType.gre_tunnel);
-        GreTunnelProfile tunnelProfileDetails = GreTunnelProfile.createWithDefaults();
+        Profile apProfile = new Profile();
+        apProfile.setCustomerId(2);
+        apProfile.setId(1L);
+        apProfile.setName("ApProfile");
+        apProfile.setProfileType(ProfileType.equipment_ap);
+        ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
+        
         tunnelProfileDetails.setGreLocalInetAddr(InetAddress.getByName("10.0.10.10"));
         tunnelProfileDetails.setGreRemoteInetAddr(InetAddress.getByName("192.168.0.10"));
         tunnelProfileDetails.setGreTunnelName("gre1");
         tunnelProfileDetails.setGreParentIfName("wan");
-        greProfile.setDetails(tunnelProfileDetails);
-        Profile greProfile2 = greProfile.clone();
-        greProfile2.setName("gre2");
-        ((GreTunnelProfile)greProfile2.getDetails()).setGreTunnelName("gre2");
-        List<Profile> greTunnelList = ImmutableList.of(greProfile,greProfile2);
+        apProfile.setDetails(tunnelProfileDetails);
+       
         OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
-        Mockito.when(apConfig.getGreTunnelProfiles()).thenReturn(greTunnelList);
+        Mockito.when(apConfig.getApProfile()).thenReturn(apProfile);
         ovsdbDao.configureGreTunnels(ovsdbClient, apConfig);
         // 2 calls to check existence, 2 calls to insert tunnel (1 each per Profile)
-        Mockito.verify(ovsdbClient, Mockito.times(4)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
-        Mockito.verify(apConfig, Mockito.times(3)).getGreTunnelProfiles();
+        Mockito.verify(ovsdbClient, Mockito.times(2)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
+        Mockito.verify(apConfig, Mockito.times(3)).getApProfile();
 
     }
 

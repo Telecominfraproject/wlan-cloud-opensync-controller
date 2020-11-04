@@ -827,9 +827,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 ret.setMetricsProfiles(
                         profileContainer.getChildrenOfType(equipmentConfig.getProfileId(), ProfileType.metrics));
-
-                ret.setGreTunnelProfiles(
-                        profileContainer.getChildrenOfType(equipmentConfig.getProfileId(), ProfileType.gre_tunnel));
                 
                 Set<Profile> radiusSet = new HashSet<>();
                 Set<Long> captiveProfileIds = new HashSet<>();

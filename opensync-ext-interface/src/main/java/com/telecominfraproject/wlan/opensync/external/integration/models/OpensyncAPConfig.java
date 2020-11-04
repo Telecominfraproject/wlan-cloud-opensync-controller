@@ -35,7 +35,6 @@ public class OpensyncAPConfig extends BaseJsonModel {
     private List<Profile> ssidProfile;
     private List<Profile> metricsProfile;
     private List<Profile> radiusProfiles;
-    private List<Profile> greTunnelProfiles;
     private Location equipmentLocation;
     private EquipmentRoutingRecord equipmentRouting;
     private EquipmentGatewayRecord equipmentGateway;
@@ -237,12 +236,6 @@ public class OpensyncAPConfig extends BaseJsonModel {
                 ret.radiusProfiles.add(radiusProfile);
             }
         }
-        if (greTunnelProfiles != null) {
-            ret.greTunnelProfiles = new ArrayList<>();
-            for (Profile greTunnelProfile : this.greTunnelProfiles) {
-                ret.greTunnelProfiles.add(greTunnelProfile);
-            }
-        }
         if (captiveProfiles != null) {
             ret.captiveProfiles = new ArrayList<>();
             for (Profile cpConfig : this.captiveProfiles) {
@@ -265,16 +258,6 @@ public class OpensyncAPConfig extends BaseJsonModel {
 
     public void setRadiusProfiles(List<Profile> radiusProfiles) {
         this.radiusProfiles = radiusProfiles;
-    }
-
-    
-    public List<Profile> getGreTunnelProfiles() {
-        return greTunnelProfiles;
-    }
-
-    
-    public void setGreTunnelProfiles(List<Profile> greTunnelProfiles) {
-        this.greTunnelProfiles = greTunnelProfiles;
     }
 
     public List<Profile> getCaptiveProfiles() {
@@ -304,7 +287,7 @@ public class OpensyncAPConfig extends BaseJsonModel {
     @Override
     public int hashCode() {
         return Objects.hash(apProfile, blockedClients, bonjourGatewayProfiles, captiveProfiles, customerEquipment,
-                equipmentGateway, equipmentLocation, equipmentRouting, greTunnelProfiles, hotspotConfig, metricsProfile,
+                equipmentGateway, equipmentLocation, equipmentRouting, hotspotConfig, metricsProfile,
                 radiusProfiles, rfProfile, ssidProfile);
     }
 
@@ -324,7 +307,6 @@ public class OpensyncAPConfig extends BaseJsonModel {
                 && Objects.equals(equipmentGateway, other.equipmentGateway)
                 && Objects.equals(equipmentLocation, other.equipmentLocation)
                 && Objects.equals(equipmentRouting, other.equipmentRouting)
-                && Objects.equals(greTunnelProfiles, other.greTunnelProfiles)
                 && Objects.equals(hotspotConfig, other.hotspotConfig)
                 && Objects.equals(metricsProfile, other.metricsProfile)
                 && Objects.equals(radiusProfiles, other.radiusProfiles) && Objects.equals(rfProfile, other.rfProfile)

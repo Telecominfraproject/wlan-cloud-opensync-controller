@@ -66,7 +66,6 @@ import com.telecominfraproject.wlan.profile.bonjour.models.BonjourGatewayProfile
 import com.telecominfraproject.wlan.profile.bonjour.models.BonjourServiceSet;
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalAuthenticationType;
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalConfiguration;
-import com.telecominfraproject.wlan.profile.gre.tunnels.GreTunnelProfile;
 import com.telecominfraproject.wlan.profile.metrics.ChannelUtilizationSurveyType;
 import com.telecominfraproject.wlan.profile.metrics.ServiceMetricConfigParameters;
 import com.telecominfraproject.wlan.profile.metrics.ServiceMetricRadioConfigParameters;
@@ -1704,7 +1703,7 @@ public class OvsdbDao {
         try {
             List<Operation> operations = new ArrayList<>();
             List<Condition> conditions = new ArrayList<>();
-            if (opensyncAPConfig == null || opensyncAPConfig.getGreTunnelProfiles() == null) {
+            if (opensyncAPConfig == null || opensyncAPConfig.getApProfile() == null) {
                 conditions.add(new Condition("if_type", Function.EQUALS, new Atom<>("gre")));
                 operations.add(new Delete(wifiInetConfigDbTable, conditions));
                 CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
@@ -1717,18 +1716,16 @@ public class OvsdbDao {
                 }
             } else {
 
-                Set<String> greSet = new HashSet<>();
-                opensyncAPConfig.getGreTunnelProfiles().stream().forEach(p -> {
-                    GreTunnelProfile profileDetails = (GreTunnelProfile)p.getDetails();
-                    greSet.add(profileDetails.getGreTunnelName());
-                });
+                ApNetworkConfiguration profileDetails = (ApNetworkConfiguration) opensyncAPConfig.getApProfile()
+                        .getDetails();
+                String greTunnelName = profileDetails.getGreTunnelName();
 
                 conditions.add(new Condition("if_type", Function.EQUALS, new Atom<>("gre")));
                 operations.add(new Select(wifiInetConfigDbTable, conditions));
 
                 CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
                 OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-                
+
                 if (((SelectResult) result[0]).getRows().isEmpty()) {
                     LOG.debug("No Gre Tunnels present");
                     return;
@@ -1736,7 +1733,7 @@ public class OvsdbDao {
                     operations.clear();
                     for (Row row : ((SelectResult) result[0]).getRows()) {
                         String ifName = row.getStringColumn("if_name");
-                        if (!greSet.contains(ifName)) {
+                        if (!greTunnelName.equals(ifName)) {
                             List<Condition> deleteCondition = new ArrayList<>();
                             deleteCondition.add(new Condition("if_name", Function.EQUALS, new Atom<>(ifName)));
                             operations.add(new Delete(wifiInetConfigDbTable, deleteCondition));
@@ -1747,14 +1744,14 @@ public class OvsdbDao {
 
                 ovsdbClient.transact(ovsdbName, operations);
                 fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-                
+
                 if (LOG.isDebugEnabled()) {
 
                     for (OperationResult res : result) {
                         LOG.debug("removeAllGreTunnels Op Result {}", res);
                     }
                 }
-                
+
             }
         } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
             LOG.error("Could not delete GreTunnel Configs", e);
@@ -3258,28 +3255,25 @@ public class OvsdbDao {
 
     public void configureGreTunnels(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
 
-        LOG.info("Configure Gre tunnels {}", opensyncApConfig.getGreTunnelProfiles());
-        if (opensyncApConfig.getGreTunnelProfiles() != null) {
-            for (Profile greTunnel : opensyncApConfig.getGreTunnelProfiles()) {
-                configureGreTunnel(ovsdbClient, greTunnel);
-            }
+        LOG.info("Configure Gre tunnels {}", opensyncApConfig.getApProfile());
+        if (opensyncApConfig.getApProfile() != null) {
+            configureGreTunnel(ovsdbClient, opensyncApConfig.getApProfile());
         }
 
     }
 
-    private void configureGreTunnel(OvsdbClient ovsdbClient, Profile greTunnelProfile) {
+    private void configureGreTunnel(OvsdbClient ovsdbClient, Profile apNetworkConfiguration) {
         try {
-            LOG.debug("Configure Gre Tunnel {}", greTunnelProfile);
+            LOG.debug("Configure Gre Tunnel {}", apNetworkConfiguration);
             List<Operation> operations = new ArrayList<>();
             Map<String, Value> tableColumns = new HashMap<>();
 
-            GreTunnelProfile details = (GreTunnelProfile) greTunnelProfile.getDetails();
+            ApNetworkConfiguration details = (ApNetworkConfiguration) apNetworkConfiguration.getDetails();
             tableColumns.put("gre_ifname", new Atom<>(details.getGreParentIfName()));
             tableColumns.put("gre_local_inet_addr", new Atom<>(details.getGreLocalInetAddr().getHostAddress()));
             tableColumns.put("gre_remote_inet_addr", new Atom<>(details.getGreRemoteInetAddr().getHostAddress()));
             if (details.getGreRemoteMacAddr() != null) {
-                tableColumns.put("gre_remote_mac_addr",
-                        new Atom<>(details.getGreRemoteMacAddr().getAddressAsString()));
+                tableColumns.put("gre_remote_mac_addr", new Atom<>(details.getGreRemoteMacAddr().getAddressAsString()));
             }
             tableColumns.put("if_name", new Atom<>(details.getGreTunnelName()));
             tableColumns.put("if_type", new Atom<>("gre"));
@@ -3294,12 +3288,12 @@ public class OvsdbDao {
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
             if (((SelectResult) result[0]).getRows().isEmpty()) {
-                LOG.debug("Adding new Gre Tunnel {}", greTunnelProfile);
+                LOG.debug("Adding new Gre Tunnel {}", apNetworkConfiguration);
 
                 operations.clear();
                 operations.add(new Insert(wifiInetConfigDbTable, new Row(tableColumns)));
             } else {
-                LOG.debug("Updating Gre Tunnel {}", greTunnelProfile);
+                LOG.debug("Updating Gre Tunnel {}", apNetworkConfiguration);
                 operations.clear();
                 operations.add(new Update(wifiInetConfigDbTable, conditions, new Row(tableColumns)));
             }
@@ -3310,7 +3304,7 @@ public class OvsdbDao {
                 LOG.debug("Configure Gre Tunnel Op Result {}", res);
             }
         } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
-            LOG.error("Couldn't configure Gre Tunnel {}", greTunnelProfile, e);
+            LOG.error("Couldn't configure Gre Tunnel {}", apNetworkConfiguration, e);
             throw new RuntimeException(e);
         }
 
