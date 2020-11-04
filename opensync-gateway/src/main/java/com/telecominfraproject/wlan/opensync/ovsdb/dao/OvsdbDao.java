@@ -3274,7 +3274,7 @@ public class OvsdbDao {
             Map<String, Value> tableColumns = new HashMap<>();
 
             GreTunnelProfile details = (GreTunnelProfile) greTunnelProfile.getDetails();
-            tableColumns.put("gre_ifname", new Atom<>(defaultWanInterfaceName));
+            tableColumns.put("gre_ifname", new Atom<>(details.getGreParentIfName()));
             tableColumns.put("gre_local_inet_addr", new Atom<>(details.getGreLocalInetAddr().getHostAddress()));
             tableColumns.put("gre_remote_inet_addr", new Atom<>(details.getGreRemoteInetAddr().getHostAddress()));
             if (details.getGreRemoteMacAddr() != null) {
@@ -3375,6 +3375,7 @@ public class OvsdbDao {
             tableColumns.put("dhcp_sniff", new Atom<>(true));
             tableColumns.put("ip_assign_scheme", new Atom<>(parentWanInterface.ipAssignScheme));
             tableColumns.put("NAT", new Atom<>(parentWanInterface.nat));
+
             tableColumns.put("mtu", new Atom<>(1500));
 
             row = new Row(tableColumns);
