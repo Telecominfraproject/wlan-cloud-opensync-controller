@@ -167,7 +167,6 @@ public class OvsdbDaoTest {
 
     @Test
     public void testConfigureGreTunnels() throws Exception {
-        // test create 2 gre tunnel profiles
         List<Row> rows = new ArrayList<>();
         OperationResult[] operationResult = new OperationResult[] { new SelectResult(rows) };
         Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList()))
@@ -189,8 +188,106 @@ public class OvsdbDaoTest {
         OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
         Mockito.when(apConfig.getApProfile()).thenReturn(apProfile);
         ovsdbDao.configureGreTunnels(ovsdbClient, apConfig);
+        // 1 call to check existence, 1 to add profile
+        Mockito.verify(ovsdbClient, Mockito.times(2)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
+        Mockito.verify(apConfig, Mockito.times(3)).getApProfile();
+
+    }
+    
+    @Test
+    public void testConfigureGreTunnelsWithNoLocalAddress() throws Exception {
+        List<Row> rows = new ArrayList<>();
+        OperationResult[] operationResult = new OperationResult[] { new SelectResult(rows) };
+        Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList()))
+                .thenReturn(selectionFutureResult);
+        Mockito.when(selectionFutureResult.get(30, TimeUnit.SECONDS)).thenReturn(operationResult);
+        Profile apProfile = new Profile();
+        apProfile.setCustomerId(2);
+        apProfile.setId(1L);
+        apProfile.setName("ApProfile");
+        apProfile.setProfileType(ProfileType.equipment_ap);
+        ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
+        
+        tunnelProfileDetails.setGreRemoteInetAddr(InetAddress.getByName("192.168.0.10"));
+        tunnelProfileDetails.setGreTunnelName("gre1");
+        tunnelProfileDetails.setGreParentIfName("wan");
+        apProfile.setDetails(tunnelProfileDetails);
+       
+        OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
+        Mockito.when(apConfig.getApProfile()).thenReturn(apProfile);
+        ovsdbDao.configureGreTunnels(ovsdbClient, apConfig);
         // 2 calls to check existence, 2 calls to insert tunnel (1 each per Profile)
         Mockito.verify(ovsdbClient, Mockito.times(2)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
+        Mockito.verify(apConfig, Mockito.times(3)).getApProfile();
+
+    }
+    
+    @Test
+    public void testConfigureGreTunnelsWithNoRemoteAddress() throws Exception {
+        Profile apProfile = new Profile();
+        apProfile.setCustomerId(2);
+        apProfile.setId(1L);
+        apProfile.setName("ApProfile");
+        apProfile.setProfileType(ProfileType.equipment_ap);
+        ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
+        
+        tunnelProfileDetails.setGreLocalInetAddr(InetAddress.getByName("10.0.10.10"));
+        tunnelProfileDetails.setGreTunnelName("gre1");
+        tunnelProfileDetails.setGreParentIfName("wan");
+        apProfile.setDetails(tunnelProfileDetails);
+       
+        OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
+        Mockito.when(apConfig.getApProfile()).thenReturn(apProfile);
+        ovsdbDao.configureGreTunnels(ovsdbClient, apConfig);
+        // Should not create
+        Mockito.verify(ovsdbClient, Mockito.times(0)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
+        Mockito.verify(apConfig, Mockito.times(3)).getApProfile();
+
+    }
+    
+    @Test
+    public void testConfigureGreTunnelsWithNoParentInterface() throws Exception {
+        Profile apProfile = new Profile();
+        apProfile.setCustomerId(2);
+        apProfile.setId(1L);
+        apProfile.setName("ApProfile");
+        apProfile.setProfileType(ProfileType.equipment_ap);
+        ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
+        
+        tunnelProfileDetails.setGreLocalInetAddr(InetAddress.getByName("10.0.10.10"));
+        tunnelProfileDetails.setGreRemoteInetAddr(InetAddress.getByName("192.168.0.10"));
+        tunnelProfileDetails.setGreTunnelName("gre1");
+        apProfile.setDetails(tunnelProfileDetails);
+       
+        OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
+        Mockito.when(apConfig.getApProfile()).thenReturn(apProfile);
+        ovsdbDao.configureGreTunnels(ovsdbClient, apConfig);
+        // Should not create
+        Mockito.verify(ovsdbClient, Mockito.times(0)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
+        Mockito.verify(apConfig, Mockito.times(3)).getApProfile();
+
+    }
+    
+    @Test
+    public void testConfigureGreTunnelsWithNoTunnelName() throws Exception {
+        Profile apProfile = new Profile();
+        apProfile.setCustomerId(2);
+        apProfile.setId(1L);
+        apProfile.setName("ApProfile");
+        apProfile.setProfileType(ProfileType.equipment_ap);
+        ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
+        
+        tunnelProfileDetails.setGreLocalInetAddr(InetAddress.getByName("10.0.10.10"));
+        tunnelProfileDetails.setGreRemoteInetAddr(InetAddress.getByName("192.168.0.10"));
+        tunnelProfileDetails.setGreParentIfName("wan");
+
+        apProfile.setDetails(tunnelProfileDetails);
+       
+        OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
+        Mockito.when(apConfig.getApProfile()).thenReturn(apProfile);
+        ovsdbDao.configureGreTunnels(ovsdbClient, apConfig);
+        // Should not create
+        Mockito.verify(ovsdbClient, Mockito.times(0)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
         Mockito.verify(apConfig, Mockito.times(3)).getApProfile();
 
     }
