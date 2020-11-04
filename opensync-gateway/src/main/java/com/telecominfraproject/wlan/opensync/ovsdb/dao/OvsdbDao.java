@@ -3269,11 +3269,25 @@ public class OvsdbDao {
             Map<String, Value> tableColumns = new HashMap<>();
 
             ApNetworkConfiguration details = (ApNetworkConfiguration) apNetworkConfiguration.getDetails();
+            if (details.getGreParentIfName() == null) {
+                LOG.info("Cannot configure GRE profile without gre_ifname");
+                return;
+            }
             tableColumns.put("gre_ifname", new Atom<>(details.getGreParentIfName()));
-            tableColumns.put("gre_local_inet_addr", new Atom<>(details.getGreLocalInetAddr().getHostAddress()));
+            if (details.getGreLocalInetAddr() != null) {
+                tableColumns.put("gre_local_inet_addr", new Atom<>(details.getGreLocalInetAddr().getHostAddress()));
+            }
+            if (details.getGreRemoteInetAddr() == null) {
+                LOG.info("Cannot configure GRE profile without gre_remote_inet_addr");
+                return;
+            }
             tableColumns.put("gre_remote_inet_addr", new Atom<>(details.getGreRemoteInetAddr().getHostAddress()));
             if (details.getGreRemoteMacAddr() != null) {
                 tableColumns.put("gre_remote_mac_addr", new Atom<>(details.getGreRemoteMacAddr().getAddressAsString()));
+            }
+            if (details.getGreTunnelName() == null) {
+                LOG.info("Cannot configure GRE profile without if_name");
+                return;
             }
             tableColumns.put("if_name", new Atom<>(details.getGreTunnelName()));
             tableColumns.put("if_type", new Atom<>("gre"));
