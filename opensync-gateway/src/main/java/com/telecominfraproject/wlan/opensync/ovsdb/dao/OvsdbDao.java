@@ -3439,7 +3439,7 @@ public class OvsdbDao {
             RadiusProfile radiusProfileDetails = ((RadiusProfile) profileRadius.getDetails());
             RadiusServiceRegion radiusServiceRegion = radiusProfileDetails.findServiceRegion(region);
             if (radiusServiceRegion != null) {
-                radiusServerList = radiusServiceRegion.findServerConfiguration(ssidConfig.getRadiusServiceName());
+                radiusServerList = radiusServiceRegion.findServerConfiguration(ssidConfig.getRadiusAccountingServiceName());
                 if (radiusServerList != null && radiusServerList.size() > 0) {
                     RadiusServer rServer = radiusServerList.get(0);
                     if (rServer != null) {
