@@ -7,7 +7,6 @@
         "name": "TipWlan-Hotspot20-Operator",
         "details": {
             "model_type": "OperatorProfile",
-            "domainName": "telecominfraproject.atlassian.net",
             "serverOnlyAuthenticatedL2EncryptionNetwork": false,
             "x509CertificateLocation": "/etc/ca.pem",
             "operatorFriendlyName": [
