@@ -20,10 +20,10 @@
 
 			<modules>
 				<module>../opensync-ext-interface</module>
-				<module>../opensync-ext-static</module>
-				<module>../opensync-ext-cloud</module>
 				<module>../opensync-gateway</module>
+				<module>../opensync-ext-static</module>
 				<module>../opensync-gateway-static-process</module>
+				<module>../opensync-ext-cloud</module>
 				<module>../opensync-gateway-cloud-process</module>
 			</modules>
 		</profile>
