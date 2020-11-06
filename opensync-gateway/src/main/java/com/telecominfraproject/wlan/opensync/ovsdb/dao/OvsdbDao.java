@@ -2698,7 +2698,7 @@ public class OvsdbDao {
                 createVlanNetworkInterfaces(ovsdbClient, vlanId);
                 updateColumns.put("vlan_id", new Atom<>(vlanId));
             } else {
-                updateColumns.put("vlan_id", new com.vmware.ovsdb.protocol.operation.notation.Set());
+                updateColumns.put("vlan_id", new Atom<>(1));
             }
 
             updateColumns.put("mode", new Atom<>("ap"));
