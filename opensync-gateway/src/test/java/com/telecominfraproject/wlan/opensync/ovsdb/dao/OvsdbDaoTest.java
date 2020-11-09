@@ -7,6 +7,7 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -31,8 +32,10 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.telecominfraproject.wlan.customer.models.Customer;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPHotspot20Config;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
@@ -45,18 +48,28 @@ import com.vmware.ovsdb.protocol.operation.result.ErrorResult;
 import com.vmware.ovsdb.protocol.operation.result.InsertResult;
 import com.vmware.ovsdb.protocol.operation.result.OperationResult;
 import com.vmware.ovsdb.protocol.operation.result.SelectResult;
+import com.vmware.ovsdb.protocol.schema.DatabaseSchema;
+import com.vmware.ovsdb.protocol.schema.TableSchema;
 import com.vmware.ovsdb.service.OvsdbClient;
 
 @RunWith(SpringRunner.class)
 @ActiveProfiles(profiles = { "integration_test", }) // NOTE: these profiles will
-                                                    // be ADDED to the list of
-                                                    // active profiles
+// be ADDED to the list of
+// active profiles
 @SpringBootTest(webEnvironment = WebEnvironment.NONE, classes = OvsdbDaoTest.class)
 @Import(value = { OvsdbDao.class, OvsdbDaoTest.Config.class,
 
 })
 public class OvsdbDaoTest {
 
+    private static final long HOTSPOT_CONFIG_ID = 1;
+    private static final long HOTSPOT_PROVIDER_ID_1 = 2;
+    private static final long HOTSPOT_PROVIDER_ID_2 = 3;
+    private static final long SSID_PSK_ID = 4;
+    private static final long SSID_OSU_ID = 5;
+    private static final long OPERATOR_ID = 6;
+    private static final long VENUE_ID = 7;
+    private static final long EQUIPMENT_AP_ID = 8;
     private static final String LAN_IF_TYPE = "bridge";
 
     private static final String LAN_IF_NAME = "br-lan";
@@ -92,10 +105,10 @@ public class OvsdbDaoTest {
     @Mock(answer = Answers.RETURNS_MOCKS)
     OvsdbClient ovsdbClient;
 
-    @Mock
+    @Mock(answer = Answers.RETURNS_MOCKS)
     CompletableFuture<OperationResult[]> futureResult;
 
-    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    @Mock(answer = Answers.RETURNS_MOCKS)
     CompletableFuture<OperationResult[]> selectionFutureResult;
 
     @Autowired
@@ -136,7 +149,7 @@ public class OvsdbDaoTest {
         apProfile.setName("ApProfile");
         apProfile.setProfileType(ProfileType.equipment_ap);
         ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
-        
+
         tunnelProfileDetails.setGreLocalInetAddr(InetAddress.getByName("10.0.10.10"));
         tunnelProfileDetails.setGreRemoteInetAddr(InetAddress.getByName("192.168.0.10"));
         tunnelProfileDetails.setGreTunnelName("gre1");
@@ -145,12 +158,12 @@ public class OvsdbDaoTest {
         OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
         Mockito.when(apConfig.getApProfile()).thenReturn(apProfile);
         ovsdbDao.removeAllGreTunnels(ovsdbClient, apConfig);
-        
+
         Mockito.verify(apConfig, Mockito.times(2)).getApProfile();
         Mockito.verify(ovsdbClient, Mockito.times(1)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
 
     }
-    
+
     @Test
     public void testRemoveAllGreTunnelsNoProfile() throws Exception {
         List<Row> rows = new ArrayList<>();
@@ -158,9 +171,9 @@ public class OvsdbDaoTest {
         Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList()))
                 .thenReturn(selectionFutureResult);
         Mockito.when(selectionFutureResult.get(30, TimeUnit.SECONDS)).thenReturn(operationResult);
-      
+
         ovsdbDao.removeAllGreTunnels(ovsdbClient, null);
-        
+
         Mockito.verify(ovsdbClient, Mockito.times(1)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
 
     }
@@ -178,13 +191,13 @@ public class OvsdbDaoTest {
         apProfile.setName("ApProfile");
         apProfile.setProfileType(ProfileType.equipment_ap);
         ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
-        
+
         tunnelProfileDetails.setGreLocalInetAddr(InetAddress.getByName("10.0.10.10"));
         tunnelProfileDetails.setGreRemoteInetAddr(InetAddress.getByName("192.168.0.10"));
         tunnelProfileDetails.setGreTunnelName("gre1");
         tunnelProfileDetails.setGreParentIfName("wan");
         apProfile.setDetails(tunnelProfileDetails);
-       
+
         OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
         Mockito.when(apConfig.getApProfile()).thenReturn(apProfile);
         ovsdbDao.configureGreTunnels(ovsdbClient, apConfig);
@@ -193,7 +206,84 @@ public class OvsdbDaoTest {
         Mockito.verify(apConfig, Mockito.times(3)).getApProfile();
 
     }
-    
+
+
+
+
+    @Test
+    public void testConfigureHotspots() throws Exception {
+
+        DatabaseSchema schemaMock = Mockito.mock(DatabaseSchema.class);
+        CompletableFuture<DatabaseSchema> schemaFuture = Mockito.mock(CompletableFuture.class);
+        Mockito.when(schemaFuture.get(Mockito.anyLong(), Mockito.any())).thenReturn(schemaMock);
+        HashMap<String, TableSchema> mapMock = Mockito.mock(HashMap.class);
+
+        Mockito.when(mapMock.containsKey(Mockito.any())).thenReturn(true);
+        Mockito.when(mapMock.get(Mockito.any())).thenReturn(Mockito.mock(TableSchema.class));
+        Mockito.when(schemaMock.getTables()).thenReturn(mapMock);
+        Mockito.when(ovsdbClient.getSchema(Mockito.anyString())).thenReturn(schemaFuture);
+
+        OpensyncAPConfig apConfig = new OpensyncAPConfig();
+        OpensyncAPHotspot20Config hsConfig = new OpensyncAPHotspot20Config();
+        Customer customer = new Customer();
+
+        Profile profileSsidPsk = OvsdbDaoTestUtilities.createPasspointAccessSsid(customer);
+        profileSsidPsk.setId(SSID_PSK_ID);
+        Profile profileSsidOsu = OvsdbDaoTestUtilities.createPasspointOsuSsid(customer);
+        profileSsidOsu.setId(SSID_OSU_ID);
+        Profile passpointOperatorProfile = OvsdbDaoTestUtilities.createPasspointOperatorProfile(customer);
+        passpointOperatorProfile.setId(OPERATOR_ID);
+        Profile passpointVenueProfile = OvsdbDaoTestUtilities.createPasspointVenueProfile(customer);
+        passpointVenueProfile.setId(VENUE_ID);
+        Profile hotspot20IdProviderProfile = new Profile();
+        hotspot20IdProviderProfile.setId(HOTSPOT_PROVIDER_ID_1);
+        hotspot20IdProviderProfile = OvsdbDaoTestUtilities.createPasspointIdProviderProfile(customer,
+                hotspot20IdProviderProfile, "TipWlan-Hotspot20-OSU-Provider", "Rogers AT&T Wireless", "Canada", "ca",
+                302, 720, "rogers.com", 1);
+        Profile hotspot20IdProviderProfile2 = new Profile();
+        hotspot20IdProviderProfile2.setId(HOTSPOT_PROVIDER_ID_2);
+        hotspot20IdProviderProfile2 = OvsdbDaoTestUtilities.createPasspointIdProviderProfile(customer,
+                hotspot20IdProviderProfile2, "TipWlan-Hotspot20-OSU-Provider-2", "Telus Mobility", "Canada", "ca", 302,
+                220, "telus.com", 1);
+
+        profileSsidOsu.getChildProfileIds().add(hotspot20IdProviderProfile.getId());
+        profileSsidOsu.getChildProfileIds().add(hotspot20IdProviderProfile2.getId());
+
+        Profile passpointHotspotConfig = OvsdbDaoTestUtilities.createPasspointHotspotConfig(customer,
+                hotspot20IdProviderProfile2, hotspot20IdProviderProfile, passpointOperatorProfile,
+                passpointVenueProfile, profileSsidPsk, profileSsidOsu);
+        passpointHotspotConfig.setId(HOTSPOT_CONFIG_ID);
+
+        Profile hotspotProfileAp = OvsdbDaoTestUtilities.createPasspointApProfile(customer, profileSsidPsk,
+                profileSsidOsu);
+        hotspotProfileAp.setId(EQUIPMENT_AP_ID);
+
+        hsConfig.setHotspot20OperatorSet(Set.of(passpointOperatorProfile));
+        hsConfig.setHotspot20ProviderSet(Set.of(hotspot20IdProviderProfile, hotspot20IdProviderProfile2));
+        hsConfig.setHotspot20VenueSet(Set.of(passpointVenueProfile));
+        hsConfig.setHotspot20ProfileSet(Set.of(passpointHotspotConfig));
+
+        apConfig.setHotspotConfig(hsConfig);
+
+        apConfig.setApProfile(hotspotProfileAp);
+
+        apConfig.setSsidProfile(List.of(profileSsidOsu, profileSsidPsk));
+
+        Mockito.when(futureResult.get(Mockito.anyLong(), Mockito.eq(TimeUnit.SECONDS))).thenReturn(OvsdbDaoTestUtilities.hs20IconRows())
+                .thenReturn(OvsdbDaoTestUtilities.hs20InsertIconRows()).thenReturn(OvsdbDaoTestUtilities.hs20OsuProviders()).thenReturn(OvsdbDaoTestUtilities.hs20IconRows())
+                .thenReturn(OvsdbDaoTestUtilities.hs20IconRows()).thenReturn(OvsdbDaoTestUtilities.hs20InsertProviderRows()).thenReturn(OvsdbDaoTestUtilities.hs20Config())
+                .thenReturn(OvsdbDaoTestUtilities.hs20OsuProviders()).thenReturn(OvsdbDaoTestUtilities.vifConfigRows()).thenReturn(OvsdbDaoTestUtilities.vifConfigRows())
+                .thenReturn(OvsdbDaoTestUtilities.hs20Config());
+
+        Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList())).thenReturn(futureResult);
+
+        ovsdbDao.configureHotspots(ovsdbClient, apConfig);
+
+        Mockito.verify(futureResult, Mockito.times(11)).get(Mockito.anyLong(), Mockito.eq(TimeUnit.SECONDS));
+
+    }
+
+
     @Test
     public void testConfigureGreTunnelsWithNoLocalAddress() throws Exception {
         List<Row> rows = new ArrayList<>();
@@ -207,21 +297,22 @@ public class OvsdbDaoTest {
         apProfile.setName("ApProfile");
         apProfile.setProfileType(ProfileType.equipment_ap);
         ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
-        
+
         tunnelProfileDetails.setGreRemoteInetAddr(InetAddress.getByName("192.168.0.10"));
         tunnelProfileDetails.setGreTunnelName("gre1");
         tunnelProfileDetails.setGreParentIfName("wan");
         apProfile.setDetails(tunnelProfileDetails);
-       
+
         OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
         Mockito.when(apConfig.getApProfile()).thenReturn(apProfile);
         ovsdbDao.configureGreTunnels(ovsdbClient, apConfig);
-        // 2 calls to check existence, 2 calls to insert tunnel (1 each per Profile)
+        // 2 calls to check existence, 2 calls to insert tunnel (1 each per
+        // Profile)
         Mockito.verify(ovsdbClient, Mockito.times(2)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
         Mockito.verify(apConfig, Mockito.times(3)).getApProfile();
 
     }
-    
+
     @Test
     public void testConfigureGreTunnelsWithNoRemoteAddress() throws Exception {
         Profile apProfile = new Profile();
@@ -230,12 +321,12 @@ public class OvsdbDaoTest {
         apProfile.setName("ApProfile");
         apProfile.setProfileType(ProfileType.equipment_ap);
         ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
-        
+
         tunnelProfileDetails.setGreLocalInetAddr(InetAddress.getByName("10.0.10.10"));
         tunnelProfileDetails.setGreTunnelName("gre1");
         tunnelProfileDetails.setGreParentIfName("wan");
         apProfile.setDetails(tunnelProfileDetails);
-       
+
         OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
         Mockito.when(apConfig.getApProfile()).thenReturn(apProfile);
         ovsdbDao.configureGreTunnels(ovsdbClient, apConfig);
@@ -244,7 +335,7 @@ public class OvsdbDaoTest {
         Mockito.verify(apConfig, Mockito.times(3)).getApProfile();
 
     }
-    
+
     @Test
     public void testConfigureGreTunnelsWithNoParentInterface() throws Exception {
         Profile apProfile = new Profile();
@@ -253,12 +344,12 @@ public class OvsdbDaoTest {
         apProfile.setName("ApProfile");
         apProfile.setProfileType(ProfileType.equipment_ap);
         ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
-        
+
         tunnelProfileDetails.setGreLocalInetAddr(InetAddress.getByName("10.0.10.10"));
         tunnelProfileDetails.setGreRemoteInetAddr(InetAddress.getByName("192.168.0.10"));
         tunnelProfileDetails.setGreTunnelName("gre1");
         apProfile.setDetails(tunnelProfileDetails);
-       
+
         OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
         Mockito.when(apConfig.getApProfile()).thenReturn(apProfile);
         ovsdbDao.configureGreTunnels(ovsdbClient, apConfig);
@@ -267,7 +358,7 @@ public class OvsdbDaoTest {
         Mockito.verify(apConfig, Mockito.times(3)).getApProfile();
 
     }
-    
+
     @Test
     public void testConfigureGreTunnelsWithNoTunnelName() throws Exception {
         Profile apProfile = new Profile();
@@ -276,13 +367,13 @@ public class OvsdbDaoTest {
         apProfile.setName("ApProfile");
         apProfile.setProfileType(ProfileType.equipment_ap);
         ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
-        
+
         tunnelProfileDetails.setGreLocalInetAddr(InetAddress.getByName("10.0.10.10"));
         tunnelProfileDetails.setGreRemoteInetAddr(InetAddress.getByName("192.168.0.10"));
         tunnelProfileDetails.setGreParentIfName("wan");
 
         apProfile.setDetails(tunnelProfileDetails);
-       
+
         OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
         Mockito.when(apConfig.getApProfile()).thenReturn(apProfile);
         ovsdbDao.configureGreTunnels(ovsdbClient, apConfig);
@@ -602,4 +693,8 @@ public class OvsdbDaoTest {
     }
 
 
+    static Row[] hs20Icons = {
+
+
+    };
 }
