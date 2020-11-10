@@ -2008,21 +2008,46 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
         ClientSessionMetricDetails metricDetails = new ClientSessionMetricDetails();
 
+
+        if (LOG.isDebugEnabled())
+            LOG.debug("Stats: {} DurationMs {}", client.getStats(), client.getDurationMs());
         int rssi = client.getStats().getRssi();
         metricDetails.setRssi(rssi);
         metricDetails.setRxBytes(client.getStats().getRxBytes());
         metricDetails.setTxBytes(client.getStats().getTxBytes());
+
+        // Frames : data chunk sent over data-link layer (Ethernet, ATM)
+        // Packets : data chunk sent over IP layer.
+        // in Wifi, these are the same size, so number of packets is equal to
+        // number of frames
         metricDetails.setTotalTxPackets(client.getStats().getTxFrames());
         metricDetails.setTotalRxPackets(client.getStats().getRxFrames());
         metricDetails.setTxDataFrames((int) client.getStats().getTxFrames());
         metricDetails.setRxDataFrames((int) client.getStats().getRxFrames());
-        // values reported in Kbps, convert to Mbps
-        metricDetails.setRxMbps((float) (client.getStats().getRxRate() / 1000));
-        metricDetails.setTxMbps((float) (client.getStats().getTxRate() / 1000));
+
+        metricDetails.setRxRateKbps((long) client.getStats().getRxRate());
+        metricDetails.setTxRateKbps((long) client.getStats().getTxRate());
+        if (LOG.isDebugEnabled())
+            LOG.debug("RxRateKbps {} TxRateKbps {}", metricDetails.getRxRateKbps(), metricDetails.getTxRateKbps());
+
         // Throughput, do rate / duration
-        if (client.getDurationMs() > 0) {
-            metricDetails.setRxRateKbps((long) client.getStats().getRxRate() / client.getDurationMs());
-            metricDetails.setTxRateKbps((long) client.getStats().getTxRate() / client.getDurationMs());
+        if (client.getDurationMs() > 1000) {
+            int durationSec = client.getDurationMs() / 1000;
+            // 1 Mbit = 125000 B
+
+            float rxBytesFv = Long.valueOf(client.getStats().getRxBytes()).floatValue();
+            float rxBytesToMb = rxBytesFv / 125000F;
+            float txBytesFv = Long.valueOf(client.getStats().getRxBytes()).floatValue();
+            float txBytesToMb = txBytesFv / 125000F;
+
+            if (LOG.isDebugEnabled())
+                LOG.debug("rxBytesToMb {} txBytesToMb {} ", rxBytesToMb, txBytesToMb);
+
+            metricDetails.setRxMbps(rxBytesToMb / durationSec);
+            metricDetails.setTxMbps(txBytesToMb / durationSec);
+            if (LOG.isDebugEnabled())
+                LOG.debug("RxMbps {} TxMbps {} ", metricDetails.getRxMbps(), metricDetails.getTxMbps());
+
         } else {
             LOG.info("Cannot calculate tx/rx throughput for Client {} based on duration of {} Ms",
                     client.getMacAddress(), client.getDurationMs());
@@ -2121,8 +2146,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
                         if (client.hasConnected() && client.getConnected() && client.hasMacAddress()) {
                             // update metrics for connected client
-                            ClientSession session = handleClientSessionMetricsUpdate(customerId, equipmentId, locationId, radioType,
-                                    clientReport.getTimestampMs(), client);
+                            ClientSession session = handleClientSessionMetricsUpdate(customerId, equipmentId,
+                                    locationId, radioType, clientReport.getTimestampMs(), client);
                             if (session != null) {
                                 numConnectedClients += 1;
                             }
