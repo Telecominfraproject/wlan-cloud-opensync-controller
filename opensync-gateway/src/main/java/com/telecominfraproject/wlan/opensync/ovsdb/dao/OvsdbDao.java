@@ -3227,7 +3227,7 @@ public class OvsdbDao {
                     }
 
                     configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(), ssidBroadcast, security, freqBand,
-                            ssidConfig.getVlanId(), rrmEnabled, enable80211r, mobilityDomain, enable80211v,
+                            ssidConfig.getVlanId() != null ? ssidConfig.getVlanId() : 1, rrmEnabled, enable80211r, mobilityDomain, enable80211v,
                             enable80211k, minHwMode, enabled, keyRefresh, uapsdEnabled, apBridge,
                             ssidConfig.getForwardMode(), gateway, inet, dns, ipAssignScheme, macBlockList,
                             rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit, rtsCtsThreshold,
