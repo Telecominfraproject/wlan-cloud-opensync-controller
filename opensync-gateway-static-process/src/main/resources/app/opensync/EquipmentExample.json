@@ -141,7 +141,6 @@
         "radioType": "is2dot4GHz",
         "radioAdminState": "enabled",
         "fragmentationThresholdBytes": 2346,
-        "wmmState": "enabled",
         "uapsdState": "enabled",
         "stationIsolation": "disabled",
         "managementRate": {
@@ -167,7 +166,6 @@
         "radioType": "is5GHzU",
         "radioAdminState": "enabled",
         "fragmentationThresholdBytes": 2346,
-        "wmmState": "enabled",
         "uapsdState": "enabled",
         "stationIsolation": "disabled",
         "managementRate": {
@@ -193,7 +191,6 @@
         "radioType": "is5GHzL",
         "radioAdminState": "enabled",
         "fragmentationThresholdBytes": 2346,
-        "wmmState": "enabled",
         "uapsdState": "enabled",
         "stationIsolation": "disabled",
         "managementRate": {
