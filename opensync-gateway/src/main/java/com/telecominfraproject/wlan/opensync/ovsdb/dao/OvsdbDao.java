@@ -1733,7 +1733,7 @@ public class OvsdbDao {
                     operations.clear();
                     for (Row row : ((SelectResult) result[0]).getRows()) {
                         String ifName = row.getStringColumn("if_name");
-                        if (!greTunnelName.equals(ifName)) {
+                        if (greTunnelName != null && !greTunnelName.equals(ifName)) {
                             List<Condition> deleteCondition = new ArrayList<>();
                             deleteCondition.add(new Condition("if_name", Function.EQUALS, new Atom<>(ifName)));
                             operations.add(new Delete(wifiInetConfigDbTable, deleteCondition));
@@ -3227,9 +3227,9 @@ public class OvsdbDao {
                     }
 
                     configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(), ssidBroadcast, security, freqBand,
-                            ssidConfig.getVlanId() != null ? ssidConfig.getVlanId() : 1, rrmEnabled, enable80211r, mobilityDomain, enable80211v,
-                            enable80211k, minHwMode, enabled, keyRefresh, uapsdEnabled, apBridge,
-                            ssidConfig.getForwardMode(), gateway, inet, dns, ipAssignScheme, macBlockList,
+                            ssidConfig.getVlanId() != null ? ssidConfig.getVlanId() : 1, rrmEnabled, enable80211r,
+                            mobilityDomain, enable80211v, enable80211k, minHwMode, enabled, keyRefresh, uapsdEnabled,
+                            apBridge, ssidConfig.getForwardMode(), gateway, inet, dns, ipAssignScheme, macBlockList,
                             rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit, rtsCtsThreshold,
                             fragThresholdBytes, dtimPeriod, captiveMap, walledGardenAllowlist, bonjourServiceMap,
                             isUpdate);
@@ -3439,7 +3439,8 @@ public class OvsdbDao {
             RadiusProfile radiusProfileDetails = ((RadiusProfile) profileRadius.getDetails());
             RadiusServiceRegion radiusServiceRegion = radiusProfileDetails.findServiceRegion(region);
             if (radiusServiceRegion != null) {
-                radiusServerList = radiusServiceRegion.findServerConfiguration(ssidConfig.getRadiusAccountingServiceName());
+                radiusServerList = radiusServiceRegion
+                        .findServerConfiguration(ssidConfig.getRadiusAccountingServiceName());
                 if (radiusServerList != null && radiusServerList.size() > 0) {
                     RadiusServer rServer = radiusServerList.get(0);
                     if (rServer != null) {
@@ -3720,7 +3721,7 @@ public class OvsdbDao {
 
                                 StringBuffer roamingOiOctets = new StringBuffer();
                                 providerProfile.getRoamingOi().stream().forEach(o -> {
-                                    roamingOiOctets.append(Byte.toString(o));
+                                    roamingOiOctets.append(Integer.toHexString(Byte.toUnsignedInt(o)));
                                 });
                                 roamingOis.add(new Atom<>(roamingOiOctets.toString()));
                                 osuProvidersUuids.add(hotspot2OsuProviders.uuid);
