@@ -141,12 +141,18 @@ public class OvsdbDao {
 
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.listenPort:6640}")
     private int ovsdbListenPort;
+    
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.externalPort:6640}")
+    private int ovsdbExternalPort;
 
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.mqttBroker.address.external:testportal.123wlan.com}")
     private String mqttBrokerAddress;
 
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.mqttBroker.listenPort:1883}")
     private int mqttBrokerListenPort;
+    
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.mqttBroker.externalPort:1883}")
+    private int mqttBrokerExternalPort;
 
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.timeoutSec:30}")
     private int ovsdbTimeoutSec;
@@ -565,7 +571,7 @@ public class OvsdbDao {
             String mqttClientName = OvsdbToWlanCloudTypeMappingUtility.getAlteredClientCnIfRequired(clientCn,
                     incomingConnectNodeInfo, preventCnAlteration);
             newMqttSettings.put("topics", "/ap/" + mqttClientName + "/opensync");
-            newMqttSettings.put("port", "" + mqttBrokerListenPort);
+            newMqttSettings.put("port", "" + mqttBrokerExternalPort);
             newMqttSettings.put("compress", "zlib");
             newMqttSettings.put("qos", "0");
             newMqttSettings.put("remote_log", "1");
@@ -777,7 +783,7 @@ public class OvsdbDao {
             operations.clear();
             Map<String, Value> updateColumns = new HashMap<>();
 
-            updateColumns.put("manager_addr", new Atom<>("ssl:" + managerIpAddr + ":" + ovsdbListenPort));
+            updateColumns.put("manager_addr", new Atom<>("ssl:" + managerIpAddr + ":" + ovsdbExternalPort));
 
             row = new Row(updateColumns);
             operations.add(new Update(awlanNodeDbTable, row));

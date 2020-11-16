@@ -20,6 +20,11 @@ SSC_SERVER_HOST="${SSC_SERVER}"
 ALL_IN_ONE_HOST="${INTEGRATED_SERVER}"
 FILE_STORE_DIRECTORY="${FILE_STORE_DIRECTORY_INTERNAL:=/tmp/filestore}"
 FILE_STORE_EXTERNAL_URL="${FILE_STORE_URL}"
+MQTT_BROKER_EXTERNAL_PORT="${MQTT_BROKER_EXTERNAL_PORT}"
+OVSDB_EXTERNAL_PORT="${OVSDB_EXTERNAL_PORT}"
+
+
+
 
 OVSDB_PROPS=" "
 OVSDB_PROPS+=" -Dtip.wlan.ovsdb.managerAddr=$OVSDB_MANAGER_HOST"
@@ -33,6 +38,8 @@ OVSDB_PROPS+=" -Dtip.wlan.ovsdb.configFileName=/app/opensync/config_2_ssids.json
 MQTT_PROPS=" "
 MQTT_PROPS+=" -Dtip.wlan.mqttBroker.address.internal=$MQTT_BROKER_HOST_INTERNAL"
 MQTT_PROPS+=" -Dtip.wlan.mqttBroker.address.external=$MQTT_BROKER_HOST_EXTERNAL"
+MQTT_PROPS+=" -Dtip.wlan.ovsdb.externalPort=$OVSDB_EXTERNAL_PORT"
+MQTT_PROPS+=" -Dtip.wlan.mqttBroker.externalPort=$MQTT_BROKER_EXTERNAL_PORT"
 MQTT_PROPS+=" -Dtip.wlan.mqttBroker.listenPort=1883"
 
 LOGBACK_CONFIG_FILE="${LOGBACK_CONFIG_FILE:=/app/opensync/logback.xml}"
