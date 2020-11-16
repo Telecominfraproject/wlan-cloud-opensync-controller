@@ -3721,7 +3721,7 @@ public class OvsdbDao {
 
                                 StringBuffer roamingOiOctets = new StringBuffer();
                                 providerProfile.getRoamingOi().stream().forEach(o -> {
-                                    roamingOiOctets.append(Integer.toHexString(Byte.toUnsignedInt(o)));
+                                    roamingOiOctets.append(Byte.toString(o));
                                 });
                                 roamingOis.add(new Atom<>(roamingOiOctets.toString()));
                                 osuProvidersUuids.add(hotspot2OsuProviders.uuid);
