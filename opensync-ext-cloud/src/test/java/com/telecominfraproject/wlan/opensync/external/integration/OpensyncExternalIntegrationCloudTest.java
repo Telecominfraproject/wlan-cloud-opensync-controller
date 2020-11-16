@@ -697,7 +697,7 @@ public class OpensyncExternalIntegrationCloudTest {
         protocolStatus.setCustomerId(2);
         protocolStatus.setEquipmentId(1L);
         EquipmentProtocolStatusData protocolStatusData = new EquipmentProtocolStatusData();
-        protocolStatusData.setReportedCC(CountryCode.ca);
+        protocolStatusData.setReportedCC(CountryCode.CA);
         protocolStatus.setDetails(protocolStatusData);
         protocolStatus.setStatusDataType(StatusDataType.PROTOCOL);
 

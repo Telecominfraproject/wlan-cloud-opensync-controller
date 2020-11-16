@@ -490,7 +490,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             protocolStatusData.setCloudCfgDataVersion(42L);
             protocolStatusData.setReportedCfgDataVersion(42L);
             protocolStatusData.setCountryCode("CA");
-            protocolStatusData.setReportedCC(CountryCode.ca);
+            protocolStatusData.setReportedCC(CountryCode.CA);
             protocolStatusData.setReportedHwVersion(connectNodeInfo.platformVersion);
             if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY)) {
                 protocolStatusData.setReportedSwVersion(
@@ -1132,8 +1132,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 protocolStatusData = (EquipmentProtocolStatusData) protocolStatus.getDetails();
                 if (!protocolStatusData.getReportedCC()
-                        .equals(CountryCode.valueOf(radioState.getCountry().toLowerCase()))) {
-                    protocolStatusData.setReportedCC(CountryCode.valueOf(radioState.getCountry().toLowerCase()));
+                        .equals(CountryCode.getByName((radioState.getCountry())))) {
+                    protocolStatusData.setReportedCC(CountryCode.getByName((radioState.getCountry())));
                     protocolStatus.setDetails(protocolStatusData);
 
                 } else {
