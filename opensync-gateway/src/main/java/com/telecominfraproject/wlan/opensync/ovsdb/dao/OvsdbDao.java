@@ -66,10 +66,10 @@ import com.telecominfraproject.wlan.profile.bonjour.models.BonjourGatewayProfile
 import com.telecominfraproject.wlan.profile.bonjour.models.BonjourServiceSet;
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalAuthenticationType;
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalConfiguration;
-import com.telecominfraproject.wlan.profile.metrics.ServiceMetricsChannelUtilizationSurveyType;
 import com.telecominfraproject.wlan.profile.metrics.ServiceMetricConfigParameters;
 import com.telecominfraproject.wlan.profile.metrics.ServiceMetricRadioConfigParameters;
 import com.telecominfraproject.wlan.profile.metrics.ServiceMetricSurveyConfigParameters;
+import com.telecominfraproject.wlan.profile.metrics.ServiceMetricsChannelUtilizationSurveyType;
 import com.telecominfraproject.wlan.profile.metrics.ServiceMetricsCollectionConfigProfile;
 import com.telecominfraproject.wlan.profile.metrics.ServiceMetricsStatsReportFormat;
 import com.telecominfraproject.wlan.profile.models.Profile;
@@ -87,8 +87,8 @@ import com.telecominfraproject.wlan.profile.passpoint.models.provider.PasspointN
 import com.telecominfraproject.wlan.profile.passpoint.models.provider.PasspointNaiRealmEapCredType;
 import com.telecominfraproject.wlan.profile.passpoint.models.provider.PasspointOsuIcon;
 import com.telecominfraproject.wlan.profile.passpoint.models.provider.PasspointOsuProviderProfile;
-import com.telecominfraproject.wlan.profile.passpoint.models.venue.PasspointVenueProfile;
 import com.telecominfraproject.wlan.profile.passpoint.models.venue.PasspointVenueName;
+import com.telecominfraproject.wlan.profile.passpoint.models.venue.PasspointVenueProfile;
 import com.telecominfraproject.wlan.profile.passpoint.models.venue.ProfileVenueTypeAssignment;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusProfile;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusServer;
@@ -103,15 +103,12 @@ import com.vmware.ovsdb.protocol.methods.TableUpdate;
 import com.vmware.ovsdb.protocol.methods.TableUpdates;
 import com.vmware.ovsdb.protocol.operation.Delete;
 import com.vmware.ovsdb.protocol.operation.Insert;
-import com.vmware.ovsdb.protocol.operation.Mutate;
 import com.vmware.ovsdb.protocol.operation.Operation;
 import com.vmware.ovsdb.protocol.operation.Select;
 import com.vmware.ovsdb.protocol.operation.Update;
 import com.vmware.ovsdb.protocol.operation.notation.Atom;
 import com.vmware.ovsdb.protocol.operation.notation.Condition;
 import com.vmware.ovsdb.protocol.operation.notation.Function;
-import com.vmware.ovsdb.protocol.operation.notation.Mutation;
-import com.vmware.ovsdb.protocol.operation.notation.Mutator;
 import com.vmware.ovsdb.protocol.operation.notation.Row;
 import com.vmware.ovsdb.protocol.operation.notation.Uuid;
 import com.vmware.ovsdb.protocol.operation.notation.Value;
@@ -125,6 +122,8 @@ import com.vmware.ovsdb.service.OvsdbClient;
 
 @Component
 public class OvsdbDao {
+
+    private static final int MAX_VIF_PER_FREQ = 8;
 
     private static final Logger LOG = LoggerFactory.getLogger(OvsdbDao.class);
 
@@ -381,20 +380,20 @@ public class OvsdbDao {
 
                     String radioFrequencyBand = getSingleValueFromSet(row, "freq_band");
                     switch (radioFrequencyBand) {
-                        case "2.4G":
-                            radios.add(RadioType.is2dot4GHz);
-                            break;
-                        case "5G":
-                            radios.add(RadioType.is5GHz);
-                            break;
-                        case "5GL":
-                            radios.add(RadioType.is5GHzL);
-                            break;
-                        case "5GU":
-                            radios.add(RadioType.is5GHzU);
-                            break;
-                        default:
-                            LOG.debug("Unsupported or unrecognized radio band type {}", radioFrequencyBand);
+                    case "2.4G":
+                        radios.add(RadioType.is2dot4GHz);
+                        break;
+                    case "5G":
+                        radios.add(RadioType.is5GHz);
+                        break;
+                    case "5GL":
+                        radios.add(RadioType.is5GHzL);
+                        break;
+                    case "5GU":
+                        radios.add(RadioType.is5GHzU);
+                        break;
+                    default:
+                        LOG.debug("Unsupported or unrecognized radio band type {}", radioFrequencyBand);
 
                     }
 
@@ -1758,79 +1757,85 @@ public class OvsdbDao {
             throw new RuntimeException(e);
         }
 
-
     }
 
     public void removeAllSsids(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
-        Map<String, WifiVifConfigInfo> currentWifiVifConfigInfo = getProvisionedWifiVifConfigs(ovsdbClient);
-        Map<String, WifiRadioConfigInfo> currentWifiRadioConfigInfo = getProvisionedWifiRadioConfigs(ovsdbClient);
-        List<WifiVifConfigInfo> vifConfigsToDelete = new ArrayList<>();
 
-        // This is essentially a cleanup call, if there are multiple same ssid's
-        // under a single radio we will remove them, and re-create them only
-        // according to the profiles
-        Map<String, WifiVifConfigInfo> vifConfigsBySsid = new HashMap<>();
-        currentWifiVifConfigInfo.entrySet().stream().forEach(e -> {
-            if (vifConfigsBySsid.containsKey(e.getValue().ssid)) {
-                vifConfigsToDelete.add(e.getValue());
-                vifConfigsToDelete.add(vifConfigsBySsid.get(e.getValue().ssid));
-            } else {
-                vifConfigsBySsid.put(e.getKey(), e.getValue());
+        final Map<String, WifiVifConfigInfo> currentWifiVifConfigInfo = getProvisionedWifiVifConfigs(ovsdbClient);
+        final Map<String, WifiRadioConfigInfo> currentWifiRadioConfigInfo = getProvisionedWifiRadioConfigs(ovsdbClient);
+        Map<RadioType, String> ifNameByFreqBand = new HashMap<>();
+        Set<String> keysToKeep = new HashSet<>();
+        Set<Integer> vlansToKeep = new HashSet<>();
+        List<String> vifConfigsToDelete = new ArrayList<>();
+        List<Operation> operations = new ArrayList<>();
+
+        for (WifiRadioConfigInfo radioConfig : currentWifiRadioConfigInfo.values()) {
+
+            RadioType key = OvsdbToWlanCloudTypeMappingUtility.getRadioTypeForOvsdbRadioFreqBand(radioConfig.freqBand);
+            String ifName = null;
+
+            if (radioConfig.ifName.equals(radio0)) {
+                ifName = defaultRadio0;
+            } else if (radioConfig.ifName.equals(radio1)) {
+                ifName = defaultRadio1;
+            } else if (radioConfig.ifName.equals(radio2)) {
+                ifName = defaultRadio2;
             }
-        });
-
-        LOG.debug("VifConfigs by SSID {}", vifConfigsBySsid);
-        LOG.debug("vifConfigsToDelete {}", vifConfigsToDelete);
-        // Now add any VIFs we have configurations for that are not in the new
-        // Profiles to the delete list
-        for (Entry<String, WifiVifConfigInfo> vifConfigInfo : currentWifiVifConfigInfo.entrySet()) {
-            LOG.debug("Checking {}", vifConfigInfo.getKey());
-            WifiRadioConfigInfo radioConfigInfo = null;
-            if (vifConfigInfo.getValue().ifName.startsWith(defaultRadio0)) {
-                radioConfigInfo = currentWifiRadioConfigInfo.get(radio0);
-            } else if (vifConfigInfo.getValue().ifName.startsWith(defaultRadio1)) {
-                radioConfigInfo = currentWifiRadioConfigInfo.get(radio1);
-            } else if (vifConfigInfo.getValue().ifName.startsWith(defaultRadio2)) {
-                radioConfigInfo = currentWifiRadioConfigInfo.get(radio2);
+            if (ifName == null) {
+                throw new RuntimeException(
+                        "Invalid radio if_name " + radioConfig.ifName + " reported for " + radioConfig.freqBand);
             }
-            boolean delete = true;
-            if (radioConfigInfo != null) {
-                final String freqBand = radioConfigInfo.freqBand;
-                if (radioConfigInfo.vifConfigUuids.contains(vifConfigInfo.getValue().uuid)) {
-                    if (opensyncAPConfig.getSsidProfile().stream().anyMatch(new Predicate<Profile>() {
 
-                        @Override
-                        public boolean test(Profile t) {
-                            SsidConfiguration ssidConfig = (SsidConfiguration) t.getDetails();
-                            return (ssidConfig.getSsid().equals(vifConfigInfo.getValue().ssid))
-                                    && (ssidConfig.getAppliedRadios().contains(OvsdbToWlanCloudTypeMappingUtility
-                                            .getRadioTypeForOvsdbRadioFreqBand(freqBand)));
-                        }
-
-                    })) {
-                        delete = false;
-                        LOG.debug("Do not delete vif {}", vifConfigInfo.getValue());
-                    }
-
-                }
-            }
-            if (delete) {
-                vifConfigsToDelete.add(vifConfigInfo.getValue());
-            }
+            ifNameByFreqBand.put(key, ifName);
 
         }
 
-        LOG.debug("The following VIFs should be deleted {}", vifConfigsToDelete);
+        opensyncAPConfig.getSsidProfile().stream().forEach(p -> {
+            SsidConfiguration ssidConfig = (SsidConfiguration) p.getDetails();
+            String ssid = ssidConfig.getSsid();
+            Set<RadioType> appliedRadios = ssidConfig.getAppliedRadios();
 
+            if (ssidConfig.getVlanId() != null && ssidConfig.getVlanId() > 1) {
+                vlansToKeep.add(ssidConfig.getVlanId());
+            }
 
-        List<Operation> operations = new ArrayList<>();
+            keysToKeep.addAll(currentWifiVifConfigInfo.keySet().stream().filter(new Predicate<String>() {
+                @Override
+                public boolean test(String t) {
 
-        for (WifiVifConfigInfo vifConfigInfo : vifConfigsToDelete) {
+                    return t.contains(ssid);
+
+                }
+
+            }).filter(new Predicate<String>() {
+                @Override
+                public boolean test(String t) {
+
+                    for (RadioType radioType : appliedRadios) {
+                        if (t.contains(ifNameByFreqBand.get(radioType))) {
+                            return true;
+                        }
+                    }
+
+                    return false;
+
+                }
+            }).collect(Collectors.toSet()));
+        });
+
+        for (String vifConfigKey : currentWifiVifConfigInfo.keySet()) {
+            if (!keysToKeep.contains(vifConfigKey)) {
+                vifConfigsToDelete.add(currentWifiVifConfigInfo.get(vifConfigKey).ifName);
+            }
+        }
+
+        for (String interfaceName : vifConfigsToDelete) {
             List<Condition> conditions = new ArrayList<>();
-            conditions.add(new Condition("ssid", Function.EQUALS, new Atom<>(vifConfigInfo.ssid)));
-            conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(vifConfigInfo.ifName)));
-
+            conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(interfaceName)));
             operations.add(new Delete(wifiVifConfigDbTable, conditions));
+            operations.add(new Delete(wifiInetConfigDbTable, conditions));
+            LOG.info("Vif {} to be deleted from {} and {} ovsdb tables", interfaceName, wifiVifConfigDbTable,
+                    wifiInetConfigDbTable);
         }
 
         try {
@@ -1838,36 +1843,23 @@ public class OvsdbDao {
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
             if (LOG.isDebugEnabled()) {
-                LOG.debug("Removed SSIDs no longer in use from {}:", wifiVifConfigDbTable);
+                LOG.info("Removed VIF and Inet Configurations no longer in use from {} and {}", wifiVifConfigDbTable,
+                        wifiInetConfigDbTable);
 
                 for (OperationResult res : result) {
-                    LOG.debug("Op Result {}", res);
+                    LOG.info("Op Result {}", res);
                 }
             }
 
-            // get the new list of configured VIFs (these are what remain after
-            // the deletes)
-            // we want to see if any of these VIFs has a Vlan that we want to
-            // save if that Vlan was also used by other VIFs that have been
-            // deleted
-            currentWifiVifConfigInfo = getProvisionedWifiVifConfigs(ovsdbClient);
-            Set<Integer> configuredVlanIds = new HashSet<>();
-            for (WifiVifConfigInfo vifConfig : currentWifiVifConfigInfo.values()) {
-                if (vifConfig.vlanId > 1)
-                    configuredVlanIds.add(vifConfig.vlanId);
-            }
             operations = new ArrayList<>();
             // Add if_names from the vifs to delete, and from any vlans not in
             // the configuredVlanId list above
-            for (WifiVifConfigInfo vifConfigInfo : vifConfigsToDelete) {
-                List<Condition> conditions = new ArrayList<>();
-                conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(vifConfigInfo.ifName)));
-                operations.add(new Delete(wifiInetConfigDbTable, conditions));
-                // remove any vlans that are no longer used by other vif configs
-                if (vifConfigInfo.vlanId > 1 && !configuredVlanIds.contains(vifConfigInfo.vlanId)) {
-                    conditions = new ArrayList<>();
-                    conditions.add(new Condition("vlan_id", Function.EQUALS, new Atom<>(vifConfigInfo.vlanId)));
+            for (WifiInetConfigInfo inetConfigInfo : getProvisionedWifiInetConfigs(ovsdbClient).values()) {
+                if (inetConfigInfo.vlanId > 1 && !vlansToKeep.contains(inetConfigInfo.vlanId)) {
+                    List<Condition> conditions = new ArrayList<>();
+                    conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(inetConfigInfo.ifName)));
                     operations.add(new Delete(wifiInetConfigDbTable, conditions));
+                    LOG.info("Vlan {} to be deleted from {} ovsdb table", inetConfigInfo.ifName, wifiInetConfigDbTable);
                 }
             }
 
@@ -1875,19 +1867,17 @@ public class OvsdbDao {
             result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
             if (LOG.isDebugEnabled()) {
-                LOG.debug("Removed existing InetConfigs from {}:", wifiInetConfigDbTable);
+                LOG.info("Removed vlan interfaces no longer in use from {} ", wifiInetConfigDbTable);
 
                 for (OperationResult res : result) {
-                    LOG.debug("Op Result {}", res);
+                    LOG.info("Op Result {}", res);
                 }
             }
-
 
         } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
             LOG.error("Error in removeAllSsids", e);
             throw new RuntimeException(e);
         }
-
 
     }
 
@@ -1953,6 +1943,37 @@ public class OvsdbDao {
 
     }
 
+    void removeInvalidInterfaceConfigurations(OvsdbClient ovsdbClient, List<String> invalidInterfaces) {
+
+        try {
+            List<Operation> operations = new ArrayList<>();
+
+            operations = new ArrayList<>();
+
+            for (String invalidInterface : invalidInterfaces) {
+                List<Condition> conditions = new ArrayList<>();
+                conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(invalidInterface)));
+                operations.add(new Delete(wifiInetConfigDbTable, conditions));
+                operations.add(new Delete(wifiVifConfigDbTable, conditions));
+            }
+
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Removed all existing vif interfaces configs from {}:", wifiInetConfigDbTable);
+
+                for (OperationResult res : result) {
+                    LOG.debug("Op Result {}", res);
+                }
+            }
+        } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
+            LOG.error("Error removing invalid interfaces", e);
+            throw new RuntimeException(e);
+        }
+
+    }
+
     public void removeAllPasspointConfigs(OvsdbClient ovsdbClient) {
         removeAllHotspot20Config(ovsdbClient);
         removeAllHotspot20OsuProviders(ovsdbClient);
@@ -1979,23 +2000,23 @@ public class OvsdbDao {
             ChannelBandwidth bandwidth = rfElementConfig.getChannelBandwidth();
             String ht_mode = null;
             switch (bandwidth) {
-                case is20MHz:
-                    ht_mode = "HT20";
-                    break;
-                case is40MHz:
-                    ht_mode = "HT40";
-                    break;
-                case is80MHz:
-                    ht_mode = "HT80";
-                    break;
-                case is160MHz:
-                    ht_mode = "HT160";
-                    break;
-                case auto:
-                    ht_mode = "0";
-                    break;
-                default:
-                    ht_mode = null;
+            case is20MHz:
+                ht_mode = "HT20";
+                break;
+            case is40MHz:
+                ht_mode = "HT40";
+                break;
+            case is80MHz:
+                ht_mode = "HT80";
+                break;
+            case is160MHz:
+                ht_mode = "HT160";
+                break;
+            case auto:
+                ht_mode = "0";
+                break;
+            default:
+                ht_mode = null;
             }
             rfElementConfig.getAutoChannelSelection();
 
@@ -2012,75 +2033,75 @@ public class OvsdbDao {
 
             String hwMode = null;
             switch (rfElementConfig.getRadioMode()) {
-                case modeA:
-                    hwMode = "11a";
-                    break;
-                case modeAB:
-                    hwMode = "11ab";
-                    break;
-                case modeAC:
-                    hwMode = "11ac";
-                    break;
-                case modeB:
-                    hwMode = "11b";
-                    break;
-                case modeG:
-                    hwMode = "11g";
-                    break;
-                case modeX:
-                    hwMode = "11ax";
-                    break;
-                case modeN:
-                    hwMode = "11n";
-                    break;
-                default:
+            case modeA:
+                hwMode = "11a";
+                break;
+            case modeAB:
+                hwMode = "11ab";
+                break;
+            case modeAC:
+                hwMode = "11ac";
+                break;
+            case modeB:
+                hwMode = "11b";
+                break;
+            case modeG:
+                hwMode = "11g";
+                break;
+            case modeX:
+                hwMode = "11ax";
+                break;
+            case modeN:
+                hwMode = "11n";
+                break;
+            default:
             }
             String freqBand = null;
             switch (radioType) {
-                case is2dot4GHz:
-                    freqBand = "2.4G";
-                    break;
-                case is5GHz:
-                    // 802.11h dfs (Dynamic Frequency Selection) aka military
-                    // and
-                    // weather radar
-                    // avoidance protocol
-                    // Must not be disabled (by law)
-                    // NA for 2.4GHz
-                    hwConfig.put("dfs_enable", "1");
-                    hwConfig.put("dfs_ignorecac", "0");
-                    hwConfig.put("dfs_usenol", "1");
-                    freqBand = "5G";
+            case is2dot4GHz:
+                freqBand = "2.4G";
+                break;
+            case is5GHz:
+                // 802.11h dfs (Dynamic Frequency Selection) aka military
+                // and
+                // weather radar
+                // avoidance protocol
+                // Must not be disabled (by law)
+                // NA for 2.4GHz
+                hwConfig.put("dfs_enable", "1");
+                hwConfig.put("dfs_ignorecac", "0");
+                hwConfig.put("dfs_usenol", "1");
+                freqBand = "5G";
 
-                    break;
-                case is5GHzL:
-                    // 802.11h dfs (Dynamic Frequency Selection) aka military
-                    // and
-                    // weather radar
-                    // avoidance protocol
-                    // Must not be disabled (by law)
-                    // NA for 2.4GHz
-                    hwConfig.put("dfs_enable", "1");
-                    hwConfig.put("dfs_ignorecac", "0");
-                    hwConfig.put("dfs_usenol", "1");
-                    freqBand = "5GL";
+                break;
+            case is5GHzL:
+                // 802.11h dfs (Dynamic Frequency Selection) aka military
+                // and
+                // weather radar
+                // avoidance protocol
+                // Must not be disabled (by law)
+                // NA for 2.4GHz
+                hwConfig.put("dfs_enable", "1");
+                hwConfig.put("dfs_ignorecac", "0");
+                hwConfig.put("dfs_usenol", "1");
+                freqBand = "5GL";
 
-                    break;
-                case is5GHzU:
-                    // 802.11h dfs (Dynamic Frequency Selection) aka military
-                    // and
-                    // weather radar
-                    // avoidance protocol
-                    // Must not be disabled (by law)
-                    // NA for 2.4GHz
-                    hwConfig.put("dfs_enable", "1");
-                    hwConfig.put("dfs_ignorecac", "0");
-                    hwConfig.put("dfs_usenol", "1");
-                    freqBand = "5GU";
+                break;
+            case is5GHzU:
+                // 802.11h dfs (Dynamic Frequency Selection) aka military
+                // and
+                // weather radar
+                // avoidance protocol
+                // Must not be disabled (by law)
+                // NA for 2.4GHz
+                hwConfig.put("dfs_enable", "1");
+                hwConfig.put("dfs_ignorecac", "0");
+                hwConfig.put("dfs_usenol", "1");
+                freqBand = "5GU";
 
-                    break;
-                default: // don't know this interface
-                    continue;
+                break;
+            default: // don't know this interface
+                continue;
 
             }
 
@@ -2203,20 +2224,20 @@ public class OvsdbDao {
                                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                             String frequencyBand = row.getStringColumn("freq_band");
                             switch (frequencyBand) {
-                                case "2.4G":
-                                    tableState.setFreqBand(RadioType.is2dot4GHz);
-                                    break;
-                                case "5G":
-                                    tableState.setFreqBand(RadioType.is5GHz);
-                                    break;
-                                case "5GL":
-                                    tableState.setFreqBand(RadioType.is5GHzL);
-                                    break;
-                                case "5GU":
-                                    tableState.setFreqBand(RadioType.is5GHzU);
-                                    break;
-                                default:
-                                    tableState.setFreqBand(RadioType.UNSUPPORTED);
+                            case "2.4G":
+                                tableState.setFreqBand(RadioType.is2dot4GHz);
+                                break;
+                            case "5G":
+                                tableState.setFreqBand(RadioType.is5GHz);
+                                break;
+                            case "5GL":
+                                tableState.setFreqBand(RadioType.is5GHzL);
+                                break;
+                            case "5GU":
+                                tableState.setFreqBand(RadioType.is5GHzU);
+                                break;
+                            default:
+                                tableState.setFreqBand(RadioType.UNSUPPORTED);
                             }
                         }
                         if ((map.get("if_name") != null) && map.get("if_name").getClass()
@@ -2787,7 +2808,6 @@ public class OvsdbDao {
             updateBlockList(updateColumns, macBlockList);
             Row row = new Row(updateColumns);
 
-
             //////
 
             if (isUpdate) {
@@ -2802,7 +2822,6 @@ public class OvsdbDao {
 
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
 
             if (isUpdate) {
                 for (OperationResult res : result) {
@@ -2822,7 +2841,6 @@ public class OvsdbDao {
                 }
                 updateColumns.clear();
                 operations.clear();
-                updateVifConfigsSetForRadio(ovsdbClient, ssid, radioFreqBand, operations, updateColumns, vifConfigUuid);
                 LOG.info("Provisioned SSID {} on interface {} / {}", ssid, vifInterfaceName, radioFreqBand);
             }
 
@@ -2888,68 +2906,6 @@ public class OvsdbDao {
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             LOG.error("Error in configureSingleSsid", e);
             throw new RuntimeException(e);
-        }
-    }
-
-    private void updateVifConfigsSetForRadio(OvsdbClient ovsdbClient, String ssid, String radioFreqBand,
-            List<Operation> operations, Map<String, Value> updateColumns, Uuid vifConfigUuid)
-            throws OvsdbClientException, InterruptedException, ExecutionException, TimeoutException {
-        // Row row;
-        // CompletableFuture<OperationResult[]> fResult;
-        // OperationResult[] result;
-        List<Condition> conditions = new ArrayList<>();
-        conditions.add(new Condition("freq_band", Function.EQUALS, new Atom<>(radioFreqBand)));
-
-        // List<String> columns = new ArrayList<>();
-        // columns.add("vif_configs");
-        // operations.add(new Select(wifiRadioConfigDbTable, conditions,
-        // columns));
-        // fResult = ovsdbClient.transact(ovsdbName, operations);
-        // result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-        //
-        // Set<Uuid> vifConfigsSet = new HashSet<>();
-        //
-        // if ((result != null) && (result.length > 0) && !((SelectResult)
-        // result[0]).getRows().isEmpty()) {
-        // row = ((SelectResult) result[0]).getRows().iterator().next();
-        // if (row != null) {
-        // vifConfigsSet = row.getSetColumn("vif_configs");
-        // if (vifConfigsSet == null) {
-        // vifConfigsSet = new HashSet<>();
-        // }
-        // }
-        // }
-        //
-        // if (vifConfigUuid != null) {
-        // vifConfigsSet.add(vifConfigUuid);
-        // }
-        //
-        // com.vmware.ovsdb.protocol.operation.notation.Set vifConfigs =
-        // com.vmware.ovsdb.protocol.operation.notation.Set
-        // .of(vifConfigsSet);
-        //
-        // updateColumns.put("vif_configs", vifConfigs);
-        //
-        // row = new Row(updateColumns);
-
-        List<Mutation> mutations = new ArrayList<>();
-        Mutation mutation = new Mutation("vif_configs", Mutator.INSERT, new Atom<>(vifConfigUuid));
-        mutations.add(mutation);
-        operations.add(new Mutate(wifiRadioConfigDbTable, conditions, mutations));
-
-        // operations.add(new Update(wifiRadioConfigDbTable, conditions, row));
-
-        LOG.debug("Sending batch of operations : {} ", operations);
-
-        CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-        OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Updated WifiRadioConfig {} for SSID {}:", radioFreqBand, ssid);
-
-            for (OperationResult res : result) {
-                LOG.debug("Op Result {}", res);
-            }
         }
     }
 
@@ -3187,42 +3143,70 @@ public class OvsdbDao {
                 boolean enabled = ssidConfig.getSsidAdminState().equals(StateSetting.enabled);
 
                 try {
-                    Map<String, WifiVifConfigInfo> provisionedVifs = getProvisionedWifiVifConfigs(ovsdbClient);
-
-                    List<String> interfaces = new ArrayList<>();
-                    interfaces.add(ifName);
-                    for (int i = 1; i <= 7; ++i) {
-                        interfaces.add(ifName + "_" + Integer.toString(i));
-                    }
-                    for (String key : provisionedVifs.keySet()) {
-                        if (key.contains(ifName)) {
-                            interfaces.remove(provisionedVifs.get(key).ifName);
-                        }
-                    }
 
                     boolean isUpdate = false;
-                    for (String key : provisionedVifs.keySet()) {
-                        if (key.contains(ifName) && key.contains(ssidConfig.getSsid())) {
-                            isUpdate = true;
-                            ifName = provisionedVifs.get(key).ifName;
-                            break;
+
+                    Map<String, WifiVifConfigInfo> provisionedVifs = getProvisionedWifiVifConfigs(ovsdbClient);
+                    final String ifPrefix = ifName;
+
+                    List<String> filteredKeyList = provisionedVifs.keySet().stream().filter(new Predicate<String>() {
+
+                        @Override
+                        public boolean test(String t) {
+                            LOG.info("Checking for Ssid {} in Key {}", ssidConfig.getSsid(), t);
+                            return t.contains(ssidConfig.getSsid());
                         }
+
+                    }).filter(new Predicate<String>() {
+                        @Override
+                        public boolean test(String t) {
+                            LOG.info("Checking for ifPrefix {} in Key {}", ifPrefix, t);
+                            return t.contains(ifPrefix);
+                        }
+                    }).collect(Collectors.toList());
+
+                    if (filteredKeyList.size() > 1) {
+                        LOG.warn(
+                                "Current configuration has multiple interfaces present on the same frequency band with the same Ssid. This is invalid, deleting these configurations and re-creating.");
+                        List<String> invalidIfNames = new ArrayList<>();
+                        for (String key : filteredKeyList) {
+                            invalidIfNames.add(provisionedVifs.get(key).ifName);
+                        }
+                        removeInvalidInterfaceConfigurations(ovsdbClient, invalidIfNames);
+                    } else if (filteredKeyList.size() == 1) {
+                        ifName = provisionedVifs.get(filteredKeyList.get(0)).ifName;
+                        isUpdate = true;
+                        LOG.info("Update pre-existing Wifi_VIF_Config for ssid {} with if_name {}",
+                                ssidConfig.getSsid(), ifName);
                     }
-
+                    
                     if (!isUpdate) {
-                        if (interfaces.isEmpty()) {
-                            // this cannot occur, log error, do not try to
-                            // provision
-                            throw new IllegalStateException("Cannot provision more than " + maxInterfacesPerRadio
-                                    + " interfaces per Wifi Radio");
-                        } else {
-                            // for a new interface, take the lowest available
-                            // interface for this radio type.
-                            Collections.sort(interfaces);
-                            LOG.debug("Available VIF Interfaces for freqBand {} sorted {}", freqBand, interfaces);
-                            ifName = interfaces.get(0);
-                            LOG.debug("Select ifName {} for new VIF on freqBand {} ", ifName, freqBand);
+                        provisionedVifs = getProvisionedWifiVifConfigs(ovsdbClient);
 
+                        List<String> interfaces = new ArrayList<>();
+                        interfaces.add(ifName);
+                        for (int i = 1; i < MAX_VIF_PER_FREQ; i++) {
+                            interfaces.add(ifName + "_" + Integer.toString(i));
+                        }
+                        for (String key : provisionedVifs.keySet()) {
+                            if (key.contains(ifName)) {
+                                String provisionedIfName = provisionedVifs.get(key).ifName;
+                                if (interfaces.remove(provisionedIfName)) {
+                                    LOG.info(
+                                            "Interface {} already in use on Radio {}, cannot be used for new Wifi_VIF_Config.",
+                                            provisionedIfName, freqBand);
+                                }
+                            }
+                        }
+                        if (interfaces.isEmpty()) {
+                            throw new RuntimeException("No more available interfaces on AP "
+                                    + opensyncApConfig.getCustomerEquipment().getName() + " for frequency band "
+                                    + freqBand);
+                        } else {
+                            // take the first available interface for this band
+                            ifName = interfaces.get(0);
+                            LOG.info("Configuring new Wifi_VIF_Config for ssid {} with if_name {}",
+                                    ssidConfig.getSsid(), ifName);
                         }
                     }
 
@@ -3419,7 +3403,6 @@ public class OvsdbDao {
     private void getRadiusAccountingConfiguration(OpensyncAPConfig opensyncApConfig, SsidConfiguration ssidConfig,
             Map<String, String> security) {
 
-
         LOG.debug("getRadiusAccountingConfiguration for ssidConfig {} from radiusProfiles {}", ssidConfig,
                 opensyncApConfig.getRadiusProfiles());
 
@@ -3558,15 +3541,15 @@ public class OvsdbDao {
 
     private String getCaptiveAuthentication(CaptivePortalAuthenticationType authentication) {
         switch (authentication) {
-            case guest:
-                return "None";
-            case username:
-                return "Captive Portal User List";
-            case radius:
-                return "RADIUS";
-            default:
-                LOG.error("Unsupported captive portal authentication {}", authentication);
-                return "None";
+        case guest:
+            return "None";
+        case username:
+            return "Captive Portal User List";
+        case radius:
+            return "RADIUS";
+        default:
+            LOG.error("Unsupported captive portal authentication {}", authentication);
+            return "None";
         }
     }
 
@@ -3677,7 +3660,8 @@ public class OvsdbDao {
 
                         }).findFirst().get();
 
-                        PasspointOperatorProfile passpointOperatorProfile = (PasspointOperatorProfile) operator.getDetails();
+                        PasspointOperatorProfile passpointOperatorProfile = (PasspointOperatorProfile) operator
+                                .getDetails();
 
                         Profile venue = hs20cfg.getHotspot20VenueSet().stream().filter(new Predicate<Profile>() {
 
@@ -3817,7 +3801,8 @@ public class OvsdbDao {
                         rowColumns.put("venue_name", venueNameSet);
                         rowColumns.put("venue_url", venueUrlSet);
 
-                        ProfileVenueTypeAssignment profileVenueTypeAssignment = passpointVenueProfile.getVenueTypeAssignment();
+                        ProfileVenueTypeAssignment profileVenueTypeAssignment = passpointVenueProfile
+                                .getVenueTypeAssignment();
                         String groupType = String.valueOf(profileVenueTypeAssignment.getVenueGroupId()) + ":"
                                 + profileVenueTypeAssignment.getVenueTypeId();
 
@@ -3918,7 +3903,8 @@ public class OvsdbDao {
                 if (hs20cfg.getHotspot20ProviderSet() != null && hs20cfg.getHotspot20ProviderSet().size() > 0) {
 
                     for (Profile provider : hs20cfg.getHotspot20ProviderSet()) {
-                        PasspointOsuProviderProfile providerProfile = (PasspointOsuProviderProfile) provider.getDetails();
+                        PasspointOsuProviderProfile providerProfile = (PasspointOsuProviderProfile) provider
+                                .getDetails();
                         Map<String, Value> rowColumns = new HashMap<>();
                         rowColumns.put("osu_nai", new Atom<>(providerProfile.getOsuNaiStandalone()));
                         // TODO: temporary check schema until AP has delivered
@@ -3990,7 +3976,8 @@ public class OvsdbDao {
         }
     }
 
-    protected void getOsuProviderMethodList(PasspointOsuProviderProfile providerProfile, Map<String, Value> rowColumns) {
+    protected void getOsuProviderMethodList(PasspointOsuProviderProfile providerProfile,
+            Map<String, Value> rowColumns) {
         Set<Atom<Integer>> methods = new HashSet<>();
         for (Integer method : providerProfile.getOsuMethodList()) {
             methods.add(new Atom<Integer>(method));
@@ -4069,9 +4056,11 @@ public class OvsdbDao {
 
                         String[] keyValue = credential.split(":");
                         String keyId = String.valueOf(PasspointNaiRealmEapAuthParam.getByName(keyValue[0]).getId());
-                        if (keyValue[0].equals(PasspointNaiRealmEapAuthParam.NAI_REALM_EAP_AUTH_NON_EAP_INNER_AUTH.getName())) {
+                        if (keyValue[0].equals(
+                                PasspointNaiRealmEapAuthParam.NAI_REALM_EAP_AUTH_NON_EAP_INNER_AUTH.getName())) {
 
-                            String valueId = String.valueOf(PasspointNaiRealmEapAuthInnerNonEap.getByName(keyValue[1]).getId());
+                            String valueId = String
+                                    .valueOf(PasspointNaiRealmEapAuthInnerNonEap.getByName(keyValue[1]).getId());
 
                             naiBuffer.append("[");
                             naiBuffer.append(keyId);
@@ -4079,11 +4068,14 @@ public class OvsdbDao {
                             naiBuffer.append(valueId);
                             naiBuffer.append("]");
 
-                        } else if (keyValue[0].equals(PasspointNaiRealmEapAuthParam.NAI_REALM_EAP_AUTH_CRED_TYPE.getName())
+                        } else if (keyValue[0]
+                                .equals(PasspointNaiRealmEapAuthParam.NAI_REALM_EAP_AUTH_CRED_TYPE.getName())
                                 || keyValue[0]
-                                        .equals(PasspointNaiRealmEapAuthParam.NAI_REALM_EAP_AUTH_TUNNELED_CRED_TYPE.getName())) {
+                                        .equals(PasspointNaiRealmEapAuthParam.NAI_REALM_EAP_AUTH_TUNNELED_CRED_TYPE
+                                                .getName())) {
 
-                            String valueId = String.valueOf(PasspointNaiRealmEapCredType.getByName(keyValue[1]).getId());
+                            String valueId = String
+                                    .valueOf(PasspointNaiRealmEapCredType.getByName(keyValue[1]).getId());
 
                             naiBuffer.append("[");
                             naiBuffer.append(keyId);
@@ -4120,7 +4112,8 @@ public class OvsdbDao {
                 if (hs20cfg.getHotspot20ProviderSet() != null && hs20cfg.getHotspot20ProviderSet().size() > 0) {
 
                     for (Profile provider : hs20cfg.getHotspot20ProviderSet()) {
-                        PasspointOsuProviderProfile providerProfile = (PasspointOsuProviderProfile) provider.getDetails();
+                        PasspointOsuProviderProfile providerProfile = (PasspointOsuProviderProfile) provider
+                                .getDetails();
                         for (PasspointOsuIcon passpointOsuIcon : providerProfile.getOsuIconList()) {
                             // ovsdbColumns = { "name", "path", "url",
                             // "lang_code", "height", "img_type", "width" };
@@ -4142,8 +4135,8 @@ public class OvsdbDao {
                                 operations.add(newHs20Config);
                             } else {
                                 List<Condition> conditions = new ArrayList<>();
-                                conditions
-                                        .add(new Condition("name", Function.EQUALS, new Atom<>(passpointOsuIcon.getIconName())));
+                                conditions.add(new Condition("name", Function.EQUALS,
+                                        new Atom<>(passpointOsuIcon.getIconName())));
                                 Update newHs20Config = new Update(hotspot20IconConfigDbTable, conditions, row);
                                 operations.add(newHs20Config);
                             }
@@ -4421,9 +4414,9 @@ public class OvsdbDao {
     }
 
     private void provisionWifiStatsConfigFromProfile(String statsType, Map<String, Set<Integer>> allowedChannels,
-            RadioType radioType, ServiceMetricsChannelUtilizationSurveyType channelType, int scanInterval, ServiceMetricsStatsReportFormat format,
-            int reportingInterval, int samplingInterval, List<Operation> operations,
-            com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer> thresholds) {
+            RadioType radioType, ServiceMetricsChannelUtilizationSurveyType channelType, int scanInterval,
+            ServiceMetricsStatsReportFormat format, int reportingInterval, int samplingInterval,
+            List<Operation> operations, com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer> thresholds) {
 
         if (channelType.equals(ServiceMetricsChannelUtilizationSurveyType.ON_CHANNEL)) {
 
