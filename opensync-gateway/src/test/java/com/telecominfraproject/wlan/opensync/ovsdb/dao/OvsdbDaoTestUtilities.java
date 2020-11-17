@@ -14,14 +14,14 @@ import com.telecominfraproject.wlan.customer.models.Customer;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
-import com.telecominfraproject.wlan.profile.passpoint.hotspot.models.Hotspot2Profile;
-import com.telecominfraproject.wlan.profile.passpoint.models.Hotspot20Duple;
-import com.telecominfraproject.wlan.profile.passpoint.models.MccMnc;
-import com.telecominfraproject.wlan.profile.passpoint.operator.models.OperatorProfile;
-import com.telecominfraproject.wlan.profile.passpoint.provider.models.Hotspot20IdProviderProfile;
-import com.telecominfraproject.wlan.profile.passpoint.provider.models.NaiRealmInformation;
-import com.telecominfraproject.wlan.profile.passpoint.provider.models.OsuIcon;
-import com.telecominfraproject.wlan.profile.passpoint.venue.models.VenueProfile;
+import com.telecominfraproject.wlan.profile.passpoint.models.PasspointDuple;
+import com.telecominfraproject.wlan.profile.passpoint.models.PasspointMccMnc;
+import com.telecominfraproject.wlan.profile.passpoint.models.PasspointProfile;
+import com.telecominfraproject.wlan.profile.passpoint.models.operator.PasspointOperatorProfile;
+import com.telecominfraproject.wlan.profile.passpoint.models.provider.PasspointNaiRealmInformation;
+import com.telecominfraproject.wlan.profile.passpoint.models.provider.PasspointOsuIcon;
+import com.telecominfraproject.wlan.profile.passpoint.models.provider.PasspointOsuProviderProfile;
+import com.telecominfraproject.wlan.profile.passpoint.models.venue.PasspointVenueProfile;
 import com.telecominfraproject.wlan.profile.rf.models.RfConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration.SecureMode;
@@ -75,22 +75,22 @@ public class OvsdbDaoTestUtilities {
         passpointHotspotConfig = new Profile();
         passpointHotspotConfig.setCustomerId(customer.getId());
         passpointHotspotConfig.setName("TipWlan-Hotspot20-Config");
-        passpointHotspotConfig.setProfileType(ProfileType.hotspot_2pt0);
+        passpointHotspotConfig.setProfileType(ProfileType.passpoint);
         Set<Long> passpointHotspotConfigChildIds = new HashSet<>();
         passpointHotspotConfigChildIds.add(passpointOperatorProfile.getId());
         passpointHotspotConfigChildIds.add(passpointVenueProfile.getId());
         passpointHotspotConfigChildIds.add(hotspot20IdProviderProfile.getId());
         passpointHotspotConfigChildIds.add(hotspot20IdProviderProfile2.getId());
         passpointHotspotConfig.setChildProfileIds(passpointHotspotConfigChildIds);
-        passpointHotspotConfig.setDetails(Hotspot2Profile.createWithDefaults());
+        passpointHotspotConfig.setDetails(PasspointProfile.createWithDefaults());
         Set<String> providerNames = new HashSet<>();
         providerNames.add(hotspot20IdProviderProfile.getName());
         providerNames.add(hotspot20IdProviderProfile2.getName());
-        ((Hotspot2Profile) passpointHotspotConfig.getDetails()).setIdProviderProfileNames(providerNames);
-        ((Hotspot2Profile) passpointHotspotConfig.getDetails())
+        ((PasspointProfile) passpointHotspotConfig.getDetails()).setIdProviderProfileNames(providerNames);
+        ((PasspointProfile) passpointHotspotConfig.getDetails())
                 .setOperatorProfileName(passpointOperatorProfile.getName());
-        ((Hotspot2Profile) passpointHotspotConfig.getDetails()).setVenueProfileName(passpointVenueProfile.getName());
-        ((Hotspot2Profile) passpointHotspotConfig.getDetails()).setOsuSsidName(profileSsidOpen.getName());
+        ((PasspointProfile) passpointHotspotConfig.getDetails()).setVenueProfileName(passpointVenueProfile.getName());
+        ((PasspointProfile) passpointHotspotConfig.getDetails()).setOsuSsidName(profileSsidOpen.getName());
         profileSsidPsk.getChildProfileIds().add(passpointHotspotConfig.getId());
         return passpointHotspotConfig;
     }
@@ -101,16 +101,16 @@ public class OvsdbDaoTestUtilities {
         hotspot20IdProviderProfile = new Profile();
         hotspot20IdProviderProfile.setCustomerId(customer.getId());
         hotspot20IdProviderProfile.setName(providerName);
-        hotspot20IdProviderProfile.setProfileType(ProfileType.id_provider);
-        MccMnc mccMnc = MccMnc.createWithDefaults();
-        mccMnc.setMcc(mcc);
-        mccMnc.setMnc(mnc);
-        mccMnc.setIso(iso);
-        mccMnc.setCountry(country);
-        mccMnc.setCountryCode(1);
-        mccMnc.setNetwork(network);
-        List<MccMnc> mccMncList = new ArrayList<>();
-        mccMncList.add(mccMnc);
+        hotspot20IdProviderProfile.setProfileType(ProfileType.passpoint_osu_id_provider);
+        PasspointMccMnc passpointMccMnc = PasspointMccMnc.createWithDefaults();
+        passpointMccMnc.setMcc(mcc);
+        passpointMccMnc.setMnc(mnc);
+        passpointMccMnc.setIso(iso);
+        passpointMccMnc.setCountry(country);
+        passpointMccMnc.setCountryCode(1);
+        passpointMccMnc.setNetwork(network);
+        List<PasspointMccMnc> mccMncList = new ArrayList<>();
+        mccMncList.add(passpointMccMnc);
         Set<String> naiRealms = new HashSet<>();
         naiRealms.add(naiRealm);
         naiRealm.split(".");
@@ -130,8 +130,8 @@ public class OvsdbDaoTestUtilities {
         passpointVenueProfile = new Profile();
         passpointVenueProfile.setCustomerId(customer.getId());
         passpointVenueProfile.setName("TipWlan-Hotspot20-Venue");
-        passpointVenueProfile.setProfileType(ProfileType.venue);
-        passpointVenueProfile.setDetails(VenueProfile.createWithDefaults());
+        passpointVenueProfile.setProfileType(ProfileType.passpoint_venue);
+        passpointVenueProfile.setDetails(PasspointVenueProfile.createWithDefaults());
         return passpointVenueProfile;
     }
 
@@ -140,8 +140,8 @@ public class OvsdbDaoTestUtilities {
         passpointOperatorProfile = new Profile();
         passpointOperatorProfile.setCustomerId(customer.getId());
         passpointOperatorProfile.setName("TipWlan-Hotspot20-Operator");
-        passpointOperatorProfile.setProfileType(ProfileType.operator);
-        passpointOperatorProfile.setDetails(OperatorProfile.createWithDefaults());
+        passpointOperatorProfile.setProfileType(ProfileType.passpoint_operator);
+        passpointOperatorProfile.setDetails(PasspointOperatorProfile.createWithDefaults());
         return passpointOperatorProfile;
     }
 
@@ -203,13 +203,13 @@ public class OvsdbDaoTestUtilities {
     }
 
     static Profile createOsuProviderProfile(Customer customer, Profile hotspot20IdProviderProfile,
-            List<MccMnc> mccMncList, Set<String> realms, String serverUri, String suffix, String domainName,
+            List<PasspointMccMnc> mccMncList, Set<String> realms, String serverUri, String suffix, String domainName,
             List<Byte> roamingOi) {
 
-        Hotspot20IdProviderProfile passpointIdProviderProfile = Hotspot20IdProviderProfile.createWithDefaults();
+        PasspointOsuProviderProfile passpointIdProviderProfile = PasspointOsuProviderProfile.createWithDefaults();
 
         passpointIdProviderProfile.setMccMncList(mccMncList);
-        OsuIcon icon1 = new OsuIcon();
+        PasspointOsuIcon icon1 = new PasspointOsuIcon();
         icon1.setIconLocale(Locale.CANADA);
         icon1.setIconWidth(32);
         icon1.setIconHeight(32);
@@ -217,7 +217,7 @@ public class OvsdbDaoTestUtilities {
         icon1.setIconName("icon32eng");
         icon1.setImageUrl("https://localhost:9096/icon32eng.png");
         icon1.setFilePath("/tmp/icon32eng.png");
-        OsuIcon icon2 = new OsuIcon();
+        PasspointOsuIcon icon2 = new PasspointOsuIcon();
         icon2.setIconLocale(Locale.CANADA_FRENCH);
         icon2.setIconWidth(32);
         icon2.setIconHeight(32);
@@ -225,7 +225,7 @@ public class OvsdbDaoTestUtilities {
         icon2.setIconName("icon32fra");
         icon2.setImageUrl("https://localhost:9096/icon32fra.png");
         icon2.setFilePath("/tmp/icon32fra.png");
-        OsuIcon icon3 = new OsuIcon();
+        PasspointOsuIcon icon3 = new PasspointOsuIcon();
         icon3.setIconLocale(Locale.US);
         icon3.setIconWidth(32);
         icon3.setIconHeight(32);
@@ -233,16 +233,16 @@ public class OvsdbDaoTestUtilities {
         icon3.setIconName("icon32usa");
         icon3.setImageUrl("https://localhost:9096/icon32usa.png");
         icon3.setFilePath("/tmp/icon32usa.png");
-        List<OsuIcon> osuIconList = new ArrayList<>();
+        List<PasspointOsuIcon> osuIconList = new ArrayList<>();
         osuIconList.add(icon1);
         osuIconList.add(icon2);
         osuIconList.add(icon3);
         passpointIdProviderProfile.setOsuIconList(osuIconList);
 
         passpointIdProviderProfile.setRoamingOi(roamingOi);
-        List<NaiRealmInformation> naiRealmList = new ArrayList<>();
+        List<PasspointNaiRealmInformation> naiRealmList = new ArrayList<>();
 
-        NaiRealmInformation naiRealmInfo = NaiRealmInformation.createWithDefaults();
+        PasspointNaiRealmInformation naiRealmInfo = PasspointNaiRealmInformation.createWithDefaults();
         naiRealmInfo.setNaiRealms(realms);
 
         naiRealmList.add(naiRealmInfo);
@@ -254,22 +254,22 @@ public class OvsdbDaoTestUtilities {
         methodList.add(1);
         methodList.add(0);
         passpointIdProviderProfile.setOsuMethodList(methodList);
-        Hotspot20Duple enOsuProvider = Hotspot20Duple.createWithDefaults();
+        PasspointDuple enOsuProvider = PasspointDuple.createWithDefaults();
         enOsuProvider.setLocale(Locale.CANADA);
         enOsuProvider.setDupleName("Example provider " + suffix);
-        Hotspot20Duple frOsuProvider = Hotspot20Duple.createWithDefaults();
+        PasspointDuple frOsuProvider = PasspointDuple.createWithDefaults();
         frOsuProvider.setLocale(Locale.CANADA_FRENCH);
         frOsuProvider.setDupleName("Exemple de fournisseur " + suffix);
-        List<Hotspot20Duple> friendlyNameList = new ArrayList<>();
+        List<PasspointDuple> friendlyNameList = new ArrayList<>();
         friendlyNameList.add(enOsuProvider);
         friendlyNameList.add(frOsuProvider);
         passpointIdProviderProfile.setOsuFriendlyName(friendlyNameList);
-        List<Hotspot20Duple> osuServiceDescription = new ArrayList<>();
-        Hotspot20Duple enService = Hotspot20Duple.createWithDefaults();
+        List<PasspointDuple> osuServiceDescription = new ArrayList<>();
+        PasspointDuple enService = PasspointDuple.createWithDefaults();
         enService.setLocale(Locale.CANADA);
         enService.setDupleName("Example services " + suffix);
         osuServiceDescription.add(enService);
-        Hotspot20Duple frService = Hotspot20Duple.createWithDefaults();
+        PasspointDuple frService = PasspointDuple.createWithDefaults();
         frService.setLocale(Locale.CANADA_FRENCH);
         frService.setDupleName("Exemples de services " + suffix);
         osuServiceDescription.add(frService);
@@ -301,7 +301,7 @@ public class OvsdbDaoTestUtilities {
         columns.put("network_auth_type", new Atom<>("00"));
         columns.put("operating_class", new Atom<>(0));
         columns.put("operator_friendly_name",
-                com.vmware.ovsdb.protocol.operation.notation.Set.of(new Atom<>("eng:Default friendly operator name"),
+                com.vmware.ovsdb.protocol.operation.notation.Set.of(new Atom<>("eng:Default friendly passpoint_operator name"),
                         new Atom<>("fra:Nom de l'opérateur convivial par défaut")));
         columns.put("operator_icons",
                 com.vmware.ovsdb.protocol.operation.notation.Set.of(
@@ -318,7 +318,7 @@ public class OvsdbDaoTestUtilities {
                 com.vmware.ovsdb.protocol.operation.notation.Set.of(new Atom<>("11223344"), new Atom<>("234433")));
         columns.put("tos", new Atom<>("https://localhost:9091/filestore/termsAndConditions"));
         columns.put("venue_group_type", new Atom<>("2:8"));
-        columns.put("venue_name", com.vmware.ovsdb.protocol.operation.notation.Set.of(new Atom<>("eng:Example venue"),
+        columns.put("venue_name", com.vmware.ovsdb.protocol.operation.notation.Set.of(new Atom<>("eng:Example passpoint_venue"),
                 new Atom<>("fra:Exemple de lieu")));
         columns.put("venue_url", com.vmware.ovsdb.protocol.operation.notation.Set
                 .of(new Atom<>("1:http://www.example.com/info-fra"), new Atom<>("2:http://www.example.com/info-eng")));

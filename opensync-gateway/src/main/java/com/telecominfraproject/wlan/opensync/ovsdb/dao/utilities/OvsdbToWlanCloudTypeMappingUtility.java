@@ -5,7 +5,7 @@ import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.core.model.equipment.SecurityType;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpDeviceType;
-import com.telecominfraproject.wlan.profile.metrics.ChannelUtilizationSurveyType;
+import com.telecominfraproject.wlan.profile.metrics.ServiceMetricsChannelUtilizationSurveyType;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.StateUpDownError;
 import com.telecominfraproject.wlan.servicemetric.models.ServiceMetricDataType;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeState;
@@ -83,7 +83,7 @@ public class OvsdbToWlanCloudTypeMappingUtility {
 
     }
 
-    public static String getOvsdbStatsSurveyTypeFromProfileSurveyType(ChannelUtilizationSurveyType surveyType) {
+    public static String getOvsdbStatsSurveyTypeFromProfileSurveyType(ServiceMetricsChannelUtilizationSurveyType surveyType) {
         switch (surveyType) {
             case FULL:
                 return "full";

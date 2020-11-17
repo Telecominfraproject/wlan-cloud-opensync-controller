@@ -66,30 +66,30 @@ import com.telecominfraproject.wlan.profile.bonjour.models.BonjourGatewayProfile
 import com.telecominfraproject.wlan.profile.bonjour.models.BonjourServiceSet;
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalAuthenticationType;
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalConfiguration;
-import com.telecominfraproject.wlan.profile.metrics.ChannelUtilizationSurveyType;
+import com.telecominfraproject.wlan.profile.metrics.ServiceMetricsChannelUtilizationSurveyType;
 import com.telecominfraproject.wlan.profile.metrics.ServiceMetricConfigParameters;
 import com.telecominfraproject.wlan.profile.metrics.ServiceMetricRadioConfigParameters;
 import com.telecominfraproject.wlan.profile.metrics.ServiceMetricSurveyConfigParameters;
 import com.telecominfraproject.wlan.profile.metrics.ServiceMetricsCollectionConfigProfile;
-import com.telecominfraproject.wlan.profile.metrics.StatsReportFormat;
+import com.telecominfraproject.wlan.profile.metrics.ServiceMetricsStatsReportFormat;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.common.ManagedFileInfo;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
-import com.telecominfraproject.wlan.profile.passpoint.hotspot.models.Hotspot2Profile;
-import com.telecominfraproject.wlan.profile.passpoint.models.Hotspot20Duple;
-import com.telecominfraproject.wlan.profile.passpoint.models.IPv4PasspointAddressType;
-import com.telecominfraproject.wlan.profile.passpoint.models.IPv6PasspointAddressType;
-import com.telecominfraproject.wlan.profile.passpoint.models.MccMnc;
-import com.telecominfraproject.wlan.profile.passpoint.operator.models.OperatorProfile;
-import com.telecominfraproject.wlan.profile.passpoint.provider.models.EapMethods;
-import com.telecominfraproject.wlan.profile.passpoint.provider.models.Hotspot20IdProviderProfile;
-import com.telecominfraproject.wlan.profile.passpoint.provider.models.NaiRealmEapAuthInnerNonEap;
-import com.telecominfraproject.wlan.profile.passpoint.provider.models.NaiRealmEapAuthParam;
-import com.telecominfraproject.wlan.profile.passpoint.provider.models.NaiRealmEapCredType;
-import com.telecominfraproject.wlan.profile.passpoint.provider.models.OsuIcon;
-import com.telecominfraproject.wlan.profile.passpoint.venue.models.VenueName;
-import com.telecominfraproject.wlan.profile.passpoint.venue.models.VenueProfile;
-import com.telecominfraproject.wlan.profile.passpoint.venue.models.VenueTypeAssignment;
+import com.telecominfraproject.wlan.profile.passpoint.models.PasspointDuple;
+import com.telecominfraproject.wlan.profile.passpoint.models.PasspointIPv4AddressType;
+import com.telecominfraproject.wlan.profile.passpoint.models.PasspointIPv6AddressType;
+import com.telecominfraproject.wlan.profile.passpoint.models.PasspointMccMnc;
+import com.telecominfraproject.wlan.profile.passpoint.models.PasspointProfile;
+import com.telecominfraproject.wlan.profile.passpoint.models.operator.PasspointOperatorProfile;
+import com.telecominfraproject.wlan.profile.passpoint.models.provider.PasspointEapMethods;
+import com.telecominfraproject.wlan.profile.passpoint.models.provider.PasspointNaiRealmEapAuthInnerNonEap;
+import com.telecominfraproject.wlan.profile.passpoint.models.provider.PasspointNaiRealmEapAuthParam;
+import com.telecominfraproject.wlan.profile.passpoint.models.provider.PasspointNaiRealmEapCredType;
+import com.telecominfraproject.wlan.profile.passpoint.models.provider.PasspointOsuIcon;
+import com.telecominfraproject.wlan.profile.passpoint.models.provider.PasspointOsuProviderProfile;
+import com.telecominfraproject.wlan.profile.passpoint.models.venue.PasspointVenueProfile;
+import com.telecominfraproject.wlan.profile.passpoint.models.venue.PasspointVenueName;
+import com.telecominfraproject.wlan.profile.passpoint.models.venue.ProfileVenueTypeAssignment;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusProfile;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusServer;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusServiceRegion;
@@ -693,7 +693,7 @@ public class OvsdbDao {
      *
      */
     public void enableNetworkProbeForSyntheticClient(OvsdbClient ovsdbClient) {
-        LOG.debug("Enable network_probe metrics for synthetic client");
+        LOG.debug("Enable network_probe service_metrics_collection_config for synthetic client");
 
         try {
             List<Operation> operations = new ArrayList<>();
@@ -3666,7 +3666,7 @@ public class OvsdbDao {
                     List<Operation> operations = new ArrayList<>();
                     for (Profile hotspotProfile : hs20cfg.getHotspot20ProfileSet()) {
 
-                        Hotspot2Profile hs2Profile = (Hotspot2Profile) hotspotProfile.getDetails();
+                        PasspointProfile hs2Profile = (PasspointProfile) hotspotProfile.getDetails();
 
                         Profile operator = hs20cfg.getHotspot20OperatorSet().stream().filter(new Predicate<Profile>() {
 
@@ -3677,7 +3677,7 @@ public class OvsdbDao {
 
                         }).findFirst().get();
 
-                        OperatorProfile operatorProfile = (OperatorProfile) operator.getDetails();
+                        PasspointOperatorProfile passpointOperatorProfile = (PasspointOperatorProfile) operator.getDetails();
 
                         Profile venue = hs20cfg.getHotspot20VenueSet().stream().filter(new Predicate<Profile>() {
 
@@ -3688,7 +3688,7 @@ public class OvsdbDao {
 
                         }).findFirst().get();
 
-                        VenueProfile venueProfile = (VenueProfile) venue.getDetails();
+                        PasspointVenueProfile passpointVenueProfile = (PasspointVenueProfile) venue.getDetails();
 
                         Map<String, Value> rowColumns = new HashMap<>();
 
@@ -3713,7 +3713,7 @@ public class OvsdbDao {
                         Set<Atom<String>> naiRealms = new HashSet<>();
                         Set<Atom<String>> roamingOis = new HashSet<>();
                         for (Profile provider : providerList) {
-                            Hotspot20IdProviderProfile providerProfile = (Hotspot20IdProviderProfile) provider
+                            PasspointOsuProviderProfile providerProfile = (PasspointOsuProviderProfile) provider
                                     .getDetails();
                             if (osuProviders.containsKey(providerProfile.getOsuServerUri())) {
                                 Hotspot20OsuProviders hotspot2OsuProviders = osuProviders
@@ -3729,8 +3729,8 @@ public class OvsdbDao {
                                 domainNames.add(new Atom<>(providerProfile.getDomainName()));
                                 getNaiRealms(providerProfile, naiRealms);
 
-                                for (MccMnc mccMnc : providerProfile.getMccMncList()) {
-                                    mccMncBuffer.append(mccMnc.getMccMncPairing());
+                                for (PasspointMccMnc passpointMccMnc : providerProfile.getMccMncList()) {
+                                    mccMncBuffer.append(passpointMccMnc.getMccMncPairing());
                                     mccMncBuffer.append(";");
                                 }
 
@@ -3773,12 +3773,12 @@ public class OvsdbDao {
                         hs2Profile.getIpAddressTypeAvailability();
                         rowColumns.put("deauth_request_timeout", new Atom<>(hs2Profile.getDeauthRequestTimeout()));
                         rowColumns.put("osen",
-                                new Atom<>(operatorProfile.isServerOnlyAuthenticatedL2EncryptionNetwork()));
+                                new Atom<>(passpointOperatorProfile.isServerOnlyAuthenticatedL2EncryptionNetwork()));
 
                         rowColumns.put("tos", new Atom<>(hs2Profile.getTermsAndConditionsFile().getApExportUrl()));
 
                         Set<Atom<String>> operatorFriendlyName = new HashSet<>();
-                        operatorProfile.getOperatorFriendlyName().stream()
+                        passpointOperatorProfile.getOperatorFriendlyName().stream()
                                 .forEach(c -> operatorFriendlyName.add(new Atom<>(c.getAsDuple())));
                         com.vmware.ovsdb.protocol.operation.notation.Set operatorFriendlyNameSet = com.vmware.ovsdb.protocol.operation.notation.Set
                                 .of(operatorFriendlyName);
@@ -3804,9 +3804,9 @@ public class OvsdbDao {
                         Set<Atom<String>> venueNames = new HashSet<>();
                         Set<Atom<String>> venueUrls = new HashSet<>();
                         int index = 1;
-                        for (VenueName venueName : venueProfile.getVenueNameSet()) {
-                            venueNames.add(new Atom<String>(venueName.getAsDuple()));
-                            String url = String.valueOf(index) + ":" + venueName.getVenueUrl();
+                        for (PasspointVenueName passpointVenueName : passpointVenueProfile.getVenueNameSet()) {
+                            venueNames.add(new Atom<String>(passpointVenueName.getAsDuple()));
+                            String url = String.valueOf(index) + ":" + passpointVenueName.getVenueUrl();
                             venueUrls.add(new Atom<String>(url));
                             index++;
                         }
@@ -3817,9 +3817,9 @@ public class OvsdbDao {
                         rowColumns.put("venue_name", venueNameSet);
                         rowColumns.put("venue_url", venueUrlSet);
 
-                        VenueTypeAssignment venueTypeAssignment = venueProfile.getVenueTypeAssignment();
-                        String groupType = String.valueOf(venueTypeAssignment.getVenueGroupId()) + ":"
-                                + venueTypeAssignment.getVenueTypeId();
+                        ProfileVenueTypeAssignment profileVenueTypeAssignment = passpointVenueProfile.getVenueTypeAssignment();
+                        String groupType = String.valueOf(profileVenueTypeAssignment.getVenueGroupId()) + ":"
+                                + profileVenueTypeAssignment.getVenueTypeId();
 
                         rowColumns.put("venue_group_type", new Atom<>(groupType));
 
@@ -3827,15 +3827,15 @@ public class OvsdbDao {
                         // # (ipv4_type & 0x3f) << 2 | (ipv6_type & 0x3) << 2
                         // 0x3f = 63 in decimal
                         // 0x3 = 3 in decimal
-                        if (IPv6PasspointAddressType.getByName(
-                                hs2Profile.getIpAddressTypeAvailability()) != IPv6PasspointAddressType.UNSUPPORTED) {
-                            int availability = IPv6PasspointAddressType
+                        if (PasspointIPv6AddressType.getByName(
+                                hs2Profile.getIpAddressTypeAvailability()) != PasspointIPv6AddressType.UNSUPPORTED) {
+                            int availability = PasspointIPv6AddressType
                                     .getByName(hs2Profile.getIpAddressTypeAvailability()).getId();
                             String hexString = Integer.toHexString((availability & 3) << 2);
                             rowColumns.put("ipaddr_type_availability", new Atom<>(hexString));
-                        } else if (IPv4PasspointAddressType.getByName(
-                                hs2Profile.getIpAddressTypeAvailability()) != IPv4PasspointAddressType.UNSUPPORTED) {
-                            int availability = IPv4PasspointAddressType
+                        } else if (PasspointIPv4AddressType.getByName(
+                                hs2Profile.getIpAddressTypeAvailability()) != PasspointIPv4AddressType.UNSUPPORTED) {
+                            int availability = PasspointIPv4AddressType
                                     .getByName(hs2Profile.getIpAddressTypeAvailability()).getId();
                             String hexString = Integer.toHexString((availability & 63) << 2);
                             rowColumns.put("ipaddr_type_availability", new Atom<>(hexString));
@@ -3918,7 +3918,7 @@ public class OvsdbDao {
                 if (hs20cfg.getHotspot20ProviderSet() != null && hs20cfg.getHotspot20ProviderSet().size() > 0) {
 
                     for (Profile provider : hs20cfg.getHotspot20ProviderSet()) {
-                        Hotspot20IdProviderProfile providerProfile = (Hotspot20IdProviderProfile) provider.getDetails();
+                        PasspointOsuProviderProfile providerProfile = (PasspointOsuProviderProfile) provider.getDetails();
                         Map<String, Value> rowColumns = new HashMap<>();
                         rowColumns.put("osu_nai", new Atom<>(providerProfile.getOsuNaiStandalone()));
                         // TODO: temporary check schema until AP has delivered
@@ -3976,10 +3976,10 @@ public class OvsdbDao {
 
     }
 
-    protected void getOsuProviderServiceDescriptions(Hotspot20IdProviderProfile providerProfile,
+    protected void getOsuProviderServiceDescriptions(PasspointOsuProviderProfile providerProfile,
             Map<String, Value> rowColumns) {
         Set<Atom<String>> serviceDescriptions = new HashSet<>();
-        for (Hotspot20Duple serviceDescription : providerProfile.getOsuServiceDescription()) {
+        for (PasspointDuple serviceDescription : providerProfile.getOsuServiceDescription()) {
             serviceDescriptions.add(new Atom<String>(serviceDescription.getAsDuple()));
         }
 
@@ -3990,7 +3990,7 @@ public class OvsdbDao {
         }
     }
 
-    protected void getOsuProviderMethodList(Hotspot20IdProviderProfile providerProfile, Map<String, Value> rowColumns) {
+    protected void getOsuProviderMethodList(PasspointOsuProviderProfile providerProfile, Map<String, Value> rowColumns) {
         Set<Atom<Integer>> methods = new HashSet<>();
         for (Integer method : providerProfile.getOsuMethodList()) {
             methods.add(new Atom<Integer>(method));
@@ -4002,10 +4002,10 @@ public class OvsdbDao {
         }
     }
 
-    protected void getOsuProviderFriendlyNames(Hotspot20IdProviderProfile providerProfile,
+    protected void getOsuProviderFriendlyNames(PasspointOsuProviderProfile providerProfile,
             Map<String, Value> rowColumns) {
         Set<Atom<String>> providerFriendlyNames = new HashSet<>();
-        for (Hotspot20Duple friendlyName : providerProfile.getOsuFriendlyName()) {
+        for (PasspointDuple friendlyName : providerProfile.getOsuFriendlyName()) {
             providerFriendlyNames.add(new Atom<String>(friendlyName.getAsDuple()));
         }
 
@@ -4016,12 +4016,12 @@ public class OvsdbDao {
         }
     }
 
-    protected void getOsuIconUuidsForOsuProvider(OvsdbClient ovsdbClient, Hotspot20IdProviderProfile providerProfile,
+    protected void getOsuIconUuidsForOsuProvider(OvsdbClient ovsdbClient, PasspointOsuProviderProfile providerProfile,
             Map<String, Value> rowColumns) {
         Map<String, Hotspot20IconConfig> osuIconsMap = getProvisionedHotspot20IconConfig(ovsdbClient);
         Set<Uuid> iconsSet = new HashSet<>();
         if (osuIconsMap.size() > 0) {
-            for (OsuIcon icon : providerProfile.getOsuIconList()) {
+            for (PasspointOsuIcon icon : providerProfile.getOsuIconList()) {
                 if (osuIconsMap.containsKey(icon.getIconName())) {
                     iconsSet.add(osuIconsMap.get(icon.getIconName()).uuid);
                 }
@@ -4035,7 +4035,7 @@ public class OvsdbDao {
         }
     }
 
-    protected void getNaiRealms(Hotspot20IdProviderProfile providerProfile, Set<Atom<String>> naiRealms) {
+    protected void getNaiRealms(PasspointOsuProviderProfile providerProfile, Set<Atom<String>> naiRealms) {
         providerProfile.getNaiRealmList().stream().forEach(c -> {
 
             StringBuffer naiBuffer = new StringBuffer();
@@ -4062,16 +4062,16 @@ public class OvsdbDao {
                 eapMap.entrySet().stream().forEach(e -> {
 
                     String eapMethodName = e.getKey();
-                    String eapMethodId = String.valueOf(EapMethods.getByName(eapMethodName).getId());
+                    String eapMethodId = String.valueOf(PasspointEapMethods.getByName(eapMethodName).getId());
                     naiBuffer.append(eapMethodId);
 
                     for (String credential : e.getValue()) {
 
                         String[] keyValue = credential.split(":");
-                        String keyId = String.valueOf(NaiRealmEapAuthParam.getByName(keyValue[0]).getId());
-                        if (keyValue[0].equals(NaiRealmEapAuthParam.NAI_REALM_EAP_AUTH_NON_EAP_INNER_AUTH.getName())) {
+                        String keyId = String.valueOf(PasspointNaiRealmEapAuthParam.getByName(keyValue[0]).getId());
+                        if (keyValue[0].equals(PasspointNaiRealmEapAuthParam.NAI_REALM_EAP_AUTH_NON_EAP_INNER_AUTH.getName())) {
 
-                            String valueId = String.valueOf(NaiRealmEapAuthInnerNonEap.getByName(keyValue[1]).getId());
+                            String valueId = String.valueOf(PasspointNaiRealmEapAuthInnerNonEap.getByName(keyValue[1]).getId());
 
                             naiBuffer.append("[");
                             naiBuffer.append(keyId);
@@ -4079,11 +4079,11 @@ public class OvsdbDao {
                             naiBuffer.append(valueId);
                             naiBuffer.append("]");
 
-                        } else if (keyValue[0].equals(NaiRealmEapAuthParam.NAI_REALM_EAP_AUTH_CRED_TYPE.getName())
+                        } else if (keyValue[0].equals(PasspointNaiRealmEapAuthParam.NAI_REALM_EAP_AUTH_CRED_TYPE.getName())
                                 || keyValue[0]
-                                        .equals(NaiRealmEapAuthParam.NAI_REALM_EAP_AUTH_TUNNELED_CRED_TYPE.getName())) {
+                                        .equals(PasspointNaiRealmEapAuthParam.NAI_REALM_EAP_AUTH_TUNNELED_CRED_TYPE.getName())) {
 
-                            String valueId = String.valueOf(NaiRealmEapCredType.getByName(keyValue[1]).getId());
+                            String valueId = String.valueOf(PasspointNaiRealmEapCredType.getByName(keyValue[1]).getId());
 
                             naiBuffer.append("[");
                             naiBuffer.append(keyId);
@@ -4120,30 +4120,30 @@ public class OvsdbDao {
                 if (hs20cfg.getHotspot20ProviderSet() != null && hs20cfg.getHotspot20ProviderSet().size() > 0) {
 
                     for (Profile provider : hs20cfg.getHotspot20ProviderSet()) {
-                        Hotspot20IdProviderProfile providerProfile = (Hotspot20IdProviderProfile) provider.getDetails();
-                        for (OsuIcon osuIcon : providerProfile.getOsuIconList()) {
+                        PasspointOsuProviderProfile providerProfile = (PasspointOsuProviderProfile) provider.getDetails();
+                        for (PasspointOsuIcon passpointOsuIcon : providerProfile.getOsuIconList()) {
                             // ovsdbColumns = { "name", "path", "url",
                             // "lang_code", "height", "img_type", "width" };
                             Map<String, Value> rowColumns = new HashMap<>();
-                            rowColumns.put("name", new Atom<>(osuIcon.getIconName()));
+                            rowColumns.put("name", new Atom<>(passpointOsuIcon.getIconName()));
                             if (schema.getTables().get(hotspot20IconConfigDbTable).getColumns().containsKey("path")) {
-                                rowColumns.put("path", new Atom<>(osuIcon.getFilePath()));
+                                rowColumns.put("path", new Atom<>(passpointOsuIcon.getFilePath()));
                             }
-                            rowColumns.put("url", new Atom<>(osuIcon.getImageUrl()));
-                            rowColumns.put("lang_code", new Atom<>(osuIcon.getLanguageCode()));
-                            rowColumns.put("height", new Atom<>(osuIcon.getIconHeight()));
-                            rowColumns.put("img_type", new Atom<>(OsuIcon.ICON_TYPE));
-                            rowColumns.put("width", new Atom<>(osuIcon.getIconWidth()));
+                            rowColumns.put("url", new Atom<>(passpointOsuIcon.getImageUrl()));
+                            rowColumns.put("lang_code", new Atom<>(passpointOsuIcon.getLanguageCode()));
+                            rowColumns.put("height", new Atom<>(passpointOsuIcon.getIconHeight()));
+                            rowColumns.put("img_type", new Atom<>(PasspointOsuIcon.ICON_TYPE));
+                            rowColumns.put("width", new Atom<>(passpointOsuIcon.getIconWidth()));
 
                             Row row = new Row(rowColumns);
 
-                            if (!osuIconConfigs.containsKey(osuIcon.getIconName())) {
+                            if (!osuIconConfigs.containsKey(passpointOsuIcon.getIconName())) {
                                 Insert newHs20Config = new Insert(hotspot20IconConfigDbTable, row);
                                 operations.add(newHs20Config);
                             } else {
                                 List<Condition> conditions = new ArrayList<>();
                                 conditions
-                                        .add(new Condition("name", Function.EQUALS, new Atom<>(osuIcon.getIconName())));
+                                        .add(new Condition("name", Function.EQUALS, new Atom<>(passpointOsuIcon.getIconName())));
                                 Update newHs20Config = new Update(hotspot20IconConfigDbTable, conditions, row);
                                 operations.add(newHs20Config);
                             }
@@ -4285,9 +4285,9 @@ public class OvsdbDao {
                                     .of(thresholdMap);
 
                             RadioType radioType = parameters.getRadioType();
-                            ChannelUtilizationSurveyType channelType = parameters.getChannelSurveyType();
+                            ServiceMetricsChannelUtilizationSurveyType channelType = parameters.getChannelSurveyType();
                             int scanInterval = parameters.getScanIntervalMillis();
-                            StatsReportFormat format = parameters.getStatsReportFormat();
+                            ServiceMetricsStatsReportFormat format = parameters.getStatsReportFormat();
                             int reportingInterval = parameters.getReportingIntervalSeconds();
                             int samplingInterval = parameters.getSamplingInterval();
 
@@ -4299,7 +4299,7 @@ public class OvsdbDao {
                                 if (dataType.equals(ServiceMetricDataType.ApNode)) {
                                     // extra reports that are part of ApNode
                                     // metric
-                                    if (channelType.equals(ChannelUtilizationSurveyType.ON_CHANNEL)) {
+                                    if (channelType.equals(ServiceMetricsChannelUtilizationSurveyType.ON_CHANNEL)) {
                                         provisionWifiStatsConfigFromProfile("device", reportingInterval,
                                                 samplingInterval, operations);
                                         if (((ApNetworkConfiguration) opensyncApConfig.getApProfile().getDetails())
@@ -4421,11 +4421,11 @@ public class OvsdbDao {
     }
 
     private void provisionWifiStatsConfigFromProfile(String statsType, Map<String, Set<Integer>> allowedChannels,
-            RadioType radioType, ChannelUtilizationSurveyType channelType, int scanInterval, StatsReportFormat format,
+            RadioType radioType, ServiceMetricsChannelUtilizationSurveyType channelType, int scanInterval, ServiceMetricsStatsReportFormat format,
             int reportingInterval, int samplingInterval, List<Operation> operations,
             com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer> thresholds) {
 
-        if (channelType.equals(ChannelUtilizationSurveyType.ON_CHANNEL)) {
+        if (channelType.equals(ServiceMetricsChannelUtilizationSurveyType.ON_CHANNEL)) {
 
             Map<String, Value> rowColumns = new HashMap<>();
             rowColumns.put("radio_type",

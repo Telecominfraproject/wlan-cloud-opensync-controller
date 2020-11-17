@@ -1657,7 +1657,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                         ipAddress = InetAddress.getByName(dnsProbeMetricFromAp.getServerIP());
                         cloudDnsProbeMetric.setDnsServerIp(ipAddress);
                     } catch (UnknownHostException e) {
-                        LOG.error("Could not get DNS Server IP from network_probe metrics", e);
+                        LOG.error("Could not get DNS Server IP from network_probe service_metrics_collection_config", e);
                     }
                 }
 
@@ -2145,7 +2145,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                     try {
 
                         if (client.hasConnected() && client.getConnected() && client.hasMacAddress()) {
-                            // update metrics for connected client
+                            // update service_metrics_collection_config for connected client
                             ClientSession session = handleClientSessionMetricsUpdate(customerId, equipmentId,
                                     locationId, radioType, clientReport.getTimestampMs(), client);
                             if (session != null) {
@@ -2155,7 +2155,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                             // Make sure, if we have a session for this client,
                             // it
                             // shows disconnected.
-                            // update any metrics that need update if the
+                            // update any service_metrics_collection_config that need update if the
                             // disconnect occured during this window
                             if (client.hasMacAddress()) {
                                 ClientSession session = clientServiceInterface.getSessionOrNull(customerId, equipmentId,

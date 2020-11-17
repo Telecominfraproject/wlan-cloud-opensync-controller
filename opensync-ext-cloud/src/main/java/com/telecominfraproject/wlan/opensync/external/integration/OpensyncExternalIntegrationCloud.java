@@ -826,7 +826,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         profileContainer.getChildrenOfType(equipmentConfig.getProfileId(), ProfileType.ssid));
 
                 ret.setMetricsProfiles(
-                        profileContainer.getChildrenOfType(equipmentConfig.getProfileId(), ProfileType.metrics));
+                        profileContainer.getChildrenOfType(equipmentConfig.getProfileId(), ProfileType.service_metrics_collection_config));
                 
                 Set<Profile> radiusSet = new HashSet<>();
                 Set<Long> captiveProfileIds = new HashSet<>();
@@ -842,7 +842,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 for (Profile ssidProfile : ret.getSsidProfile()) {
 
                     hotspot20ProfileSet
-                            .addAll(profileContainer.getChildrenOfType(ssidProfile.getId(), ProfileType.hotspot_2pt0));
+                            .addAll(profileContainer.getChildrenOfType(ssidProfile.getId(), ProfileType.passpoint));
 
                     radiusSet
                             .addAll(profileContainer.getChildrenOfType(ret.getApProfile().getId(), ProfileType.radius));
@@ -862,11 +862,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 if (hotspot20ProfileSet.size() > 0) {
                     for (Profile hotspot20Profile : hotspot20ProfileSet) {
                         hotspot20OperatorSet.addAll(
-                                profileContainer.getChildrenOfType(hotspot20Profile.getId(), ProfileType.operator));
+                                profileContainer.getChildrenOfType(hotspot20Profile.getId(), ProfileType.passpoint_operator));
                         hotspot20VenueSet.addAll(
-                                profileContainer.getChildrenOfType(hotspot20Profile.getId(), ProfileType.venue));
+                                profileContainer.getChildrenOfType(hotspot20Profile.getId(), ProfileType.passpoint_venue));
                         hotspot20ProviderSet.addAll(
-                                profileContainer.getChildrenOfType(hotspot20Profile.getId(), ProfileType.id_provider));
+                                profileContainer.getChildrenOfType(hotspot20Profile.getId(), ProfileType.passpoint_osu_id_provider));
                     }
                     hotspotConfig.setHotspot20OperatorSet(hotspot20OperatorSet);
                     hotspotConfig.setHotspot20ProfileSet(hotspot20ProfileSet);
