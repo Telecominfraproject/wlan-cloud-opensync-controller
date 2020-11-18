@@ -12,7 +12,7 @@
   <dependencies>
   	<dependency>
   		<groupId>com.telecominfraproject.wlan</groupId>
-  		<artifactId>opensync-ext-interface</artifactId>
+  		<artifactId>opensync-gateway</artifactId>
   		<version>${tip-wlan-cloud.release.version}</version>
   	</dependency>
   </dependencies>

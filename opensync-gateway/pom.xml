@@ -23,7 +23,16 @@
 			<artifactId>opensync-ext-interface</artifactId>
 			<version>${tip-wlan-cloud.release.version}</version>
 		</dependency>
-
+		<dependency>
+			<artifactId>client-models</artifactId>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<version>${tip-wlan-cloud.release.version}</version>
+		</dependency>
+		<dependency>
+			<artifactId>customer-models</artifactId>
+			<groupId>com.telecominfraproject.wlan</groupId>
+			<version>${tip-wlan-cloud.release.version}</version>
+		</dependency>
 		<dependency>
 			<groupId>com.vmware.ovsdb</groupId>
 			<artifactId>ovsdb-client</artifactId>
@@ -37,12 +46,6 @@
 		</dependency>
 
 		<!-- MQTT dependencies BEGIN -->
-		<dependency>
-			<groupId>com.telecominfraproject.wlan</groupId>
-			<artifactId>tip-wlan-opensync-protobuf</artifactId>
-			<version>${tip-wlan-cloud.release.version}</version>
-		</dependency>
-
 		<dependency>
 			<artifactId>service-metric-service-interface</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
