@@ -1,7 +1,7 @@
 [
 	{
 		"model_type": "Profile",
-		"id": 5,
+		"id": 15,
 		"customerId": 2,
 		"profileType": "ssid",
 		"name": "TipWlan-cloud-hotspot-access",
@@ -9,9 +9,8 @@
 			"model_type": "SsidConfiguration",
 			"ssid": "TipWlan-cloud-hotspot-access",
 			"appliedRadios": [
-				"is5GHzU",
 				"is5GHzL",
-				"is2dot4GHz"
+				"is5GHzU"
 			],
 			"ssidAdminState": "enabled",
 			"secureMode": "wpa2PSK",
@@ -21,6 +20,7 @@
 			"keyRefresh": 0,
 			"noLocalSubnets": false,
 			"radiusServiceName": null,
+			"radiusAccountingServiceName": null,
 			"captivePortalId": null,
 			"bandwidthLimitDown": 0,
 			"bandwidthLimitUp": 0,
@@ -59,25 +59,23 @@
 			"forwardMode": null,
 			"profileType": "ssid"
 		},
-		"createdTimestamp": 1602113058718,
-		"lastModifiedTimestamp": 1602113059547,
+		"createdTimestamp": 1605711164949,
+		"lastModifiedTimestamp": 1605711223372,
 		"childProfileIds": [
-			10
+			24
 		]
 	},
 	{
 		"model_type": "Profile",
-		"id": 11,
+		"id": 16,
 		"customerId": 2,
 		"profileType": "ssid",
-		"name": "TipWlan-cloud-3-radios",
+		"name": "TipWlan-cloud-hotspot-osu",
 		"details": {
 			"model_type": "SsidConfiguration",
-			"ssid": "TipWlan-cloud-3-radios",
+			"ssid": "TipWlan-cloud-hotspot-osu",
 			"appliedRadios": [
-				"is5GHzL",
-				"is2dot4GHz",
-				"is5GHzU"
+				"is2dot4GHz"
 			],
 			"ssidAdminState": "enabled",
 			"secureMode": "open",
@@ -87,6 +85,7 @@
 			"keyRefresh": 0,
 			"noLocalSubnets": false,
 			"radiusServiceName": null,
+			"radiusAccountingServiceName": null,
 			"captivePortalId": null,
 			"bandwidthLimitDown": 0,
 			"bandwidthLimitUp": 0,
@@ -125,10 +124,11 @@
 			"forwardMode": null,
 			"profileType": "ssid"
 		},
-		"createdTimestamp": 1602183994766,
-		"lastModifiedTimestamp": 1602183994766,
+		"createdTimestamp": 1605711164950,
+		"lastModifiedTimestamp": 1605711171732,
 		"childProfileIds": [
-			10
+			19,
+			20
 		]
 	}
 ]
