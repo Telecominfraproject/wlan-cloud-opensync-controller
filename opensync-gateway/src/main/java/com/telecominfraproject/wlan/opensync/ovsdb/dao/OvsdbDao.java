@@ -89,7 +89,7 @@ import com.telecominfraproject.wlan.profile.passpoint.models.provider.PasspointO
 import com.telecominfraproject.wlan.profile.passpoint.models.provider.PasspointOsuProviderProfile;
 import com.telecominfraproject.wlan.profile.passpoint.models.venue.PasspointVenueName;
 import com.telecominfraproject.wlan.profile.passpoint.models.venue.PasspointVenueProfile;
-import com.telecominfraproject.wlan.profile.passpoint.models.venue.ProfileVenueTypeAssignment;
+import com.telecominfraproject.wlan.profile.passpoint.models.venue.PasspointVenueTypeAssignment;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusProfile;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusServer;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusServiceRegion;
@@ -3807,10 +3807,10 @@ public class OvsdbDao {
                         rowColumns.put("venue_name", venueNameSet);
                         rowColumns.put("venue_url", venueUrlSet);
 
-                        ProfileVenueTypeAssignment profileVenueTypeAssignment = passpointVenueProfile
+                        PasspointVenueTypeAssignment passpointVenueTypeAssignment = passpointVenueProfile
                                 .getVenueTypeAssignment();
-                        String groupType = String.valueOf(profileVenueTypeAssignment.getVenueGroupId()) + ":"
-                                + profileVenueTypeAssignment.getVenueTypeId();
+                        String groupType = String.valueOf(passpointVenueTypeAssignment.getVenueGroupId()) + ":"
+                                + passpointVenueTypeAssignment.getVenueTypeId();
 
                         rowColumns.put("venue_group_type", new Atom<>(groupType));
 
