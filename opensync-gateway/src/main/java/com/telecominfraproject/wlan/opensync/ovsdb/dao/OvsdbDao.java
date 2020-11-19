@@ -34,6 +34,7 @@ import com.telecominfraproject.wlan.core.model.json.BaseJsonModel;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.ElementRadioConfiguration;
 import com.telecominfraproject.wlan.equipment.models.ManagementRate;
+import com.telecominfraproject.wlan.equipment.models.MulticastRate;
 import com.telecominfraproject.wlan.equipment.models.NetworkForwardMode;
 import com.telecominfraproject.wlan.equipment.models.RadioConfiguration;
 import com.telecominfraproject.wlan.equipment.models.RadioMode;
@@ -768,7 +769,7 @@ public class OvsdbDao {
             for (OperationResult res : result) {
                 LOG.debug("Op Result {}", res);
             }
-            
+
             firmwareVersion = row != null ? row.getStringColumn("firmware_version") : null;
 
             skuNumber = getSingleValueFromSet(row, "sku_number");
@@ -4919,13 +4920,9 @@ public class OvsdbDao {
             if (elementRadioConfig == null || rfElementConfig == null) {
                 continue; // don't have a radio of this kind in the map
             }
-            AutoOrManualValue rxCellSizeDb = null;
             AutoOrManualValue probeResponseThresholdDb = null;
             AutoOrManualValue clientDisconnectThresholdDb = null;
             if (elementRadioConfig != null && rfElementConfig != null) {
-                rxCellSizeDb = getSourcedValue(elementRadioConfig.getRxCellSizeDb().getSource(),
-                        rfElementConfig.getRxCellSizeDb(), elementRadioConfig.getRxCellSizeDb().getValue());
-
                 probeResponseThresholdDb = getSourcedValue(elementRadioConfig.getProbeResponseThresholdDb().getSource(),
                         rfElementConfig.getProbeResponseThresholdDb(),
                         elementRadioConfig.getProbeResponseThresholdDb().getValue());
@@ -4937,9 +4934,14 @@ public class OvsdbDao {
             }
 
             RadioConfiguration radioConfig = apElementConfig.getAdvancedRadioMap().get(radioType);
+            MulticastRate multicastRate = null;
             ManagementRate managementRate = null;
             RadioBestApSettings bestApSettings = null;
             if (radioConfig != null && rfElementConfig != null) {
+                multicastRate = radioConfig.getMulticastRate().getSource() == SourceType.profile
+                        ? rfElementConfig.getMulticastRate()
+                        : radioConfig.getMulticastRate().getValue();
+
                 managementRate = radioConfig.getManagementRate().getSource() == SourceType.profile
                         ? rfElementConfig.getManagementRate()
                         : radioConfig.getManagementRate().getValue();
@@ -4949,10 +4951,44 @@ public class OvsdbDao {
                         : radioConfig.getBestApSettings().getValue();
             }
 
+            
+
+                int multicastRateMbps = 0;
+                switch (multicastRate) {
+                case rate6mbps:
+                    multicastRateMbps = 6;
+                    break;
+                case rate9mbps:
+                    multicastRateMbps = 9;
+                    break;
+                case rate12mbps:
+                    multicastRateMbps = 12;
+                    break;
+                case rate18mbps:
+                    multicastRateMbps = 18;
+                    break;
+                case rate24mbps:
+                    multicastRateMbps = 24;
+                    break;
+                case rate36mbps:
+                    multicastRateMbps = 36;
+                    break;
+                case rate48mbps:
+                    multicastRateMbps = 48;
+                    break;
+                case rate54mbps:
+                    multicastRateMbps = 54;
+                    break;
+                case auto:
+                default:
+                    multicastRateMbps = 0;
+                }
+            
             if (freqBand != null) {
                 try {
-                    configureWifiRrm(ovsdbClient, freqBand, elementRadioConfig.getBackupChannelNumber(), rxCellSizeDb,
-                            probeResponseThresholdDb, clientDisconnectThresholdDb, managementRate, bestApSettings);
+                    configureWifiRrm(ovsdbClient, freqBand, elementRadioConfig.getBackupChannelNumber(),
+                            probeResponseThresholdDb, clientDisconnectThresholdDb, managementRate, bestApSettings,
+                            multicastRateMbps);
                 } catch (OvsdbClientException e) {
                     LOG.error("configureRrm failed with OvsdbClient exception.", e);
                     throw new RuntimeException(e);
@@ -4970,9 +5006,8 @@ public class OvsdbDao {
     }
 
     private void configureWifiRrm(OvsdbClient ovsdbClient, String freqBand, int backupChannel,
-            AutoOrManualValue rxCellSize, AutoOrManualValue probeResponseThreshold,
-            AutoOrManualValue clientDisconnectThreshold, ManagementRate managementRate,
-            RadioBestApSettings bestApSettings)
+            AutoOrManualValue probeResponseThreshold, AutoOrManualValue clientDisconnectThreshold,
+            ManagementRate managementRate, RadioBestApSettings bestApSettings, int multicastRate)
             throws OvsdbClientException, TimeoutException, ExecutionException, InterruptedException {
 
         List<Operation> operations = new ArrayList<>();
@@ -4981,10 +5016,10 @@ public class OvsdbDao {
         updateColumns.put("freq_band", new Atom<>(freqBand));
         updateColumns.put("backup_channel", new Atom<>(backupChannel));
 
-        if (rxCellSize == null || rxCellSize.isAuto()) {
-            updateColumns.put("cell_size", new com.vmware.ovsdb.protocol.operation.notation.Set());
-        } else {
-            updateColumns.put("cell_size", new Atom<>(rxCellSize.getValue()));
+        if (ovsdbClient.getSchema(ovsdbName).get().getTables().get(wifiRadioConfigDbTable).getColumns()
+                .containsKey("mcast_rate")) {
+
+            updateColumns.put("mcast_rate", new Atom<>(multicastRate));
         }
 
         if (probeResponseThreshold == null || probeResponseThreshold.isAuto()) {
@@ -4999,10 +5034,13 @@ public class OvsdbDao {
             updateColumns.put("client_disconnect_threshold", new Atom<>(clientDisconnectThreshold.getValue()));
         }
 
-        if (managementRate == null || managementRate == ManagementRate.auto) {
-            updateColumns.put("basic_rate", new com.vmware.ovsdb.protocol.operation.notation.Set());
-        } else {
-            updateColumns.put("basic_rate", new Atom<>(managementRate.getId() * 10));
+        if (ovsdbClient.getSchema(ovsdbName).get().getTables().get(wifiRadioConfigDbTable).getColumns()
+                .containsKey("beacon_rate")) {
+            if (managementRate == null || managementRate == ManagementRate.auto) {
+                updateColumns.put("beacon_rate", new Atom<>(0));
+            } else {
+                updateColumns.put("beacon_rate", new Atom<>(managementRate.getId() * 10));
+            }
         }
 
         if (bestApSettings == null) {
@@ -5027,7 +5065,7 @@ public class OvsdbDao {
         CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
         OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
-        LOG.debug("Provisioned rrm config {} for {}", rxCellSize, freqBand);
+        LOG.debug("Provisioned rrm config with multicastRate {} Mbps for {}", multicastRate, freqBand);
 
         for (OperationResult res : result) {
             LOG.debug("Op Result {}", res);
