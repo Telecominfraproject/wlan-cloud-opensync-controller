@@ -1,5 +1,7 @@
 package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -22,6 +24,9 @@ import com.telecominfraproject.wlan.profile.passpoint.models.provider.PasspointN
 import com.telecominfraproject.wlan.profile.passpoint.models.provider.PasspointOsuIcon;
 import com.telecominfraproject.wlan.profile.passpoint.models.provider.PasspointOsuProviderProfile;
 import com.telecominfraproject.wlan.profile.passpoint.models.venue.PasspointVenueProfile;
+import com.telecominfraproject.wlan.profile.radius.models.RadiusProfile;
+import com.telecominfraproject.wlan.profile.radius.models.RadiusServer;
+import com.telecominfraproject.wlan.profile.radius.models.RadiusServiceRegion;
 import com.telecominfraproject.wlan.profile.rf.models.RfConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration.SecureMode;
@@ -38,42 +43,41 @@ public class OvsdbDaoTestUtilities {
 
 
     // Static creation of Profiles and Results to use with the OvsdbDao JUnit tests.
-
-    static void createPasspointHotspot(Customer customer, Profile passpointHotspotConfig,
+    static void createPasspointHotspot(int customerId, Profile passpointHotspotConfig,
             Profile passpointOperatorProfile, Profile passpointVenueProfile, Profile hotspot20IdProviderProfile,
             Profile hotspot20IdProviderProfile2, Profile profileSsidPsk, Profile profileSsidOsu,
             Profile hotspotProfileAp) {
 
-        profileSsidPsk = createPasspointAccessSsid(customer);
-        profileSsidOsu = createPasspointOsuSsid(customer);
+        profileSsidPsk = createPasspointAccessSsid(customerId);
+        profileSsidOsu = createPasspointOsuSsid(customerId);
 
-        passpointOperatorProfile = createPasspointOperatorProfile(customer);
+        passpointOperatorProfile = createPasspointOperatorProfile(customerId);
 
-        passpointVenueProfile = createPasspointVenueProfile(customer);
+        passpointVenueProfile = createPasspointVenueProfile(customerId);
 
-        hotspot20IdProviderProfile = createPasspointIdProviderProfile(customer, hotspot20IdProviderProfile,
+        hotspot20IdProviderProfile = createPasspointIdProviderProfile(customerId, hotspot20IdProviderProfile,
                 "TipWlan-Hotspot20-OSU-Provider", "Rogers AT&T Wireless", "Canada", "ca", 302, 720, "rogers.com", 1);
 
-        hotspot20IdProviderProfile2 = createPasspointIdProviderProfile(customer, hotspot20IdProviderProfile2,
+        hotspot20IdProviderProfile2 = createPasspointIdProviderProfile(customerId, hotspot20IdProviderProfile2,
                 "TipWlan-Hotspot20-OSU-Provider-2", "Telus Mobility", "Canada", "ca", 302, 220, "telus.com", 1);
 
 
         profileSsidOsu.getChildProfileIds().add(hotspot20IdProviderProfile.getId());
         profileSsidOsu.getChildProfileIds().add(hotspot20IdProviderProfile2.getId());
 
-        passpointHotspotConfig = createPasspointHotspotConfig(customer, hotspot20IdProviderProfile2,
+        passpointHotspotConfig = createPasspointHotspotConfig(customerId, hotspot20IdProviderProfile2,
                 hotspot20IdProviderProfile, passpointOperatorProfile, passpointVenueProfile, profileSsidPsk,
                 profileSsidOsu);
 
-        hotspotProfileAp = createPasspointApProfile(customer, profileSsidPsk, profileSsidOsu);
+        hotspotProfileAp = createPasspointApProfile(customerId, profileSsidPsk, profileSsidOsu);
     }
 
-    static Profile createPasspointHotspotConfig(Customer customer, Profile hotspot20IdProviderProfile2,
+    static Profile createPasspointHotspotConfig(int customerId, Profile hotspot20IdProviderProfile2,
             Profile hotspot20IdProviderProfile, Profile passpointOperatorProfile, Profile passpointVenueProfile,
             Profile profileSsidPsk, Profile profileSsidOpen) {
         Profile passpointHotspotConfig;
         passpointHotspotConfig = new Profile();
-        passpointHotspotConfig.setCustomerId(customer.getId());
+        passpointHotspotConfig.setCustomerId(customerId);
         passpointHotspotConfig.setName("TipWlan-Hotspot20-Config");
         passpointHotspotConfig.setProfileType(ProfileType.passpoint);
         Set<Long> passpointHotspotConfigChildIds = new HashSet<>();
@@ -95,11 +99,11 @@ public class OvsdbDaoTestUtilities {
         return passpointHotspotConfig;
     }
 
-    static Profile createPasspointIdProviderProfile(Customer customer, Profile providerProfile, String providerName,
+    static Profile createPasspointIdProviderProfile(int customerId, Profile providerProfile, String providerName,
             String network, String country, String iso, int mcc, int mnc, String naiRealm, int countryCode) {
         Profile hotspot20IdProviderProfile;
         hotspot20IdProviderProfile = new Profile();
-        hotspot20IdProviderProfile.setCustomerId(customer.getId());
+        hotspot20IdProviderProfile.setCustomerId(customerId);
         hotspot20IdProviderProfile.setName(providerName);
         hotspot20IdProviderProfile.setProfileType(ProfileType.passpoint_osu_id_provider);
         PasspointMccMnc passpointMccMnc = PasspointMccMnc.createWithDefaults();
@@ -119,36 +123,36 @@ public class OvsdbDaoTestUtilities {
         roamingOi.add(Byte.valueOf("2"));
         roamingOi.add(Byte.valueOf("3"));
         roamingOi.add(Byte.valueOf("4"));
-        hotspot20IdProviderProfile = createOsuProviderProfile(customer, hotspot20IdProviderProfile, mccMncList,
+        hotspot20IdProviderProfile = createOsuProviderProfile(customerId, hotspot20IdProviderProfile, mccMncList,
                 naiRealms, "https://example.com/osu/" + naiRealm.split(".com")[0], naiRealm.split(".com")[0], naiRealm,
                 roamingOi);
         return hotspot20IdProviderProfile;
     }
 
-    static Profile createPasspointVenueProfile(Customer customer) {
+    static Profile createPasspointVenueProfile(int customerId) {
         Profile passpointVenueProfile;
         passpointVenueProfile = new Profile();
-        passpointVenueProfile.setCustomerId(customer.getId());
+        passpointVenueProfile.setCustomerId(customerId);
         passpointVenueProfile.setName("TipWlan-Hotspot20-Venue");
         passpointVenueProfile.setProfileType(ProfileType.passpoint_venue);
         passpointVenueProfile.setDetails(PasspointVenueProfile.createWithDefaults());
         return passpointVenueProfile;
     }
 
-    static Profile createPasspointOperatorProfile(Customer customer) {
+    static Profile createPasspointOperatorProfile(int customerId) {
         Profile passpointOperatorProfile;
         passpointOperatorProfile = new Profile();
-        passpointOperatorProfile.setCustomerId(customer.getId());
+        passpointOperatorProfile.setCustomerId(customerId);
         passpointOperatorProfile.setName("TipWlan-Hotspot20-Operator");
         passpointOperatorProfile.setProfileType(ProfileType.passpoint_operator);
         passpointOperatorProfile.setDetails(PasspointOperatorProfile.createWithDefaults());
         return passpointOperatorProfile;
     }
 
-    static Profile createPasspointAccessSsid(Customer customer) {
+    static Profile createPasspointAccessSsid(int customerId) {
         Profile profileSsidPsk;
         profileSsidPsk = new Profile();
-        profileSsidPsk.setCustomerId(customer.getId());
+        profileSsidPsk.setCustomerId(customerId);
         profileSsidPsk.setName("TipWlan-cloud-hotspot-access");
         SsidConfiguration ssidConfigPsk = SsidConfiguration.createWithDefaults();
         Set<RadioType> appliedRadiosPsk = new HashSet<RadioType>();
@@ -162,10 +166,10 @@ public class OvsdbDaoTestUtilities {
         return profileSsidPsk;
     }
 
-    static Profile createPasspointOsuSsid(Customer customer) {
+    static Profile createPasspointOsuSsid(int customerId) {
         Profile profileSsidPsk;
         profileSsidPsk = new Profile();
-        profileSsidPsk.setCustomerId(customer.getId());
+        profileSsidPsk.setCustomerId(customerId);
         profileSsidPsk.setName("TipWlan-cloud-hotspot-osu");
         SsidConfiguration ssidConfigPsk = SsidConfiguration.createWithDefaults();
         Set<RadioType> appliedRadiosPsk = new HashSet<RadioType>();
@@ -177,23 +181,23 @@ public class OvsdbDaoTestUtilities {
         return profileSsidPsk;
     }
 
-    static Profile createPasspointApProfile(Customer customer, Profile profileSsidPsk, Profile profileSsidOpen) {
+    static Profile createPasspointApProfile(int customerId, Profile profileSsidPsk, Profile profileSsidOpen) {
 
         Profile hotspotProfileAp = new Profile();
-        hotspotProfileAp.setCustomerId(customer.getId());
+        hotspotProfileAp.setCustomerId(customerId);
         hotspotProfileAp.setName("HotspotProfileAp");
         hotspotProfileAp.setDetails(ApNetworkConfiguration.createWithDefaults());
         hotspotProfileAp.getChildProfileIds().add(profileSsidPsk.getId());
         hotspotProfileAp.getChildProfileIds().add(profileSsidOpen.getId());
-        hotspotProfileAp.getChildProfileIds().add(createPasspointRfProfile(customer).getId());
+        hotspotProfileAp.getChildProfileIds().add(createPasspointRfProfile(customerId).getId());
         return hotspotProfileAp;
 
     }
 
-    static Profile createPasspointRfProfile(Customer customer) {
+    static Profile createPasspointRfProfile(int customerId) {
 
         Profile profileRf = new Profile();
-        profileRf.setCustomerId(customer.getId());
+        profileRf.setCustomerId(customerId);
         profileRf.setName("TipWlan-rf-passpoint");
         RfConfiguration rfConfig = RfConfiguration.createWithDefaults();
         rfConfig.getRfConfigMap().forEach((x, y) -> y.setRf("TipWlan-rf-passpoint"));
@@ -202,7 +206,7 @@ public class OvsdbDaoTestUtilities {
         return profileRf;
     }
 
-    static Profile createOsuProviderProfile(Customer customer, Profile hotspot20IdProviderProfile,
+    static Profile createOsuProviderProfile(int customerId, Profile hotspot20IdProviderProfile,
             List<PasspointMccMnc> mccMncList, Set<String> realms, String serverUri, String suffix, String domainName,
             List<Byte> roamingOi) {
 
@@ -516,6 +520,28 @@ public class OvsdbDaoTestUtilities {
         return operationResult;
     }
     
+    static Profile createRadiusProfile(int customerId) {
+        Profile profileRadius = new Profile();
+        profileRadius.setCustomerId(customerId);
+        profileRadius.setProfileType(ProfileType.radius);
+        profileRadius.setName("Radius-Profile");
+
+        RadiusProfile radiusDetails = new RadiusProfile();
+        RadiusServiceRegion radiusServiceRegion = new RadiusServiceRegion();
+        RadiusServer radiusServer = new RadiusServer();
+        radiusServer.setAuthPort(1812);
+        try {
+            radiusServer.setIpAddress(InetAddress.getByName("192.168.0.1"));
+        } catch (UnknownHostException e) {
+            throw new IllegalArgumentException(e);
+        }
+        radiusServer.setSecret("testing123");
+        radiusServiceRegion.addRadiusServer("Radius-Profile", radiusServer);
+        radiusServiceRegion.setRegionName("Ottawa");
+        radiusDetails.addRadiusServiceRegion(radiusServiceRegion);
+        profileRadius.setDetails(radiusDetails);
+        return profileRadius;
+    }
     
     
 }

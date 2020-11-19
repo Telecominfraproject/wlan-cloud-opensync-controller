@@ -140,7 +140,7 @@ public class OvsdbDao {
 
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.listenPort:6640}")
     private int ovsdbListenPort;
-    
+
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.externalPort:6640}")
     private int ovsdbExternalPort;
 
@@ -149,7 +149,7 @@ public class OvsdbDao {
 
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.mqttBroker.listenPort:1883}")
     private int mqttBrokerListenPort;
-    
+
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.mqttBroker.externalPort:1883}")
     private int mqttBrokerExternalPort;
 
@@ -755,10 +755,6 @@ public class OvsdbDao {
 
             LOG.debug("Select from AWLAN_Node:");
 
-            for (OperationResult res : result) {
-                LOG.debug("Op Result {}", res);
-            }
-
             String skuNumber = null;
             String serialNumber = null;
             String model = null;
@@ -769,6 +765,10 @@ public class OvsdbDao {
                 row = ((SelectResult) result[0]).getRows().iterator().next();
             }
 
+            for (OperationResult res : result) {
+                LOG.debug("Op Result {}", res);
+            }
+            
             firmwareVersion = row != null ? row.getStringColumn("firmware_version") : null;
 
             skuNumber = getSingleValueFromSet(row, "sku_number");
@@ -3185,7 +3185,7 @@ public class OvsdbDao {
                         LOG.info("Update pre-existing Wifi_VIF_Config for ssid {} with if_name {}",
                                 ssidConfig.getSsid(), ifName);
                     }
-                    
+
                     if (!isUpdate) {
                         provisionedVifs = getProvisionedWifiVifConfigs(ovsdbClient);
 
@@ -3406,10 +3406,10 @@ public class OvsdbDao {
 
     }
 
-    private void getRadiusAccountingConfiguration(OpensyncAPConfig opensyncApConfig, SsidConfiguration ssidConfig,
+    void getRadiusAccountingConfiguration(OpensyncAPConfig opensyncApConfig, SsidConfiguration ssidConfig,
             Map<String, String> security) {
 
-        LOG.debug("getRadiusAccountingConfiguration for ssidConfig {} from radiusProfiles {}", ssidConfig,
+        LOG.info("getRadiusAccountingConfiguration for ssidConfig {} from radiusProfiles {}", ssidConfig,
                 opensyncApConfig.getRadiusProfiles());
 
         List<Profile> radiusServiceList = opensyncApConfig.getRadiusProfiles().stream()
@@ -3438,26 +3438,42 @@ public class OvsdbDao {
                         security.put("radius_acct_port",
                                 rServer.getAuthPort() != null ? String.valueOf(rServer.getAuthPort()) : null);
                         security.put("radius_acct_secret", rServer.getSecret());
+                        if (ssidConfig.getRadiusAcountingServiceInterval() != null) {
+                            // if the value is present, use the
+                            // radius_acct_interval
+                            security.put("radius_acct_interval",
+                                    ssidConfig.getRadiusAcountingServiceInterval().toString());
+                            LOG.info(
+                                    "set Radius Accounting server attributes radius_acct_ip {} radius_acct_port {} radius_acct_secret {} radius_acct_interval {}",
+                                    security.get("radius_acct_ip"), security.get("radius_acct_port"),
+                                    security.get("radius_acct_secret"), security.get("radius_acct_interval"));
+                        } else {
+                            LOG.info(
+                                    "No radius_acct_interval defined for ssid {}, assume the RadiusServer {} to be providing Acct-Interim-Interval attribute in it's Access-Accept message",
+                                    ssidConfig.getSsid(), rServer);
+                            LOG.info(
+                                    "set Radius Accounting server attributes radius_acct_ip {} radius_acct_port {} radius_acct_secret {}",
+                                    security.get("radius_acct_ip"), security.get("radius_acct_port"),
+                                    security.get("radius_acct_secret"));
+                        }
+
                     }
-                    LOG.info(
-                            "set Radius Accounting server attributes radius_acct_ip {} radius_acct_port {} radius_acct_secret {}",
-                            security.get("radius_acct_ip"), security.get("radius_acct_port"),
-                            security.get("radius_acct_secret"));
+
                 } else {
                     LOG.warn("Could not get RadiusServerConfiguration for {} from RadiusProfile {}",
-                            ssidConfig.getRadiusServiceName(), profileRadius);
+                            ssidConfig.getRadiusAccountingServiceName(), profileRadius);
                 }
             } else {
                 LOG.warn("Could not get RadiusServiceRegion {} from RadiusProfile {}", region, profileRadius);
             }
         } else {
-            LOG.warn("Could not find radius profile {} in {}", ssidConfig.getRadiusServiceName(),
+            LOG.warn("Could not find radius profile {} in {}", ssidConfig.getRadiusAccountingServiceName(),
                     opensyncApConfig.getRadiusProfiles());
         }
 
     }
 
-    private void getRadiusConfiguration(OpensyncAPConfig opensyncApConfig, SsidConfiguration ssidConfig,
+    void getRadiusConfiguration(OpensyncAPConfig opensyncApConfig, SsidConfiguration ssidConfig,
             Map<String, String> security) {
 
         LOG.debug("getRadiusConfiguration for ssidConfig {} from radiusProfiles {}", ssidConfig,

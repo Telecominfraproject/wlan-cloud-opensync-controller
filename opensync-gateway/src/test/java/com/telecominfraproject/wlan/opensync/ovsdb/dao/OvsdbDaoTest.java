@@ -1,5 +1,6 @@
 package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
@@ -7,6 +8,7 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -32,13 +34,15 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.telecominfraproject.wlan.customer.models.Customer;
+import com.telecominfraproject.wlan.location.models.Location;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPHotspot20Config;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
+import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
+import com.telecominfraproject.wlan.status.network.models.RadiusDetails;
 import com.vmware.ovsdb.exception.OvsdbClientException;
 import com.vmware.ovsdb.protocol.operation.notation.Atom;
 import com.vmware.ovsdb.protocol.operation.notation.Row;
@@ -61,6 +65,8 @@ import com.vmware.ovsdb.service.OvsdbClient;
 
 })
 public class OvsdbDaoTest {
+
+    static final int DEFAULT_CUSTOMER_ID = 1;
 
     private static final long HOTSPOT_CONFIG_ID = 1;
     private static final long HOTSPOT_PROVIDER_ID_1 = 2;
@@ -207,8 +213,60 @@ public class OvsdbDaoTest {
 
     }
 
+    @Test
+    public void testGetRadiusConfiguration() throws Exception {
+        OpensyncAPConfig apConfig = new OpensyncAPConfig();
+        Profile profileRadius = OvsdbDaoTestUtilities.createRadiusProfile(DEFAULT_CUSTOMER_ID);
+        apConfig.setRadiusProfiles(List.of(profileRadius));
+        SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
+        ssidConfig.setRadiusServiceName("Radius-Profile");
+        Map<String, String> security = new HashMap<>();
+        Location location = new Location();
+        location.setName("Ottawa");
+        apConfig.setEquipmentLocation(location);
+        ovsdbDao.getRadiusConfiguration(apConfig, ssidConfig, security);       
+        assert (security.get("radius_server_ip").equals("192.168.0.1"));
+        assert (security.get("radius_server_port").equals("1812"));
+        assert (security.get("radius_server_secret").equals("testing123"));
+    }
+    
+    @Test
+    public void testGetRadiusAccountingConfiguration() throws Exception {
+        OpensyncAPConfig apConfig = new OpensyncAPConfig();
+        Profile profileRadius = OvsdbDaoTestUtilities.createRadiusProfile(DEFAULT_CUSTOMER_ID);
+        apConfig.setRadiusProfiles(List.of(profileRadius));
+        SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
+        ssidConfig.setRadiusAccountingServiceName("Radius-Profile");
+        ssidConfig.setRadiusAcountingServiceInterval(60);
+        Map<String, String> security = new HashMap<>();
+        Location location = new Location();
+        location.setName("Ottawa");
+        apConfig.setEquipmentLocation(location);
+        ovsdbDao.getRadiusAccountingConfiguration(apConfig, ssidConfig, security);
+        assert (Integer.valueOf(security.get("radius_acct_interval"))
+                .equals(ssidConfig.getRadiusAcountingServiceInterval()));
+        assert (security.get("radius_acct_ip").equals("192.168.0.1"));
+        assert (security.get("radius_acct_port").equals("1812"));
+        assert (security.get("radius_acct_secret").equals("testing123"));
+    }
 
-
+    @Test
+    public void testGetRadiusAccountingConfigurationNoAcctInterval() throws Exception {
+        OpensyncAPConfig apConfig = new OpensyncAPConfig();
+        Profile profileRadius = OvsdbDaoTestUtilities.createRadiusProfile(DEFAULT_CUSTOMER_ID);
+        apConfig.setRadiusProfiles(List.of(profileRadius));
+        SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
+        ssidConfig.setRadiusAccountingServiceName("Radius-Profile");
+        Map<String, String> security = new HashMap<>();
+        Location location = new Location();
+        location.setName("Ottawa");
+        apConfig.setEquipmentLocation(location);
+        ovsdbDao.getRadiusAccountingConfiguration(apConfig, ssidConfig, security);
+        assert (security.containsKey("radius_acct_interval") == false);
+        assert (security.get("radius_acct_ip").equals("192.168.0.1"));
+        assert (security.get("radius_acct_port").equals("1812"));
+        assert (security.get("radius_acct_secret").equals("testing123"));
+    }
 
     @Test
     public void testConfigureHotspots() throws Exception {
@@ -225,36 +283,35 @@ public class OvsdbDaoTest {
 
         OpensyncAPConfig apConfig = new OpensyncAPConfig();
         OpensyncAPHotspot20Config hsConfig = new OpensyncAPHotspot20Config();
-        Customer customer = new Customer();
 
-        Profile profileSsidPsk = OvsdbDaoTestUtilities.createPasspointAccessSsid(customer);
+        Profile profileSsidPsk = OvsdbDaoTestUtilities.createPasspointAccessSsid(DEFAULT_CUSTOMER_ID);
         profileSsidPsk.setId(SSID_PSK_ID);
-        Profile profileSsidOsu = OvsdbDaoTestUtilities.createPasspointOsuSsid(customer);
+        Profile profileSsidOsu = OvsdbDaoTestUtilities.createPasspointOsuSsid(DEFAULT_CUSTOMER_ID);
         profileSsidOsu.setId(SSID_OSU_ID);
-        Profile passpointOperatorProfile = OvsdbDaoTestUtilities.createPasspointOperatorProfile(customer);
+        Profile passpointOperatorProfile = OvsdbDaoTestUtilities.createPasspointOperatorProfile(DEFAULT_CUSTOMER_ID);
         passpointOperatorProfile.setId(OPERATOR_ID);
-        Profile passpointVenueProfile = OvsdbDaoTestUtilities.createPasspointVenueProfile(customer);
+        Profile passpointVenueProfile = OvsdbDaoTestUtilities.createPasspointVenueProfile(DEFAULT_CUSTOMER_ID);
         passpointVenueProfile.setId(VENUE_ID);
         Profile hotspot20IdProviderProfile = new Profile();
         hotspot20IdProviderProfile.setId(HOTSPOT_PROVIDER_ID_1);
-        hotspot20IdProviderProfile = OvsdbDaoTestUtilities.createPasspointIdProviderProfile(customer,
+        hotspot20IdProviderProfile = OvsdbDaoTestUtilities.createPasspointIdProviderProfile(DEFAULT_CUSTOMER_ID,
                 hotspot20IdProviderProfile, "TipWlan-Hotspot20-OSU-Provider", "Rogers AT&T Wireless", "Canada", "ca",
                 302, 720, "rogers.com", 1);
         Profile hotspot20IdProviderProfile2 = new Profile();
         hotspot20IdProviderProfile2.setId(HOTSPOT_PROVIDER_ID_2);
-        hotspot20IdProviderProfile2 = OvsdbDaoTestUtilities.createPasspointIdProviderProfile(customer,
+        hotspot20IdProviderProfile2 = OvsdbDaoTestUtilities.createPasspointIdProviderProfile(DEFAULT_CUSTOMER_ID,
                 hotspot20IdProviderProfile2, "TipWlan-Hotspot20-OSU-Provider-2", "Telus Mobility", "Canada", "ca", 302,
                 220, "telus.com", 1);
 
         profileSsidOsu.getChildProfileIds().add(hotspot20IdProviderProfile.getId());
         profileSsidOsu.getChildProfileIds().add(hotspot20IdProviderProfile2.getId());
 
-        Profile passpointHotspotConfig = OvsdbDaoTestUtilities.createPasspointHotspotConfig(customer,
+        Profile passpointHotspotConfig = OvsdbDaoTestUtilities.createPasspointHotspotConfig(DEFAULT_CUSTOMER_ID,
                 hotspot20IdProviderProfile2, hotspot20IdProviderProfile, passpointOperatorProfile,
                 passpointVenueProfile, profileSsidPsk, profileSsidOsu);
         passpointHotspotConfig.setId(HOTSPOT_CONFIG_ID);
 
-        Profile hotspotProfileAp = OvsdbDaoTestUtilities.createPasspointApProfile(customer, profileSsidPsk,
+        Profile hotspotProfileAp = OvsdbDaoTestUtilities.createPasspointApProfile(DEFAULT_CUSTOMER_ID, profileSsidPsk,
                 profileSsidOsu);
         hotspotProfileAp.setId(EQUIPMENT_AP_ID);
 
@@ -269,10 +326,13 @@ public class OvsdbDaoTest {
 
         apConfig.setSsidProfile(List.of(profileSsidOsu, profileSsidPsk));
 
-        Mockito.when(futureResult.get(Mockito.anyLong(), Mockito.eq(TimeUnit.SECONDS))).thenReturn(OvsdbDaoTestUtilities.hs20IconRows())
-                .thenReturn(OvsdbDaoTestUtilities.hs20InsertIconRows()).thenReturn(OvsdbDaoTestUtilities.hs20OsuProviders()).thenReturn(OvsdbDaoTestUtilities.hs20IconRows())
-                .thenReturn(OvsdbDaoTestUtilities.hs20IconRows()).thenReturn(OvsdbDaoTestUtilities.hs20InsertProviderRows()).thenReturn(OvsdbDaoTestUtilities.hs20Config())
-                .thenReturn(OvsdbDaoTestUtilities.hs20OsuProviders()).thenReturn(OvsdbDaoTestUtilities.vifConfigRows()).thenReturn(OvsdbDaoTestUtilities.vifConfigRows())
+        Mockito.when(futureResult.get(Mockito.anyLong(), Mockito.eq(TimeUnit.SECONDS)))
+                .thenReturn(OvsdbDaoTestUtilities.hs20IconRows()).thenReturn(OvsdbDaoTestUtilities.hs20InsertIconRows())
+                .thenReturn(OvsdbDaoTestUtilities.hs20OsuProviders()).thenReturn(OvsdbDaoTestUtilities.hs20IconRows())
+                .thenReturn(OvsdbDaoTestUtilities.hs20IconRows())
+                .thenReturn(OvsdbDaoTestUtilities.hs20InsertProviderRows())
+                .thenReturn(OvsdbDaoTestUtilities.hs20Config()).thenReturn(OvsdbDaoTestUtilities.hs20OsuProviders())
+                .thenReturn(OvsdbDaoTestUtilities.vifConfigRows()).thenReturn(OvsdbDaoTestUtilities.vifConfigRows())
                 .thenReturn(OvsdbDaoTestUtilities.hs20Config());
 
         Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList())).thenReturn(futureResult);
@@ -282,7 +342,6 @@ public class OvsdbDaoTest {
         Mockito.verify(futureResult, Mockito.times(11)).get(Mockito.anyLong(), Mockito.eq(TimeUnit.SECONDS));
 
     }
-
 
     @Test
     public void testConfigureGreTunnelsWithNoLocalAddress() throws Exception {
@@ -692,9 +751,7 @@ public class OvsdbDaoTest {
 
     }
 
-
     static Row[] hs20Icons = {
-
 
     };
 }
