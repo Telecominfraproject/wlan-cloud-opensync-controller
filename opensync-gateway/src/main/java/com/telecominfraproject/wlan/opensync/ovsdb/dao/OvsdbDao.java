@@ -3444,19 +3444,18 @@ public class OvsdbDao {
                             // radius_acct_interval
                             security.put("radius_acct_interval",
                                     ssidConfig.getRadiusAcountingServiceInterval().toString());
-                            LOG.info(
-                                    "set Radius Accounting server attributes radius_acct_ip {} radius_acct_port {} radius_acct_secret {} radius_acct_interval {}",
-                                    security.get("radius_acct_ip"), security.get("radius_acct_port"),
-                                    security.get("radius_acct_secret"), security.get("radius_acct_interval"));
+                            
                         } else {
                             LOG.info(
-                                    "No radius_acct_interval defined for ssid {}, assume the RadiusServer {} to be providing Acct-Interim-Interval attribute in it's Access-Accept message",
+                                    "No radius_acct_interval defined for ssid {}, Setting radius_acct_interval to 0",
                                     ssidConfig.getSsid(), rServer);
-                            LOG.info(
-                                    "set Radius Accounting server attributes radius_acct_ip {} radius_acct_port {} radius_acct_secret {}",
-                                    security.get("radius_acct_ip"), security.get("radius_acct_port"),
-                                    security.get("radius_acct_secret"));
+                            security.put("radius_acct_interval",
+                                    "0");                         
                         }
+                        LOG.info(
+                                "set Radius Accounting server attributes radius_acct_ip {} radius_acct_port {} radius_acct_secret {} radius_acct_interval {}",
+                                security.get("radius_acct_ip"), security.get("radius_acct_port"),
+                                security.get("radius_acct_secret"), security.get("radius_acct_interval"));
 
                     }
 

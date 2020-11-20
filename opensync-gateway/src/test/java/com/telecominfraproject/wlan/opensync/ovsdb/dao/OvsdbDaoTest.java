@@ -262,7 +262,7 @@ public class OvsdbDaoTest {
         location.setName("Ottawa");
         apConfig.setEquipmentLocation(location);
         ovsdbDao.getRadiusAccountingConfiguration(apConfig, ssidConfig, security);
-        assert (security.containsKey("radius_acct_interval") == false);
+        assert (security.get("radius_acct_interval").equals("0"));
         assert (security.get("radius_acct_ip").equals("192.168.0.1"));
         assert (security.get("radius_acct_port").equals("1812"));
         assert (security.get("radius_acct_secret").equals("testing123"));
