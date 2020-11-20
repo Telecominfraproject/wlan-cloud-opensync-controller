@@ -28,7 +28,7 @@
 				}
 			],
 			"venueTypeAssignment": {
-				"model_type": "ProfileVenueTypeAssignment",
+				"model_type": "PasspointVenueTypeAssignment",
 				"venueDescription": "Research and Development Facility",
 				"venueGroupId": 2,
 				"venueTypeId": 8
