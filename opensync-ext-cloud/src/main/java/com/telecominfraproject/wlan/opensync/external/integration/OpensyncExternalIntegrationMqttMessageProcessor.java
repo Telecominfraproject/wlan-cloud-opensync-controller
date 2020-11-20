@@ -39,7 +39,6 @@ import com.telecominfraproject.wlan.core.model.equipment.SecurityType;
 import com.telecominfraproject.wlan.core.model.equipment.WiFiSessionUtility;
 import com.telecominfraproject.wlan.core.model.utils.DecibelUtils;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
-import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.Equipment;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.utilities.OvsdbToWlanCloudTypeMappingUtility;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
@@ -147,7 +146,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
     private CloudEventDispatcherInterface equipmentMetricsCollectorInterface;
 
     void processMqttMessage(String topic, WCStatsReport wcStatsReport) {
-        LOG.debug("Received WCStatsReport {}", wcStatsReport.toString());
+        LOG.info("Received WCStatsReport {}", wcStatsReport.toString());
 
         LOG.info("Received report on topic {}", topic);
         int customerId = extractCustomerIdFromTopic(topic);
@@ -244,7 +243,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
         }
 
         if (!metricRecordList.isEmpty()) {
-            LOG.debug("Publishing Metrics {}", metricRecordList);
+            LOG.info("Publishing Metrics {}", metricRecordList);
             equipmentMetricsCollectorInterface.publishMetrics(metricRecordList);
         }
 
@@ -992,7 +991,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 eventTimestamp = videoVoiceReport.getTimestampMs();
             }
 
-            LOG.debug("Received VideoVoiceReport {} for SIP call", videoVoiceReport);
+            LOG.info("Received VideoVoiceReport {} for SIP call", videoVoiceReport);
 
             processRealTImeSipCallReportEvent(customerId, equipmentId, eventTimestamp, eventsList, videoVoiceReport);
 
@@ -1342,7 +1341,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
     void populateApNodeMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId, long equipmentId,
             long locationId) {
-        LOG.debug("populateApNodeMetrics for Customer {} Equipment {}", customerId, equipmentId);
+        LOG.info("populateApNodeMetrics for Customer {} Equipment {}", customerId, equipmentId);
         ApNodeMetrics apNodeMetrics = new ApNodeMetrics();
         ServiceMetric smr = new ServiceMetric(customerId, equipmentId);
 
@@ -1603,7 +1602,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
     void updateDeviceStatusRadioUtilizationReport(int customerId, long equipmentId,
             RadioUtilizationReport radioUtilizationReport) {
-        LOG.debug(
+        LOG.info(
                 "Processing updateDeviceStatusRadioUtilizationReport for equipmentId {} with RadioUtilizationReport {}",
                 equipmentId, radioUtilizationReport);
 
@@ -1611,7 +1610,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 StatusDataType.RADIO_UTILIZATION);
 
         if (radioUtilizationStatus == null) {
-            LOG.debug("Create new radioUtilizationStatus");
+            LOG.info("Create new radioUtilizationStatus");
             radioUtilizationStatus = new Status();
             radioUtilizationStatus.setCustomerId(customerId);
             radioUtilizationStatus.setEquipmentId(equipmentId);
@@ -1722,24 +1721,24 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
         eqOsPerformance.setTotalAvailableMemoryKb(deviceReport.getMemUtil().getMemTotal());
         status.setDetails(eqOsPerformance);
         status = statusServiceInterface.update(status);
-        LOG.debug("updated status {}", status);
+        LOG.info("updated status {}", status);
     }
 
     void populateApClientMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId, long equipmentId,
             long locationId) {
-        LOG.debug("populateApClientMetrics for Customer {} Equipment {}", customerId, equipmentId);
+        LOG.info("populateApClientMetrics for Customer {} Equipment {}", customerId, equipmentId);
 
         for (ClientReport clReport : report.getClientsList()) {
             for (Client cl : clReport.getClientListList()) {
 
                 if (cl.getMacAddress() == null) {
-                    LOG.debug(
+                    LOG.info(
                             "No mac address for Client {}, cannot set device mac address for client in ClientMetrics.",
                             cl);
                     continue;
                 }
 
-                LOG.debug("Processing ClientReport from AP {}", cl.getMacAddress());
+                LOG.info("Processing ClientReport from AP {}", cl.getMacAddress());
 
                 ServiceMetric smr = new ServiceMetric(customerId, equipmentId, new MacAddress(cl.getMacAddress()));
                 smr.setLocationId(locationId);
@@ -1763,7 +1762,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 long sessionId = WiFiSessionUtility.encodeWiFiAssociationId(clReport.getTimestampMs() / 1000L,
                         MacAddress.convertMacStringToLongValue(cl.getMacAddress()));
 
-                LOG.debug("populateApClientMetrics Session Id {}", sessionId);
+                LOG.info("populateApClientMetrics Session Id {}", sessionId);
                 cMetrics.setSessionId(sessionId);
 
                 if (cl.hasStats()) {
@@ -1821,7 +1820,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                     }
                 }
 
-                LOG.debug("ApClientMetrics Report {}", cMetrics);
+                LOG.info("ApClientMetrics Report {}", cMetrics);
 
             }
 
@@ -1831,7 +1830,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
     void populateNeighbourScanReports(List<ServiceMetric> metricRecordList, Report report, int customerId,
             long equipmentId, long locationId) {
-        LOG.debug("populateNeighbourScanReports for Customer {} Equipment {}", customerId, equipmentId);
+        LOG.info("populateNeighbourScanReports for Customer {} Equipment {}", customerId, equipmentId);
 
         for (Neighbor neighbor : report.getNeighborsList()) {
 
@@ -1992,7 +1991,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
             clientSession = clientServiceInterface.updateSession(clientSession);
 
-            LOG.debug("Updated client session {}", clientSession);
+            LOG.info("Updated client session {}", clientSession);
 
             return clientSession;
         } catch (Exception e) {
@@ -2003,14 +2002,14 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
     ClientSessionMetricDetails calculateClientSessionMetricDetails(sts.OpensyncStats.Client client, long timestamp) {
 
-        LOG.debug("calculateClientSessionMetricDetails for Client {} at timestamp {}", client.getMacAddress(),
+        LOG.info("calculateClientSessionMetricDetails for Client {} at timestamp {}", client.getMacAddress(),
                 timestamp);
 
         ClientSessionMetricDetails metricDetails = new ClientSessionMetricDetails();
 
 
         if (LOG.isDebugEnabled())
-            LOG.debug("Stats: {} DurationMs {}", client.getStats(), client.getDurationMs());
+            LOG.info("Stats: {} DurationMs {}", client.getStats(), client.getDurationMs());
         int rssi = client.getStats().getRssi();
         metricDetails.setRssi(rssi);
         metricDetails.setRxBytes(client.getStats().getRxBytes());
@@ -2028,7 +2027,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
         metricDetails.setRxRateKbps((long) client.getStats().getRxRate());
         metricDetails.setTxRateKbps((long) client.getStats().getTxRate());
         if (LOG.isDebugEnabled())
-            LOG.debug("RxRateKbps {} TxRateKbps {}", metricDetails.getRxRateKbps(), metricDetails.getTxRateKbps());
+            LOG.info("RxRateKbps {} TxRateKbps {}", metricDetails.getRxRateKbps(), metricDetails.getTxRateKbps());
 
         // Throughput, do rate / duration
         if (client.getDurationMs() > 1000) {
@@ -2041,12 +2040,12 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             float txBytesToMb = txBytesFv / 125000F;
 
             if (LOG.isDebugEnabled())
-                LOG.debug("rxBytesToMb {} txBytesToMb {} ", rxBytesToMb, txBytesToMb);
+                LOG.info("rxBytesToMb {} txBytesToMb {} ", rxBytesToMb, txBytesToMb);
 
             metricDetails.setRxMbps(rxBytesToMb / durationSec);
             metricDetails.setTxMbps(txBytesToMb / durationSec);
             if (LOG.isDebugEnabled())
-                LOG.debug("RxMbps {} TxMbps {} ", metricDetails.getRxMbps(), metricDetails.getTxMbps());
+                LOG.info("RxMbps {} TxMbps {} ", metricDetails.getRxMbps(), metricDetails.getTxMbps());
 
         } else {
             LOG.info("Cannot calculate tx/rx throughput for Client {} based on duration of {} Ms",
@@ -2060,7 +2059,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
     void populateApSsidMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId, long equipmentId,
             String apId, long locationId) {
 
-        LOG.debug("populateApSsidMetrics for Customer {} Equipment {}", customerId, equipmentId);
+        LOG.info("populateApSsidMetrics for Customer {} Equipment {}", customerId, equipmentId);
         ServiceMetric smr = new ServiceMetric(customerId, equipmentId);
         smr.setLocationId(locationId);
         ApSsidMetrics apSsidMetrics = new ApSsidMetrics();
@@ -2072,7 +2071,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
         for (ClientReport clientReport : report.getClientsList()) {
 
-            LOG.debug("ClientReport for channel {} RadioBand {}", clientReport.getChannel(), clientReport.getBand());
+            LOG.info("ClientReport for channel {} RadioBand {}", clientReport.getChannel(), clientReport.getBand());
 
             if (smr.getCreatedTimestamp() < clientReport.getTimestampMs()) {
                 smr.setCreatedTimestamp(clientReport.getTimestampMs());
@@ -2115,7 +2114,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                     }
                 }
             }
-            LOG.debug("Client Report Date is {}", new Date(clientReport.getTimestampMs()));
+            LOG.info("Client Report Date is {}", new Date(clientReport.getTimestampMs()));
             int numConnectedClients = 0;
             for (Client client : clientReport.getClientListList()) {
                 if (client.hasStats()) {
@@ -2195,7 +2194,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
 
                     } catch (Exception e) {
-                        LOG.debug("Unabled to update client {} session {}", client, e);
+                        LOG.info("Unabled to update client {} session {}", client, e);
                     }
 
                 }
@@ -2225,7 +2224,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
         }
 
-        LOG.debug("ApSsidMetrics {}", apSsidMetrics);
+        LOG.info("ApSsidMetrics {}", apSsidMetrics);
 
     }
 
@@ -2267,7 +2266,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
     void populateChannelInfoReports(List<ServiceMetric> metricRecordList, Report report, int customerId,
             long equipmentId, long locationId, long profileId) {
 
-        LOG.debug("populateChannelInfoReports for Customer {} Equipment {}", customerId, equipmentId);
+        LOG.info("populateChannelInfoReports for Customer {} Equipment {}", customerId, equipmentId);
 
         ProfileContainer profileContainer = new ProfileContainer(
                 profileServiceInterface.getProfileWithChildren(profileId));
@@ -2333,7 +2332,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             smr.setCreatedTimestamp(survey.getTimestampMs());
             metricRecordList.add(smr);
 
-            LOG.debug("ChannelInfoReports {}", channelInfoReports);
+            LOG.info("ChannelInfoReports {}", channelInfoReports);
 
         }
 

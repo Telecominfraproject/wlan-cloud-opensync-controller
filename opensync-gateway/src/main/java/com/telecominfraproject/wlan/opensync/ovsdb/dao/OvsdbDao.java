@@ -104,12 +104,15 @@ import com.vmware.ovsdb.protocol.methods.TableUpdate;
 import com.vmware.ovsdb.protocol.methods.TableUpdates;
 import com.vmware.ovsdb.protocol.operation.Delete;
 import com.vmware.ovsdb.protocol.operation.Insert;
+import com.vmware.ovsdb.protocol.operation.Mutate;
 import com.vmware.ovsdb.protocol.operation.Operation;
 import com.vmware.ovsdb.protocol.operation.Select;
 import com.vmware.ovsdb.protocol.operation.Update;
 import com.vmware.ovsdb.protocol.operation.notation.Atom;
 import com.vmware.ovsdb.protocol.operation.notation.Condition;
 import com.vmware.ovsdb.protocol.operation.notation.Function;
+import com.vmware.ovsdb.protocol.operation.notation.Mutation;
+import com.vmware.ovsdb.protocol.operation.notation.Mutator;
 import com.vmware.ovsdb.protocol.operation.notation.Row;
 import com.vmware.ovsdb.protocol.operation.notation.Uuid;
 import com.vmware.ovsdb.protocol.operation.notation.Value;
@@ -2754,7 +2757,7 @@ public class OvsdbDao {
 
             // TODO: when AP support for Bonjour Gateway set values
             if (bonjourServiceMap != null && bonjourServiceMap.size() > 0) {
-                LOG.debug("SSID {} Bonjour Services per vlan {}", ssid, bonjourServiceMap);
+                LOG.info("SSID {} Bonjour Services per vlan {}", ssid, bonjourServiceMap);
             }
 
             updateColumns.put("bridge", new Atom<>(bridgeInterfaceName));
@@ -2832,13 +2835,13 @@ public class OvsdbDao {
 
             if (isUpdate) {
                 for (OperationResult res : result) {
-                    LOG.debug("Op Result {}", res);
+                    LOG.info("Op Result {}", res);
                 }
                 LOG.info("Updated existing SSID {} on interface {} / {}", ssid, vifInterfaceName, radioFreqBand);
             } else {
                 Uuid vifConfigUuid = null;
                 for (OperationResult res : result) {
-                    LOG.debug("Op Result {}", res);
+                    LOG.info("Op Result {}", res);
                     if (res instanceof InsertResult) {
                         vifConfigUuid = ((InsertResult) res).getUuid();
                     }
@@ -2848,6 +2851,7 @@ public class OvsdbDao {
                 }
                 updateColumns.clear();
                 operations.clear();
+                updateVifConfigsSetForRadio(ovsdbClient, ssid, radioFreqBand, operations, updateColumns, vifConfigUuid);
                 LOG.info("Provisioned SSID {} on interface {} / {}", ssid, vifInterfaceName, radioFreqBand);
             }
 
@@ -2913,6 +2917,32 @@ public class OvsdbDao {
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             LOG.error("Error in configureSingleSsid", e);
             throw new RuntimeException(e);
+        }
+    }
+
+    private void updateVifConfigsSetForRadio(OvsdbClient ovsdbClient, String ssid, String radioFreqBand,
+            List<Operation> operations, Map<String, Value> updateColumns, Uuid vifConfigUuid)
+            throws OvsdbClientException, InterruptedException, ExecutionException, TimeoutException {
+
+        List<Condition> conditions = new ArrayList<>();
+        conditions.add(new Condition("freq_band", Function.EQUALS, new Atom<>(radioFreqBand)));
+
+        List<Mutation> mutations = new ArrayList<>();
+        Mutation mutation = new Mutation("vif_configs", Mutator.INSERT, new Atom<>(vifConfigUuid));
+        mutations.add(mutation);
+        operations.add(new Mutate(wifiRadioConfigDbTable, conditions, mutations));
+
+        LOG.info("Sending batch of operations : {} ", operations);
+
+        CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+        OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+        if (LOG.isDebugEnabled()) {
+            LOG.info("Updated WifiRadioConfig {} for SSID {}:", radioFreqBand, ssid);
+
+            for (OperationResult res : result) {
+                LOG.info("Op Result {}", res);
+            }
         }
     }
 
