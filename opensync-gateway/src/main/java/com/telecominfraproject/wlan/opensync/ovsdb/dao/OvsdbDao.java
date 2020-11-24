@@ -5111,7 +5111,7 @@ public class OvsdbDao {
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
             if (LOG.isDebugEnabled()) {
-                LOG.debug("Removed rrm from {}:", wifiVifConfigDbTable);
+                LOG.debug("Removed rrm from {}:", wifiRrmConfigDbTable);
 
                 for (OperationResult res : result) {
                     LOG.debug("Op Result {}", res);

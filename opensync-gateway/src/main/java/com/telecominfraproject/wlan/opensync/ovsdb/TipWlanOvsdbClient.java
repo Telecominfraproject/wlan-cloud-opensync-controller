@@ -196,16 +196,18 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
 
         if (opensyncAPConfig != null) {
-            ovsdbDao.removeAllPasspointConfigs(ovsdbClient);
+            // cleanup existing
             ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
-            ovsdbDao.removeAllSsids(ovsdbClient, opensyncAPConfig); // always
+            ovsdbDao.removeAllPasspointConfigs(ovsdbClient);
             ovsdbDao.removeWifiRrm(ovsdbClient);
+            ovsdbDao.removeAllSsids(ovsdbClient, opensyncAPConfig); // always
             ovsdbDao.removeAllGreTunnels(ovsdbClient, opensyncAPConfig);
+            // reconfigure
             ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureInterfaces(ovsdbClient);
+            ovsdbDao.configureGreTunnels(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
-            ovsdbDao.configureGreTunnels(ovsdbClient, opensyncAPConfig);
             if (opensyncAPConfig.getHotspotConfig() != null) {
                 ovsdbDao.configureHotspots(ovsdbClient, opensyncAPConfig);
             }
@@ -216,8 +218,8 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         } else {
             ovsdbDao.removeAllPasspointConfigs(ovsdbClient);
             ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
-            ovsdbDao.removeAllSsids(ovsdbClient); // always
             ovsdbDao.removeWifiRrm(ovsdbClient);
+            ovsdbDao.removeAllSsids(ovsdbClient); // always
             ovsdbDao.removeAllGreTunnels(ovsdbClient, null);
         }
 
@@ -268,18 +270,17 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             LOG.warn("AP with id " + apId + " does not have a config to apply.");
             return;
         }
-
+        ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
         ovsdbDao.removeAllPasspointConfigs(ovsdbClient);
+        ovsdbDao.removeWifiRrm(ovsdbClient);
         ovsdbDao.removeAllSsids(ovsdbClient, opensyncAPConfig); // always
         ovsdbDao.removeAllGreTunnels(ovsdbClient, opensyncAPConfig);
-        ovsdbDao.removeWifiRrm(ovsdbClient);
-        ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
 
         ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureInterfaces(ovsdbClient);
+        ovsdbDao.configureGreTunnels(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
-        ovsdbDao.configureGreTunnels(ovsdbClient, opensyncAPConfig);
         if (opensyncAPConfig.getHotspotConfig() != null) {
             ovsdbDao.configureHotspots(ovsdbClient, opensyncAPConfig);
         }
