@@ -572,6 +572,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 networkAdminStatusRec = new Status();
                 networkAdminStatusRec.setCustomerId(ce.getCustomerId());
                 networkAdminStatusRec.setEquipmentId(ce.getId());
+                networkAdminStatusRec.setStatusDataType(StatusDataType.NETWORK_ADMIN);
                 NetworkAdminStatusData statusData = new NetworkAdminStatusData();
                 networkAdminStatusRec.setDetails(statusData);
             }
@@ -580,6 +581,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             netAdminStatusData.setDhcpStatus(StatusCode.normal);
             netAdminStatusData.setCloudLinkStatus(StatusCode.normal);
             netAdminStatusData.setDnsStatus(StatusCode.normal);
+            netAdminStatusData.setRadiusStatus(StatusCode.normal);
 
             networkAdminStatusRec.setDetails(netAdminStatusData);
 
