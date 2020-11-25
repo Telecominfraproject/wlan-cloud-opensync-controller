@@ -10,55 +10,48 @@
     "countryCode" : "ca",
     "maintenanceWindow" : null,
     "rrmEnabled" : true,
-    "dailyRebalancingDetails" : {
+    "dailyActivityDetails" : {
       "SUNDAY" : {
         "model_type" : "LocationActivityDetails",
         "busyTime" : "13:30",
         "quietTime" : "3:30",
-        "timezone" : "US/Eastern",
-        "lastBusySnapshot" : 0
+        "timezone" : "US/Eastern"
       },
       "MONDAY" : {
         "model_type" : "LocationActivityDetails",
         "busyTime" : "13:30",
         "quietTime" : "3:30",
-        "timezone" : "US/Eastern",
-        "lastBusySnapshot" : 0
+        "timezone" : "US/Eastern"
       },
       "TUESDAY" : {
         "model_type" : "LocationActivityDetails",
         "busyTime" : "13:30",
         "quietTime" : "3:30",
-        "timezone" : "US/Eastern",
-        "lastBusySnapshot" : 0
+        "timezone" : "US/Eastern"
       },
       "WEDNESDAY" : {
         "model_type" : "LocationActivityDetails",
         "busyTime" : "13:30",
         "quietTime" : "3:30",
-        "timezone" : "US/Eastern",
-        "lastBusySnapshot" : 0
+        "timezone" : "US/Eastern"
       },
       "THURSDAY" : {
         "model_type" : "LocationActivityDetails",
         "busyTime" : "13:30",
         "quietTime" : "3:30",
-        "timezone" : "US/Eastern",
-        "lastBusySnapshot" : 0
+        "timezone" : "US/Eastern"
       },
       "FRIDAY" : {
         "model_type" : "LocationActivityDetails",
         "busyTime" : "13:30",
         "quietTime" : "3:30",
-        "timezone" : "US/Eastern",
-        "lastBusySnapshot" : 0
+        "timezone" : "US/Eastern"
       },
       "SATURDAY" : {
         "model_type" : "LocationActivityDetails",
         "busyTime" : "13:30",
         "quietTime" : "3:30",
-        "timezone" : "US/Eastern",
-        "lastBusySnapshot" : 0
+        "timezone" : "US/Eastern"
       }
     }
   },
