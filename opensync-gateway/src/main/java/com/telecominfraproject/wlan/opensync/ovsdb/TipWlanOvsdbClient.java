@@ -200,8 +200,8 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
             ovsdbDao.removeAllPasspointConfigs(ovsdbClient);
             ovsdbDao.removeWifiRrm(ovsdbClient);
-            ovsdbDao.removeAllSsids(ovsdbClient, opensyncAPConfig); // always
-            ovsdbDao.removeAllGreTunnels(ovsdbClient, opensyncAPConfig);
+            ovsdbDao.removeAllInetConfigs(ovsdbClient);
+            ovsdbDao.removeAllSsids(ovsdbClient); // always
             // reconfigure
             ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureInterfaces(ovsdbClient);
@@ -216,11 +216,11 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                 ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
             }
         } else {
-            ovsdbDao.removeAllPasspointConfigs(ovsdbClient);
             ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
+            ovsdbDao.removeAllPasspointConfigs(ovsdbClient);
             ovsdbDao.removeWifiRrm(ovsdbClient);
+            ovsdbDao.removeAllInetConfigs(ovsdbClient);
             ovsdbDao.removeAllSsids(ovsdbClient); // always
-            ovsdbDao.removeAllGreTunnels(ovsdbClient, null);
         }
 
         if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
@@ -273,8 +273,8 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
         ovsdbDao.removeAllPasspointConfigs(ovsdbClient);
         ovsdbDao.removeWifiRrm(ovsdbClient);
-        ovsdbDao.removeAllSsids(ovsdbClient, opensyncAPConfig); // always
-        ovsdbDao.removeAllGreTunnels(ovsdbClient, opensyncAPConfig);
+        ovsdbDao.removeAllInetConfigs(ovsdbClient);
+        ovsdbDao.removeAllSsids(ovsdbClient); // always
 
         ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureInterfaces(ovsdbClient);
