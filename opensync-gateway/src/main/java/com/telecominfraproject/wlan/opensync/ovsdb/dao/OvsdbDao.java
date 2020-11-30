@@ -3529,259 +3529,267 @@ public class OvsdbDao {
 	}
 
 	public void provisionHotspot20Config(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
-		try {
-			DatabaseSchema schema = ovsdbClient.getSchema(ovsdbName).get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-			if (schema.getTables().containsKey(hotspot20ConfigDbTable)
-					&& schema.getTables().get(hotspot20ConfigDbTable) != null) {
-				Map<String, Hotspot20Config> hotspot20ConfigMap = getProvisionedHotspot20Configs(ovsdbClient);
+        try {
+            DatabaseSchema schema = ovsdbClient.getSchema(ovsdbName).get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+            if (schema.getTables().containsKey(hotspot20ConfigDbTable)
+                    && schema.getTables().get(hotspot20ConfigDbTable) != null) {
+                Map<String, Hotspot20Config> hotspot20ConfigMap = getProvisionedHotspot20Configs(ovsdbClient);
 
-				OpensyncAPHotspot20Config hs20cfg = opensyncApConfig.getHotspotConfig();
+                OpensyncAPHotspot20Config hs20cfg = opensyncApConfig.getHotspotConfig();
 
-				if (hs20cfg.getHotspot20ProfileSet() != null) {
-					List<Operation> operations = new ArrayList<>();
-					for (Profile hotspotProfile : hs20cfg.getHotspot20ProfileSet()) {
+                if (hs20cfg.getHotspot20ProfileSet() != null) {
+                    List<Operation> operations = new ArrayList<>();
+                    for (Profile hotspotProfile : hs20cfg.getHotspot20ProfileSet()) {
 
-						PasspointProfile hs2Profile = (PasspointProfile) hotspotProfile.getDetails();
+                        PasspointProfile hs2Profile = (PasspointProfile) hotspotProfile.getDetails();
 
-						Profile operator = hs20cfg.getHotspot20OperatorSet().stream().filter(new Predicate<Profile>() {
+                        Profile operator = hs20cfg.getHotspot20OperatorSet().stream().filter(new Predicate<Profile>() {
 
-							@Override
-							public boolean test(Profile t) {
-								return t.getName().equals(hs2Profile.getOperatorProfileName());
-							}
+                            @Override
+                            public boolean test(Profile t) {
+                                return t.getId() == hs2Profile.getPasspointOperatorProfileId();
+                            }
 
-						}).findFirst().get();
+                        }).findFirst().get();
 
-						PasspointOperatorProfile passpointOperatorProfile = (PasspointOperatorProfile) operator
-								.getDetails();
+                        PasspointOperatorProfile passpointOperatorProfile = (PasspointOperatorProfile) operator
+                                .getDetails();
 
-						Profile venue = hs20cfg.getHotspot20VenueSet().stream().filter(new Predicate<Profile>() {
+                        Profile venue = hs20cfg.getHotspot20VenueSet().stream().filter(new Predicate<Profile>() {
 
-							@Override
-							public boolean test(Profile t) {
-								return t.getName().equals(hs2Profile.getVenueProfileName());
-							}
+                            @Override
+                            public boolean test(Profile t) {
+                                return t.getId() == hs2Profile.getPasspointVenueProfileId();
+                            }
 
-						}).findFirst().get();
+                        }).findFirst().get();
 
-						PasspointVenueProfile passpointVenueProfile = (PasspointVenueProfile) venue.getDetails();
+                        PasspointVenueProfile passpointVenueProfile = (PasspointVenueProfile) venue.getDetails();
 
-						Map<String, Value> rowColumns = new HashMap<>();
+                        Map<String, Value> rowColumns = new HashMap<>();
 
-						Map<String, Hotspot20OsuProviders> osuProviders = getProvisionedHotspot20OsuProviders(
-								ovsdbClient);
-						List<Profile> providerList = new ArrayList<>();
-						if (hs20cfg.getHotspot20ProviderSet() != null) {
-							providerList = hs20cfg.getHotspot20ProviderSet().stream().filter(new Predicate<Profile>() {
+                        Map<String, Hotspot20OsuProviders> osuProviders = getProvisionedHotspot20OsuProviders(
+                                ovsdbClient);
+                        List<Profile> providerList = new ArrayList<>();
+                        if (hs20cfg.getHotspot20ProviderSet() != null) {
+                            providerList = hs20cfg.getHotspot20ProviderSet().stream().filter(new Predicate<Profile>() {
 
-								@Override
-								public boolean test(Profile t) {
-									return hotspotProfile.getChildProfileIds().contains(t.getId());
-								}
-							}).collect(Collectors.toList());
+                                @Override
+                                public boolean test(Profile t) {
+                                    return hotspotProfile.getChildProfileIds().contains(t.getId());
+                                }
+                            }).collect(Collectors.toList());
 
-						}
+                        }
 
-						Set<Uuid> osuProvidersUuids = new HashSet<>();
-						Set<Uuid> osuIconUuids = new HashSet<>();
-						Set<Atom<String>> domainNames = new HashSet<>();
-						StringBuffer mccMncBuffer = new StringBuffer();
-						Set<Atom<String>> naiRealms = new HashSet<>();
-						Set<Atom<String>> roamingOis = new HashSet<>();
-						for (Profile provider : providerList) {
-							PasspointOsuProviderProfile providerProfile = (PasspointOsuProviderProfile) provider
-									.getDetails();
-							if (osuProviders.containsKey(providerProfile.getOsuServerUri())) {
-								Hotspot20OsuProviders hotspot2OsuProviders = osuProviders
-										.get(providerProfile.getOsuServerUri());
+                        Set<Uuid> osuProvidersUuids = new HashSet<>();
+                        Set<Uuid> osuIconUuids = new HashSet<>();
+                        Set<Atom<String>> domainNames = new HashSet<>();
+                        StringBuffer mccMncBuffer = new StringBuffer();
+                        Set<Atom<String>> naiRealms = new HashSet<>();
+                        Set<Atom<String>> roamingOis = new HashSet<>();
+                        for (Profile provider : providerList) {
+                            PasspointOsuProviderProfile providerProfile = (PasspointOsuProviderProfile) provider
+                                    .getDetails();
+                            if (osuProviders.containsKey(providerProfile.getOsuServerUri())) {
+                                Hotspot20OsuProviders hotspot2OsuProviders = osuProviders
+                                        .get(providerProfile.getOsuServerUri());
 
-								StringBuffer roamingOiOctets = new StringBuffer();
-								providerProfile.getRoamingOi().stream().forEach(o -> {
-									roamingOiOctets.append(Byte.toString(o));
-								});
-								roamingOis.add(new Atom<>(roamingOiOctets.toString()));
-								osuProvidersUuids.add(hotspot2OsuProviders.uuid);
-								osuIconUuids.addAll(hotspot2OsuProviders.osuIcons);
-								domainNames.add(new Atom<>(providerProfile.getDomainName()));
-								getNaiRealms(providerProfile, naiRealms);
+                                StringBuffer roamingOiOctets = new StringBuffer();
+                                providerProfile.getRoamingOi().stream().forEach(o -> {
+                                    roamingOiOctets.append(Byte.toString(o));
+                                });
+                                roamingOis.add(new Atom<>(roamingOiOctets.toString()));
+                                osuProvidersUuids.add(hotspot2OsuProviders.uuid);
+                                osuIconUuids.addAll(hotspot2OsuProviders.osuIcons);
+                                domainNames.add(new Atom<>(providerProfile.getDomainName()));
+                                getNaiRealms(providerProfile, naiRealms);
 
-								for (PasspointMccMnc passpointMccMnc : providerProfile.getMccMncList()) {
-									mccMncBuffer.append(passpointMccMnc.getMccMncPairing());
-									mccMncBuffer.append(";");
-								}
+                                for (PasspointMccMnc passpointMccMnc : providerProfile.getMccMncList()) {
+                                    mccMncBuffer.append(passpointMccMnc.getMccMncPairing());
+                                    mccMncBuffer.append(";");
+                                }
 
-							}
-						}
+                            }
+                        }
 
-						String mccMncString = mccMncBuffer.toString();
-						if (mccMncString.endsWith(";")) {
-							mccMncString = mccMncString.substring(0, mccMncString.lastIndexOf(";"));
-						}
+                        String mccMncString = mccMncBuffer.toString();
+                        if (mccMncString.endsWith(";")) {
+                            mccMncString = mccMncString.substring(0, mccMncString.lastIndexOf(";"));
+                        }
 
-						rowColumns.put("mcc_mnc", new Atom<>(mccMncString));
+                        rowColumns.put("mcc_mnc", new Atom<>(mccMncString));
 
-						com.vmware.ovsdb.protocol.operation.notation.Set roamingOiSet = com.vmware.ovsdb.protocol.operation.notation.Set
-								.of(roamingOis);
-						rowColumns.put("roaming_oi", roamingOiSet);
+                        com.vmware.ovsdb.protocol.operation.notation.Set roamingOiSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                                .of(roamingOis);
+                        rowColumns.put("roaming_oi", roamingOiSet);
 
-						com.vmware.ovsdb.protocol.operation.notation.Set naiRealmsSet = com.vmware.ovsdb.protocol.operation.notation.Set
-								.of(naiRealms);
-						rowColumns.put("nai_realm", naiRealmsSet);
+                        com.vmware.ovsdb.protocol.operation.notation.Set naiRealmsSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                                .of(naiRealms);
+                        rowColumns.put("nai_realm", naiRealmsSet);
 
-						if (osuProvidersUuids.size() > 0) {
-							com.vmware.ovsdb.protocol.operation.notation.Set providerUuids = com.vmware.ovsdb.protocol.operation.notation.Set
-									.of(osuProvidersUuids);
-							rowColumns.put("osu_providers", providerUuids);
-						}
+                        if (osuProvidersUuids.size() > 0) {
+                            com.vmware.ovsdb.protocol.operation.notation.Set providerUuids = com.vmware.ovsdb.protocol.operation.notation.Set
+                                    .of(osuProvidersUuids);
+                            rowColumns.put("osu_providers", providerUuids);
+                        }
 
-						if (osuIconUuids.size() > 0) {
-							com.vmware.ovsdb.protocol.operation.notation.Set iconUuids = com.vmware.ovsdb.protocol.operation.notation.Set
-									.of(osuIconUuids);
-							rowColumns.put("operator_icons", iconUuids);
-						}
+                        if (osuIconUuids.size() > 0) {
+                            com.vmware.ovsdb.protocol.operation.notation.Set iconUuids = com.vmware.ovsdb.protocol.operation.notation.Set
+                                    .of(osuIconUuids);
+                            rowColumns.put("operator_icons", iconUuids);
+                        }
 
-						if (domainNames.size() > 0) {
-							com.vmware.ovsdb.protocol.operation.notation.Set domainNameSet = com.vmware.ovsdb.protocol.operation.notation.Set
-									.of(domainNames);
-							rowColumns.put("domain_name", domainNameSet);
-						}
+                        if (domainNames.size() > 0) {
+                            com.vmware.ovsdb.protocol.operation.notation.Set domainNameSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                                    .of(domainNames);
+                            rowColumns.put("domain_name", domainNameSet);
+                        }
 
-						hs2Profile.getIpAddressTypeAvailability();
-						rowColumns.put("deauth_request_timeout", new Atom<>(hs2Profile.getDeauthRequestTimeout()));
-						rowColumns.put("osen",
-								new Atom<>(passpointOperatorProfile.isServerOnlyAuthenticatedL2EncryptionNetwork()));
+                        hs2Profile.getIpAddressTypeAvailability();
+                        rowColumns.put("deauth_request_timeout", new Atom<>(hs2Profile.getDeauthRequestTimeout()));
+                        rowColumns.put("osen",
+                                new Atom<>(passpointOperatorProfile.isServerOnlyAuthenticatedL2EncryptionNetwork()));
 
-						rowColumns.put("tos", new Atom<>(hs2Profile.getTermsAndConditionsFile().getApExportUrl()));
+                        rowColumns.put("tos", new Atom<>(hs2Profile.getTermsAndConditionsFile().getApExportUrl()));
 
-						Set<Atom<String>> operatorFriendlyName = new HashSet<>();
-						passpointOperatorProfile.getOperatorFriendlyName().stream()
-								.forEach(c -> operatorFriendlyName.add(new Atom<>(c.getAsDuple())));
-						com.vmware.ovsdb.protocol.operation.notation.Set operatorFriendlyNameSet = com.vmware.ovsdb.protocol.operation.notation.Set
-								.of(operatorFriendlyName);
-						rowColumns.put("operator_friendly_name", operatorFriendlyNameSet);
+                        Set<Atom<String>> operatorFriendlyName = new HashSet<>();
+                        passpointOperatorProfile.getOperatorFriendlyName().stream()
+                                .forEach(c -> operatorFriendlyName.add(new Atom<>(c.getAsDuple())));
+                        com.vmware.ovsdb.protocol.operation.notation.Set operatorFriendlyNameSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                                .of(operatorFriendlyName);
+                        rowColumns.put("operator_friendly_name", operatorFriendlyNameSet);
 
-						rowColumns.put("enable", new Atom<>(hs2Profile.isEnableInterworkingAndHs20()));
-						rowColumns.put("network_auth_type",
-								new Atom<>("0" + hs2Profile.getNetworkAuthenticationType().getId()));
-						rowColumns.put("gas_addr3_behavior", new Atom<>(hs2Profile.getGasAddr3Behaviour().getId()));
-						rowColumns.put("operating_class", new Atom<>(hs2Profile.getOperatingClass()));
-						rowColumns.put("anqp_domain_id", new Atom<>(hs2Profile.getAnqpDomainId()));
+                        rowColumns.put("enable", new Atom<>(hs2Profile.isEnableInterworkingAndHs20()));
+                        rowColumns.put("network_auth_type",
+                                new Atom<>("0" + hs2Profile.getNetworkAuthenticationType().getId()));
+                        rowColumns.put("gas_addr3_behavior", new Atom<>(hs2Profile.getGasAddr3Behaviour().getId()));
+                        rowColumns.put("operating_class", new Atom<>(hs2Profile.getOperatingClass()));
+                        rowColumns.put("anqp_domain_id", new Atom<>(hs2Profile.getAnqpDomainId()));
 
-						Set<Atom<String>> connectionCapabilities = new HashSet<>();
-						hs2Profile.getConnectionCapabilitySet().stream()
-								.forEach(c -> connectionCapabilities
-										.add(new Atom<>(c.getConnectionCapabilitiesIpProtocol().getId() + ":"
-												+ c.getConnectionCapabilitiesPortNumber() + ":"
-												+ c.getConnectionCapabilitiesStatus().getId())));
-						com.vmware.ovsdb.protocol.operation.notation.Set connectionCapabilitySet = com.vmware.ovsdb.protocol.operation.notation.Set
-								.of(connectionCapabilities);
-						rowColumns.put("connection_capability", connectionCapabilitySet);
+                        Set<Atom<String>> connectionCapabilities = new HashSet<>();
+                        hs2Profile.getConnectionCapabilitySet().stream()
+                                .forEach(c -> connectionCapabilities
+                                        .add(new Atom<>(c.getConnectionCapabilitiesIpProtocol().getId() + ":"
+                                                + c.getConnectionCapabilitiesPortNumber() + ":"
+                                                + c.getConnectionCapabilitiesStatus().getId())));
+                        com.vmware.ovsdb.protocol.operation.notation.Set connectionCapabilitySet = com.vmware.ovsdb.protocol.operation.notation.Set
+                                .of(connectionCapabilities);
+                        rowColumns.put("connection_capability", connectionCapabilitySet);
 
-						Set<Atom<String>> venueNames = new HashSet<>();
-						Set<Atom<String>> venueUrls = new HashSet<>();
-						int index = 1;
-						for (PasspointVenueName passpointVenueName : passpointVenueProfile.getVenueNameSet()) {
-							venueNames.add(new Atom<String>(passpointVenueName.getAsDuple()));
-							String url = String.valueOf(index) + ":" + passpointVenueName.getVenueUrl();
-							venueUrls.add(new Atom<String>(url));
-							index++;
-						}
-						com.vmware.ovsdb.protocol.operation.notation.Set venueNameSet = com.vmware.ovsdb.protocol.operation.notation.Set
-								.of(venueNames);
-						com.vmware.ovsdb.protocol.operation.notation.Set venueUrlSet = com.vmware.ovsdb.protocol.operation.notation.Set
-								.of(venueUrls);
-						rowColumns.put("venue_name", venueNameSet);
-						rowColumns.put("venue_url", venueUrlSet);
+                        Set<Atom<String>> venueNames = new HashSet<>();
+                        Set<Atom<String>> venueUrls = new HashSet<>();
+                        int index = 1;
+                        for (PasspointVenueName passpointVenueName : passpointVenueProfile.getVenueNameSet()) {
+                            venueNames.add(new Atom<String>(passpointVenueName.getAsDuple()));
+                            String url = String.valueOf(index) + ":" + passpointVenueName.getVenueUrl();
+                            venueUrls.add(new Atom<String>(url));
+                            index++;
+                        }
+                        com.vmware.ovsdb.protocol.operation.notation.Set venueNameSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                                .of(venueNames);
+                        com.vmware.ovsdb.protocol.operation.notation.Set venueUrlSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                                .of(venueUrls);
+                        rowColumns.put("venue_name", venueNameSet);
+                        rowColumns.put("venue_url", venueUrlSet);
 
-						PasspointVenueTypeAssignment passpointVenueTypeAssignment = passpointVenueProfile
-								.getVenueTypeAssignment();
-						String groupType = String.valueOf(passpointVenueTypeAssignment.getVenueGroupId()) + ":"
-								+ passpointVenueTypeAssignment.getVenueTypeId();
+                        PasspointVenueTypeAssignment passpointVenueTypeAssignment = passpointVenueProfile
+                                .getVenueTypeAssignment();
+                        String groupType = String.valueOf(passpointVenueTypeAssignment.getVenueGroupId()) + ":"
+                                + passpointVenueTypeAssignment.getVenueTypeId();
 
-						rowColumns.put("venue_group_type", new Atom<>(groupType));
+                        rowColumns.put("venue_group_type", new Atom<>(groupType));
 
-						// # format: <1-octet encoded value as hex str>
-						// # (ipv4_type & 0x3f) << 2 | (ipv6_type & 0x3) << 2
-						// 0x3f = 63 in decimal
-						// 0x3 = 3 in decimal
-						if (PasspointIPv6AddressType.getByName(
-								hs2Profile.getIpAddressTypeAvailability()) != PasspointIPv6AddressType.UNSUPPORTED) {
-							int availability = PasspointIPv6AddressType
-									.getByName(hs2Profile.getIpAddressTypeAvailability()).getId();
-							String hexString = Integer.toHexString((availability & 3) << 2);
-							rowColumns.put("ipaddr_type_availability", new Atom<>(hexString));
-						} else if (PasspointIPv4AddressType.getByName(
-								hs2Profile.getIpAddressTypeAvailability()) != PasspointIPv4AddressType.UNSUPPORTED) {
-							int availability = PasspointIPv4AddressType
-									.getByName(hs2Profile.getIpAddressTypeAvailability()).getId();
-							String hexString = Integer.toHexString((availability & 63) << 2);
-							rowColumns.put("ipaddr_type_availability", new Atom<>(hexString));
-						}
+                        // # format: <1-octet encoded value as hex str>
+                        // # (ipv4_type & 0x3f) << 2 | (ipv6_type & 0x3) << 2
+                        // 0x3f = 63 in decimal
+                        // 0x3 = 3 in decimal
+                        if (PasspointIPv6AddressType.getByName(
+                                hs2Profile.getIpAddressTypeAvailability()) != PasspointIPv6AddressType.UNSUPPORTED) {
+                            int availability = PasspointIPv6AddressType
+                                    .getByName(hs2Profile.getIpAddressTypeAvailability()).getId();
+                            String hexString = Integer.toHexString((availability & 3) << 2);
+                            rowColumns.put("ipaddr_type_availability", new Atom<>(hexString));
+                        } else if (PasspointIPv4AddressType.getByName(
+                                hs2Profile.getIpAddressTypeAvailability()) != PasspointIPv4AddressType.UNSUPPORTED) {
+                            int availability = PasspointIPv4AddressType
+                                    .getByName(hs2Profile.getIpAddressTypeAvailability()).getId();
+                            String hexString = Integer.toHexString((availability & 63) << 2);
+                            rowColumns.put("ipaddr_type_availability", new Atom<>(hexString));
+                        }
 
-						Map<String, WifiVifConfigInfo> vifConfigMap = getProvisionedWifiVifConfigs(ovsdbClient);
+                        Map<String, WifiVifConfigInfo> vifConfigMap = getProvisionedWifiVifConfigs(ovsdbClient);
 
-						Set<Uuid> vifConfigs = new HashSet<>();
-						List<Atom<String>> hessids = new ArrayList<>();
-						for (String ssid : hs2Profile.getAssociatedSsids()) {
-							if (vifConfigMap != null) {
-								vifConfigMap.keySet().stream().forEach(k -> {
-									if (k.endsWith(ssid)) {
-										WifiVifConfigInfo vifConfig = vifConfigMap.get(k);
-										vifConfigs.add(vifConfig.uuid);
-									}
-								});
-							}
+                        Set<Uuid> vifConfigs = new HashSet<>();
+                        List<Atom<String>> hessids = new ArrayList<>();
+                        
+                        for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
+                            if (hs2Profile.getAssociatedAccessSsidProfileIds().contains(ssidProfile.getId())) {
+                                
+                                String accessSsidProfileName = ((SsidConfiguration) ssidProfile.getDetails()).getSsid();
+                                
+                                for (WifiVifConfigInfo vifConfig : vifConfigMap.values()) {
+                                    if (vifConfig.ssid.equals(accessSsidProfileName)) {
+                                        vifConfigs.add(vifConfig.uuid);
+                                    }
+                                }
+                                
+                                List<String> vifStates = getWifiVifStates(ovsdbClient, accessSsidProfileName);
+                                for (String mac : vifStates) {
+                                    hessids.add(new Atom<>(mac));
+                                }
 
-							List<String> vifStates = getWifiVifStates(ovsdbClient, ssid);
-							for (String mac : vifStates) {
-								hessids.add(new Atom<>(mac));
-							}
+                            }
+                        }
 
-						}
+                        if (vifConfigs.size() > 0) {
+                            com.vmware.ovsdb.protocol.operation.notation.Set vifConfigUuids = com.vmware.ovsdb.protocol.operation.notation.Set
+                                    .of(vifConfigs);
+                            rowColumns.put("vif_config", vifConfigUuids);
+                        }
 
-						if (vifConfigs.size() > 0) {
-							com.vmware.ovsdb.protocol.operation.notation.Set vifConfigUuids = com.vmware.ovsdb.protocol.operation.notation.Set
-									.of(vifConfigs);
-							rowColumns.put("vif_config", vifConfigUuids);
-						}
+                        if (hessids.size() > 0) {
+                            rowColumns.put("hessid", new Atom<>(hessids.get(0)));
+                        }
+                        
+                        for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
+                            if (ssidProfile.getId() == hs2Profile.getOsuSsidProfileId()) {
+                                rowColumns.put("osu_ssid",
+                                        new Atom<>(((SsidConfiguration) ssidProfile.getDetails()).getSsid()));
+                                break;
+                            }
+                        }
 
-						if (hessids.size() > 0) {
+                        Row row = new Row(rowColumns);
 
-							rowColumns.put("hessid", new Atom<>(hessids.get(0)));
-						}
+                        Insert newHs20Config = new Insert(hotspot20ConfigDbTable, row);
 
-						rowColumns.put("osu_ssid", new Atom<>(hs2Profile.getOsuSsidName()));
+                        operations.add(newHs20Config);
 
-						Row row = new Row(rowColumns);
+                        // }
 
-						Insert newHs20Config = new Insert(hotspot20ConfigDbTable, row);
+                    }
 
-						operations.add(newHs20Config);
+                    CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+                    OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
-						// }
+                    for (OperationResult res : result) {
+                        LOG.debug("provisionHotspot20Config Op Result {}", res);
+                    }
 
-					}
+                }
 
-					CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-					OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+                LOG.info("Current Hotspot20_Config {}", hotspot20ConfigMap);
+            } else {
+                LOG.info("Table {} not present in {}. Cannot provision Hotspot20_Config", hotspot20ConfigDbTable,
+                        ovsdbName);
+            }
+        } catch (InterruptedException | ExecutionException | TimeoutException | OvsdbClientException e) {
+            LOG.error("Error in provisionHotspot20Config", e);
+            throw new RuntimeException(e);
+        }
 
-					for (OperationResult res : result) {
-						LOG.debug("provisionHotspot20Config Op Result {}", res);
-					}
-
-				}
-
-				LOG.info("Current Hotspot20_Config {}", hotspot20ConfigMap);
-			} else {
-				LOG.info("Table {} not present in {}. Cannot provision Hotspot20_Config", hotspot20ConfigDbTable,
-						ovsdbName);
-			}
-		} catch (InterruptedException | ExecutionException | TimeoutException | OvsdbClientException e) {
-			LOG.error("Error in provisionHotspot20Config", e);
-			throw new RuntimeException(e);
-		}
-
-	}
+    }
 
 	public void provisionHotspot20OsuProviders(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
 		try {
