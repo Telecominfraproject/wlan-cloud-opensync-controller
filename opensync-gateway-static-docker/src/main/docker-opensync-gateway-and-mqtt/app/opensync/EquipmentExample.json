@@ -2,7 +2,7 @@
   "model_type": "Equipment",
   "id": 51,
   "customerId": 2,
-  "profileId": 5,
+  "profileId": 12,
   "locationId": 8,
   "equipmentType": "AP",
   "inventoryId": "Test_Client_21P10C68818122",

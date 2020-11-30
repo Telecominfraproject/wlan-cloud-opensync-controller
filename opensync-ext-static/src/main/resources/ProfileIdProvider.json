@@ -4,7 +4,7 @@
 		"id": 19,
 		"customerId": 2,
 		"profileType": "passpoint_osu_id_provider",
-		"name": "TipWlan-Hotspot20-OSU-Provider",
+		"name": "TipWlan-Passpoint-OSU-Provider",
 		"details": {
 			"model_type": "PasspointOsuProviderProfile",
 			"domainName": "rogers.com",
@@ -128,8 +128,8 @@
 			],
 			"profileType": "passpoint_osu_id_provider"
 		},
-		"createdTimestamp": 1605711165325,
-		"lastModifiedTimestamp": 1605711165325,
+		"createdTimestamp": 1606778370345,
+		"lastModifiedTimestamp": 1606778370345,
 		"childProfileIds": [
 		]
 	},
@@ -138,7 +138,7 @@
 		"id": 20,
 		"customerId": 2,
 		"profileType": "passpoint_osu_id_provider",
-		"name": "TipWlan-Hotspot20-OSU-Provider-2",
+		"name": "TipWlan-Passpoint-OSU-Provider-2",
 		"details": {
 			"model_type": "PasspointOsuProviderProfile",
 			"domainName": "telus.com",
@@ -262,8 +262,8 @@
 			],
 			"profileType": "passpoint_osu_id_provider"
 		},
-		"createdTimestamp": 1605711165330,
-		"lastModifiedTimestamp": 1605711165330,
+		"createdTimestamp": 1606778370351,
+		"lastModifiedTimestamp": 1606778370351,
 		"childProfileIds": [
 		]
 	}

@@ -1,55 +1,56 @@
 {
-	"model_type": "Profile",
-	"id": 23,
-	"customerId": 2,
-	"profileType": "equipment_ap",
-	"name": "ApProfile-3-radios-passpoint",
-	"details": {
-		"model_type": "ApNetworkConfiguration",
-		"networkConfigVersion": "AP-1",
-		"equipmentType": "AP",
-		"vlanNative": true,
-		"vlan": 0,
-		"ntpServer": {
-			"model_type": "AutoOrManualString",
-			"auto": true,
-			"value": "pool.ntp.org"
-		},
-		"syslogRelay": null,
-		"rtlsSettings": null,
-		"syntheticClientEnabled": true,
-		"ledControlEnabled": true,
-		"equipmentDiscovery": false,
-		"greTunnelName": null,
-		"greParentIfName": null,
-		"greLocalInetAddr": null,
-		"greRemoteInetAddr": null,
-		"greRemoteMacAddr": null,
-		"radioMap": {
-			"is2dot4GHz": {
-				"model_type": "RadioProfileConfiguration",
-				"bestApEnabled": true,
-				"bestAPSteerType": "both"
-			},
-			"is5GHzU": {
-				"model_type": "RadioProfileConfiguration",
-				"bestApEnabled": true,
-				"bestAPSteerType": "both"
-			},
-			"is5GHzL": {
-				"model_type": "RadioProfileConfiguration",
-				"bestApEnabled": true,
-				"bestAPSteerType": "both"
-			}
-		},
-		"profileType": "equipment_ap"
-	},
-	"createdTimestamp": 1605711197140,
-	"lastModifiedTimestamp": 1605711197140,
-	"childProfileIds": [
-		16,
-		21,
-		22,
-		15
-	]
+    "model_type": "Profile",
+    "id": 12,
+    "customerId": 2,
+    "profileType": "equipment_ap",
+    "name": "ApProfile-3-radios",
+    "details": {
+        "model_type": "ApNetworkConfiguration",
+        "networkConfigVersion": "AP-1",
+        "equipmentType": "AP",
+        "vlanNative": true,
+        "vlan": 0,
+        "ntpServer": {
+            "model_type": "AutoOrManualString",
+            "auto": true,
+            "value": "pool.ntp.org"
+        },
+        "syslogRelay": null,
+        "rtlsSettings": null,
+        "syntheticClientEnabled": true,
+        "ledControlEnabled": true,
+        "equipmentDiscovery": false,
+        "greTunnelName": null,
+        "greParentIfName": null,
+        "greLocalInetAddr": null,
+        "greRemoteInetAddr": null,
+        "greRemoteMacAddr": null,
+        "radioMap": {
+            "is2dot4GHz": {
+                "model_type": "RadioProfileConfiguration",
+                "bestApEnabled": true,
+                "bestAPSteerType": "both"
+            },
+            "is5GHzU": {
+                "model_type": "RadioProfileConfiguration",
+                "bestApEnabled": true,
+                "bestAPSteerType": "both"
+            },
+            "is5GHzL": {
+                "model_type": "RadioProfileConfiguration",
+                "bestApEnabled": true,
+                "bestAPSteerType": "both"
+            }
+        },
+        "profileType": "equipment_ap"
+    },
+    "createdTimestamp": 1606778369934,
+    "lastModifiedTimestamp": 1606778443413,
+    "childProfileIds": [
+        16,
+        5,
+        10,
+        11,
+        15
+    ]
 }

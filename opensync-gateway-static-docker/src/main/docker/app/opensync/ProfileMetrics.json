@@ -1,10 +1,10 @@
 [
 	{
 		"model_type": "Profile",
-		"id": 22,
+		"id": 10,
 		"customerId": 2,
 		"profileType": "service_metrics_collection_config",
-		"name": "Metrics-Profile-Passpoint",
+		"name": "Metrics-Profile-3-Radios",
 		"details": {
 			"model_type": "ServiceMetricsCollectionConfigProfile",
 			"radioTypes": [
@@ -24,30 +24,6 @@
 					{
 						"model_type": "ServiceMetricSurveyConfigParameters",
 						"samplingInterval": 30,
-						"reportingIntervalSeconds": 60,
-						"channelSurveyType": "ON_CHANNEL",
-						"scanIntervalMillis": 0,
-						"percentUtilizationThreshold": 10,
-						"delayMillisecondsThreshold": 600,
-						"radioType": "is2dot4GHz",
-						"serviceMetricDataType": "ApNode",
-						"statsReportFormat": "RAW"
-					},
-					{
-						"model_type": "ServiceMetricSurveyConfigParameters",
-						"samplingInterval": 30,
-						"reportingIntervalSeconds": 60,
-						"channelSurveyType": "ON_CHANNEL",
-						"scanIntervalMillis": 0,
-						"percentUtilizationThreshold": 10,
-						"delayMillisecondsThreshold": 600,
-						"radioType": "is5GHzU",
-						"serviceMetricDataType": "ApNode",
-						"statsReportFormat": "RAW"
-					},
-					{
-						"model_type": "ServiceMetricSurveyConfigParameters",
-						"samplingInterval": 30,
 						"reportingIntervalSeconds": 120,
 						"channelSurveyType": "OFF_CHANNEL",
 						"scanIntervalMillis": 0,
@@ -72,24 +48,48 @@
 					{
 						"model_type": "ServiceMetricSurveyConfigParameters",
 						"samplingInterval": 30,
-						"reportingIntervalSeconds": 60,
-						"channelSurveyType": "ON_CHANNEL",
-						"scanIntervalMillis": 0,
-						"percentUtilizationThreshold": 10,
-						"delayMillisecondsThreshold": 600,
-						"radioType": "is5GHzL",
-						"serviceMetricDataType": "ApNode",
-						"statsReportFormat": "RAW"
-					},
-					{
-						"model_type": "ServiceMetricSurveyConfigParameters",
-						"samplingInterval": 30,
 						"reportingIntervalSeconds": 120,
 						"channelSurveyType": "OFF_CHANNEL",
 						"scanIntervalMillis": 0,
 						"percentUtilizationThreshold": 10,
 						"delayMillisecondsThreshold": 600,
 						"radioType": "is2dot4GHz",
+						"serviceMetricDataType": "ApNode",
+						"statsReportFormat": "RAW"
+					},
+					{
+						"model_type": "ServiceMetricSurveyConfigParameters",
+						"samplingInterval": 30,
+						"reportingIntervalSeconds": 60,
+						"channelSurveyType": "ON_CHANNEL",
+						"scanIntervalMillis": 0,
+						"percentUtilizationThreshold": 10,
+						"delayMillisecondsThreshold": 600,
+						"radioType": "is5GHzU",
+						"serviceMetricDataType": "ApNode",
+						"statsReportFormat": "RAW"
+					},
+					{
+						"model_type": "ServiceMetricSurveyConfigParameters",
+						"samplingInterval": 30,
+						"reportingIntervalSeconds": 60,
+						"channelSurveyType": "ON_CHANNEL",
+						"scanIntervalMillis": 0,
+						"percentUtilizationThreshold": 10,
+						"delayMillisecondsThreshold": 600,
+						"radioType": "is2dot4GHz",
+						"serviceMetricDataType": "ApNode",
+						"statsReportFormat": "RAW"
+					},
+					{
+						"model_type": "ServiceMetricSurveyConfigParameters",
+						"samplingInterval": 30,
+						"reportingIntervalSeconds": 60,
+						"channelSurveyType": "ON_CHANNEL",
+						"scanIntervalMillis": 0,
+						"percentUtilizationThreshold": 10,
+						"delayMillisecondsThreshold": 600,
+						"radioType": "is5GHzL",
 						"serviceMetricDataType": "ApNode",
 						"statsReportFormat": "RAW"
 					}
@@ -99,6 +99,13 @@
 						"model_type": "ServiceMetricRadioConfigParameters",
 						"samplingInterval": 30,
 						"reportingIntervalSeconds": 60,
+						"radioType": "is5GHzU",
+						"serviceMetricDataType": "ApSsid"
+					},
+					{
+						"model_type": "ServiceMetricRadioConfigParameters",
+						"samplingInterval": 30,
+						"reportingIntervalSeconds": 60,
 						"radioType": "is5GHzL",
 						"serviceMetricDataType": "ApSsid"
 					},
@@ -107,13 +114,6 @@
 						"samplingInterval": 30,
 						"reportingIntervalSeconds": 60,
 						"radioType": "is2dot4GHz",
-						"serviceMetricDataType": "ApSsid"
-					},
-					{
-						"model_type": "ServiceMetricRadioConfigParameters",
-						"samplingInterval": 30,
-						"reportingIntervalSeconds": 60,
-						"radioType": "is5GHzU",
 						"serviceMetricDataType": "ApSsid"
 					}
 				],
@@ -144,12 +144,12 @@
 					{
 						"model_type": "ServiceMetricSurveyConfigParameters",
 						"samplingInterval": 30,
-						"reportingIntervalSeconds": 60,
-						"channelSurveyType": "ON_CHANNEL",
+						"reportingIntervalSeconds": 120,
+						"channelSurveyType": "OFF_CHANNEL",
 						"scanIntervalMillis": 0,
 						"percentUtilizationThreshold": 10,
 						"delayMillisecondsThreshold": 600,
-						"radioType": "is2dot4GHz",
+						"radioType": "is5GHzL",
 						"serviceMetricDataType": "Channel",
 						"statsReportFormat": "RAW"
 					},
@@ -168,12 +168,12 @@
 					{
 						"model_type": "ServiceMetricSurveyConfigParameters",
 						"samplingInterval": 30,
-						"reportingIntervalSeconds": 60,
-						"channelSurveyType": "ON_CHANNEL",
+						"reportingIntervalSeconds": 120,
+						"channelSurveyType": "OFF_CHANNEL",
 						"scanIntervalMillis": 0,
 						"percentUtilizationThreshold": 10,
 						"delayMillisecondsThreshold": 600,
-						"radioType": "is5GHzL",
+						"radioType": "is2dot4GHz",
 						"serviceMetricDataType": "Channel",
 						"statsReportFormat": "RAW"
 					},
@@ -192,24 +192,24 @@
 					{
 						"model_type": "ServiceMetricSurveyConfigParameters",
 						"samplingInterval": 30,
-						"reportingIntervalSeconds": 120,
-						"channelSurveyType": "OFF_CHANNEL",
+						"reportingIntervalSeconds": 60,
+						"channelSurveyType": "ON_CHANNEL",
 						"scanIntervalMillis": 0,
 						"percentUtilizationThreshold": 10,
 						"delayMillisecondsThreshold": 600,
-						"radioType": "is5GHzL",
+						"radioType": "is2dot4GHz",
 						"serviceMetricDataType": "Channel",
 						"statsReportFormat": "RAW"
 					},
 					{
 						"model_type": "ServiceMetricSurveyConfigParameters",
 						"samplingInterval": 30,
-						"reportingIntervalSeconds": 120,
-						"channelSurveyType": "OFF_CHANNEL",
+						"reportingIntervalSeconds": 60,
+						"channelSurveyType": "ON_CHANNEL",
 						"scanIntervalMillis": 0,
 						"percentUtilizationThreshold": 10,
 						"delayMillisecondsThreshold": 600,
-						"radioType": "is2dot4GHz",
+						"radioType": "is5GHzL",
 						"serviceMetricDataType": "Channel",
 						"statsReportFormat": "RAW"
 					}
@@ -223,18 +223,6 @@
 						"scanIntervalMillis": 0,
 						"percentUtilizationThreshold": 10,
 						"delayMillisecondsThreshold": 600,
-						"radioType": "is5GHzL",
-						"serviceMetricDataType": "Neighbour",
-						"statsReportFormat": "RAW"
-					},
-					{
-						"model_type": "ServiceMetricSurveyConfigParameters",
-						"samplingInterval": 30,
-						"reportingIntervalSeconds": 120,
-						"channelSurveyType": "OFF_CHANNEL",
-						"scanIntervalMillis": 0,
-						"percentUtilizationThreshold": 10,
-						"delayMillisecondsThreshold": 600,
 						"radioType": "is5GHzU",
 						"serviceMetricDataType": "Neighbour",
 						"statsReportFormat": "RAW"
@@ -248,18 +236,6 @@
 						"percentUtilizationThreshold": 10,
 						"delayMillisecondsThreshold": 600,
 						"radioType": "is5GHzL",
-						"serviceMetricDataType": "Neighbour",
-						"statsReportFormat": "RAW"
-					},
-					{
-						"model_type": "ServiceMetricSurveyConfigParameters",
-						"samplingInterval": 30,
-						"reportingIntervalSeconds": 60,
-						"channelSurveyType": "ON_CHANNEL",
-						"scanIntervalMillis": 0,
-						"percentUtilizationThreshold": 10,
-						"delayMillisecondsThreshold": 600,
-						"radioType": "is2dot4GHz",
 						"serviceMetricDataType": "Neighbour",
 						"statsReportFormat": "RAW"
 					},
@@ -284,6 +260,30 @@
 						"percentUtilizationThreshold": 10,
 						"delayMillisecondsThreshold": 600,
 						"radioType": "is5GHzU",
+						"serviceMetricDataType": "Neighbour",
+						"statsReportFormat": "RAW"
+					},
+					{
+						"model_type": "ServiceMetricSurveyConfigParameters",
+						"samplingInterval": 30,
+						"reportingIntervalSeconds": 120,
+						"channelSurveyType": "OFF_CHANNEL",
+						"scanIntervalMillis": 0,
+						"percentUtilizationThreshold": 10,
+						"delayMillisecondsThreshold": 600,
+						"radioType": "is5GHzL",
+						"serviceMetricDataType": "Neighbour",
+						"statsReportFormat": "RAW"
+					},
+					{
+						"model_type": "ServiceMetricSurveyConfigParameters",
+						"samplingInterval": 30,
+						"reportingIntervalSeconds": 60,
+						"channelSurveyType": "ON_CHANNEL",
+						"scanIntervalMillis": 0,
+						"percentUtilizationThreshold": 10,
+						"delayMillisecondsThreshold": 600,
+						"radioType": "is2dot4GHz",
 						"serviceMetricDataType": "Neighbour",
 						"statsReportFormat": "RAW"
 					}
@@ -291,8 +291,8 @@
 			},
 			"profileType": "service_metrics_collection_config"
 		},
-		"createdTimestamp": 1605711195528,
-		"lastModifiedTimestamp": 1605711195528,
+		"createdTimestamp": 1606778369931,
+		"lastModifiedTimestamp": 1606778369931,
 		"childProfileIds": [
 		]
 	}

@@ -4,7 +4,7 @@
 		"id": 18,
 		"customerId": 2,
 		"profileType": "passpoint_venue",
-		"name": "TipWlan-Hotspot20-Venue",
+		"name": "TipWlan-Passpoint-Venue",
 		"details": {
 			"model_type": "PasspointVenueProfile",
 			"venueNameSet": [
@@ -28,15 +28,15 @@
 				}
 			],
 			"venueTypeAssignment": {
-				"model_type": "ProfileVenueTypeAssignment",
+				"model_type": "PasspointVenueTypeAssignment",
 				"venueDescription": "Research and Development Facility",
 				"venueGroupId": 2,
 				"venueTypeId": 8
 			},
 			"profileType": "passpoint_venue"
 		},
-		"createdTimestamp": 1605711164956,
-		"lastModifiedTimestamp": 1605711164956,
+		"createdTimestamp": 1606778369950,
+		"lastModifiedTimestamp": 1606778369950,
 		"childProfileIds": [
 		]
 	}

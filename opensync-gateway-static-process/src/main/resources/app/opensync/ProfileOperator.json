@@ -4,7 +4,7 @@
 		"id": 17,
 		"customerId": 2,
 		"profileType": "passpoint_operator",
-		"name": "TipWlan-Hotspot20-Operator",
+		"name": "TipWlan-Passpoint-Operator",
 		"details": {
 			"model_type": "PasspointOperatorProfile",
 			"serverOnlyAuthenticatedL2EncryptionNetwork": false,
@@ -29,8 +29,8 @@
 			],
 			"profileType": "passpoint_operator"
 		},
-		"createdTimestamp": 1605711164952,
-		"lastModifiedTimestamp": 1605711164952,
+		"createdTimestamp": 1606778369945,
+		"lastModifiedTimestamp": 1606778369945,
 		"childProfileIds": [
 		]
 	}
