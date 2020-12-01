@@ -1787,17 +1787,16 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 if (radiusMetrics.hasLatency()) {
                     networkProbeMetrics.setRadiusLatencyInMs(radiusMetrics.getLatency());
                 }
+
                 if (radiusMetrics.hasRadiusState()) {
+                    StateUpDownError radiusState = OvsdbToWlanCloudTypeMappingUtility
+                            .getCloudMetricsStateFromOpensyncStatsStateUpDown(radiusMetrics.getRadiusState());
 
-                    if (radiusMetrics.hasRadiusState()) {
-                        StateUpDownError radiusState = OvsdbToWlanCloudTypeMappingUtility
-                                .getCloudMetricsStateFromOpensyncStatsStateUpDown(radiusMetrics.getRadiusState());
-
-                        networkProbeMetrics.setRadiusState(radiusState);
-
-                    }
+                    networkProbeMetrics.setRadiusState(radiusState);
 
                 }
+
+
             }
 
             if (networkProbe.hasVlanProbe()) {

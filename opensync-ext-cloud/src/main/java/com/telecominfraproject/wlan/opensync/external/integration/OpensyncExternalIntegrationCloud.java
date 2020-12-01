@@ -1437,8 +1437,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 		FailureReason fwUpgradeFailureReason = null;
 
 		if (opensyncAPState.getFirmwareUrl().equals(OvsdbStringConstants.OVSDB_AWLAN_AP_FACTORY_RESET)
-				|| opensyncAPState.getFirmwareUrl().equals(OvsdbStringConstants.OVSDB_AWLAN_AP_FACTORY_RESET)
-				|| opensyncAPState.getFirmwareUrl().equals(OvsdbStringConstants.OVSDB_AWLAN_AP_FACTORY_RESET)
+				|| opensyncAPState.getFirmwareUrl().equals(OvsdbStringConstants.OVSDB_AWLAN_AP_REBOOT)
+				|| opensyncAPState.getFirmwareUrl().equals(OvsdbStringConstants.OVSDB_AWLAN_AP_SWITCH_SOFTWARE_BANK)
 				|| opensyncAPState.getFirmwareUrl().equals("")) {
 
 			LOG.debug("Firmware Url {}, no fwUpgradeState", opensyncAPState.getFirmwareUrl());
@@ -1605,11 +1605,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			return;
 		}
 
-		if (equipmentId < 0L) {
-			LOG.debug("wifiVIFStateDbTableDelete Cannot get equipmentId {} for session {}", equipmentId);
-			return;
-		}
-
 		Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
 				StatusDataType.ACTIVE_BSSIDS);
 
@@ -1644,7 +1639,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 		}
 
-		bssidList.removeAll(toBeDeleted);
+		if (bssidList != null) bssidList.removeAll(toBeDeleted);
 
 		statusDetails.setActiveBSSIDs(bssidList);
 

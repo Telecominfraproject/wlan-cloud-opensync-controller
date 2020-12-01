@@ -775,10 +775,9 @@ public class OvsdbDao {
             Row row = null;
             if ((result != null) && (result.length > 0) && !((SelectResult) result[0]).getRows().isEmpty()) {
                 row = ((SelectResult) result[0]).getRows().iterator().next();
-            }
-
-            for (OperationResult res : result) {
-                LOG.debug("Op Result {}", res);
+                for (OperationResult res : result) {
+                    LOG.debug("Op Result {}", res);
+                }
             }
 
             firmwareVersion = row != null ? row.getStringColumn("firmware_version") : null;
@@ -4856,34 +4855,36 @@ public class OvsdbDao {
             }
 
             int multicastRateMbps = 0;
-            switch (multicastRate) {
-            case rate6mbps:
-                multicastRateMbps = 6;
-                break;
-            case rate9mbps:
-                multicastRateMbps = 9;
-                break;
-            case rate12mbps:
-                multicastRateMbps = 12;
-                break;
-            case rate18mbps:
-                multicastRateMbps = 18;
-                break;
-            case rate24mbps:
-                multicastRateMbps = 24;
-                break;
-            case rate36mbps:
-                multicastRateMbps = 36;
-                break;
-            case rate48mbps:
-                multicastRateMbps = 48;
-                break;
-            case rate54mbps:
-                multicastRateMbps = 54;
-                break;
-            case auto:
-            default:
-                multicastRateMbps = 0;
+            if (multicastRate != null) {
+                switch (multicastRate) {
+                case rate6mbps:
+                    multicastRateMbps = 6;
+                    break;
+                case rate9mbps:
+                    multicastRateMbps = 9;
+                    break;
+                case rate12mbps:
+                    multicastRateMbps = 12;
+                    break;
+                case rate18mbps:
+                    multicastRateMbps = 18;
+                    break;
+                case rate24mbps:
+                    multicastRateMbps = 24;
+                    break;
+                case rate36mbps:
+                    multicastRateMbps = 36;
+                    break;
+                case rate48mbps:
+                    multicastRateMbps = 48;
+                    break;
+                case rate54mbps:
+                    multicastRateMbps = 54;
+                    break;
+                case auto:
+                default:
+                    multicastRateMbps = 0;
+                }
             }
 
             if (freqBand != null) {

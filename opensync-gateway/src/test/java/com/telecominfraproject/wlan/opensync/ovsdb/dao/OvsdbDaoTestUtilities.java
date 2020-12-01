@@ -121,14 +121,13 @@ public class OvsdbDaoTestUtilities {
         mccMncList.add(passpointMccMnc);
         Set<String> naiRealms = new HashSet<>();
         naiRealms.add(naiRealm);
-        naiRealm.split(".");
         List<Byte> roamingOi = new ArrayList<>();
         roamingOi.add(Byte.valueOf("1"));
         roamingOi.add(Byte.valueOf("2"));
         roamingOi.add(Byte.valueOf("3"));
         roamingOi.add(Byte.valueOf("4"));
         hotspot20IdProviderProfile = createOsuProviderProfile(customerId, hotspot20IdProviderProfile, mccMncList,
-                naiRealms, "https://example.com/osu/" + naiRealm.split(".com")[0], naiRealm.split(".com")[0], naiRealm,
+                naiRealms, "https://example.com/osu/" + naiRealm.split("/.com")[0], naiRealm.split(".com")[0], naiRealm,
                 roamingOi);
         return hotspot20IdProviderProfile;
     }
