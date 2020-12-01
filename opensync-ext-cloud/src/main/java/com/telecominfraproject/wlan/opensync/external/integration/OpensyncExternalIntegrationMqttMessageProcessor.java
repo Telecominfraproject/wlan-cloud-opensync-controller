@@ -30,6 +30,7 @@ import com.telecominfraproject.wlan.client.session.models.ClientSessionDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientSessionMetricDetails;
 import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherInterface;
 import com.telecominfraproject.wlan.core.model.equipment.ChannelBandwidth;
+import com.telecominfraproject.wlan.core.model.equipment.ChannelHopReason;
 import com.telecominfraproject.wlan.core.model.equipment.DetectedAuthMode;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.NeighborScanPacketType;
@@ -39,6 +40,7 @@ import com.telecominfraproject.wlan.core.model.equipment.SecurityType;
 import com.telecominfraproject.wlan.core.model.equipment.WiFiSessionUtility;
 import com.telecominfraproject.wlan.core.model.utils.DecibelUtils;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
+import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.Equipment;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.utilities.OvsdbToWlanCloudTypeMappingUtility;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
@@ -76,6 +78,7 @@ import com.telecominfraproject.wlan.status.models.Status;
 import com.telecominfraproject.wlan.status.models.StatusCode;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
 import com.telecominfraproject.wlan.status.network.models.NetworkAdminStatusData;
+import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeChannelHopEvent;
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeEventType;
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeSipCallReportEvent;
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeSipCallStartEvent;
@@ -92,6 +95,7 @@ import sts.OpensyncStats.AssocType;
 import sts.OpensyncStats.CallReport;
 import sts.OpensyncStats.CallStart;
 import sts.OpensyncStats.CallStop;
+import sts.OpensyncStats.ChannelSwitchReason;
 import sts.OpensyncStats.Client;
 import sts.OpensyncStats.ClientReport;
 import sts.OpensyncStats.DNSProbeMetric;
@@ -150,7 +154,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
     void processMqttMessage(String topic, WCStatsReport wcStatsReport) {
         LOG.info("Received WCStatsReport {}", wcStatsReport.toString());
 
-        LOG.info("Received report on topic {}", topic);
+        LOG.debug("Received report on topic {}", topic);
         int customerId = extractCustomerIdFromTopic(topic);
 
         long equipmentId = extractEquipmentIdFromTopic(topic);
@@ -245,7 +249,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
         }
 
         if (!metricRecordList.isEmpty()) {
-            LOG.info("Publishing Metrics {}", metricRecordList);
+            LOG.debug("Publishing Metrics {}", metricRecordList);
             equipmentMetricsCollectorInterface.publishMetrics(metricRecordList);
         }
 
@@ -296,7 +300,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
             for (sts.OpensyncStats.EventReport.ClientSession apEventClientSession : e.getClientSessionList()) {
 
-                LOG.info("Processing EventReport::ClientSession {}", apEventClientSession);
+                LOG.debug("Processing EventReport::ClientSession {}", apEventClientSession);
 
                 processClientConnectEvent(customerId, equipmentId, locationId, e, apEventClientSession);
 
@@ -318,8 +322,72 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
             }
 
+            publishChannelHopEvents(customerId, equipmentId, e);
+
         });
 
+    }
+
+    private void publishChannelHopEvents(int customerId, long equipmentId, EventReport e) {
+        
+        LOG.info("publishChannelHopEvents for customerId {} equipmentId {}");
+        
+        List<SystemEvent> events = new ArrayList<>();
+        
+        for (sts.OpensyncStats.EventReport.ChannelSwitchEvent channelSwitchEvent : e.getChannelSwitchList()) {
+            Equipment equipment = equipmentServiceInterface.getOrNull(equipmentId);
+            if (equipment == null)
+                continue;
+            RadioType radioType = null;
+            Long timestamp = null;
+            ChannelHopReason reason = null;
+            Integer channel = null;
+            if (channelSwitchEvent.hasBand()) {                   
+               radioType = OvsdbToWlanCloudTypeMappingUtility
+                .getRadioTypeFromOpensyncStatsRadioBandType(channelSwitchEvent.getBand());            
+            }
+            if (RadioType.isUnsupported(radioType)) {
+                LOG.warn("publishChannelHopEvents:RadioType {} is unsupported, cannot send RealTimeChannelHopEvent for {}", radioType, channelSwitchEvent);
+                continue;
+            }
+            if (channelSwitchEvent.hasTimestampMs()) {
+                timestamp = channelSwitchEvent.getTimestampMs();
+            }
+            if (timestamp == null) {
+                LOG.warn("publishChannelHopEvents:timestamp is null, cannot send RealTimeChannelHopEvent for {}", channelSwitchEvent);
+                continue;  
+            }
+            
+            if (channelSwitchEvent.hasReason()) {
+                if (channelSwitchEvent.getReason().equals(ChannelSwitchReason.high_interference)) reason = ChannelHopReason.HighInterference;
+                else if (channelSwitchEvent.getReason().equals(ChannelSwitchReason.radar_detected)) reason = ChannelHopReason.RadarDetected;
+            }
+            if (ChannelHopReason.isUnsupported(reason)) {
+                LOG.warn("publishChannelHopEvents:reason {} is unsupported, cannot send RealTimeChannelHopEvent for {}", channelSwitchEvent.getReason(), channelSwitchEvent);
+                continue; 
+            }
+            if (channelSwitchEvent.hasChannel()) {
+                channel = channelSwitchEvent.getChannel();
+            }
+            if (channel == null) {
+                LOG.warn("publishChannelHopEvents:channel is null, cannot send RealTimeChannelHopEvent for {}", channelSwitchEvent);
+                continue; 
+            }
+
+            RealTimeChannelHopEvent channelHopEvent = new RealTimeChannelHopEvent(RealTimeEventType.Channel_Hop, customerId, equipmentId, radioType, channel, ((ApElementConfiguration)equipment.getDetails()).getRadioMap().get(radioType).getChannelNumber(), reason, timestamp);
+            
+            events.add(channelHopEvent);
+            
+            LOG.debug("publishChannelHopEvents:Adding ChannelHopEvent to bulk list {}", channelHopEvent);
+        }
+        
+
+        if (events.size() > 0) {
+            LOG.info("publishChannelHopEvents:publishEventsBulk: {}", events);
+            equipmentMetricsCollectorInterface.publishEventsBulk(events);
+        } else {
+            LOG.info("publishChannelHopEvents:No ChannelHopEvents in report");
+        }
     }
 
     protected void processClientConnectEvent(int customerId, long equipmentId, long locationId, EventReport e,
@@ -533,7 +601,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 clientSession = clientServiceInterface.updateSession(clientSession);
 
             } else {
-                LOG.info("Cannot update client or client session when no client mac address is present");
+                LOG.warn("Cannot update client or client session when no client mac address is present");
             }
         }
     }
@@ -593,7 +661,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 clientSession = clientServiceInterface.updateSession(clientSession);
 
             } else {
-                LOG.info("Cannot update client or client session when no client mac address is present");
+                LOG.warn("Cannot update client or client session when no client mac address is present");
             }
         }
     }
@@ -666,7 +734,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 clientSession = clientServiceInterface.updateSession(clientSession);
 
             } else {
-                LOG.info("Cannot update client or client session when no client mac address is present");
+                LOG.warn("Cannot update client or client session when no client mac address is present");
             }
         }
     }
@@ -728,7 +796,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 clientSession = clientServiceInterface.updateSession(clientSession);
 
             } else {
-                LOG.info("Cannot update client or client session when no client mac address is present");
+                LOG.warn("Cannot update client or client session when no client mac address is present");
             }
         }
     }
@@ -787,7 +855,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 clientSession = clientServiceInterface.updateSession(clientSession);
 
             } else {
-                LOG.info("Cannot update client or client session when no client mac address is present");
+                LOG.warn("Cannot update client or client session when no client mac address is present");
             }
         }
     }
@@ -836,7 +904,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 clientSession = clientServiceInterface.updateSession(clientSession);
 
             } else {
-                LOG.info("Cannot update client or client session when no client mac address is present");
+                LOG.warn("Cannot update client or client session when no client mac address is present");
             }
         }
     }
@@ -893,7 +961,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 clientSession = clientServiceInterface.updateSession(clientSession);
 
             } else {
-                LOG.info("Cannot update client or client session when no clientmac address is present");
+                LOG.warn("Cannot update client or client session when no clientmac address is present");
             }
         }
     }
@@ -960,7 +1028,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 clientSession = clientServiceInterface.updateSession(clientSession);
 
             } else {
-                LOG.info("Cannot update client or client session when no client mac address is present");
+                LOG.warn("Cannot update client or client session when no client mac address is present");
             }
         }
     }
@@ -978,7 +1046,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 eventTimestamp = videoVoiceReport.getTimestampMs();
             }
 
-            LOG.info("Received VideoVoiceReport {} for SIP call", videoVoiceReport);
+            LOG.debug("Received VideoVoiceReport {} for SIP call", videoVoiceReport);
 
             processRealTImeSipCallReportEvent(customerId, equipmentId, eventTimestamp, eventsList, videoVoiceReport);
 
@@ -1601,7 +1669,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             NetworkAdminStatusData statusData = (NetworkAdminStatusData) networkAdminStatus.getDetails();
             
             if (n.getDnsState() == null) {
-                LOG.info("No DnsState present in networkProbeMetrics, DnsState and CloudLinkStatus set to 'normal");
+                LOG.debug("No DnsState present in networkProbeMetrics, DnsState and CloudLinkStatus set to 'normal");
                 statusData.setDnsStatus(StatusCode.normal);
                 statusData.setCloudLinkStatus(StatusCode.normal);
             } else {
@@ -1609,13 +1677,13 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 statusData.setCloudLinkStatus(stateUpDownErrorToStatusCode(n.getDnsState()));
             }
             if (n.getDhcpState() == null) {
-                LOG.info("No DhcpState present in networkProbeMetrics, set to 'normal");
+                LOG.debug("No DhcpState present in networkProbeMetrics, set to 'normal");
                 statusData.setDhcpStatus(StatusCode.normal);
             } else {
                 statusData.setDhcpStatus(stateUpDownErrorToStatusCode(n.getDhcpState()));
             }
             if (n.getRadiusState() == null) {
-                LOG.info("No RadiusState present in networkProbeMetrics, set to 'normal");
+                LOG.debug("No RadiusState present in networkProbeMetrics, set to 'normal");
                 statusData.setRadiusStatus(StatusCode.normal);
             } else {
                 statusData.setRadiusStatus(stateUpDownErrorToStatusCode(n.getRadiusState()));
@@ -1625,7 +1693,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
             networkAdminStatus = statusServiceInterface.update(networkAdminStatus);
 
-            LOG.info("Updated NetworkAdminStatus {}", networkAdminStatus);
+            LOG.debug("Updated NetworkAdminStatus {}", networkAdminStatus);
 
         });
 
@@ -1658,7 +1726,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 StatusDataType.RADIO_UTILIZATION);
 
         if (radioUtilizationStatus == null) {
-            LOG.info("Create new radioUtilizationStatus");
+            LOG.debug("Create new radioUtilizationStatus");
             radioUtilizationStatus = new Status();
             radioUtilizationStatus.setCustomerId(customerId);
             radioUtilizationStatus.setEquipmentId(equipmentId);
@@ -1769,7 +1837,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
         eqOsPerformance.setTotalAvailableMemoryKb(deviceReport.getMemUtil().getMemTotal());
         status.setDetails(eqOsPerformance);
         status = statusServiceInterface.update(status);
-        LOG.info("updated status {}", status);
+        LOG.debug("updated status {}", status);
     }
 
     void populateApClientMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId, long equipmentId,
@@ -1780,12 +1848,12 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             for (Client cl : clReport.getClientListList()) {
 
                 if (cl.getMacAddress() == null) {
-                    LOG.info("No mac address for Client {}, cannot set device mac address for client in ClientMetrics.",
+                    LOG.debug("No mac address for Client {}, cannot set device mac address for client in ClientMetrics.",
                             cl);
                     continue;
                 }
 
-                LOG.info("Processing ClientReport from AP {}", cl.getMacAddress());
+                LOG.debug("Processing ClientReport from AP {}", cl.getMacAddress());
 
                 ServiceMetric smr = new ServiceMetric(customerId, equipmentId, new MacAddress(cl.getMacAddress()));
                 smr.setLocationId(locationId);
@@ -1809,7 +1877,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 long sessionId = WiFiSessionUtility.encodeWiFiAssociationId(clReport.getTimestampMs() / 1000L,
                         MacAddress.convertMacStringToLongValue(cl.getMacAddress()));
 
-                LOG.info("populateApClientMetrics Session Id {}", sessionId);
+                LOG.debug("populateApClientMetrics Session Id {}", sessionId);
                 cMetrics.setSessionId(sessionId);
 
                 if (cl.hasStats()) {
@@ -1867,7 +1935,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                     }
                 }
 
-                LOG.info("ApClientMetrics Report {}", cMetrics);
+                LOG.debug("ApClientMetrics Report {}", cMetrics);
 
             }
 
@@ -1951,18 +2019,18 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             boolean isReassociation = true;
             if (clientInstance == null) {
 
-                LOG.info("Cannot get client instance for {}", client.getMacAddress());
+                LOG.debug("Cannot get client instance for {}", client.getMacAddress());
                 return null;
 
             }
 
-            LOG.info("Client {}", clientInstance);
+            LOG.debug("Client {}", clientInstance);
 
             ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
                     clientInstance.getMacAddress());
 
             if (clientSession == null) {
-                LOG.info("Cannot get client session for {}", clientInstance.getMacAddress());
+                LOG.warn("Cannot get client session for {}", clientInstance.getMacAddress());
                 return null;
             }
 
@@ -2037,7 +2105,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
             clientSession = clientServiceInterface.updateSession(clientSession);
 
-            LOG.info("Updated client session {}", clientSession);
+            LOG.debug("Updated client session {}", clientSession);
 
             return clientSession;
         } catch (Exception e) {
@@ -2054,7 +2122,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
         ClientSessionMetricDetails metricDetails = new ClientSessionMetricDetails();
 
         if (LOG.isDebugEnabled())
-            LOG.info("Stats: {} DurationMs {}", client.getStats(), client.getDurationMs());
+            LOG.debug("Stats: {} DurationMs {}", client.getStats(), client.getDurationMs());
         int rssi = client.getStats().getRssi();
         metricDetails.setRssi(rssi);
         metricDetails.setRxBytes(client.getStats().getRxBytes());
@@ -2072,7 +2140,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
         metricDetails.setRxRateKbps((long) client.getStats().getRxRate());
         metricDetails.setTxRateKbps((long) client.getStats().getTxRate());
         if (LOG.isDebugEnabled())
-            LOG.info("RxRateKbps {} TxRateKbps {}", metricDetails.getRxRateKbps(), metricDetails.getTxRateKbps());
+            LOG.debug("RxRateKbps {} TxRateKbps {}", metricDetails.getRxRateKbps(), metricDetails.getTxRateKbps());
 
         // Throughput, do rate / duration
         if (client.getDurationMs() > 1000) {
@@ -2085,15 +2153,15 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             float txBytesToMb = txBytesFv / 125000F;
 
             if (LOG.isDebugEnabled())
-                LOG.info("rxBytesToMb {} txBytesToMb {} ", rxBytesToMb, txBytesToMb);
+                LOG.debug("rxBytesToMb {} txBytesToMb {} ", rxBytesToMb, txBytesToMb);
 
             metricDetails.setRxMbps(rxBytesToMb / durationSec);
             metricDetails.setTxMbps(txBytesToMb / durationSec);
             if (LOG.isDebugEnabled())
-                LOG.info("RxMbps {} TxMbps {} ", metricDetails.getRxMbps(), metricDetails.getTxMbps());
+                LOG.debug("RxMbps {} TxMbps {} ", metricDetails.getRxMbps(), metricDetails.getTxMbps());
 
         } else {
-            LOG.info("Cannot calculate tx/rx throughput for Client {} based on duration of {} Ms",
+            LOG.warn("Cannot calculate tx/rx throughput for Client {} based on duration of {} Ms",
                     client.getMacAddress(), client.getDurationMs());
         }
         metricDetails.setLastMetricTimestamp(timestamp);
@@ -2114,7 +2182,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
         for (ClientReport clientReport : report.getClientsList()) {
 
-            LOG.info("ClientReport for channel {} RadioBand {}", clientReport.getChannel(), clientReport.getBand());
+            LOG.debug("ClientReport for channel {} RadioBand {}", clientReport.getChannel(), clientReport.getBand());
 
             if (smr.getCreatedTimestamp() < clientReport.getTimestampMs()) {
                 smr.setCreatedTimestamp(clientReport.getTimestampMs());
@@ -2157,7 +2225,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                     }
                 }
             }
-            LOG.info("Client Report Date is {}", new Date(clientReport.getTimestampMs()));
+            LOG.debug("Client Report Date is {}", new Date(clientReport.getTimestampMs()));
             int numConnectedClients = 0;
             for (Client client : clientReport.getClientListList()) {
                 if (client.hasStats()) {
@@ -2237,7 +2305,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                         }
 
                     } catch (Exception e) {
-                        LOG.info("Unabled to update client {} session {}", client, e);
+                        LOG.error("Unabled to update client {}", client, e);
                     }
 
                 }
@@ -2267,7 +2335,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
         }
 
-        LOG.info("ApSsidMetrics {}", apSsidMetrics);
+        LOG.debug("ApSsidMetrics {}", apSsidMetrics);
 
     }
 
@@ -2313,8 +2381,18 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
         ProfileContainer profileContainer = new ProfileContainer(
                 profileServiceInterface.getProfileWithChildren(profileId));
-        RfConfiguration rfConfig = (RfConfiguration) profileContainer.getChildOfTypeOrNull(profileId, ProfileType.rf)
+        
+        Profile rfProfile = profileContainer.getChildOfTypeOrNull(profileId, ProfileType.rf);
+        RfConfiguration rfConfig = null;
+        if (rfProfile != null) {
+         rfConfig = (RfConfiguration) profileContainer.getChildOfTypeOrNull(profileId, ProfileType.rf)
                 .getDetails();
+        }
+        
+        if (rfConfig == null) {
+            LOG.warn("Cannot get RfConfiguration for customerId {} equipmentId {}", customerId,equipmentId);
+            return;
+        }
 
         for (Survey survey : report.getSurveyList()) {
 
@@ -2374,7 +2452,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             smr.setCreatedTimestamp(survey.getTimestampMs());
             metricRecordList.add(smr);
 
-            LOG.info("ChannelInfoReports {}", channelInfoReports);
+            LOG.debug("ChannelInfoReports {}", channelInfoReports);
 
         }
 

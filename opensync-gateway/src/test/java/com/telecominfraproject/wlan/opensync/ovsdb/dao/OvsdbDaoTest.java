@@ -143,48 +143,6 @@ public class OvsdbDaoTest {
     }
 
     @Test
-    public void testRemoveAllGreTunnels() throws Exception {
-        List<Row> rows = new ArrayList<>();
-        OperationResult[] operationResult = new OperationResult[] { new SelectResult(rows) };
-        Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList()))
-                .thenReturn(selectionFutureResult);
-        Mockito.when(selectionFutureResult.get(30, TimeUnit.SECONDS)).thenReturn(operationResult);
-        Profile apProfile = new Profile();
-        apProfile.setCustomerId(2);
-        apProfile.setId(1L);
-        apProfile.setName("ApProfile");
-        apProfile.setProfileType(ProfileType.equipment_ap);
-        ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
-
-        tunnelProfileDetails.setGreLocalInetAddr(InetAddress.getByName("10.0.10.10"));
-        tunnelProfileDetails.setGreRemoteInetAddr(InetAddress.getByName("192.168.0.10"));
-        tunnelProfileDetails.setGreTunnelName("gre1");
-        tunnelProfileDetails.setGreParentIfName("wan");
-        apProfile.setDetails(tunnelProfileDetails);
-        OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
-        Mockito.when(apConfig.getApProfile()).thenReturn(apProfile);
-        ovsdbDao.removeAllGreTunnels(ovsdbClient, apConfig);
-
-        Mockito.verify(apConfig, Mockito.times(2)).getApProfile();
-        Mockito.verify(ovsdbClient, Mockito.times(1)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
-
-    }
-
-    @Test
-    public void testRemoveAllGreTunnelsNoProfile() throws Exception {
-        List<Row> rows = new ArrayList<>();
-        OperationResult[] operationResult = new OperationResult[] { new SelectResult(rows) };
-        Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList()))
-                .thenReturn(selectionFutureResult);
-        Mockito.when(selectionFutureResult.get(30, TimeUnit.SECONDS)).thenReturn(operationResult);
-
-        ovsdbDao.removeAllGreTunnels(ovsdbClient, null);
-
-        Mockito.verify(ovsdbClient, Mockito.times(1)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
-
-    }
-
-    @Test
     public void testConfigureGreTunnels() throws Exception {
         List<Row> rows = new ArrayList<>();
         OperationResult[] operationResult = new OperationResult[] { new SelectResult(rows) };
@@ -339,7 +297,7 @@ public class OvsdbDaoTest {
 
         ovsdbDao.configureHotspots(ovsdbClient, apConfig);
 
-        Mockito.verify(futureResult, Mockito.times(11)).get(Mockito.anyLong(), Mockito.eq(TimeUnit.SECONDS));
+        Mockito.verify(futureResult, Mockito.times(13)).get(Mockito.anyLong(), Mockito.eq(TimeUnit.SECONDS));
 
     }
 

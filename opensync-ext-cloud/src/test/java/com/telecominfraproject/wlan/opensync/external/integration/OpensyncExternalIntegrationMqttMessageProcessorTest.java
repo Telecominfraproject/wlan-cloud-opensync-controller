@@ -39,10 +39,15 @@ import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.customer.service.CustomerServiceInterface;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
+import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
+import com.telecominfraproject.wlan.equipment.models.Equipment;
 import com.telecominfraproject.wlan.firmware.FirmwareServiceInterface;
 import com.telecominfraproject.wlan.location.service.LocationServiceInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.controller.OpensyncCloudGatewayController;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
+import com.telecominfraproject.wlan.profile.models.ProfileContainer;
+import com.telecominfraproject.wlan.profile.models.ProfileType;
+import com.telecominfraproject.wlan.profile.rf.models.RfConfiguration;
 import com.telecominfraproject.wlan.routing.RoutingServiceInterface;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.ApNodeMetrics;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.StateUpDownError;
@@ -53,17 +58,19 @@ import com.telecominfraproject.wlan.status.models.Status;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
 
 import sts.OpensyncStats.AssocType;
+import sts.OpensyncStats.ChannelSwitchReason;
 import sts.OpensyncStats.Client;
 import sts.OpensyncStats.ClientReport;
 import sts.OpensyncStats.DNSProbeMetric;
 import sts.OpensyncStats.EventReport;
+import sts.OpensyncStats.EventReport.ChannelSwitchEvent;
+import sts.OpensyncStats.EventReport.ClientAssocEvent;
 import sts.OpensyncStats.NetworkProbe;
 import sts.OpensyncStats.RADIUSMetrics;
 import sts.OpensyncStats.RadioBandType;
 import sts.OpensyncStats.Report;
 import sts.OpensyncStats.StateUpDown;
 import sts.OpensyncStats.VLANMetrics;
-import sts.OpensyncStats.EventReport.ClientAssocEvent;
 
 @RunWith(SpringRunner.class)
 @ActiveProfiles(profiles = { "integration_test", })
@@ -164,6 +171,20 @@ public class OpensyncExternalIntegrationMqttMessageProcessorTest {
 
     @Test
     public void testProcessMqttMessageStringReport() {
+        Equipment equipment = new Equipment();
+
+        equipment.setDetails(ApElementConfiguration.createWithDefaults());
+        
+        equipment.setId(1L);
+
+        Mockito.when(
+                equipmentServiceInterface.getByInventoryIdOrNull(ArgumentMatchers.eq("Test_Client_21P10C68818122")))
+                .thenReturn(equipment);
+        
+        equipment.setProfileId(0L);
+        
+        Mockito.when(equipmentServiceInterface.getOrNull(1L)).thenReturn(equipment);
+        Mockito.when(equipmentServiceInterface.get(1L)).thenReturn(equipment);
 
         Report report = Report.newBuilder().setNodeID("21P10C68818122")
                 .addAllClients(getOpensyncStatsClientReportsList())
@@ -341,8 +362,15 @@ public class OpensyncExternalIntegrationMqttMessageProcessorTest {
         clientSessionBuilder.addAllClientAssocEvent(clientAssocEventList);
         List<sts.OpensyncStats.EventReport.ClientSession> clientSessionList = new ArrayList<>();
         clientSessionList.add(clientSessionBuilder.build());
+        
+        sts.OpensyncStats.EventReport.ChannelSwitchEvent.Builder channelSwitchEventBuilder = sts.OpensyncStats.EventReport.ChannelSwitchEvent.getDefaultInstance().toBuilder();
+        channelSwitchEventBuilder.setBand(RadioBandType.BAND5GL).setChannel(40).setReason(ChannelSwitchReason.high_interference).setTimestampMs(System.currentTimeMillis());
 
+        List<ChannelSwitchEvent> channelSwitchEventList = new ArrayList<>();
+        channelSwitchEventList.add(channelSwitchEventBuilder.build());
+        
         eventReportBuilder.addAllClientSession(clientSessionList);
+        eventReportBuilder.addAllChannelSwitch(channelSwitchEventList);
 
         eventReportList.add(eventReportBuilder.build());
 

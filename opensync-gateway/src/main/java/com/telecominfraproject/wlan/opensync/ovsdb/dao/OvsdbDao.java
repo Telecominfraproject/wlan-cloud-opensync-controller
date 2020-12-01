@@ -684,13 +684,17 @@ public class OvsdbDao {
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
-            if (LOG.isDebugEnabled()) {
                 LOG.debug("Updated {}:", wifiStatsConfigDbTable);
 
                 for (OperationResult res : result) {
                     LOG.debug("Op Result {}", res);
+                    if (res instanceof InsertResult) {                   
+                        LOG.info("updateDeviceStatsReportingInterval insert new row result {}", ((InsertResult)res));
+                        // for insert, make sure it is actually in the table
+                        confirmRowExistsInTable(ovsdbClient, ((InsertResult) res).getUuid(), wifiStatsConfigDbTable);
+                    } 
                 }
-            }
+            
 
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             throw new RuntimeException(e);
@@ -722,8 +726,11 @@ public class OvsdbDao {
             if (LOG.isDebugEnabled()) {
 
                 for (OperationResult res : result) {
-
-                    if (res instanceof ErrorResult) {
+                    if (res instanceof InsertResult) {                   
+                        LOG.info("enableNetworkProbeForSyntheticClient insert new row result {}", ((InsertResult)res));
+                        // for insert, make sure it is actually in the table
+                        confirmRowExistsInTable(ovsdbClient, ((InsertResult) res).getUuid(), wifiStatsConfigDbTable);
+                    } else if (res instanceof ErrorResult) {
                         LOG.error("Could not update {}:", wifiStatsConfigDbTable);
                         LOG.error("Error: {} Details: {}", ((ErrorResult) res).getError(),
                                 ((ErrorResult) res).getDetails());
@@ -1709,67 +1716,6 @@ public class OvsdbDao {
         }
     }
 
-    public void removeAllGreTunnels(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
-        try {
-            List<Operation> operations = new ArrayList<>();
-            List<Condition> conditions = new ArrayList<>();
-            if (opensyncAPConfig == null || opensyncAPConfig.getApProfile() == null) {
-                conditions.add(new Condition("if_type", Function.EQUALS, new Atom<>("gre")));
-                operations.add(new Delete(wifiInetConfigDbTable, conditions));
-                CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-                OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-                if (LOG.isDebugEnabled()) {
-
-                    for (OperationResult res : result) {
-                        LOG.debug("removeAllGreTunnels Op Result {}", res);
-                    }
-                }
-            } else {
-
-                ApNetworkConfiguration profileDetails = (ApNetworkConfiguration) opensyncAPConfig.getApProfile()
-                        .getDetails();
-                String greTunnelName = profileDetails.getGreTunnelName();
-
-                conditions.add(new Condition("if_type", Function.EQUALS, new Atom<>("gre")));
-                operations.add(new Select(wifiInetConfigDbTable, conditions));
-
-                CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-                OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
-                if (((SelectResult) result[0]).getRows().isEmpty()) {
-                    LOG.debug("No Gre Tunnels present");
-                    return;
-                } else {
-                    operations.clear();
-                    for (Row row : ((SelectResult) result[0]).getRows()) {
-                        String ifName = row.getStringColumn("if_name");
-                        if (greTunnelName != null && !greTunnelName.equals(ifName)) {
-                            List<Condition> deleteCondition = new ArrayList<>();
-                            deleteCondition.add(new Condition("if_name", Function.EQUALS, new Atom<>(ifName)));
-                            operations.add(new Delete(wifiInetConfigDbTable, deleteCondition));
-                        }
-                    }
-
-                }
-
-                ovsdbClient.transact(ovsdbName, operations);
-                fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
-                if (LOG.isDebugEnabled()) {
-
-                    for (OperationResult res : result) {
-                        LOG.debug("removeAllGreTunnels Op Result {}", res);
-                    }
-                }
-
-            }
-        } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
-            LOG.error("Could not delete GreTunnel Configs", e);
-            throw new RuntimeException(e);
-        }
-
-    }
-
     public void removeAllInetConfigs(OvsdbClient ovsdbClient) {
         try {
             Collection<WifiInetConfigInfo> provisionedWifiInetConfigs = getProvisionedWifiInetConfigs(ovsdbClient)
@@ -1789,13 +1735,31 @@ public class OvsdbDao {
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Removed all existing vif, vlan, and gre interface configs from {}:", wifiInetConfigDbTable);
+            LOG.info("Removed all existing vif, vlan, and gre interface configs from {}:", wifiInetConfigDbTable);
 
-                for (OperationResult res : result) {
-                    LOG.debug("Op Result {}", res);
+            for (OperationResult res : result) {
+                LOG.info("Op Result {}", res);
+            }
+            
+            provisionedWifiInetConfigs = getProvisionedWifiInetConfigs(ovsdbClient)
+                    .values();
+
+            for (WifiInetConfigInfo inetConfigInfo : provisionedWifiInetConfigs) {
+                if (inetConfigInfo.ifType.equals("vif") || inetConfigInfo.ifType.equals("gre")) {
+                    throw new RuntimeException("Failed to remove all vif and gre interface configurations from Wifi_Inet_Config dbTable, still has " + provisionedWifiInetConfigs.stream().filter(new Predicate<WifiInetConfigInfo>() {
+
+                        @Override
+                        public boolean test(WifiInetConfigInfo t) {
+                            if ((t.ifType.equals("vif")) || (t.ifType.equals("gre"))) return true;
+                            return false;
+                        }
+
+                    }).collect(Collectors.toList()) );
+
                 }
             }
+           
+
 
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             LOG.error("Error in removeAllInetConfigs", e);
@@ -1822,6 +1786,11 @@ public class OvsdbDao {
                     LOG.debug("Op Result {}", res);
                 }
             }
+            Map<String, WifiVifConfigInfo> provisionedVifConfigs = getProvisionedWifiVifConfigs(ovsdbClient);
+            // this should be empty
+            if (!provisionedVifConfigs.isEmpty()) {
+                throw new RuntimeException("Failed to remove all vif configurations from Wifi_VIF_Config dbTable, still has " + provisionedVifConfigs.values() );
+            };
 
             LOG.info("Removed all ssids");
 
@@ -2684,7 +2653,7 @@ public class OvsdbDao {
                 throw new IllegalStateException("Wifi_VIF_Config entry was not created successfully");
             }
 
-            confirmVifConfigRow(ovsdbClient, vifConfigUuid);
+            confirmRowExistsInTable(ovsdbClient, vifConfigUuid, wifiVifConfigDbTable);
 
             LOG.info("configureSingleSsid:Provisioned SSID {} on interface {} / {}", ssid, vifInterfaceName,
                     radioFreqBand);
@@ -2697,25 +2666,25 @@ public class OvsdbDao {
         }
 
     }
-
-    private void confirmVifConfigRow(OvsdbClient ovsdbClient, Uuid vifConfigUuid) {
+ 
+    private void confirmRowExistsInTable(OvsdbClient ovsdbClient, Uuid rowUuid, String table) {
         try {
             List<Condition> conditions = new ArrayList<>();
-            conditions.add(new Condition("_uuid", Function.EQUALS, new Atom<>(vifConfigUuid)));
+            conditions.add(new Condition("_uuid", Function.EQUALS, new Atom<>(rowUuid)));
             List<Operation> operations = new ArrayList<>();
-            operations.add(new Select(wifiVifConfigDbTable, conditions));
+            operations.add(new Select(table, conditions));
 
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
             for (OperationResult res : result) {
                 if (res instanceof SelectResult) {
-                    LOG.info("Select Result for confirmVifConfigRow with Uuid {} {}", vifConfigUuid,
+                    LOG.info("Select Result for confirmRowExistsInTable {} with Uuid {} {}", table, rowUuid,
                             ((SelectResult) res).getRows());
                 }
             }
         } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
-            LOG.error("Unable to confirm creation of VifConfig row for Uuid {}", vifConfigUuid, e);
+            LOG.error("Unable to confirm existence of row in table {} for Uuid {}", table, rowUuid, e);
             throw new RuntimeException(e);
         }
     }
@@ -3541,7 +3510,15 @@ public class OvsdbDao {
             LOG.debug("Updated Inet {}", ifName);
 
             for (OperationResult res : result) {
-                LOG.debug("Op Result {}", res);
+                                
+                if (res instanceof InsertResult) {                   
+                    LOG.info("configureInetInterface insert new row result {}", ((InsertResult)res));
+                    // for insert, make sure it is actually in the table
+                    confirmRowExistsInTable(ovsdbClient, ((InsertResult) res).getUuid(), wifiInetConfigDbTable);
+                } else if (res instanceof UpdateResult) {
+                    LOG.info("configureInetInterface update new row result {}", ((UpdateResult)res));
+                }
+                
             }
 
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
@@ -3789,8 +3766,6 @@ public class OvsdbDao {
 
                         operations.add(newHs20Config);
 
-                        // }
-
                     }
 
                     CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
@@ -3798,6 +3773,11 @@ public class OvsdbDao {
 
                     for (OperationResult res : result) {
                         LOG.debug("provisionHotspot20Config Op Result {}", res);
+                        if (res instanceof InsertResult) {
+                            LOG.info("provisionHotspot20Config insert new row result {}", ((InsertResult)res));
+                            // for insert, make sure it is actually in the table
+                            confirmRowExistsInTable(ovsdbClient, ((InsertResult) res).getUuid(), hotspot20ConfigDbTable);
+                        }
                     }
 
                 }
@@ -3871,6 +3851,14 @@ public class OvsdbDao {
 
                     for (OperationResult res : result) {
                         LOG.debug("provisionHotspot20OsuProviders Op Result {}", res);
+                        if (res instanceof InsertResult) {
+                            LOG.info("provisionHotspot20OsuProviders insert new row result {}", ((InsertResult)res));
+                            // for insert, make sure it is actually in the table
+                            confirmRowExistsInTable(ovsdbClient, ((InsertResult) res).getUuid(), hotspot20OsuProvidersDbTable);
+                        } else if (res instanceof UpdateResult) {
+                            LOG.info("provisionHotspot20OsuProviders update row result {}", ((UpdateResult)res));
+
+                        }
                     }
                 }
 
@@ -4075,6 +4063,14 @@ public class OvsdbDao {
 
                     for (OperationResult res : result) {
                         LOG.debug("provisionHotspot20Config Op Result {}", res);
+                        if (res instanceof InsertResult) {
+                            LOG.info("provisionHotspot20Config insert new row result {}", ((InsertResult)res));
+                            // for insert, make sure it is actually in the table
+                            confirmRowExistsInTable(ovsdbClient, ((InsertResult) res).getUuid(), hotspot20IconConfigDbTable);
+                        } else if (res instanceof UpdateResult) {
+                            LOG.info("provisionHotspot20Config update row result {}", ((UpdateResult)res));
+
+                        }
                     }
                 }
 
@@ -4596,11 +4592,15 @@ public class OvsdbDao {
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
-            if (LOG.isDebugEnabled()) {
-
                 for (OperationResult res : result) {
+                    if (res instanceof InsertResult) {
+                        LOG.info("provisionVideoVoiceStats insert new row result {}", ((InsertResult)res));
+                        // for insert, make sure it is actually in the table
+                        confirmRowExistsInTable(ovsdbClient, ((InsertResult) res).getUuid(), wifiStatsConfigDbTable);
+                    } else if (res instanceof UpdateResult) {
+                        LOG.info("provisionVideoVoiceStats update row result {}", ((UpdateResult)res));
 
-                    if (res instanceof ErrorResult) {
+                    }else if (res instanceof ErrorResult) {
                         LOG.error("Could not update {}:", wifiStatsConfigDbTable);
                         LOG.error("Error: {} Details: {}", ((ErrorResult) res).getError(),
                                 ((ErrorResult) res).getDetails());
@@ -4609,7 +4609,7 @@ public class OvsdbDao {
                         LOG.debug("Op Result {}", res);
                     }
                 }
-            }
+            
 
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             throw new RuntimeException(e);
@@ -4643,8 +4643,13 @@ public class OvsdbDao {
             if (LOG.isDebugEnabled()) {
 
                 for (OperationResult res : result) {
-
-                    if (res instanceof ErrorResult) {
+                    if (res instanceof InsertResult) {
+                        LOG.info("provisionEventReporting insert new row result {}", ((InsertResult)res));
+                        // for insert, make sure it is actually in the table
+                        confirmRowExistsInTable(ovsdbClient, ((InsertResult) res).getUuid(), wifiStatsConfigDbTable);
+                    } else if (res instanceof UpdateResult) {
+                        LOG.info("provisionEventReporting update row result {}", ((UpdateResult)res));
+                    } else if (res instanceof ErrorResult) {
                         LOG.error("Could not update {}:", wifiStatsConfigDbTable);
                         LOG.error("Error: {} Details: {}", ((ErrorResult) res).getError(),
                                 ((ErrorResult) res).getDetails());
@@ -4779,13 +4784,12 @@ public class OvsdbDao {
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Removed all existing config from {}:", wifiStatsConfigDbTable);
+                LOG.info("Removed all existing config from {}:", wifiStatsConfigDbTable);
 
                 for (OperationResult res : result) {
                     LOG.debug("Op Result {}", res);
                 }
-            }
+            
 
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             LOG.error("Error in removeAllStatsConfigs", e);
@@ -4967,6 +4971,15 @@ public class OvsdbDao {
 
         for (OperationResult res : result) {
             LOG.debug("Op Result {}", res);
+
+            if (res instanceof InsertResult) {
+                LOG.info("configureWifiRrm insert new row result {}", ((InsertResult)res));
+                // for insert, make sure it is actually in the table
+                confirmRowExistsInTable(ovsdbClient, ((InsertResult) res).getUuid(), wifiRrmConfigDbTable);
+            } else if (res instanceof UpdateResult) {
+                LOG.info("configureWifiRrm update row result {}", ((UpdateResult)res));
+            }
+            
         }
     }
 
@@ -4983,8 +4996,7 @@ public class OvsdbDao {
 
             for (OperationResult res : result) {
                 if (res instanceof UpdateResult) {
-
-                    LOG.info("Delete Result {}", (UpdateResult) res);
+                    LOG.info("removeWifiRrm result {}", (UpdateResult) res);
                 }
             }
 
