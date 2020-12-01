@@ -11,14 +11,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import javax.annotation.PostConstruct;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.ImmutableSet;
@@ -158,32 +154,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 	@org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_wan_name:wan}")
 	public String defaultWanInterfaceName;
 
-	@Autowired
-	private CacheManager cacheManagerShortLived;
-	private Cache cloudEquipmentRecordCache;
-
-	@PostConstruct
-	private void postCreate() {
-		LOG.info("Using Cloud integration");
-		cloudEquipmentRecordCache = cacheManagerShortLived.getCache("equipment_record_cache");
-	}
-
-	public Equipment getCustomerEquipment(String apId) {
-		Equipment ce = null;
-
-		try {
-			ce = cloudEquipmentRecordCache.get(apId, () -> equipmentServiceInterface.getByInventoryIdOrNull(apId));
-		} catch (Exception e) {
-			LOG.error("Could not get customer equipment for {}", apId, e);
-		}
-
-		return ce;
-	}
-
 	@Override
 	public void apConnected(String apId, ConnectNodeInfo connectNodeInfo) {
 
-		Equipment ce = getCustomerEquipment(apId);
+		Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
 
 		try {
 			if (ce == null) {
@@ -300,10 +274,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 				ce = equipmentServiceInterface.create(ce);
 
-				// update the cache right away, no need to wait until the
-				// entry expires
-				cloudEquipmentRecordCache.put(ce.getInventoryId(), ce);
-
 			} else {
 				// equipment already exists
 
@@ -324,9 +294,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 						ce.setBaseMacAddress(reportedMacAddress);
 						ce = equipmentServiceInterface.update(ce);
 
-						// update the cache right away, no need to wait
-						// until the entry expires
-						cloudEquipmentRecordCache.put(ce.getInventoryId(), ce);
 					}
 				}
 
@@ -334,7 +301,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 			EquipmentRoutingRecord equipmentRoutingRecord = gatewayController.registerCustomerEquipment(ce.getName(),
 					ce.getCustomerId(), ce.getId());
-
+			
 			updateApStatus(ce, connectNodeInfo);
 
 			removeNonWifiClients(ce, connectNodeInfo);
@@ -588,7 +555,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			networkAdminStatusRec = statusServiceInterface.update(networkAdminStatusRec);
 
 		} catch (Exception e) {
-			LOG.debug("Exception in updateApStatus", e);
+			LOG.error("Exception in updateApStatus", e);
+			throw e;
 		}
 
 	}
@@ -762,14 +730,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
 
 			if (ovsdbSession != null) {
-				// if (ovsdbSession.getCustomerId() > 0 &&
-				// ovsdbSession.getEquipmentId() > 0L) {
-				// List<Status> statusForDisconnectedAp =
-				// statusServiceInterface.delete(ovsdbSession.getCustomerId(),
-				// ovsdbSession.getEquipmentId());
-				// LOG.info("Deleted status records {} for AP {}",
-				// statusForDisconnectedAp, apId);
-				// }
 				if (ovsdbSession.getRoutingId() > 0L) {
 					try {
 						routingServiceInterface.delete(ovsdbSession.getRoutingId());
@@ -803,7 +763,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			if ((customer != null) && (customer.getDetails() != null)
 					&& (customer.getDetails().getAutoProvisioning() != null)
 					&& customer.getDetails().getAutoProvisioning().isEnabled()) {
-				Equipment equipmentConfig = getCustomerEquipment(apId);
+				Equipment equipmentConfig = equipmentServiceInterface.getByInventoryIdOrNull(apId);
 
 				if (equipmentConfig == null) {
 					throw new IllegalStateException("Cannot retrieve configuration for " + apId);
@@ -1466,7 +1426,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			return;
 		}
 
-		Equipment ce = getCustomerEquipment(apId);
+		Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
 		if (ce == null) {
 			LOG.info("awlanNodeDbTableUpdate::Cannot find AP {}", apId);
 			return;
@@ -1762,7 +1722,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			return;
 		}
 
-		Equipment ce = getCustomerEquipment(apId);
+		Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
 
 		if (ce == null) {
 			LOG.debug("updateDhcpIpClientFingerprints::Cannot get Equipment for AP {}", apId);

@@ -88,7 +88,6 @@ import sts.OpensyncStats.Client;
 import sts.OpensyncStats.ClientReport;
 import sts.OpensyncStats.EventReport;
 import sts.OpensyncStats.EventReport.ClientAssocEvent;
-import sts.OpensyncStats.EventType;
 import sts.OpensyncStats.RadioBandType;
 import sts.OpensyncStats.Report;
 
@@ -159,20 +158,6 @@ public class OpensyncExternalIntegrationCloudTest {
     @After
     public void tearDown() throws Exception {
         mockito.finishMocking();
-
-    }
-
-    @Test
-    public void testGetCustomerEquipment() {
-
-        Equipment equipment = new Equipment();
-        equipment.setDetails(ApElementConfiguration.createWithDefaults());
-
-        Mockito.when(
-                equipmentServiceInterface.getByInventoryIdOrNull(ArgumentMatchers.eq("Test_Client_21P10C68818122")))
-                .thenReturn(equipment);
-        assertNotNull(opensyncExternalIntegrationCloud.getCustomerEquipment("Test_Client_21P10C68818122"));
-        assertNull(opensyncExternalIntegrationCloud.getCustomerEquipment("Test_Client_21P10C68818133"));
 
     }
 
