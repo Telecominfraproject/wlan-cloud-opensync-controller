@@ -1677,13 +1677,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 				new MacAddress(deletedClientMac));
 
 		if (client != null) {
-			if (clientSession != null) {
-				if (!clientSession.getDetails().getAssociationState().equals(AssociationState.Disconnected)) {
-					clientSession.getDetails().setAssociationState(AssociationState.Disconnected);
-					clientSession = clientServiceInterface.updateSession(clientSession);
-					LOG.info("Session {} for client {} is now disconnected.", clientSession, client.getMacAddress());
-				}
-			}
+		    if (clientSession != null && clientSession.getDetails() != null && clientSession.getDetails().getAssociationState() != null) {
+		        if (!clientSession.getDetails().getAssociationState().equals(AssociationState.Disconnected)) {
+		            clientSession.getDetails().setAssociationState(AssociationState.Disconnected);
+		            clientSession = clientServiceInterface.updateSession(clientSession);
+		            LOG.info("Session {} for client {} is now disconnected.", clientSession, client.getMacAddress());
+		        }
+		    }
+
 		} else {
 			if (clientSession != null) {
 
