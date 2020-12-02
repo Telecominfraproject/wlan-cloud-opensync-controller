@@ -14,10 +14,10 @@ jobs:
     strategy:
       matrix:
         project:
-          - opensync-ext-cloud
           - opensync-ext-interface
+          - opensync-gateway             
           - opensync-ext-static
-          - opensync-gateway
+          - opensync-ext-cloud
           - opensync-gateway-build
           - opensync-gateway-cloud-process
           - opensync-gateway-static-process
