@@ -200,7 +200,6 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
         
         OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
-        ovsdbDao.configureInterfaces(ovsdbClient);
 
         if (opensyncAPConfig != null) {
             
@@ -213,6 +212,9 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             if (opensyncAPConfig.getHotspotConfig() != null) {
                 ovsdbDao.configureHotspots(ovsdbClient, opensyncAPConfig);
             }
+            
+            ovsdbDao.configureInterfaces(ovsdbClient);
+
             ovsdbDao.configureStatsFromProfile(ovsdbClient, opensyncAPConfig);
             if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
                 ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
@@ -273,7 +275,6 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
         ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
-        ovsdbDao.configureInterfaces(ovsdbClient);
         ovsdbDao.configureGreTunnels(ovsdbClient, opensyncAPConfig);       
         ovsdbDao.createVlanNetworkInterfaces(ovsdbClient, opensyncAPConfig);
         
@@ -281,6 +282,9 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         if (opensyncAPConfig.getHotspotConfig() != null) {
             ovsdbDao.configureHotspots(ovsdbClient, opensyncAPConfig);
         }
+        
+        ovsdbDao.configureInterfaces(ovsdbClient);
+
         ovsdbDao.configureStatsFromProfile(ovsdbClient, opensyncAPConfig);
         if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
             ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);

@@ -1768,23 +1768,27 @@ public class OvsdbDao {
     }
 
     public void removeAllSsids(OvsdbClient ovsdbClient) {
+        LOG.info("removeAllSsids from {}:", wifiVifConfigDbTable);
+
         try {
 
             List<Operation> operations = new ArrayList<>();
-
-            operations = new ArrayList<>();
             operations.add(new Delete(wifiVifConfigDbTable));
 
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Removed all existing SSIDs from {}:", wifiVifConfigDbTable);
 
-                for (OperationResult res : result) {
-                    LOG.debug("Op Result {}", res);
+            for (OperationResult res : result) {
+                LOG.info("Op Result {}", res);
+                if (res instanceof UpdateResult) {
+                    LOG.info("removeAllSsids:result {}", ((UpdateResult)res).toString());
+                } else if (res instanceof ErrorResult) {
+                    LOG.error("removeAllSsids:result error {}", ((ErrorResult)res));
+                    throw new RuntimeException("removeAllSsids " + ((ErrorResult)res).getError() + " " + ((ErrorResult)res).getDetails());
                 }
             }
+
             Map<String, WifiVifConfigInfo> provisionedVifConfigs = getProvisionedWifiVifConfigs(ovsdbClient);
             // this should be empty
             if (!provisionedVifConfigs.isEmpty()) {
@@ -1982,7 +1986,12 @@ public class OvsdbDao {
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
             for (OperationResult res : result) {
-                LOG.debug("Op Result {}", res);
+                if (res instanceof UpdateResult) {
+                    LOG.info("configureLanInterfacesForDhcpSniffing {}", ((UpdateResult)res).toString());
+                } else if (res instanceof ErrorResult) {
+                    LOG.error("configureLanInterfacesForDhcpSniffing error {}", ((ErrorResult)res));
+                    throw new RuntimeException("configureLanInterfacesForDhcpSniffing " + ((ErrorResult)res).getError() + " " + ((ErrorResult)res).getDetails());
+                }
             }
         } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
             LOG.error("OvsdbDao::configureLanInterfaces failed.", e);
@@ -2009,8 +2018,12 @@ public class OvsdbDao {
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
             for (OperationResult res : result) {
-                LOG.debug("Op Result {}", res);
-            }
+                if (res instanceof UpdateResult) {
+                    LOG.info("configureWanInterfacesForDhcpSniffing {}", ((UpdateResult)res).toString());
+                } else if (res instanceof ErrorResult) {
+                    LOG.error("configureWanInterfacesForDhcpSniffing error {}", ((ErrorResult)res));
+                    throw new RuntimeException("configureWanInterfacesForDhcpSniffing " + ((ErrorResult)res).getError() + " " + ((ErrorResult)res).getDetails());
+                }            }
         } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
             LOG.error("OvsdbDao::configureWanInterfaces failed.", e);
             throw new RuntimeException(e);
@@ -2646,6 +2659,9 @@ public class OvsdbDao {
                     insertResult = (InsertResult) res;
                     LOG.info("configureSingleSsid:InsertResult {}", insertResult);
                     vifConfigUuid = ((InsertResult) res).getUuid();
+               } else if (res instanceof ErrorResult) {
+                    LOG.error("configureSingleSsid: error {}", ((ErrorResult)res));
+                    throw new RuntimeException("configureSingleSsid " + ((ErrorResult)res).getError() + " " + ((ErrorResult)res).getDetails());
                 }
             }
             if (vifConfigUuid == null) {
@@ -2680,6 +2696,9 @@ public class OvsdbDao {
                 if (res instanceof SelectResult) {
                     LOG.info("Select Result for confirmRowExistsInTable {} with Uuid {} {}", table, rowUuid,
                             ((SelectResult) res).getRows());
+                } else if (res instanceof ErrorResult) {
+                    LOG.error("confirmRowExistsInTable error {}", ((ErrorResult)res));
+                    throw new RuntimeException("confirmRowExistsInTable " + ((ErrorResult)res).getError() + " " + ((ErrorResult)res).getDetails());
                 }
             }
         } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
@@ -2767,6 +2786,9 @@ public class OvsdbDao {
         for (OperationResult res : result) {
             if (res instanceof UpdateResult) {
                 LOG.debug("updateVifConfigsSetForRadio:result {}", (UpdateResult) res);
+            } else if (res instanceof ErrorResult) {
+                LOG.error("updateVifConfigsSetForRadio error {}", ((ErrorResult)res));
+                throw new RuntimeException("updateVifConfigsSetForRadio " + ((ErrorResult)res).getError() + " " + ((ErrorResult)res).getDetails());
             }
         }
 
@@ -2784,6 +2806,9 @@ public class OvsdbDao {
                     throw new RuntimeException("Wifi_Radio_Config " + row
                             + "vif_configs table was not updated {} for new Wifi_VIF_Config " + vifConfigUuid);
                 }
+            } else if (res instanceof ErrorResult) {
+                LOG.error("updateVifConfigsSetForRadio error {}", ((ErrorResult)res));
+                throw new RuntimeException("updateVifConfigsSetForRadio " + ((ErrorResult)res).getError() + " " + ((ErrorResult)res).getDetails());
             }
         }
         LOG.info("Updated WifiRadioConfig {} for SSID {}:", radioFreqBand, ssid);
@@ -3142,6 +3167,19 @@ public class OvsdbDao {
 
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            for (OperationResult res : result) {
+
+                if (res instanceof SelectResult) {
+                    LOG.info("configureGreTunnel {}", ((SelectResult) res).toString());
+                } else if (res instanceof ErrorResult) {
+                    LOG.error("configureGreTunnel error {}", ((ErrorResult) res));
+                    throw new RuntimeException("configureGreTunnel " + ((ErrorResult) res).getError()
+                            + " " + ((ErrorResult) res).getDetails());
+                }
+
+            }
+
             if (((SelectResult) result[0]).getRows().isEmpty()) {
                 LOG.debug("Adding new Gre Tunnel {}", apNetworkConfiguration);
 
@@ -3156,7 +3194,18 @@ public class OvsdbDao {
             fResult = ovsdbClient.transact(ovsdbName, operations);
             result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
             for (OperationResult res : result) {
-                LOG.debug("Configure Gre Tunnel Op Result {}", res);
+
+                if (res instanceof InsertResult) {
+                    LOG.info("configureGreTunnel {}", ((InsertResult) res).toString());
+                } else if (res instanceof UpdateResult) {
+
+                    LOG.info("configureGreTunnel {}", ((UpdateResult) res).toString());
+                } else if (res instanceof ErrorResult) {
+                    LOG.error("configureGreTunnel error {}", ((ErrorResult) res));
+                    throw new RuntimeException("configureGreTunnel " + ((ErrorResult) res).getError()
+                            + " " + ((ErrorResult) res).getDetails());
+                }
+
             }
         } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
             LOG.error("Couldn't configure Gre Tunnel {}", apNetworkConfiguration, e);
@@ -3254,7 +3303,17 @@ public class OvsdbDao {
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
             for (OperationResult res : result) {
-                LOG.debug("Op Result {}", res);
+
+                if (res instanceof InsertResult) {
+                    LOG.info("createVlanNetworkInterfaces {}", ((InsertResult) res).toString());
+                } else if (res instanceof UpdateResult) {
+
+                    LOG.info("createVlanNetworkInterfaces {}", ((UpdateResult) res).toString());
+                } else if (res instanceof ErrorResult) {
+                    LOG.error("createVlanNetworkInterfaces error {}", ((ErrorResult) res));
+                    throw new RuntimeException("createVlanNetworkInterfaces " + ((ErrorResult) res).getError()
+                            + " " + ((ErrorResult) res).getDetails());
+                }
             }
 
             inetConfigMap = getProvisionedWifiInetConfigs(ovsdbClient);
@@ -3516,6 +3575,9 @@ public class OvsdbDao {
                     confirmRowExistsInTable(ovsdbClient, ((InsertResult) res).getUuid(), wifiInetConfigDbTable);
                 } else if (res instanceof UpdateResult) {
                     LOG.info("configureInetInterface update new row result {}", ((UpdateResult)res));
+                }  else if (res instanceof ErrorResult) {
+                    LOG.error("configureInetInterface error {}", ((ErrorResult)res));
+                    throw new RuntimeException("configureInetInterface " + ((ErrorResult)res).getError() + " " + ((ErrorResult)res).getDetails());
                 }
                 
             }
@@ -4977,8 +5039,9 @@ public class OvsdbDao {
                 LOG.info("configureWifiRrm insert new row result {}", ((InsertResult)res));
                 // for insert, make sure it is actually in the table
                 confirmRowExistsInTable(ovsdbClient, ((InsertResult) res).getUuid(), wifiRrmConfigDbTable);
-            } else if (res instanceof UpdateResult) {
-                LOG.info("configureWifiRrm update row result {}", ((UpdateResult)res));
+            }  else if (res instanceof ErrorResult) {
+                LOG.error("configureWifiRrm error {}", ((ErrorResult)res));
+                throw new RuntimeException("configureWifiRrm " + ((ErrorResult)res).getError() + " " + ((ErrorResult)res).getDetails());
             }
             
         }
