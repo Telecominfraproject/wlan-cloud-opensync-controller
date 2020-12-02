@@ -66,8 +66,8 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAWLANNode;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpDeviceType;
-import com.telecominfraproject.wlan.opensync.ovsdb.dao.utilities.OvsdbStringConstants;
-import com.telecominfraproject.wlan.opensync.ovsdb.dao.utilities.OvsdbToWlanCloudTypeMappingUtility;
+import com.telecominfraproject.wlan.opensync.util.OvsdbStringConstants;
+import com.telecominfraproject.wlan.opensync.util.OvsdbToWlanCloudTypeMappingUtility;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileContainer;

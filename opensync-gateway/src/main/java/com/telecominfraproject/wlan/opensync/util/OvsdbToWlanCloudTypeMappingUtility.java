@@ -1,4 +1,4 @@
-package com.telecominfraproject.wlan.opensync.ovsdb.dao.utilities;
+package com.telecominfraproject.wlan.opensync.util;
 
 import com.telecominfraproject.wlan.client.models.ClientType;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;

@@ -1,4 +1,4 @@
-package com.telecominfraproject.wlan.opensync.ovsdb.dao.utilities;
+package com.telecominfraproject.wlan.opensync.util;
 
 
 public class OvsdbStringConstants {

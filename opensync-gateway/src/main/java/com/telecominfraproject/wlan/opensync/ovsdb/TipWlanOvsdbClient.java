@@ -30,7 +30,7 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.OvsdbDao;
-import com.telecominfraproject.wlan.opensync.ovsdb.dao.utilities.OvsdbStringConstants;
+import com.telecominfraproject.wlan.opensync.util.OvsdbStringConstants;
 import com.telecominfraproject.wlan.opensync.util.SslUtil;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.vmware.ovsdb.callback.ConnectionCallback;

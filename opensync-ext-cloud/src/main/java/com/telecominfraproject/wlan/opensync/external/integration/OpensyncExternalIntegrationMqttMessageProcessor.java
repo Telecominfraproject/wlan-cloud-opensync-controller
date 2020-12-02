@@ -42,7 +42,7 @@ import com.telecominfraproject.wlan.core.model.utils.DecibelUtils;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.Equipment;
-import com.telecominfraproject.wlan.opensync.ovsdb.dao.utilities.OvsdbToWlanCloudTypeMappingUtility;
+import com.telecominfraproject.wlan.opensync.util.OvsdbToWlanCloudTypeMappingUtility;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileContainer;
