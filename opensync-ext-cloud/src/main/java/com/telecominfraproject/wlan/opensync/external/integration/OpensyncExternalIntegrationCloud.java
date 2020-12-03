@@ -742,10 +742,37 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			} else {
 				LOG.warn("Cannot find ap {} in inventory", apId);
 			}
+			
+			updateApDisconnectedStatus(apId);
 		} catch (Exception e) {
 			LOG.error("Exception when registering ap routing {}", apId, e);
 		}
 
+	}
+	
+	private void updateApDisconnectedStatus(String apId) {
+		try {
+			Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
+			if (ce == null) {
+				LOG.debug("updateDisconnectedApStatus::Cannot get Equipment for AP {}", apId);
+				return;
+			}
+
+			Status statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(),
+					StatusDataType.EQUIPMENT_ADMIN);
+			if (statusRecord == null) {
+				LOG.debug("updateApDisconnectedStatus::Cannot get EQUIPMENT_ADMIN status for CustomerId {} or EquipmentId {} for AP {}", 
+						ce.getCustomerId(), ce.getId(), apId);
+				return;
+			}
+
+			((EquipmentAdminStatusData) statusRecord.getDetails()).setStatusCode(StatusCode.error);
+			// Update the equipment admin status
+			statusRecord = statusServiceInterface.update(statusRecord);
+		} catch (Exception e) {
+			LOG.error("Exception in updateApDisconnectedStatus", e);
+			throw e;
+		}
 	}
 
 	@Override
