@@ -1,5 +1,5 @@
-# wlan-opensync-wifi-controller
-
+# wlan-opensync-wifi-controller  #TESTING
+ 
 Opensync Wifi Controller - accepts connections from the access points, pushes configuration, reads metrics from the topics on MQTT broker.
 
 Components in this repository depend on other wlan-cloud repositories. 
