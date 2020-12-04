@@ -2069,6 +2069,9 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                         || ssidConfig.getSecureMode().equals(SecureMode.wpa2PSK)
                         || ssidConfig.getSecureMode().equals(SecureMode.wpa2OnlyPSK)) {
                     latestClientSessionDetails.setSecurityType(SecurityType.PSK);
+                } else if (ssidConfig.getSecureMode().equals(SecureMode.wpa3OnlySAE)
+                        || ssidConfig.getSecureMode().equals(SecureMode.wpa3MixedSAE)){
+                    latestClientSessionDetails.setSecurityType(SecurityType.SAE);
                 } else if (ssidConfig.getSecureMode().equals(SecureMode.wpa2Radius)
                         || ssidConfig.getSecureMode().equals(SecureMode.wpaRadius)
                         || ssidConfig.getSecureMode().equals(SecureMode.wpa2OnlyRadius)) {
@@ -2076,7 +2079,9 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                     latestClientSessionDetails.setEapDetails(new ClientEapDetails());
                 } else if (ssidConfig.getSecureMode().equals(SecureMode.wpaEAP)
                         || ssidConfig.getSecureMode().equals(SecureMode.wpa2EAP)
-                        || ssidConfig.getSecureMode().equals(SecureMode.wpa2OnlyEAP)) {
+                        || ssidConfig.getSecureMode().equals(SecureMode.wpa2OnlyEAP)
+                        || ssidConfig.getSecureMode().equals(SecureMode.wpa3OnlyEAP)
+                        || ssidConfig.getSecureMode().equals(SecureMode.wpa3MixedEAP)) {
                     latestClientSessionDetails.setSecurityType(SecurityType.RADIUS);
                     latestClientSessionDetails.setEapDetails(new ClientEapDetails());
                 } else {

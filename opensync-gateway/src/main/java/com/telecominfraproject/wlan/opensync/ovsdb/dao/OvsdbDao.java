@@ -1156,32 +1156,11 @@ public class OvsdbDao {
 
         List<Operation> operations = new ArrayList<>();
         List<Condition> conditions = new ArrayList<>();
-        List<String> columns = new ArrayList<>();
-        columns.add("bridge");
-        columns.add("ap_bridge");
-        columns.add("_uuid");
-        columns.add("btm");
-        columns.add("enabled");
-        columns.add("ft_psk");
-        columns.add("ft_mobility_domain");
-        columns.add("group_rekey");
-        columns.add("if_name");
-        columns.add("min_hw_mode");
-        columns.add("mode");
-        columns.add("rrm");
-        columns.add("ssid");
-        columns.add("ssid_broadcast");
-        columns.add("uapsd_enable");
-        columns.add("vif_radio_idx");
-        columns.add("security");
-        columns.add("vlan_id");
-        columns.add("mac_list");
-        columns.add("mac_list_type");
 
         try {
             LOG.debug("Retrieving WifiVifConfig:");
 
-            operations.add(new Select(wifiVifConfigDbTable, conditions, columns));
+            operations.add(new Select(wifiVifConfigDbTable, conditions));
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
@@ -1279,8 +1258,73 @@ public class OvsdbDao {
                         .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
                     wifiVifConfigInfo.macListType = row.getStringColumn("mac_list_type");
                 }
-
+                
+                wifiVifConfigInfo.customOptions = row.getMapColumn("custom_options");
+                wifiVifConfigInfo.captiveAllowlist = row.getSetColumn("captive_allowlist");
+                wifiVifConfigInfo.captivePortal = row.getMapColumn("captive_portal");
+                
+                Boolean wpsPbc = getSingleValueFromSet(row, "wps_pbc");
+                if (wpsPbc != null) {
+                    wifiVifConfigInfo.wpsPbc = wpsPbc;
+                } else {
+                    wifiVifConfigInfo.wpsPbc = false;
+                }
+                
+                Boolean wps = getSingleValueFromSet(row, "wps");
+                if (wps != null) {
+                    wifiVifConfigInfo.wps = wps;
+                } else {
+                    wifiVifConfigInfo.wps = false;
+                }
+                
+                Boolean wds = getSingleValueFromSet(row, "wds");
+                if (wds != null) {
+                    wifiVifConfigInfo.wds = wds;
+                } else {
+                    wifiVifConfigInfo.wds = false;
+                }
+                
+                wifiVifConfigInfo.wpsPbcKeyId = row.getStringColumn("wps_pbc_key_id");
+                
+                Boolean mcast2ucast = getSingleValueFromSet(row, "mcast2ucast");
+                if (mcast2ucast != null) {
+                    wifiVifConfigInfo.mcast2ucast = mcast2ucast;
+                } else {
+                    wifiVifConfigInfo.mcast2ucast = false;
+                }
+                
+                Boolean dynamicBeacon = getSingleValueFromSet(row, "dynamic_beacon");
+                if (dynamicBeacon != null) {
+                    wifiVifConfigInfo.dynamicBeacon = dynamicBeacon;
+                } else {
+                    wifiVifConfigInfo.dynamicBeacon = false;
+                }
+                
+                Long vifDbgLvl = getSingleValueFromSet(row, "vif_dbg_lvl");
+                if (vifDbgLvl != null) {
+                    wifiVifConfigInfo.vifDbgLvl = vifDbgLvl.intValue();
+                } else {
+                    wifiVifConfigInfo.vifDbgLvl = 0;
+                }
+                
+                if (row.getColumns().containsKey("mesh_options")) {
+                    wifiVifConfigInfo.meshOptions = row.getMapColumn("mesh_options");
+                }
+                
+                wifiVifConfigInfo.credentialConfigs = row.getSetColumn("credential_configs");
+                
+                String parent = getSingleValueFromSet(row, "parent");
+                if (parent != null) {
+                    wifiVifConfigInfo.parent = parent;
+                }
+                
+                String multiAp = getSingleValueFromSet(row, "multi_ap");
+                if (multiAp != null) {
+                    wifiVifConfigInfo.multiAp = multiAp;
+                }
+                
                 ret.put(wifiVifConfigInfo.ifName + '_' + wifiVifConfigInfo.ssid, wifiVifConfigInfo);
+                
             }
 
             LOG.debug("Retrieved WifiVifConfigs: {}", ret);
@@ -3061,12 +3105,15 @@ public class OvsdbDao {
         security.put("encryption", opensyncSecurityMode);
         // key and mode is N/A for OPEN security
         if (!opensyncSecurityMode.equals("OPEN")) {
-            if (ssidSecurityMode.equals("wpa2PSK")) {
+            if (ssidSecurityMode.equals("wpa2PSK") || ssidSecurityMode.equals("wpa3MixedSAE")) {
                 security.put("key", ssidConfig.getKeyStr());
                 security.put("mode", "mixed");
             } else if (ssidSecurityMode.equals("wpa2OnlyPSK")) {
                 security.put("key", ssidConfig.getKeyStr());
                 security.put("mode", "2");
+            } else if (ssidSecurityMode.equals("wpa3OnlySAE")) {
+                security.put("key", ssidConfig.getKeyStr());
+                security.put("mode", "3");
             } else if (ssidSecurityMode.equals("wpaPSK")) {
                 security.put("key", ssidConfig.getKeyStr());
                 security.put("mode", "1");
@@ -3076,7 +3123,13 @@ public class OvsdbDao {
                 if (ssidConfig.getRadiusAccountingServiceName() != null) {
                     getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
                 }
-            } else if (ssidSecurityMode.equals("wpa2EAP") || ssidSecurityMode.equals("wpa2Radius")) {
+            } else if (ssidSecurityMode.equals("wpa3OnlyEAP")) {
+                security.put("mode", "3");
+                getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
+                if (ssidConfig.getRadiusAccountingServiceName() != null) {
+                    getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
+                }
+            } else if (ssidSecurityMode.equals("wpa2EAP") || ssidSecurityMode.equals("wpa2Radius") || ssidSecurityMode.equals("wpa3MixedEAP")) {
                 security.put("mode", "mixed");
                 getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
                 if (ssidConfig.getRadiusAccountingServiceName() != null) {
@@ -3107,6 +3160,10 @@ public class OvsdbDao {
         } else if (ssidSecurityMode.equals("wpaRadius") || ssidSecurityMode.equals("wpa2OnlyRadius")
                 || ssidSecurityMode.equals("wpa2Radius")) {
             opensyncSecurityMode = "WPA-EAP";
+        } else if (ssidSecurityMode.equals("wpa3OnlySAE") || ssidSecurityMode.equals("wpa3MixedSAE")) {
+            opensyncSecurityMode = "WPA-SAE";
+        }else if (ssidSecurityMode.equals("wpa3OnlyEAP") || ssidSecurityMode.equals("wpa3MixedEAP")) {
+            opensyncSecurityMode = "WPA3-EAP";
         }
         return opensyncSecurityMode;
     }
