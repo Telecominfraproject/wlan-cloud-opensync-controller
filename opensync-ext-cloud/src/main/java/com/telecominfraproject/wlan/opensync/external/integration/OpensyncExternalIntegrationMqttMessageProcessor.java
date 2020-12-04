@@ -1076,7 +1076,10 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
             RealTimeSipCallReportEvent cloudSipCallReportEvent = new RealTimeSipCallReportEvent(customerId, equipmentId,
                     eventTimestamp);
-            cloudSipCallReportEvent.setClientMacAddress(MacAddress.valueOf(callReport.getClientMac().toStringUtf8()));
+
+            if (callReport.hasClientMac() && callReport.getClientMac().isValidUtf8()) {
+                cloudSipCallReportEvent.setClientMacAddress(MacAddress.valueOf(callReport.getClientMac().toStringUtf8()));
+            }
             cloudSipCallReportEvent.setStatuses(processRtpFlowStats(callReport.getStatsList()));
             cloudSipCallReportEvent.setEventType(RealTimeEventType.SipCallReport);
 
@@ -1133,7 +1136,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             RealTimeSipCallStartEvent cloudSipCallStartEvent = new RealTimeSipCallStartEvent(customerId, equipmentId,
                     eventTimestamp);
 
-            if (apCallStart.hasClientMac()) {
+            if (apCallStart.hasClientMac() && apCallStart.getClientMac().isValidUtf8()) {
                 cloudSipCallStartEvent.setClientMacAddress(MacAddress.valueOf(apCallStart.getClientMac().toStringUtf8()));
             }
 
@@ -1186,7 +1189,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
             }
 
-            if (apCallStop.hasClientMac()) {
+            if (apCallStop.hasClientMac() && apCallStop.getClientMac().isValidUtf8()) {
 
                 cloudSipCallStopEvent.setClientMacAddress(MacAddress.valueOf(apCallStop.getClientMac().toStringUtf8()));
 
