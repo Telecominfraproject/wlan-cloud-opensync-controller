@@ -7,6 +7,7 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.telecominfraproject.wlan.systemevent.models.SystemEvent;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -45,9 +46,6 @@ import com.telecominfraproject.wlan.firmware.FirmwareServiceInterface;
 import com.telecominfraproject.wlan.location.service.LocationServiceInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.controller.OpensyncCloudGatewayController;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
-import com.telecominfraproject.wlan.profile.models.ProfileContainer;
-import com.telecominfraproject.wlan.profile.models.ProfileType;
-import com.telecominfraproject.wlan.profile.rf.models.RfConfiguration;
 import com.telecominfraproject.wlan.routing.RoutingServiceInterface;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.ApNodeMetrics;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.StateUpDownError;
@@ -57,6 +55,7 @@ import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSIDs;
 import com.telecominfraproject.wlan.status.models.Status;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
 
+import sts.OpensyncStats;
 import sts.OpensyncStats.AssocType;
 import sts.OpensyncStats.ChannelSwitchReason;
 import sts.OpensyncStats.Client;
@@ -260,6 +259,55 @@ public class OpensyncExternalIntegrationMqttMessageProcessorTest {
         // TODO: implement me when wcs stats reports supported
     }
 
+    // Verify CallStart, CallStop and CallReport are properly processed and published as
+    // respective events (5 events in total)
+    @Test
+    public void testProcessMqttMessageStringMultipleVideoVoiceReport() {
+        OpensyncStats.VideoVoiceReport.Builder callStartVoiceReportBuilder = OpensyncStats.VideoVoiceReport.newBuilder().
+                setCallStart(getDefaultCallStart());
+        OpensyncStats.VideoVoiceReport.Builder callReportGotPublishVoiceReportBuilder = OpensyncStats.VideoVoiceReport.newBuilder().
+                setCallReport(getDefaultCallReport(OpensyncStats.CallReport.CallReportReason.GOT_PUBLISH, 121, 1028, 1316, 1888, 298, 2, 100, 200));
+        OpensyncStats.VideoVoiceReport.Builder callReportRoamedToVoiceReportBuilder = OpensyncStats.VideoVoiceReport.newBuilder().
+                setCallReport(getDefaultCallReport(OpensyncStats.CallReport.CallReportReason.ROAMED_TO, 123, 1020, 1116, 1345, 223, 0, 102, 203));
+        OpensyncStats.VideoVoiceReport.Builder callReportRoamedFromVoiceReportBuilder = OpensyncStats.VideoVoiceReport.newBuilder().
+                setCallReport(getDefaultCallReport(OpensyncStats.CallReport.CallReportReason.ROAMED_FROM, 122, 1029, 1300, 1234, 111, 3, 101, 201));
+        OpensyncStats.VideoVoiceReport.Builder callStopVoiceReportBuilder = OpensyncStats.VideoVoiceReport.newBuilder().
+                setCallStop(getDefaultCallStop());
+        // Create report with multiple voiceReports in one
+        Report multipleVoiceReportsInOneReport = Report.newBuilder().addVideoVoiceReport(callStartVoiceReportBuilder).
+                addVideoVoiceReport(callReportGotPublishVoiceReportBuilder).
+                addVideoVoiceReport(callReportRoamedFromVoiceReportBuilder).
+                addVideoVoiceReport(callReportRoamedToVoiceReportBuilder).
+                addVideoVoiceReport(callStopVoiceReportBuilder).
+                setNodeID("1").
+                build();
+
+        opensyncExternalIntegrationMqttProcessor.populateSipCallReport(null, multipleVoiceReportsInOneReport, 1, 2L, "TestAP", 12L);
+
+        Mockito.verify(equipmentMetricsCollectorInterface, Mockito.times(1)).publishEventsBulk(Mockito.anyList());
+    }
+
+    // Create report with 1 voiceReports that contains multiple Calls
+    // Note that GOT_PUBLISH and ROAMED_FROM are ignored in the CallReport. ROAMED_TO overwrites them
+    @Test
+    public void testProcessMqttMessageStringOneVideoVoiceReport() {
+
+        OpensyncStats.VideoVoiceReport.Builder videoVoiceReportBuilder = OpensyncStats.VideoVoiceReport.newBuilder().
+                setCallReport(getDefaultCallReport(OpensyncStats.CallReport.CallReportReason.GOT_PUBLISH, 121, 1028, 1316,1888, 298, 2, 100,200)).
+                setCallReport(getDefaultCallReport(OpensyncStats.CallReport.CallReportReason.ROAMED_FROM, 122, 1029, 1300,1234, 111, 3, 101,201)).
+                setCallReport(getDefaultCallReport(OpensyncStats.CallReport.CallReportReason.ROAMED_TO, 123, 1020, 1116,1345, 223, 0, 102,203)).
+                setCallStart(getDefaultCallStart()).
+                setCallStop(getDefaultCallStop());
+        Report oneVoiceReportWithMultipleCallsInOneReport = Report.getDefaultInstance().toBuilder().
+                addVideoVoiceReport(videoVoiceReportBuilder).
+                setNodeID("1").
+                build();
+
+        opensyncExternalIntegrationMqttProcessor.populateSipCallReport(null, oneVoiceReportWithMultipleCallsInOneReport, 1, 2L, "TestAP", 12L);
+
+        Mockito.verify(equipmentMetricsCollectorInterface, Mockito.times(1)).publishEventsBulk(Mockito.anyList());
+    }
+
     @Test
     public void testpopulateNetworkProbeMetrics() throws Exception {
 
@@ -318,6 +366,74 @@ public class OpensyncExternalIntegrationMqttMessageProcessorTest {
         return bssidList;
     }
 
+    private OpensyncStats.CallStart getDefaultCallStart() {
+        OpensyncStats.CallStart.Builder callStartBuilder = OpensyncStats.CallStart.newBuilder();
+        callStartBuilder.setBand(RadioBandType.BAND5G);
+        callStartBuilder.setChannel(40);
+        callStartBuilder.addCodecs("110 opus/48000/2");
+        callStartBuilder.addCodecs("102 iLBC/8000");
+        callStartBuilder.setClientMac(ByteString.copyFrom("C0:9A:D0:76:A9:69".getBytes()));
+        callStartBuilder.setDeviceInfo("Test Device");
+        callStartBuilder.setProviderDomain("skype");
+        callStartBuilder.setSessionId(123L);
+        callStartBuilder.setWifiSessionId(1234L);
+
+        return callStartBuilder.build();
+    }
+
+    private OpensyncStats.CallStop getDefaultCallStop() {
+        OpensyncStats.CallStop.Builder callStopBuilder = OpensyncStats.CallStop.newBuilder();
+        callStopBuilder.setBand(RadioBandType.BAND5G);
+        callStopBuilder.setChannel(40);
+        callStopBuilder.addCodecs("110 opus/48000/2");
+        callStopBuilder.addCodecs("102 iLBC/8000");
+        callStopBuilder.setClientMac(ByteString.copyFrom("C0:9A:D0:76:A9:69".getBytes()));
+        callStopBuilder.setCallDuration(1230);
+        callStopBuilder.setProviderDomain("skype");
+        callStopBuilder.setSessionId(123L);
+        callStopBuilder.setWifiSessionId(1234L);
+        callStopBuilder.setReason(OpensyncStats.CallStop.CallStopReason.BYE_OK);
+        callStopBuilder.addStats(getRtpFlowStats(121, 1380, 1400,3000, 119, 3, 205,350));
+
+        return callStopBuilder.build();
+    }
+    
+    private OpensyncStats.RtpFlowStats getRtpFlowStats(int codec, int jitter, int latency, int totalPackets,
+                                                       int totalPacketsLost, int mos, int firstRtpSeq, int lastRtpSeq) {
+        OpensyncStats.RtpFlowStats.Builder rtpFlowStatsBuilder = OpensyncStats.RtpFlowStats.newBuilder();
+        rtpFlowStatsBuilder.setCodec(codec);
+        rtpFlowStatsBuilder.setBlockCodecs(ByteString.copyFrom(new byte[] { (byte) 0xe6, 0x1 }));
+        rtpFlowStatsBuilder.setDirection(OpensyncStats.RtpFlowStats.RtpFlowDirection.RTP_DOWNSTREAM);
+        rtpFlowStatsBuilder.setRtpFlowType(OpensyncStats.RtpFlowStats.RtpFlowType.RTP_VOICE);
+        rtpFlowStatsBuilder.setJitter(jitter);
+        rtpFlowStatsBuilder.setLatency(latency);
+        rtpFlowStatsBuilder.setTotalPacketsSent(totalPackets);
+        rtpFlowStatsBuilder.setTotalPacketsLost(totalPacketsLost);
+        rtpFlowStatsBuilder.setMosx100(mos);
+        rtpFlowStatsBuilder.setRtpSeqFirst(firstRtpSeq);
+        rtpFlowStatsBuilder.setRtpSeqLast(lastRtpSeq);
+
+        return rtpFlowStatsBuilder.build();
+    }
+
+    private OpensyncStats.CallReport getDefaultCallReport(OpensyncStats.CallReport.CallReportReason reason, int codec,
+                                                          int jitter, int latency, int totalPackets, int totalPacketsLost,
+                                                          int mos, int firstRtpSeq, int lastRtpSeq) {
+        OpensyncStats.CallReport.Builder callReportBuilder = OpensyncStats.CallReport.newBuilder();
+        callReportBuilder.setBand(RadioBandType.BAND5G);
+        callReportBuilder.setChannel(40);
+        callReportBuilder.addCodecs("110 opus/48000/2");
+        callReportBuilder.addCodecs("102 iLBC/8000");
+        callReportBuilder.setClientMac(ByteString.copyFrom("C0:9A:D0:76:A9:69".getBytes()));
+        callReportBuilder.setProviderDomain("skype");
+        callReportBuilder.setSessionId(123L);
+        callReportBuilder.setWifiSessionId(1234L);
+        callReportBuilder.setReason(reason);
+        callReportBuilder.addStats(getRtpFlowStats(codec, jitter, latency, totalPackets, totalPacketsLost,
+                mos, firstRtpSeq, lastRtpSeq));
+
+        return callReportBuilder.build();
+    }
 
     private List<EventReport> getOpensyncStatsEventReportsList() {
 
