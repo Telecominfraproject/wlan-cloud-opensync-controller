@@ -1048,7 +1048,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
             LOG.debug("Received VideoVoiceReport {} for SIP call", videoVoiceReport);
 
-            processRealTImeSipCallReportEvent(customerId, equipmentId, eventTimestamp, eventsList, videoVoiceReport);
+            processRealTimeSipCallReportEvent(customerId, equipmentId, eventTimestamp, eventsList, videoVoiceReport);
 
             processRealTimeSipCallStartEvent(customerId, equipmentId, eventTimestamp, eventsList, videoVoiceReport);
 
@@ -1068,109 +1068,63 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
     }
 
-    protected void processRealTImeSipCallReportEvent(int customerId, long equipmentId, long eventTimestamp,
-            List<SystemEvent> eventsList, VideoVoiceReport videoVoiceReport) {
+    protected void processRealTimeSipCallReportEvent(int customerId, long equipmentId, long eventTimestamp,
+                                                     List<SystemEvent> eventsList, VideoVoiceReport videoVoiceReport) {
         if (videoVoiceReport.hasCallReport()) {
 
             CallReport callReport = videoVoiceReport.getCallReport();
-            List<com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowStats> cloudRtpFlowStatsList = new ArrayList<>();
-            for (RtpFlowStats apRtpFlowStats : callReport.getStatsList()) {
-
-                com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowStats cloudRtpStats = new com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowStats();
-
-                if (apRtpFlowStats.hasCodec()) {
-                    cloudRtpStats.setCodec(apRtpFlowStats.getCodec());
-                }
-
-                if (apRtpFlowStats.hasBlockCodecs()) {
-                    cloudRtpStats.setBlockCodecs(apRtpFlowStats.getBlockCodecs().toByteArray());
-                }
-
-                if (apRtpFlowStats.hasLatency()) {
-                    cloudRtpStats.setLatency(apRtpFlowStats.getLatency());
-                }
-
-                if (apRtpFlowStats.hasRtpSeqFirst()) {
-                    cloudRtpStats.setFirstRTPSeq(apRtpFlowStats.getRtpSeqFirst());
-                }
-
-                if (apRtpFlowStats.hasRtpSeqLast()) {
-                    cloudRtpStats.setLastRTPSeq(apRtpFlowStats.getRtpSeqLast());
-                }
-
-                if (apRtpFlowStats.hasDirection()) {
-                    switch (apRtpFlowStats.getDirection()) {
-                    case RTP_DOWNSTREAM:
-                        cloudRtpStats.setDirection(
-                                com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowDirection.DOWNSTREAM);
-                        break;
-                    case RTP_UPSTREAM:
-                        cloudRtpStats.setDirection(
-                                com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowDirection.UPSTREAM);
-                        break;
-                    default:
-                        cloudRtpStats.setDirection(
-                                com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowDirection.UNSUPPORTED);
-                    }
-                }
-
-                if (apRtpFlowStats.hasRtpFlowType()) {
-                    switch (apRtpFlowStats.getRtpFlowType()) {
-                    case RTP_VIDEO:
-                        cloudRtpStats.setFlowType(
-                                com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowType.VIDEO);
-                        break;
-                    case RTP_VOICE:
-                        cloudRtpStats.setFlowType(
-                                com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowType.VOICE);
-                        break;
-                    default:
-                        cloudRtpStats.setFlowType(
-                                com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowType.UNSUPPORTED);
-                        break;
-                    }
-                }
-
-                if (apRtpFlowStats.hasJitter()) {
-                    cloudRtpStats.setJitter(apRtpFlowStats.getJitter());
-                }
-
-                if (apRtpFlowStats.hasTotalPacketsSent()) {
-                    cloudRtpStats.setTotalPacket(apRtpFlowStats.getTotalPacketsSent());
-                }
-
-                if (apRtpFlowStats.hasTotalPacketsLost()) {
-                    cloudRtpStats.setTotalPacketLost(apRtpFlowStats.getTotalPacketsLost());
-                }
-
-                if (apRtpFlowStats.hasMosx100()) {
-                    cloudRtpStats.setMosMultipliedBy100(apRtpFlowStats.getMosx100());
-                }
-
-                if (apRtpFlowStats.hasPacketLossConsec()) {
-                    cloudRtpStats.setPacketLossConsecutive(apRtpFlowStats.getPacketLossConsec());
-                }
-
-                if (apRtpFlowStats.hasPacketLossPercent()) {
-                    cloudRtpStats.setPacketLossPercentage(apRtpFlowStats.getPacketLossPercent());
-                }
-
-                cloudRtpFlowStatsList.add(cloudRtpStats);
-
-            }
 
             RealTimeSipCallReportEvent cloudSipCallReportEvent = new RealTimeSipCallReportEvent(customerId, equipmentId,
                     eventTimestamp);
-            cloudSipCallReportEvent.setClientMacAddress(MacAddress.valueOf(callReport.getClientMac()));
-            cloudSipCallReportEvent.setStatuses(cloudRtpFlowStatsList);
+
+            if (callReport.hasClientMac() && callReport.getClientMac().isValidUtf8()) {
+                cloudSipCallReportEvent.setClientMacAddress(MacAddress.valueOf(callReport.getClientMac().toStringUtf8()));
+            }
+            cloudSipCallReportEvent.setStatuses(processRtpFlowStats(callReport.getStatsList()));
             cloudSipCallReportEvent.setEventType(RealTimeEventType.SipCallReport);
-            cloudSipCallReportEvent.setReportReason(SIPCallReportReason.GOT_PUBLISH);
+
             cloudSipCallReportEvent.setSipCallId(callReport.getWifiSessionId());
             cloudSipCallReportEvent.setAssociationId(callReport.getSessionId());
+
+            if (callReport.hasReason()) {
+                cloudSipCallReportEvent.setReportReason(getCallReportReason(callReport.getReason()));
+            }
+            if (callReport.hasProviderDomain()) {
+                cloudSipCallReportEvent.setProviderDomain(callReport.getProviderDomain());
+            }
+
+            if (callReport.getCodecsCount() > 0) {
+                cloudSipCallReportEvent.setCodecs(callReport.getCodecsList());
+            }
+
+            if (callReport.hasChannel()) {
+                cloudSipCallReportEvent.setChannel(callReport.getChannel());
+            }
+
+            if (callReport.hasBand()) {
+                cloudSipCallReportEvent.setRadioType(OvsdbToWlanCloudTypeMappingUtility
+                        .getRadioTypeFromOpensyncStatsRadioBandType(callReport.getBand()));
+            }
 
             eventsList.add(cloudSipCallReportEvent);
 
         }
+    }
+
+    private SIPCallReportReason getCallReportReason(CallReport.CallReportReason reason) {
+        if (reason != null) {
+            switch (reason) {
+                case ROAMED_TO:
+                    return SIPCallReportReason.ROAMED_TO;
+                case GOT_PUBLISH:
+                    return SIPCallReportReason.GOT_PUBLISH;
+                case ROAMED_FROM:
+                    return SIPCallReportReason.ROAMED_FROM;
+                default:
+                    return SIPCallReportReason.UNSUPPORTED;
+            }
+        }
+        return SIPCallReportReason.UNSUPPORTED;
     }
 
     protected void processRealTimeSipCallStartEvent(int customerId, long equipmentId, long eventTimestamp,
@@ -1182,8 +1136,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             RealTimeSipCallStartEvent cloudSipCallStartEvent = new RealTimeSipCallStartEvent(customerId, equipmentId,
                     eventTimestamp);
 
-            if (apCallStart.hasClientMac()) {
-                cloudSipCallStartEvent.setClientMacAddress(MacAddress.valueOf(apCallStart.getClientMac()));
+            if (apCallStart.hasClientMac() && apCallStart.getClientMac().isValidUtf8()) {
+                cloudSipCallStartEvent.setClientMacAddress(MacAddress.valueOf(apCallStart.getClientMac().toStringUtf8()));
             }
 
             if (apCallStart.hasDeviceInfo()) {
@@ -1196,11 +1150,23 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
             if (apCallStart.hasSessionId()) {
                 cloudSipCallStartEvent.setAssociationId(apCallStart.getSessionId());
-
             }
 
             if (apCallStart.hasWifiSessionId()) {
                 cloudSipCallStartEvent.setAssociationId(apCallStart.getWifiSessionId());
+            }
+
+            if (apCallStart.getCodecsCount() > 0) {
+                cloudSipCallStartEvent.setCodecs(apCallStart.getCodecsList());
+            }
+
+            if (apCallStart.hasChannel()) {
+                cloudSipCallStartEvent.setChannel(apCallStart.getChannel());
+            }
+
+            if (apCallStart.hasBand()) {
+                cloudSipCallStartEvent.setRadioType(OvsdbToWlanCloudTypeMappingUtility
+                        .getRadioTypeFromOpensyncStatsRadioBandType(apCallStart.getBand()));
             }
 
             eventsList.add(cloudSipCallStartEvent);
@@ -1223,9 +1189,9 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
             }
 
-            if (apCallStop.hasClientMac()) {
+            if (apCallStop.hasClientMac() && apCallStop.getClientMac().isValidUtf8()) {
 
-                cloudSipCallStopEvent.setClientMacAddress(MacAddress.valueOf(apCallStop.getClientMac()));
+                cloudSipCallStopEvent.setClientMacAddress(MacAddress.valueOf(apCallStop.getClientMac().toStringUtf8()));
 
             }
 
@@ -1254,6 +1220,27 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             if (apCallStop.hasWifiSessionId()) {
                 cloudSipCallStopEvent.setSipCallId(apCallStop.getWifiSessionId());
 
+            }
+
+            if (apCallStop.getStatsCount() > 0) {
+                cloudSipCallStopEvent.setStatuses(processRtpFlowStats(apCallStop.getStatsList()));
+            }
+
+            if (apCallStop.hasProviderDomain()) {
+                cloudSipCallStopEvent.setProviderDomain(apCallStop.getProviderDomain());
+            }
+
+            if (apCallStop.getCodecsCount() > 0) {
+                cloudSipCallStopEvent.setCodecs(apCallStop.getCodecsList());
+            }
+
+            if (apCallStop.hasChannel()) {
+                cloudSipCallStopEvent.setChannel(apCallStop.getChannel());
+            }
+
+            if (apCallStop.hasBand()) {
+                cloudSipCallStopEvent.setRadioType(OvsdbToWlanCloudTypeMappingUtility
+                        .getRadioTypeFromOpensyncStatsRadioBandType(apCallStop.getBand()));
             }
 
             eventsList.add(cloudSipCallStopEvent);
@@ -1299,6 +1286,95 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             eventsList.add(rtsStartEvent);
 
         }
+    }
+
+    private List<com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowStats> processRtpFlowStats(List<OpensyncStats.RtpFlowStats> stats) {
+        List<com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowStats> cloudRtpFlowStatsList = new ArrayList<>();
+        for (RtpFlowStats apRtpFlowStats : stats) {
+
+            com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowStats cloudRtpStats = new com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowStats();
+
+            if (apRtpFlowStats.hasCodec()) {
+                cloudRtpStats.setCodec(apRtpFlowStats.getCodec());
+            }
+
+            if (apRtpFlowStats.hasBlockCodecs()) {
+                cloudRtpStats.setBlockCodecs(apRtpFlowStats.getBlockCodecs().toByteArray());
+            }
+
+            if (apRtpFlowStats.hasLatency()) {
+                cloudRtpStats.setLatency(apRtpFlowStats.getLatency());
+            }
+
+            if (apRtpFlowStats.hasRtpSeqFirst()) {
+                cloudRtpStats.setFirstRTPSeq(apRtpFlowStats.getRtpSeqFirst());
+            }
+
+            if (apRtpFlowStats.hasRtpSeqLast()) {
+                cloudRtpStats.setLastRTPSeq(apRtpFlowStats.getRtpSeqLast());
+            }
+
+            if (apRtpFlowStats.hasDirection()) {
+                switch (apRtpFlowStats.getDirection()) {
+                    case RTP_DOWNSTREAM:
+                        cloudRtpStats.setDirection(
+                                com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowDirection.DOWNSTREAM);
+                        break;
+                    case RTP_UPSTREAM:
+                        cloudRtpStats.setDirection(
+                                com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowDirection.UPSTREAM);
+                        break;
+                    default:
+                        cloudRtpStats.setDirection(
+                                com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowDirection.UNSUPPORTED);
+                }
+            }
+
+            if (apRtpFlowStats.hasRtpFlowType()) {
+                switch (apRtpFlowStats.getRtpFlowType()) {
+                    case RTP_VIDEO:
+                        cloudRtpStats.setFlowType(
+                                com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowType.VIDEO);
+                        break;
+                    case RTP_VOICE:
+                        cloudRtpStats.setFlowType(
+                                com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowType.VOICE);
+                        break;
+                    default:
+                        cloudRtpStats.setFlowType(
+                                com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowType.UNSUPPORTED);
+                        break;
+                }
+            }
+
+            if (apRtpFlowStats.hasJitter()) {
+                cloudRtpStats.setJitter(apRtpFlowStats.getJitter());
+            }
+
+            if (apRtpFlowStats.hasTotalPacketsSent()) {
+                cloudRtpStats.setTotalPacket(apRtpFlowStats.getTotalPacketsSent());
+            }
+
+            if (apRtpFlowStats.hasTotalPacketsLost()) {
+                cloudRtpStats.setTotalPacketLost(apRtpFlowStats.getTotalPacketsLost());
+            }
+
+            if (apRtpFlowStats.hasMosx100()) {
+                cloudRtpStats.setMosMultipliedBy100(apRtpFlowStats.getMosx100());
+            }
+
+            if (apRtpFlowStats.hasPacketLossConsec()) {
+                cloudRtpStats.setPacketLossConsecutive(apRtpFlowStats.getPacketLossConsec());
+            }
+
+            if (apRtpFlowStats.hasPacketLossPercent()) {
+                cloudRtpStats.setPacketLossPercentage(apRtpFlowStats.getPacketLossPercent());
+            }
+
+            cloudRtpFlowStatsList.add(cloudRtpStats);
+
+        }
+        return cloudRtpFlowStatsList;
     }
 
     protected void processRtsStartSessionEvent(int customerId, long equipmentId, long eventTimestamp,
