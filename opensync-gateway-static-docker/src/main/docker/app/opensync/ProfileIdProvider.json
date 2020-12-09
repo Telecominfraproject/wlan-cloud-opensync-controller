@@ -120,12 +120,10 @@
 					"asDuple": "fra:Exemples de services rogers"
 				}
 			],
-			"roamingOi": [
-				1,
-				2,
-				3,
-				4
-			],
+            "roamingOi": [
+                "BAA2D00100",
+                "BAA2D00000"
+            ],
 			"profileType": "passpoint_osu_id_provider"
 		},
 		"createdTimestamp": 1606778370345,
@@ -255,11 +253,10 @@
 				}
 			],
 			"roamingOi": [
-				1,
-				2,
-				3,
-				4
-			],
+                "004096",
+                "005014",
+                "F4F5E8F5F4"
+            ],
 			"profileType": "passpoint_osu_id_provider"
 		},
 		"createdTimestamp": 1606778370351,

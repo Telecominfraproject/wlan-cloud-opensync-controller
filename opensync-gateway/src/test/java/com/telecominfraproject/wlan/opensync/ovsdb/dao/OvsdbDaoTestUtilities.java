@@ -121,11 +121,12 @@ public class OvsdbDaoTestUtilities {
         mccMncList.add(passpointMccMnc);
         Set<String> naiRealms = new HashSet<>();
         naiRealms.add(naiRealm);
-        List<Byte> roamingOi = new ArrayList<>();
-        roamingOi.add(Byte.valueOf("1"));
-        roamingOi.add(Byte.valueOf("2"));
-        roamingOi.add(Byte.valueOf("3"));
-        roamingOi.add(Byte.valueOf("4"));
+        List<String> roamingOi = new ArrayList<>();
+        roamingOi.add("BAA2D00100");
+        roamingOi.add("BAA2D00000");
+        roamingOi.add("F4F5E8F5F4");
+        roamingOi.add("005014");
+        roamingOi.add("004096");
         hotspot20IdProviderProfile = createOsuProviderProfile(customerId, hotspot20IdProviderProfile, mccMncList,
                 naiRealms, "https://example.com/osu/" + naiRealm.split("/.com")[0], naiRealm.split(".com")[0], naiRealm,
                 roamingOi);
@@ -211,7 +212,7 @@ public class OvsdbDaoTestUtilities {
 
     static Profile createOsuProviderProfile(int customerId, Profile hotspot20IdProviderProfile,
             List<PasspointMccMnc> mccMncList, Set<String> realms, String serverUri, String suffix, String domainName,
-            List<Byte> roamingOi) {
+            List<String> roamingOi) {
 
         PasspointOsuProviderProfile passpointIdProviderProfile = PasspointOsuProviderProfile.createWithDefaults();
 

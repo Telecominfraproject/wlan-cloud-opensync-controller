@@ -3713,11 +3713,9 @@ public class OvsdbDao {
                                 Hotspot20OsuProviders hotspot2OsuProviders = osuProviders
                                         .get(providerProfile.getOsuServerUri());
 
-                                StringBuffer roamingOiOctets = new StringBuffer();
                                 providerProfile.getRoamingOi().stream().forEach(o -> {
-                                    roamingOiOctets.append(Byte.toString(o));
+                                    roamingOis.add(new Atom<>(o));
                                 });
-                                roamingOis.add(new Atom<>(roamingOiOctets.toString()));
                                 osuProvidersUuids.add(hotspot2OsuProviders.uuid);
                                 osuIconUuids.addAll(hotspot2OsuProviders.osuIcons);
                                 domainNames.add(new Atom<>(providerProfile.getDomainName()));
