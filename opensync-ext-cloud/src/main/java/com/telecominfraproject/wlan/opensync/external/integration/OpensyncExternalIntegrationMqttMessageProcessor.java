@@ -1682,10 +1682,10 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 radioType = OvsdbToWlanCloudTypeMappingUtility
                         .getRadioTypeFromOpensyncStatsRadioBandType(survey.getBand());
                 if (radioType != RadioType.UNSUPPORTED) {
-
-                    List<RadioUtilization> radioUtilizationList = new ArrayList<>();
-                    radioUtilizationList.add(radioUtil);
-                    apNodeMetrics.getRadioUtilizationPerRadio().put(radioType, radioUtilizationList);
+                    if (apNodeMetrics.getRadioUtilization(radioType) == null) {
+                        apNodeMetrics.setRadioUtilization(radioType, new ArrayList<>());
+                    }
+                    apNodeMetrics.getRadioUtilization(radioType).add(radioUtil);
                     int noiseAvg = (int) Math.round(DecibelUtils.getAverageDecibel(toIntArray(noiseList)));
                     avgNoiseFloor.put(radioType, noiseAvg);
                     apNodeMetrics.setNoiseFloor(radioType, noiseAvg);
@@ -1703,10 +1703,6 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
                     apNodeMetrics.setChannelUtilization(radioType, totalUtilization.intValue());
                     capacityDetails.put(radioType, cap);
-                    // EquipmentPerRadioUtilizationDetails details = new
-                    // EquipmentPerRadioUtilizationDetails();
-                    // details.setWifiFromOtherBss(new MinMaxAvgValueInt());
-                    radioUtilizationDetailsMap.put(radioType, new EquipmentPerRadioUtilizationDetails());
 
                 }
 
@@ -1715,12 +1711,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
         populateNetworkProbeMetrics(report, apNodeMetrics);
         updateNetworkAdminStatusReport(customerId, equipmentId, apNodeMetrics);
-        RadioUtilizationReport radioUtilizationReport = new RadioUtilizationReport();
-        radioUtilizationReport.setAvgNoiseFloor(avgNoiseFloor);
-        radioUtilizationReport.setRadioUtilization(radioUtilizationDetailsMap);
-        radioUtilizationReport.setCapacityDetails(capacityDetails);
 
-        updateDeviceStatusRadioUtilizationReport(customerId, equipmentId, radioUtilizationReport);
     }
 
     private void updateNetworkAdminStatusReport(int customerId, long equipmentId, ApNodeMetrics apNodeMetrics) {
