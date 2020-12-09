@@ -782,106 +782,100 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 		try {
 
-			OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
-			if (ovsdbSession == null) {
-				throw new IllegalStateException("AP is not connected " + apId);
-			}
-			int customerId = ovsdbSession.getCustomerId();
-			Customer customer = customerServiceInterface.getOrNull(customerId);
-			if ((customer != null) && (customer.getDetails() != null)
-					&& (customer.getDetails().getAutoProvisioning() != null)
-					&& customer.getDetails().getAutoProvisioning().isEnabled()) {
-				Equipment equipmentConfig = equipmentServiceInterface.getByInventoryIdOrNull(apId);
+		    OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
+		    if (ovsdbSession == null) {
+		        throw new IllegalStateException("AP is not connected " + apId);
+		    }
+		    int customerId = ovsdbSession.getCustomerId();
+		    
+		    Equipment equipmentConfig = equipmentServiceInterface.getByInventoryIdOrNull(apId);
+		    if (equipmentConfig == null) {
+		        throw new IllegalStateException("Cannot retrieve configuration for " + apId);
+		    }
 
-				if (equipmentConfig == null) {
-					throw new IllegalStateException("Cannot retrieve configuration for " + apId);
-				}
+		    ret = new OpensyncAPConfig();
 
-				ret = new OpensyncAPConfig();
+		    ret.setCustomerEquipment(equipmentConfig);
 
-				ret.setCustomerEquipment(equipmentConfig);
+		    Location eqLocation = locationServiceInterface.get(equipmentConfig.getLocationId());
 
-				Location eqLocation = locationServiceInterface.get(equipmentConfig.getLocationId());
+		    ret.setEquipmentLocation(eqLocation);
 
-				ret.setEquipmentLocation(eqLocation);
+		    ProfileContainer profileContainer = new ProfileContainer(
+		            profileServiceInterface.getProfileWithChildren(equipmentConfig.getProfileId()));
 
-				ProfileContainer profileContainer = new ProfileContainer(
-						profileServiceInterface.getProfileWithChildren(equipmentConfig.getProfileId()));
+		    ret.setApProfile(profileContainer.getOrNull(equipmentConfig.getProfileId()));
 
-				ret.setApProfile(profileContainer.getOrNull(equipmentConfig.getProfileId()));
+		    ret.setRfProfile(profileContainer.getChildOfTypeOrNull(equipmentConfig.getProfileId(), ProfileType.rf));
 
-				ret.setRfProfile(profileContainer.getChildOfTypeOrNull(equipmentConfig.getProfileId(), ProfileType.rf));
+		    ret.setSsidProfile(
+		            profileContainer.getChildrenOfType(equipmentConfig.getProfileId(), ProfileType.ssid));
 
-				ret.setSsidProfile(
-						profileContainer.getChildrenOfType(equipmentConfig.getProfileId(), ProfileType.ssid));
+		    ret.setMetricsProfiles(profileContainer.getChildrenOfType(equipmentConfig.getProfileId(),
+		            ProfileType.service_metrics_collection_config));
 
-				ret.setMetricsProfiles(profileContainer.getChildrenOfType(equipmentConfig.getProfileId(),
-						ProfileType.service_metrics_collection_config));
+		    Set<Profile> radiusSet = new HashSet<>();
+		    Set<Long> captiveProfileIds = new HashSet<>();
+		    Set<Long> bonjourGatewayProfileIds = new HashSet<>();
 
-				Set<Profile> radiusSet = new HashSet<>();
-				Set<Long> captiveProfileIds = new HashSet<>();
-				Set<Long> bonjourGatewayProfileIds = new HashSet<>();
+		    OpensyncAPHotspot20Config hotspotConfig = new OpensyncAPHotspot20Config();
 
-				OpensyncAPHotspot20Config hotspotConfig = new OpensyncAPHotspot20Config();
+		    Set<Profile> hotspot20ProfileSet = new HashSet<>();
+		    Set<Profile> hotspot20OperatorSet = new HashSet<>();
+		    Set<Profile> hotspot20VenueSet = new HashSet<>();
+		    Set<Profile> hotspot20ProviderSet = new HashSet<>();
 
-				Set<Profile> hotspot20ProfileSet = new HashSet<>();
-				Set<Profile> hotspot20OperatorSet = new HashSet<>();
-				Set<Profile> hotspot20VenueSet = new HashSet<>();
-				Set<Profile> hotspot20ProviderSet = new HashSet<>();
+		    for (Profile ssidProfile : ret.getSsidProfile()) {
 
-				for (Profile ssidProfile : ret.getSsidProfile()) {
+		        hotspot20ProfileSet
+		        .addAll(profileContainer.getChildrenOfType(ssidProfile.getId(), ProfileType.passpoint));
 
-					hotspot20ProfileSet
-							.addAll(profileContainer.getChildrenOfType(ssidProfile.getId(), ProfileType.passpoint));
+		        radiusSet
+		        .addAll(profileContainer.getChildrenOfType(ret.getApProfile().getId(), ProfileType.radius));
+		        if (ssidProfile.getDetails() != null) {
+		            Long captivePortId = ((SsidConfiguration) ssidProfile.getDetails()).getCaptivePortalId();
+		            if (captivePortId != null) {
+		                captiveProfileIds.add(captivePortId);
+		            }
+		            Long bonjourGatewayProfileId = ((SsidConfiguration) ssidProfile.getDetails())
+		                    .getBonjourGatewayProfileId();
+		            if (bonjourGatewayProfileId != null) {
+		                bonjourGatewayProfileIds.add(bonjourGatewayProfileId);
+		            }
+		        }
+		    }
 
-					radiusSet
-							.addAll(profileContainer.getChildrenOfType(ret.getApProfile().getId(), ProfileType.radius));
-					if (ssidProfile.getDetails() != null) {
-						Long captivePortId = ((SsidConfiguration) ssidProfile.getDetails()).getCaptivePortalId();
-						if (captivePortId != null) {
-							captiveProfileIds.add(captivePortId);
-						}
-						Long bonjourGatewayProfileId = ((SsidConfiguration) ssidProfile.getDetails())
-								.getBonjourGatewayProfileId();
-						if (bonjourGatewayProfileId != null) {
-							bonjourGatewayProfileIds.add(bonjourGatewayProfileId);
-						}
-					}
-				}
+		    if (hotspot20ProfileSet.size() > 0) {
+		        for (Profile hotspot20Profile : hotspot20ProfileSet) {
+		            hotspot20OperatorSet.addAll(profileContainer.getChildrenOfType(hotspot20Profile.getId(),
+		                    ProfileType.passpoint_operator));
+		            hotspot20VenueSet.addAll(profileContainer.getChildrenOfType(hotspot20Profile.getId(),
+		                    ProfileType.passpoint_venue));
+		            hotspot20ProviderSet.addAll(profileContainer.getChildrenOfType(hotspot20Profile.getId(),
+		                    ProfileType.passpoint_osu_id_provider));
+		        }
+		        hotspotConfig.setHotspot20OperatorSet(hotspot20OperatorSet);
+		        hotspotConfig.setHotspot20ProfileSet(hotspot20ProfileSet);
+		        hotspotConfig.setHotspot20ProviderSet(hotspot20ProviderSet);
+		        hotspotConfig.setHotspot20VenueSet(hotspot20VenueSet);
 
-				if (hotspot20ProfileSet.size() > 0) {
-					for (Profile hotspot20Profile : hotspot20ProfileSet) {
-						hotspot20OperatorSet.addAll(profileContainer.getChildrenOfType(hotspot20Profile.getId(),
-								ProfileType.passpoint_operator));
-						hotspot20VenueSet.addAll(profileContainer.getChildrenOfType(hotspot20Profile.getId(),
-								ProfileType.passpoint_venue));
-						hotspot20ProviderSet.addAll(profileContainer.getChildrenOfType(hotspot20Profile.getId(),
-								ProfileType.passpoint_osu_id_provider));
-					}
-					hotspotConfig.setHotspot20OperatorSet(hotspot20OperatorSet);
-					hotspotConfig.setHotspot20ProfileSet(hotspot20ProfileSet);
-					hotspotConfig.setHotspot20ProviderSet(hotspot20ProviderSet);
-					hotspotConfig.setHotspot20VenueSet(hotspot20VenueSet);
+		        ret.setHotspotConfig(hotspotConfig);
+		    }
 
-					ret.setHotspotConfig(hotspotConfig);
-				}
+		    ret.setRadiusProfiles(new ArrayList<>(radiusSet));
+		    ret.setCaptiveProfiles(profileServiceInterface.get(captiveProfileIds));
+		    ret.setBonjourGatewayProfiles(profileServiceInterface.get(bonjourGatewayProfileIds));
 
-				ret.setRadiusProfiles(new ArrayList<>(radiusSet));
-				ret.setCaptiveProfiles(profileServiceInterface.get(captiveProfileIds));
-				ret.setBonjourGatewayProfiles(profileServiceInterface.get(bonjourGatewayProfileIds));
+		    List<com.telecominfraproject.wlan.client.models.Client> blockedClients = clientServiceInterface
+		            .getBlockedClients(customerId);
+		    List<MacAddress> blockList = Lists.newArrayList();
+		    if ((blockedClients != null) && !blockedClients.isEmpty()) {
+		        blockedClients.forEach(client -> blockList.add(client.getMacAddress()));
+		    }
+		    ret.setBlockedClients(blockList);
 
-				List<com.telecominfraproject.wlan.client.models.Client> blockedClients = clientServiceInterface
-						.getBlockedClients(customerId);
-				List<MacAddress> blockList = Lists.newArrayList();
-				if ((blockedClients != null) && !blockedClients.isEmpty()) {
-					blockedClients.forEach(client -> blockList.add(client.getMacAddress()));
-				}
-				ret.setBlockedClients(blockList);
+		    LOG.debug("ApConfig {}", ret);
 
-				LOG.debug("ApConfig {}", ret);
-			} else {
-				LOG.info("Autoconfig is not enabled for this AP {}", apId);
-			}
 
 		} catch (Exception e) {
 			LOG.error("Cannot read config for AP {}", apId, e);
@@ -1544,7 +1538,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			protocolStatusData
 			.setReportedHwVersion(opensyncAPState.getPlatformVersion());
 			protocolStatusData.setSystemName(opensyncAPState.getModel());
-		}
+		} 
 		return protocolStatus;
 	}
 
