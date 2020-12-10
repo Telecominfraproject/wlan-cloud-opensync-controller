@@ -3680,12 +3680,23 @@ public class OvsdbDao {
                                 return t.getId() == hs2Profile.getPasspointVenueProfileId();
                             }
 
-                        }).findFirst().get();
-
+                        }).findFirst().get();                       
+                        
                         PasspointVenueProfile passpointVenueProfile = (PasspointVenueProfile) venue.getDetails();
 
                         Map<String, Value> rowColumns = new HashMap<>();
 
+                        Set<Atom<String>> domainNames = new HashSet<>();
+                        for (String domainName : passpointOperatorProfile.getDomainNameList()) {
+                            domainNames.add(new Atom<>(domainName));
+                        }
+                        if (domainNames.size() > 0) {
+                            com.vmware.ovsdb.protocol.operation.notation.Set domainNameSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                                    .of(domainNames);
+                            rowColumns.put("domain_name", domainNameSet);
+                        }
+                        
+                        
                         Map<String, Hotspot20OsuProviders> osuProviders = getProvisionedHotspot20OsuProviders(
                                 ovsdbClient);
                         List<Profile> providerList = new ArrayList<>();
@@ -3702,7 +3713,7 @@ public class OvsdbDao {
 
                         Set<Uuid> osuProvidersUuids = new HashSet<>();
                         Set<Uuid> osuIconUuids = new HashSet<>();
-                        Set<Atom<String>> domainNames = new HashSet<>();
+                       
                         StringBuffer mccMncBuffer = new StringBuffer();
                         Set<Atom<String>> naiRealms = new HashSet<>();
                         Set<Atom<String>> roamingOis = new HashSet<>();
@@ -3718,7 +3729,6 @@ public class OvsdbDao {
                                 });
                                 osuProvidersUuids.add(hotspot2OsuProviders.uuid);
                                 osuIconUuids.addAll(hotspot2OsuProviders.osuIcons);
-                                domainNames.add(new Atom<>(providerProfile.getDomainName()));
                                 getNaiRealms(providerProfile, naiRealms);
 
                                 for (PasspointMccMnc passpointMccMnc : providerProfile.getMccMncList()) {
@@ -3756,11 +3766,7 @@ public class OvsdbDao {
                             rowColumns.put("operator_icons", iconUuids);
                         }
 
-                        if (domainNames.size() > 0) {
-                            com.vmware.ovsdb.protocol.operation.notation.Set domainNameSet = com.vmware.ovsdb.protocol.operation.notation.Set
-                                    .of(domainNames);
-                            rowColumns.put("domain_name", domainNameSet);
-                        }
+
 
                         hs2Profile.getIpAddressTypeAvailability();
                         rowColumns.put("deauth_request_timeout", new Atom<>(hs2Profile.getDeauthRequestTimeout()));

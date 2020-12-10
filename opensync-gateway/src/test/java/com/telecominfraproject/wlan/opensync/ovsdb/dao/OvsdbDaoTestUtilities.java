@@ -150,6 +150,8 @@ public class OvsdbDaoTestUtilities {
         passpointOperatorProfile.setName("TipWlan-Hotspot20-Operator");
         passpointOperatorProfile.setProfileType(ProfileType.passpoint_operator);
         passpointOperatorProfile.setDetails(PasspointOperatorProfile.createWithDefaults());
+        ((PasspointOperatorProfile)passpointOperatorProfile.getDetails()).setDomainNameList(Set.of("rogers.com","telus.com","bell.ca"));      
+
         return passpointOperatorProfile;
     }
 
@@ -255,7 +257,6 @@ public class OvsdbDaoTestUtilities {
 
         naiRealmList.add(naiRealmInfo);
         passpointIdProviderProfile.setNaiRealmList(naiRealmList);
-        passpointIdProviderProfile.setDomainName(domainName);
         passpointIdProviderProfile.setOsuNaiStandalone("anonymous@" + domainName);
         passpointIdProviderProfile.setOsuNaiShared("anonymous@" + domainName);
         List<Integer> methodList = new ArrayList<>();
