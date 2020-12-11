@@ -1,203 +1,212 @@
 [
-	{
-		"model_type": "Profile",
-		"id": 5,
-		"customerId": 2,
-		"profileType": "ssid",
-		"name": "TipWlan-cloud-3-radios",
-		"details": {
-			"model_type": "SsidConfiguration",
-			"ssid": "TipWlan-cloud-3-radios",
-			"appliedRadios": [
-				"is5GHzL",
-				"is2dot4GHz",
-				"is5GHzU"
-			],
-			"ssidAdminState": "enabled",
-			"secureMode": "wpa2OnlyPSK",
-			"vlanId": 1,
-			"keyStr": "openwifi",
-			"broadcastSsid": "enabled",
-			"keyRefresh": 0,
-			"noLocalSubnets": false,
-			"radiusServiceName": null,
-			"radiusAccountingServiceName": null,
-			"radiusAcountingServiceInterval": null,
-			"captivePortalId": null,
-			"bandwidthLimitDown": 0,
-			"bandwidthLimitUp": 0,
-			"clientBandwidthLimitDown": 0,
-			"clientBandwidthLimitUp": 0,
-			"videoTrafficOnly": false,
-			"radioBasedConfigs": {
-				"is5GHzL": {
-					"model_type": "RadioBasedSsidConfiguration",
-					"enable80211r": null,
-					"enable80211k": null,
-					"enable80211v": null
-				},
-				"is2dot4GHz": {
-					"model_type": "RadioBasedSsidConfiguration",
-					"enable80211r": null,
-					"enable80211k": null,
-					"enable80211v": null
-				},
-				"is5GHz": {
-					"model_type": "RadioBasedSsidConfiguration",
-					"enable80211r": null,
-					"enable80211k": null,
-					"enable80211v": null
-				},
-				"is5GHzU": {
-					"model_type": "RadioBasedSsidConfiguration",
-					"enable80211r": null,
-					"enable80211k": null,
-					"enable80211v": null
-				}
-			},
-			"bonjourGatewayProfileId": null,
-			"enable80211w": null,
-			"wepConfig": null,
-			"forwardMode": "BRIDGE",
-			"profileType": "ssid"
-		},
-		"createdTimestamp": 1606778369598,
-		"lastModifiedTimestamp": 1606778369598,
-		"childProfileIds": [
-		]
-	},
-	{
-		"model_type": "Profile",
-		"id": 15,
-		"customerId": 2,
-		"profileType": "ssid",
-		"name": "TipWlan-cloud-passpoint-access",
-		"details": {
-			"model_type": "SsidConfiguration",
-			"ssid": "TipWlan-cloud-passpoint-access",
-			"appliedRadios": [
-				"is5GHzL",
-				"is5GHzU"
-			],
-			"ssidAdminState": "enabled",
-			"secureMode": "wpa2PSK",
-			"vlanId": 1,
-			"keyStr": "testing123",
-			"broadcastSsid": "enabled",
-			"keyRefresh": 0,
-			"noLocalSubnets": false,
-			"radiusServiceName": null,
-			"radiusAccountingServiceName": null,
-			"radiusAcountingServiceInterval": null,
-			"captivePortalId": null,
-			"bandwidthLimitDown": 0,
-			"bandwidthLimitUp": 0,
-			"clientBandwidthLimitDown": 0,
-			"clientBandwidthLimitUp": 0,
-			"videoTrafficOnly": false,
-			"radioBasedConfigs": {
-				"is5GHzL": {
-					"model_type": "RadioBasedSsidConfiguration",
-					"enable80211r": null,
-					"enable80211k": null,
-					"enable80211v": null
-				},
-				"is2dot4GHz": {
-					"model_type": "RadioBasedSsidConfiguration",
-					"enable80211r": null,
-					"enable80211k": null,
-					"enable80211v": null
-				},
-				"is5GHz": {
-					"model_type": "RadioBasedSsidConfiguration",
-					"enable80211r": null,
-					"enable80211k": null,
-					"enable80211v": null
-				},
-				"is5GHzU": {
-					"model_type": "RadioBasedSsidConfiguration",
-					"enable80211r": null,
-					"enable80211k": null,
-					"enable80211v": null
-				}
-			},
-			"bonjourGatewayProfileId": null,
-			"enable80211w": null,
-			"wepConfig": null,
-			"forwardMode": null,
-			"profileType": "ssid"
-		},
-		"createdTimestamp": 1606778369943,
-		"lastModifiedTimestamp": 1606778370811,
-		"childProfileIds": [
-			24
-		]
-	},
-	{
-		"model_type": "Profile",
-		"id": 16,
-		"customerId": 2,
-		"profileType": "ssid",
-		"name": "TipWlan-cloud-passpoint-osu",
-		"details": {
-			"model_type": "SsidConfiguration",
-			"ssid": "TipWlan-cloud-passpoint-osu",
-			"appliedRadios": [
-				"is2dot4GHz"
-			],
-			"ssidAdminState": "enabled",
-			"secureMode": "open",
-			"vlanId": 1,
-			"keyStr": null,
-			"broadcastSsid": "enabled",
-			"keyRefresh": 0,
-			"noLocalSubnets": false,
-			"radiusServiceName": null,
-			"radiusAccountingServiceName": null,
-			"radiusAcountingServiceInterval": null,
-			"captivePortalId": null,
-			"bandwidthLimitDown": 0,
-			"bandwidthLimitUp": 0,
-			"clientBandwidthLimitDown": 0,
-			"clientBandwidthLimitUp": 0,
-			"videoTrafficOnly": false,
-			"radioBasedConfigs": {
-				"is5GHzL": {
-					"model_type": "RadioBasedSsidConfiguration",
-					"enable80211r": null,
-					"enable80211k": null,
-					"enable80211v": null
-				},
-				"is2dot4GHz": {
-					"model_type": "RadioBasedSsidConfiguration",
-					"enable80211r": null,
-					"enable80211k": null,
-					"enable80211v": null
-				},
-				"is5GHz": {
-					"model_type": "RadioBasedSsidConfiguration",
-					"enable80211r": null,
-					"enable80211k": null,
-					"enable80211v": null
-				},
-				"is5GHzU": {
-					"model_type": "RadioBasedSsidConfiguration",
-					"enable80211r": null,
-					"enable80211k": null,
-					"enable80211v": null
-				}
-			},
-			"bonjourGatewayProfileId": null,
-			"enable80211w": null,
-			"wepConfig": null,
-			"forwardMode": null,
-			"profileType": "ssid"
-		},
-		"createdTimestamp": 1606778369944,
-		"lastModifiedTimestamp": 1606778370352,
-		"childProfileIds": [
-			19,
-			20
-		]
-	}
+  {
+    "model_type": "Profile",
+    "id": 5,
+    "customerId": 2,
+    "profileType": "ssid",
+    "name": "TipWlan-cloud-3-radios",
+    "details": {
+      "model_type": "SsidConfiguration",
+      "ssid": "TipWlan-cloud-3-radios",
+      "appliedRadios": [
+        "is5GHzL",
+        "is2dot4GHz",
+        "is5GHzU"
+      ],
+      "ssidAdminState": "enabled",
+      "secureMode": "wpa2OnlyPSK",
+      "vlanId": 1,
+      "keyStr": "openwifi",
+      "broadcastSsid": "enabled",
+      "keyRefresh": 0,
+      "noLocalSubnets": false,
+      "radiusServiceName": null,
+      "radiusAccountingServiceName": null,
+      "radiusAcountingServiceInterval": null,
+      "radiusNasId": null,
+      "radiusNasIp": null,
+      "radiusOperName": null,
+      "captivePortalId": null,
+      "bandwidthLimitDown": 0,
+      "bandwidthLimitUp": 0,
+      "clientBandwidthLimitDown": 0,
+      "clientBandwidthLimitUp": 0,
+      "videoTrafficOnly": false,
+      "radioBasedConfigs": {
+        "is5GHzL": {
+          "model_type": "RadioBasedSsidConfiguration",
+          "enable80211r": null,
+          "enable80211k": null,
+          "enable80211v": null
+        },
+        "is2dot4GHz": {
+          "model_type": "RadioBasedSsidConfiguration",
+          "enable80211r": null,
+          "enable80211k": null,
+          "enable80211v": null
+        },
+        "is5GHz": {
+          "model_type": "RadioBasedSsidConfiguration",
+          "enable80211r": null,
+          "enable80211k": null,
+          "enable80211v": null
+        },
+        "is5GHzU": {
+          "model_type": "RadioBasedSsidConfiguration",
+          "enable80211r": null,
+          "enable80211k": null,
+          "enable80211v": null
+        }
+      },
+      "bonjourGatewayProfileId": null,
+      "enable80211w": null,
+      "wepConfig": null,
+      "forwardMode": "BRIDGE",
+      "profileType": "ssid"
+    },
+    "createdTimestamp": 1606778369598,
+    "lastModifiedTimestamp": 1606778369598,
+    "childProfileIds": [
+    ]
+  },
+  {
+    "model_type": "Profile",
+    "id": 15,
+    "customerId": 2,
+    "profileType": "ssid",
+    "name": "TipWlan-cloud-passpoint-access",
+    "details": {
+      "model_type": "SsidConfiguration",
+      "ssid": "TipWlan-cloud-passpoint-access",
+      "appliedRadios": [
+        "is5GHzL",
+        "is5GHzU"
+      ],
+      "ssidAdminState": "enabled",
+      "secureMode": "wpa2PSK",
+      "vlanId": 1,
+      "keyStr": "testing123",
+      "broadcastSsid": "enabled",
+      "keyRefresh": 0,
+      "noLocalSubnets": false,
+      "radiusServiceName": null,
+      "radiusAccountingServiceName": null,
+      "radiusAcountingServiceInterval": null,
+      "radiusNasId": null,
+      "radiusNasIp": null,
+      "radiusOperName": null,
+      "captivePortalId": null,
+      "bandwidthLimitDown": 0,
+      "bandwidthLimitUp": 0,
+      "clientBandwidthLimitDown": 0,
+      "clientBandwidthLimitUp": 0,
+      "videoTrafficOnly": false,
+      "radioBasedConfigs": {
+        "is5GHzL": {
+          "model_type": "RadioBasedSsidConfiguration",
+          "enable80211r": null,
+          "enable80211k": null,
+          "enable80211v": null
+        },
+        "is2dot4GHz": {
+          "model_type": "RadioBasedSsidConfiguration",
+          "enable80211r": null,
+          "enable80211k": null,
+          "enable80211v": null
+        },
+        "is5GHz": {
+          "model_type": "RadioBasedSsidConfiguration",
+          "enable80211r": null,
+          "enable80211k": null,
+          "enable80211v": null
+        },
+        "is5GHzU": {
+          "model_type": "RadioBasedSsidConfiguration",
+          "enable80211r": null,
+          "enable80211k": null,
+          "enable80211v": null
+        }
+      },
+      "bonjourGatewayProfileId": null,
+      "enable80211w": null,
+      "wepConfig": null,
+      "forwardMode": null,
+      "profileType": "ssid"
+    },
+    "createdTimestamp": 1606778369943,
+    "lastModifiedTimestamp": 1606778370811,
+    "childProfileIds": [
+      24
+    ]
+  },
+  {
+    "model_type": "Profile",
+    "id": 16,
+    "customerId": 2,
+    "profileType": "ssid",
+    "name": "TipWlan-cloud-passpoint-osu",
+    "details": {
+      "model_type": "SsidConfiguration",
+      "ssid": "TipWlan-cloud-passpoint-osu",
+      "appliedRadios": [
+        "is2dot4GHz"
+      ],
+      "ssidAdminState": "enabled",
+      "secureMode": "open",
+      "vlanId": 1,
+      "keyStr": null,
+      "broadcastSsid": "enabled",
+      "keyRefresh": 0,
+      "noLocalSubnets": false,
+      "radiusServiceName": null,
+      "radiusAccountingServiceName": null,
+      "radiusAcountingServiceInterval": null,
+      "radiusNasId": null,
+      "radiusNasIp": null,
+      "radiusOperName": null,
+      "captivePortalId": null,
+      "bandwidthLimitDown": 0,
+      "bandwidthLimitUp": 0,
+      "clientBandwidthLimitDown": 0,
+      "clientBandwidthLimitUp": 0,
+      "videoTrafficOnly": false,
+      "radioBasedConfigs": {
+        "is5GHzL": {
+          "model_type": "RadioBasedSsidConfiguration",
+          "enable80211r": null,
+          "enable80211k": null,
+          "enable80211v": null
+        },
+        "is2dot4GHz": {
+          "model_type": "RadioBasedSsidConfiguration",
+          "enable80211r": null,
+          "enable80211k": null,
+          "enable80211v": null
+        },
+        "is5GHz": {
+          "model_type": "RadioBasedSsidConfiguration",
+          "enable80211r": null,
+          "enable80211k": null,
+          "enable80211v": null
+        },
+        "is5GHzU": {
+          "model_type": "RadioBasedSsidConfiguration",
+          "enable80211r": null,
+          "enable80211k": null,
+          "enable80211v": null
+        }
+      },
+      "bonjourGatewayProfileId": null,
+      "enable80211w": null,
+      "wepConfig": null,
+      "forwardMode": null,
+      "profileType": "ssid"
+    },
+    "createdTimestamp": 1606778369944,
+    "lastModifiedTimestamp": 1606778370352,
+    "childProfileIds": [
+      19,
+      20
+    ]
+  }
 ]

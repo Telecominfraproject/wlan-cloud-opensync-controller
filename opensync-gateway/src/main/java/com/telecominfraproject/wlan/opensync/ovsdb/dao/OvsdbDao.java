@@ -2587,7 +2587,7 @@ public class OvsdbDao {
             String ipAssignScheme, List<MacAddress> macBlockList, boolean rateLimitEnable, int ssidDlLimit,
             int ssidUlLimit, int clientDlLimit, int clientUlLimit, int rtsCtsThreshold, int fragThresholdBytes,
             int dtimPeriod, Map<String, String> captiveMap, List<String> walledGardenAllowlist,
-            Map<Short, Set<String>> bonjourServiceMap) {
+            Map<Short, Set<String>> bonjourServiceMap, String radiusNasId, String radiusNasIp, String radiusOperatorName) {
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
@@ -2674,6 +2674,15 @@ public class OvsdbDao {
             customOptions.put("client_dl_limit", String.valueOf(clientDlLimit * 1000));
             customOptions.put("client_ul_limit", String.valueOf(clientUlLimit * 1000));
             customOptions.put("rts_threshold", String.valueOf(rtsCtsThreshold));
+            if (radiusNasId != null) {
+                customOptions.put("radius_nas_id", radiusNasId);
+            }
+            if (radiusNasIp != null) {
+                customOptions.put("radius_nas_ip", radiusNasIp);
+            }
+            if (radiusOperatorName != null) {
+                customOptions.put("radius_oper_name", radiusOperatorName);
+            }
             // TODO: the frag_threshold is not supported on the AP
             // customOptions.put("frag_threshold",
             // String.valueOf(fragThresholdBytes));
@@ -3035,8 +3044,18 @@ public class OvsdbDao {
                 String ssidSecurityMode = ssidConfig.getSecureMode().name();
                 String opensyncSecurityMode = "OPEN";
 
+                String radiusNasId = null;
+                String radiusNasIp = null;
+                String radiusOperName = null;
+                
                 opensyncSecurityMode = getOpensyncSecurityMode(ssidSecurityMode, opensyncSecurityMode);
                 populateSecurityMap(opensyncApConfig, ssidConfig, security, ssidSecurityMode, opensyncSecurityMode);
+                
+                if (opensyncSecurityMode.endsWith("EAP")) {
+                    radiusNasId = ssidConfig.getRadiusNasId();
+                    radiusNasIp = ssidConfig.getRadiusNasIp() != null ? ssidConfig.getRadiusNasIp().getHostAddress() : null;
+                    radiusOperName = ssidConfig.getRadiusOperName();
+                }
 
                 // TODO put into AP captive parameter
                 Map<String, String> captiveMap = new HashMap<>();
@@ -3084,7 +3103,7 @@ public class OvsdbDao {
                             uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet, dns, ipAssignScheme,
                             macBlockList, rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit,
                             rtsCtsThreshold, fragThresholdBytes, dtimPeriod, captiveMap, walledGardenAllowlist,
-                            bonjourServiceMap);
+                            bonjourServiceMap, radiusNasId, radiusNasIp, radiusOperName);
 
                     updateVifConfigsSetForRadio(ovsdbClient, ssidConfig.getSsid(), freqBand, vifConfigUuid);
 
@@ -4439,7 +4458,7 @@ public class OvsdbDao {
                             provisionWifiStatsConfigFromProfile("client", radioType, reportingInterval,
                                     samplingInterval, operations);
 
-                            provisionWifiStatsConfigFromProfile("event", reportingInterval, samplingInterval,
+                            provisionWifiStatsConfigFromProfile("event", radioType, reportingInterval, samplingInterval,
                                     operations);
 
                             provisionWifiStatsConfigFromProfile("video_voice", reportingInterval, samplingInterval,
@@ -4626,7 +4645,7 @@ public class OvsdbDao {
             // TODO: when schema support is added, these should be part of the
             // bulk provisioning operation above.
             provisionVideoVoiceStats(ovsdbClient);
-            provisionEventReporting(ovsdbClient);
+            provisionEventReporting(radioConfigs, ovsdbClient);
 
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             throw new RuntimeException(e);
@@ -4818,21 +4837,27 @@ public class OvsdbDao {
      * @param ovsdbClient
      *
      */
-    public void provisionEventReporting(OvsdbClient ovsdbClient) {
-
-        LOG.debug("Enable event reporting from AP");
-
+    public void provisionEventReporting(Map<String, WifiRadioConfigInfo> radioConfigs, OvsdbClient ovsdbClient) {
         try {
-            List<Operation> operations = new ArrayList<>();
-            Map<String, Value> rowColumns = new HashMap<>();
-            rowColumns.put("radio_type", new Atom<>("2.4G"));
-            rowColumns.put("reporting_interval", new Atom<>(30));
-            rowColumns.put("sampling_interval", new Atom<>(0));
-            rowColumns.put("stats_type", new Atom<>("event"));
-            rowColumns.put("reporting_interval", new Atom<>(0));
-            Row row = new Row(rowColumns);
 
-            operations.add(new Insert(wifiStatsConfigDbTable, row));
+            List<Operation> operations = new ArrayList<>();
+
+            radioConfigs.values().stream().forEach(new Consumer<WifiRadioConfigInfo>() {
+
+                @Override
+                public void accept(WifiRadioConfigInfo rc) {
+
+                    //
+                    Map<String, Value> rowColumns = new HashMap<>();
+                    rowColumns.put("radio_type", new Atom<>(rc.freqBand));
+                    rowColumns.put("reporting_interval", new Atom<>(5));
+                    rowColumns.put("report_type", new Atom<>("raw"));
+                    rowColumns.put("stats_type", new Atom<>("event"));
+                    Row updateRow = new Row(rowColumns);
+                    operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
+
+                }
+            });
 
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
@@ -4856,6 +4881,9 @@ public class OvsdbDao {
                     }
                 }
             }
+
+
+
 
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             throw new RuntimeException(e);
