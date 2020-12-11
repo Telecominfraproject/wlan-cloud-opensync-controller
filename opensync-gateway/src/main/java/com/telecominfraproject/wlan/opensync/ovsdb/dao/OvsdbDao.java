@@ -10,6 +10,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -76,6 +77,7 @@ import com.telecominfraproject.wlan.profile.metrics.ServiceMetricsStatsReportFor
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.common.ManagedFileInfo;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
+import com.telecominfraproject.wlan.profile.network.models.GreTunnelConfiguration;
 import com.telecominfraproject.wlan.profile.passpoint.models.PasspointDuple;
 import com.telecominfraproject.wlan.profile.passpoint.models.PasspointIPv4AddressType;
 import com.telecominfraproject.wlan.profile.passpoint.models.PasspointIPv6AddressType;
@@ -3186,89 +3188,78 @@ public class OvsdbDao {
     }
 
     private void configureGreTunnel(OvsdbClient ovsdbClient, Profile apNetworkConfiguration) {
+
+
+
+
         try {
             LOG.debug("Configure Gre Tunnel {}", apNetworkConfiguration);
             List<Operation> operations = new ArrayList<>();
-            Map<String, Value> tableColumns = new HashMap<>();
 
             ApNetworkConfiguration details = (ApNetworkConfiguration) apNetworkConfiguration.getDetails();
-            if (details.getGreParentIfName() == null) {
-                LOG.info("Cannot configure GRE profile without gre_ifname");
-                return;
-            }
-            tableColumns.put("gre_ifname", new Atom<>(details.getGreParentIfName()));
-            if (details.getGreLocalInetAddr() != null) {
-                tableColumns.put("gre_local_inet_addr", new Atom<>(details.getGreLocalInetAddr().getHostAddress()));
-            }
-            if (details.getGreRemoteInetAddr() == null) {
-                LOG.info("Cannot configure GRE profile without gre_remote_inet_addr");
-                return;
-            }
-            tableColumns.put("gre_remote_inet_addr", new Atom<>(details.getGreRemoteInetAddr().getHostAddress()));
-            if (details.getGreRemoteMacAddr() != null) {
-                tableColumns.put("gre_remote_mac_addr", new Atom<>(details.getGreRemoteMacAddr().getAddressAsString()));
-            }
-            if (details.getGreTunnelName() == null) {
-                LOG.info("Cannot configure GRE profile without if_name");
-                return;
-            }
-            tableColumns.put("if_name", new Atom<>(details.getGreTunnelName()));
-            tableColumns.put("if_type", new Atom<>("gre"));
-            tableColumns.put("network", new Atom<>(true));
-            tableColumns.put("NAT", new Atom<>(false));
-            tableColumns.put("enabled", new Atom<>(true));
 
-            List<Condition> conditions = new ArrayList<>();
-            conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(details.getGreTunnelName())));
-            operations.add(new Select(wifiInetConfigDbTable, conditions));
+            for (GreTunnelConfiguration greTunnelConfiguration : details.getGreTunnelConfigurations()) {
+                if (greTunnelConfiguration.getGreParentIfName() == null) {
+                    LOG.info("Cannot configure GRE profile without gre_ifname");
+                    continue;
+                }  
 
+                if (greTunnelConfiguration.getGreRemoteInetAddr() == null) {
+                    LOG.info("Cannot configure GRE profile without gre_remote_inet_addr");
+                    continue;
+                }
+
+                if (greTunnelConfiguration.getGreTunnelName() == null) {
+                    LOG.info("Cannot configure GRE profile without if_name");
+                    continue;
+                }
+                
+                Map<String, Value> tableColumns = new HashMap<>();
+                tableColumns.put("gre_ifname", new Atom<>(greTunnelConfiguration.getGreParentIfName()));              
+                tableColumns.put("gre_remote_inet_addr", new Atom<>(greTunnelConfiguration.getGreRemoteInetAddr().getHostAddress()));
+                tableColumns.put("if_name", new Atom<>(greTunnelConfiguration.getGreTunnelName()));
+               
+                // optional
+                if (greTunnelConfiguration.getGreLocalInetAddr() != null) {
+                    tableColumns.put("gre_local_inet_addr", new Atom<>(greTunnelConfiguration.getGreLocalInetAddr().getHostAddress()));
+                }
+
+                // optional
+                if (greTunnelConfiguration.getGreRemoteMacAddr() != null) {
+                    tableColumns.put("gre_remote_mac_addr", new Atom<>(greTunnelConfiguration.getGreRemoteMacAddr().getAddressAsString()));
+                }
+
+                tableColumns.put("if_type", new Atom<>("gre"));
+                tableColumns.put("network", new Atom<>(true));
+                tableColumns.put("NAT", new Atom<>(false));
+                tableColumns.put("enabled", new Atom<>(true));
+
+                operations.add(new Insert(wifiInetConfigDbTable, new Row(tableColumns)));
+
+            }
+
+            if (operations.isEmpty()) {
+                LOG.info("No GRE tunnels to be configured.");
+                return;
+            }
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
             for (OperationResult res : result) {
-
-                if (res instanceof SelectResult) {
-                    LOG.info("configureGreTunnel {}", ((SelectResult) res).toString());
-                } else if (res instanceof ErrorResult) {
-                    LOG.error("configureGreTunnel error {}", ((ErrorResult) res));
-                    throw new RuntimeException("configureGreTunnel " + ((ErrorResult) res).getError()
-                            + " " + ((ErrorResult) res).getDetails());
-                }
-
-            }
-
-            if (((SelectResult) result[0]).getRows().isEmpty()) {
-                LOG.debug("Adding new Gre Tunnel {}", apNetworkConfiguration);
-
-                operations.clear();
-                operations.add(new Insert(wifiInetConfigDbTable, new Row(tableColumns)));
-            } else {
-                LOG.debug("Updating Gre Tunnel {}", apNetworkConfiguration);
-                operations.clear();
-                operations.add(new Update(wifiInetConfigDbTable, conditions, new Row(tableColumns)));
-            }
-
-            fResult = ovsdbClient.transact(ovsdbName, operations);
-            result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-            for (OperationResult res : result) {
-
                 if (res instanceof InsertResult) {
                     LOG.info("configureGreTunnel {}", ((InsertResult) res).toString());
                 } else if (res instanceof UpdateResult) {
-
                     LOG.info("configureGreTunnel {}", ((UpdateResult) res).toString());
                 } else if (res instanceof ErrorResult) {
                     LOG.error("configureGreTunnel error {}", ((ErrorResult) res));
                     throw new RuntimeException("configureGreTunnel " + ((ErrorResult) res).getError()
                             + " " + ((ErrorResult) res).getDetails());
                 }
-
-            }
+            }          
         } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
             LOG.error("Couldn't configure Gre Tunnel {}", apNetworkConfiguration, e);
             throw new RuntimeException(e);
         }
-
     }
 
     public void createVlanNetworkInterfaces(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
@@ -3280,10 +3271,94 @@ public class OvsdbDao {
             }
         }
         for (Integer vlanId : vlans) {
-            createVlanNetworkInterfaces(ovsdbClient, vlanId);
+
+
+            Optional<GreTunnelConfiguration> tunnelConfiguration = ((ApNetworkConfiguration)opensyncApConfig.getApProfile().getDetails()).getGreTunnelConfigurations().stream().filter(new Predicate<GreTunnelConfiguration>() {
+
+                @Override
+                public boolean test(GreTunnelConfiguration t) {
+
+                    return t.getVlanIdsInGreTunnel().contains(vlanId);
+                }
+
+            }).findFirst();
+
+            if (tunnelConfiguration.isPresent()) {
+                createVlanInterfaceInGreTunnel(ovsdbClient,vlanId, tunnelConfiguration.get().getGreTunnelName());
+            } else {
+                createVlanNetworkInterfaces(ovsdbClient, vlanId); 
+            }          
+
         }
     }
 
+    private void createVlanInterfaceInGreTunnel(OvsdbClient ovsdbClient, int vlanId, String greTunnel) {
+        try {
+
+            List<Operation> operations = new ArrayList<>();
+            Map<String, Value> tableColumns = new HashMap<>();
+
+            Map<String, WifiInetConfigInfo> inetConfigMap = getProvisionedWifiInetConfigs(ovsdbClient);
+
+
+           WifiInetConfigInfo parentTunnel = inetConfigMap.get(greTunnel);
+            if (parentTunnel == null)
+                throw new RuntimeException(
+                        "Cannot get tunnel interface " + parentTunnel + " for vlan " + vlanId);
+
+            tableColumns = new HashMap<>();
+
+            tableColumns.put("if_type", new Atom<>("vlan"));
+            tableColumns.put("vlan_id", new Atom<>(vlanId));
+            tableColumns.put("if_name", new Atom<>(parentTunnel.ifName + "_" + Integer.toString(vlanId)));
+            tableColumns.put("parent_ifname", new Atom<>(parentTunnel.ifName));
+            tableColumns.put("enabled", new Atom<>(true));
+            tableColumns.put("network", new Atom<>(true));
+            tableColumns.put("dhcp_sniff", new Atom<>(true));
+            tableColumns.put("ip_assign_scheme", new Atom<>(parentTunnel.ipAssignScheme));
+            tableColumns.put("NAT", new Atom<>(parentTunnel.nat));
+
+            tableColumns.put("mtu", new Atom<>(1500));
+
+            Row row = new Row(tableColumns);
+
+            if (inetConfigMap.containsKey(parentTunnel.ifName + "_" + Integer.toString(vlanId))) {
+                List<Condition> conditions = new ArrayList<>();
+                conditions.add(new Condition("vlan_id", Function.EQUALS, new Atom<>(vlanId)));
+                conditions.add(new Condition("parent_ifname", Function.EQUALS, new Atom<>(parentTunnel.ifName)));
+            } else {
+                operations.add(new Insert(wifiInetConfigDbTable, row));
+            }
+
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            for (OperationResult res : result) {
+
+                if (res instanceof InsertResult) {
+                    LOG.info("createVlanNetworkInterfaces {}", ((InsertResult) res).toString());
+                } else if (res instanceof UpdateResult) {
+
+                    LOG.info("createVlanNetworkInterfaces {}", ((UpdateResult) res).toString());
+                } else if (res instanceof ErrorResult) {
+                    LOG.error("createVlanNetworkInterfaces error {}", ((ErrorResult) res));
+                    throw new RuntimeException("createVlanNetworkInterfaces " + ((ErrorResult) res).getError()
+                            + " " + ((ErrorResult) res).getDetails());
+                }
+            }
+
+            inetConfigMap = getProvisionedWifiInetConfigs(ovsdbClient);
+
+            LOG.debug("Provisioned vlan on greTunnel {}",
+                    inetConfigMap.get(parentTunnel.ifName + "_" + Integer.toString(vlanId)));
+
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            LOG.error("Error in provisioning Vlan", e);
+            throw new RuntimeException(e);
+        }
+
+    }
+    
     private void createVlanNetworkInterfaces(OvsdbClient ovsdbClient, int vlanId) {
         try {
 

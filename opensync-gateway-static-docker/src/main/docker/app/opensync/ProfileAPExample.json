@@ -42,6 +42,23 @@
                 "bestAPSteerType": "both"
             }
         },
+        "greTunnelConfigurations": [
+            {
+                "model_type": "GreTunnelConfiguration",
+                "greTunnelName": "gre1",
+                "greParentIfName": "wan",
+                "greLocalInetAddr": "10.0.0.129",
+                "greRemoteInetAddr": "192.168.1.101",
+                "greRemoteMacAddr": {
+                    "model_type": "MacAddress",
+                    "address": "ZEvwIFf/",
+                    "addressAsString": "64:4b:f0:20:57:ff"
+                },
+                "vlanIdsInGreTunnel": [
+                    100
+                ]
+            }
+        ],
         "profileType": "equipment_ap"
     },
     "createdTimestamp": 1606778369934,

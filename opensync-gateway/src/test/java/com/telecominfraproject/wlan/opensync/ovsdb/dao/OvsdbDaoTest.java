@@ -1,6 +1,5 @@
 package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
@@ -34,6 +33,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.location.models.Location;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
@@ -41,8 +41,8 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
+import com.telecominfraproject.wlan.profile.network.models.GreTunnelConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
-import com.telecominfraproject.wlan.status.network.models.RadiusDetails;
 import com.vmware.ovsdb.exception.OvsdbClientException;
 import com.vmware.ovsdb.protocol.operation.notation.Atom;
 import com.vmware.ovsdb.protocol.operation.notation.Row;
@@ -155,18 +155,16 @@ public class OvsdbDaoTest {
         apProfile.setName("ApProfile");
         apProfile.setProfileType(ProfileType.equipment_ap);
         ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
-
-        tunnelProfileDetails.setGreLocalInetAddr(InetAddress.getByName("10.0.10.10"));
-        tunnelProfileDetails.setGreRemoteInetAddr(InetAddress.getByName("192.168.0.10"));
-        tunnelProfileDetails.setGreTunnelName("gre1");
-        tunnelProfileDetails.setGreParentIfName("wan");
+        Set<GreTunnelConfiguration> greTunnels = Set.of(new GreTunnelConfiguration("gre1", "wan",
+                InetAddress.getByName("10.0.10.10"), InetAddress.getByName("192.168.0.10"),
+                MacAddress.valueOf("3c:22:fb:18:43:16"), Set.of(Integer.valueOf(100))));
+        tunnelProfileDetails.setGreTunnelConfigurations(greTunnels);
         apProfile.setDetails(tunnelProfileDetails);
 
         OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
         Mockito.when(apConfig.getApProfile()).thenReturn(apProfile);
         ovsdbDao.configureGreTunnels(ovsdbClient, apConfig);
-        // 1 call to check existence, 1 to add profile
-        Mockito.verify(ovsdbClient, Mockito.times(2)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
+        Mockito.verify(ovsdbClient, Mockito.times(1)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
         Mockito.verify(apConfig, Mockito.times(3)).getApProfile();
 
     }
@@ -182,12 +180,12 @@ public class OvsdbDaoTest {
         Location location = new Location();
         location.setName("Ottawa");
         apConfig.setEquipmentLocation(location);
-        ovsdbDao.getRadiusConfiguration(apConfig, ssidConfig, security);       
+        ovsdbDao.getRadiusConfiguration(apConfig, ssidConfig, security);
         assert (security.get("radius_server_ip").equals("192.168.0.1"));
         assert (security.get("radius_server_port").equals("1812"));
         assert (security.get("radius_server_secret").equals("testing123"));
     }
-    
+
     @Test
     public void testGetRadiusAccountingConfiguration() throws Exception {
         OpensyncAPConfig apConfig = new OpensyncAPConfig();
@@ -314,10 +312,10 @@ public class OvsdbDaoTest {
         apProfile.setName("ApProfile");
         apProfile.setProfileType(ProfileType.equipment_ap);
         ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
-
-        tunnelProfileDetails.setGreRemoteInetAddr(InetAddress.getByName("192.168.0.10"));
-        tunnelProfileDetails.setGreTunnelName("gre1");
-        tunnelProfileDetails.setGreParentIfName("wan");
+        Set<GreTunnelConfiguration> greTunnels = Set.of(new GreTunnelConfiguration("gre1", "wan",
+                null, InetAddress.getByName("192.168.0.10"),
+                MacAddress.valueOf("3c:22:fb:18:43:16"), Set.of(Integer.valueOf(100))));
+        tunnelProfileDetails.setGreTunnelConfigurations(greTunnels);
         apProfile.setDetails(tunnelProfileDetails);
 
         OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
@@ -325,7 +323,7 @@ public class OvsdbDaoTest {
         ovsdbDao.configureGreTunnels(ovsdbClient, apConfig);
         // 2 calls to check existence, 2 calls to insert tunnel (1 each per
         // Profile)
-        Mockito.verify(ovsdbClient, Mockito.times(2)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
+        Mockito.verify(ovsdbClient, Mockito.times(1)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
         Mockito.verify(apConfig, Mockito.times(3)).getApProfile();
 
     }
@@ -339,9 +337,10 @@ public class OvsdbDaoTest {
         apProfile.setProfileType(ProfileType.equipment_ap);
         ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
 
-        tunnelProfileDetails.setGreLocalInetAddr(InetAddress.getByName("10.0.10.10"));
-        tunnelProfileDetails.setGreTunnelName("gre1");
-        tunnelProfileDetails.setGreParentIfName("wan");
+        Set<GreTunnelConfiguration> greTunnels = Set.of(new GreTunnelConfiguration("gre1", "wan",
+                InetAddress.getByName("10.0.10.10"), null,
+                MacAddress.valueOf("3c:22:fb:18:43:16"), Set.of(Integer.valueOf(100))));
+        tunnelProfileDetails.setGreTunnelConfigurations(greTunnels);
         apProfile.setDetails(tunnelProfileDetails);
 
         OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
@@ -362,9 +361,10 @@ public class OvsdbDaoTest {
         apProfile.setProfileType(ProfileType.equipment_ap);
         ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
 
-        tunnelProfileDetails.setGreLocalInetAddr(InetAddress.getByName("10.0.10.10"));
-        tunnelProfileDetails.setGreRemoteInetAddr(InetAddress.getByName("192.168.0.10"));
-        tunnelProfileDetails.setGreTunnelName("gre1");
+        Set<GreTunnelConfiguration> greTunnels = Set.of(new GreTunnelConfiguration("gre1", null,
+                InetAddress.getByName("10.0.10.10"), InetAddress.getByName("192.168.0.10"),
+                MacAddress.valueOf("3c:22:fb:18:43:16"), Set.of(Integer.valueOf(100))));
+        tunnelProfileDetails.setGreTunnelConfigurations(greTunnels);
         apProfile.setDetails(tunnelProfileDetails);
 
         OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
@@ -385,9 +385,10 @@ public class OvsdbDaoTest {
         apProfile.setProfileType(ProfileType.equipment_ap);
         ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
 
-        tunnelProfileDetails.setGreLocalInetAddr(InetAddress.getByName("10.0.10.10"));
-        tunnelProfileDetails.setGreRemoteInetAddr(InetAddress.getByName("192.168.0.10"));
-        tunnelProfileDetails.setGreParentIfName("wan");
+        Set<GreTunnelConfiguration> greTunnels = Set.of(new GreTunnelConfiguration(null, "wan",
+                InetAddress.getByName("10.0.10.10"), InetAddress.getByName("192.168.0.10"),
+                MacAddress.valueOf("3c:22:fb:18:43:16"), Set.of(Integer.valueOf(100))));
+        tunnelProfileDetails.setGreTunnelConfigurations(greTunnels);
 
         apProfile.setDetails(tunnelProfileDetails);
 
