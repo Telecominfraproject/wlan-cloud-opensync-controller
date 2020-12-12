@@ -197,6 +197,8 @@ public class OvsdbDao {
     public long upgradeDlTimerSeconds;
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.awlan-node.upgrade_timer:90}")
     public long upgradeTimerSeconds;
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.awlan-node.reboot_or_reset_timer:10}")
+    public long rebootOrResetTimerSeconds;
 
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.externalFileStoreURL:https://localhost:9096}")
     private String externalFileStoreURL;
@@ -4978,10 +4980,12 @@ public class OvsdbDao {
 
     public void rebootOrResetAp(OvsdbClient ovsdbClient, String desiredApAction) {
         try {
-            LOG.debug("rebootOrResetAp on AP perform {}.", desiredApAction, upgradeTimerSeconds);
+            LOG.debug("rebootOrResetAp on AP perform {}, setting timer for {} seconds.", desiredApAction,
+            		rebootOrResetTimerSeconds);
             List<Operation> operations = new ArrayList<>();
             Map<String, Value> updateColumns = new HashMap<>();
             updateColumns.put("firmware_url", new Atom<>(desiredApAction));
+            updateColumns.put("upgrade_timer", new Atom<>(rebootOrResetTimerSeconds));
             Row row = new Row(updateColumns);
             operations.add(new Update(awlanNodeDbTable, row));
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
