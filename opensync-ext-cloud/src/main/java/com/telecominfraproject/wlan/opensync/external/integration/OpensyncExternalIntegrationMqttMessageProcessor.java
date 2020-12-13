@@ -1705,13 +1705,18 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                     capacityDetails.put(radioType, cap);
 
                 }
-
             }
         }
 
         populateNetworkProbeMetrics(report, apNodeMetrics);
         updateNetworkAdminStatusReport(customerId, equipmentId, apNodeMetrics);
 
+        RadioUtilizationReport radioUtilizationReport = new RadioUtilizationReport();
+        radioUtilizationReport.setAvgNoiseFloor(avgNoiseFloor);
+        radioUtilizationReport.setRadioUtilization(radioUtilizationDetailsMap);
+        radioUtilizationReport.setCapacityDetails(capacityDetails);
+
+        updateDeviceStatusRadioUtilizationReport(customerId, equipmentId, radioUtilizationReport);
     }
 
     private void updateNetworkAdminStatusReport(int customerId, long equipmentId, ApNodeMetrics apNodeMetrics) {
