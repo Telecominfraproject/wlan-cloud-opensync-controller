@@ -275,4 +275,10 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 
     }
 
+    @Override
+    public void clearEquipmentStatus(String apId) {
+        LOG.info("Received clearEquipmentStatus for ap {}",apId);
+        
+    }
+
 }

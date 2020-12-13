@@ -493,10 +493,10 @@ public class OpensyncExternalIntegrationCloudTest {
 
         Mockito.when(statusServiceInterface.update(ArgumentMatchers.any(Status.class))).thenReturn(bssidStatus);
         com.telecominfraproject.wlan.client.models.Client clientInstance = new com.telecominfraproject.wlan.client.models.Client();
-        clientInstance.setMacAddress(new MacAddress("7C:AB:60:E6:EA:4D"));
+        clientInstance.setMacAddress(MacAddress.valueOf("7C:AB:60:E6:EA:4D"));
         clientInstance.setDetails(new ClientInfoDetails());
         com.telecominfraproject.wlan.client.models.Client clientInstance2 = new com.telecominfraproject.wlan.client.models.Client();
-        clientInstance2.setMacAddress(new MacAddress("C0:9A:D0:76:A9:69"));
+        clientInstance2.setMacAddress(MacAddress.valueOf("C0:9A:D0:76:A9:69"));
         clientInstance2.setDetails(new ClientInfoDetails());
         Mockito.when(
                 clientServiceInterface.getOrNull(ArgumentMatchers.anyInt(), ArgumentMatchers.any(MacAddress.class)))
@@ -506,10 +506,10 @@ public class OpensyncExternalIntegrationCloudTest {
                 .thenReturn(clientInstance).thenReturn(clientInstance2);
 
         ClientSession clientSession = new ClientSession();
-        clientSession.setMacAddress(new MacAddress("7C:AB:60:E6:EA:4D"));
+        clientSession.setMacAddress(MacAddress.valueOf("7C:AB:60:E6:EA:4D"));
         clientSession.setDetails(new ClientSessionDetails());
         ClientSession clientSession2 = new ClientSession();
-        clientSession2.setMacAddress(new MacAddress("C0:9A:D0:76:A9:69"));
+        clientSession2.setMacAddress(MacAddress.valueOf("C0:9A:D0:76:A9:69"));
         clientSession2.setDetails(new ClientSessionDetails());
         Mockito.when(clientServiceInterface.getSessionOrNull(ArgumentMatchers.anyInt(), ArgumentMatchers.anyLong(),
                 ArgumentMatchers.any(MacAddress.class))).thenReturn(clientSession).thenReturn(clientSession2);

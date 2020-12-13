@@ -21,6 +21,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.telecominfraproject.wlan.client.ClientServiceInterface;
 import com.telecominfraproject.wlan.client.info.models.ClientInfoDetails;
+import com.telecominfraproject.wlan.client.models.Client;
 import com.telecominfraproject.wlan.client.models.ClientType;
 import com.telecominfraproject.wlan.client.session.models.AssociationState;
 import com.telecominfraproject.wlan.client.session.models.ClientDhcpDetails;
@@ -92,6 +93,9 @@ import com.telecominfraproject.wlan.status.equipment.models.VLANStatusData;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSID;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSIDs;
 import com.telecominfraproject.wlan.status.equipment.report.models.ClientConnectionDetails;
+import com.telecominfraproject.wlan.status.equipment.report.models.EquipmentScanDetails;
+import com.telecominfraproject.wlan.status.equipment.report.models.OperatingSystemPerformance;
+import com.telecominfraproject.wlan.status.equipment.report.models.RadioUtilizationReport;
 import com.telecominfraproject.wlan.status.models.Status;
 import com.telecominfraproject.wlan.status.models.StatusCode;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
@@ -186,7 +190,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 ce.setEquipmentType(EquipmentType.AP);
                 ce.setInventoryId(apId);
                 try {
-                    ce.setBaseMacAddress(new MacAddress(connectNodeInfo.macAddress));
+                    ce.setBaseMacAddress(MacAddress.valueOf(connectNodeInfo.macAddress));
                 } catch (RuntimeException e) {
                     LOG.warn("Auto-provisioning: cannot parse equipment mac address {}", connectNodeInfo.macAddress);
                 }
@@ -280,7 +284,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 MacAddress reportedMacAddress = null;
                 try {
-                    reportedMacAddress = new MacAddress(connectNodeInfo.macAddress);
+                    reportedMacAddress = MacAddress.valueOf(connectNodeInfo.macAddress);
                 } catch (RuntimeException e) {
                     LOG.warn("AP connect: cannot parse equipment mac address {}", connectNodeInfo.macAddress);
                 }
@@ -569,7 +573,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         // need to make sure that this AP didn't accidentally get registered as
         // a client previously via a partial DHCP lease event
         LOG.info("Checking for non-wifi client types for Equipment {}", ce);
-        com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(ce.getCustomerId(),
+        Client client = clientServiceInterface.getOrNull(ce.getCustomerId(),
                 ce.getBaseMacAddress());
 
         if (client != null) {
@@ -874,7 +878,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             ret.setCaptiveProfiles(profileServiceInterface.get(captiveProfileIds));
             ret.setBonjourGatewayProfiles(profileServiceInterface.get(bonjourGatewayProfileIds));
 
-            List<com.telecominfraproject.wlan.client.models.Client> blockedClients = clientServiceInterface
+            List<Client> blockedClients = clientServiceInterface
                     .getBlockedClients(customerId);
             List<MacAddress> blockList = Lists.newArrayList();
             if ((blockedClients != null) && !blockedClients.isEmpty()) {
@@ -1395,15 +1399,21 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
 
         for (OpensyncWifiAssociatedClients opensyncWifiAssociatedClients : wifiAssociatedClients) {
-            com.telecominfraproject.wlan.client.models.Client clientInstance = clientServiceInterface
-                    .getOrNull(customerId, new MacAddress(opensyncWifiAssociatedClients.getMac()));
+            
+            LOG.info("opensyncWifiAssociatedClients {}", opensyncWifiAssociatedClients.toPrettyString());
+            
+            String mMac = opensyncWifiAssociatedClients.mac;             
+            MacAddress macAddress = MacAddress.valueOf(mMac);
+            
+            Client clientInstance = clientServiceInterface
+                    .getOrNull(customerId, macAddress);
 
             boolean isReassociation = true;
             if (clientInstance == null) {
-                clientInstance = new com.telecominfraproject.wlan.client.models.Client();
+                clientInstance = new Client();
 
                 clientInstance.setCustomerId(customerId);
-                clientInstance.setMacAddress(new MacAddress(opensyncWifiAssociatedClients.getMac()));
+                clientInstance.setMacAddress(MacAddress.valueOf(mMac));
                 clientInstance.setDetails(new ClientInfoDetails());
                 clientInstance = clientServiceInterface.create(clientInstance);
 
@@ -1715,10 +1725,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
-        com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
-                new MacAddress(deletedClientMac));
+        Client client = clientServiceInterface.getOrNull(customerId,
+                MacAddress.valueOf(deletedClientMac));
         ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                new MacAddress(deletedClientMac));
+                MacAddress.valueOf(deletedClientMac));
 
         if (client != null) {
             if (clientSession != null && clientSession.getDetails() != null
@@ -1734,9 +1744,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             if (clientSession != null) {
 
                 clientSession = clientServiceInterface.deleteSession(customerId, equipmentId,
-                        new MacAddress(deletedClientMac));
+                        MacAddress.valueOf(deletedClientMac));
 
-                LOG.info("No client {} found, delete session {}", new MacAddress(deletedClientMac), clientSession);
+                LOG.info("No client {} found, delete session {}", MacAddress.valueOf(deletedClientMac), clientSession);
             }
         }
 
@@ -1783,9 +1793,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     continue;
 
                 }
-                MacAddress clientMacAddress = new MacAddress(dhcpLeasedIps.get("hwaddr"));
+                MacAddress clientMacAddress = MacAddress.valueOf(dhcpLeasedIps.get("hwaddr"));
 
-                com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
+                Client client = clientServiceInterface.getOrNull(customerId,
                         clientMacAddress);
 
                 if (client == null) {
@@ -1875,9 +1885,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 }
 
-                MacAddress clientMacAddress = new MacAddress(dhcpLeasedIps.get("hwaddr"));
+                MacAddress clientMacAddress = MacAddress.valueOf(dhcpLeasedIps.get("hwaddr"));
 
-                com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
+                Client client = clientServiceInterface.getOrNull(customerId,
                         clientMacAddress);
                 if (client == null) {
                     LOG.info("Cannot find client instance for {}", clientMacAddress);
@@ -2106,5 +2116,78 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 rowUpdateOperation, apId);
 
         // TODO: will handle changes from Command_State table
+    }
+    
+    @Override
+    public void clearEquipmentStatus(String apId) {
+
+        OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
+
+        if (ovsdbSession == null) {
+            LOG.debug("clearEquipmentStatus::Cannot get Session for AP {}", apId);
+            return;
+        }
+
+        int customerId = ovsdbSession.getCustomerId();
+        long equipmentId = ovsdbSession.getEquipmentId();
+
+        if ((customerId < 0) || (equipmentId < 0)) {
+            LOG.debug("clearEquipmentStatus::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
+                    customerId, equipmentId, apId);
+            return;
+        }
+
+        Equipment ce = equipmentServiceInterface.getOrNull(equipmentId);
+
+        if (ce == null) {
+            LOG.debug("clearEquipmentStatus Cannot get customer Equipment for {}", apId);
+            return;
+        }
+
+        List<Status> statusesToClear = new ArrayList<>();
+
+        Status activeBssids = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.ACTIVE_BSSIDS);
+        if (activeBssids != null) {
+            activeBssids.setDetails(new ActiveBSSIDs());
+            statusesToClear.add(activeBssids);
+        }
+        Status clientDetails = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.CLIENT_DETAILS);
+        if (clientDetails != null) {
+            clientDetails.setDetails(new ClientConnectionDetails());
+            statusesToClear.add(clientDetails);
+        }
+        Status radioUtilization = statusServiceInterface.getOrNull(customerId, equipmentId,
+                StatusDataType.RADIO_UTILIZATION);
+        if (radioUtilization != null) {
+            radioUtilization.setDetails(new RadioUtilizationReport());
+            statusesToClear.add(radioUtilization);
+        }
+        Status neighbourScanDetails = statusServiceInterface.getOrNull(customerId, equipmentId,
+                StatusDataType.NEIGHBOUR_SCAN);
+        if (neighbourScanDetails != null) {
+            neighbourScanDetails.setDetails(new EquipmentScanDetails());
+            statusesToClear.add(neighbourScanDetails);
+        }
+        Status operatingSystemPerformance = statusServiceInterface.getOrNull(customerId, equipmentId,
+                StatusDataType.OS_PERFORMANCE);
+        if (operatingSystemPerformance != null) {
+            operatingSystemPerformance.setDetails(new OperatingSystemPerformance());
+            statusesToClear.add(operatingSystemPerformance);
+        }
+
+        List<Status> clearedStatus = statusServiceInterface.update(statusesToClear);
+        
+
+        clearedStatus.stream().forEach(s -> {
+            LOG.info("Cleared Status {}", s.toPrettyString());
+        });
+        
+        
+        List<Status> customerDashboardStatus = statusServiceInterface.getForEquipment(customerId, Set.of(equipmentId), Set.of(StatusDataType.CUSTOMER_DASHBOARD));
+        for (Status status : customerDashboardStatus) {
+           LOG.info("Updated status {}", statusServiceInterface.update(status) );       
+        }
+        
+        
     }
 }

@@ -199,6 +199,8 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         ovsdbDao.removeWifiRrm(ovsdbClient);
         ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
         
+        extIntegrationInterface.clearEquipmentStatus(apId);
+        
         OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
 
         if (opensyncAPConfig != null) {
@@ -273,6 +275,10 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         ovsdbDao.removeWifiRrm(ovsdbClient);
         ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
 
+        
+        extIntegrationInterface.clearEquipmentStatus(apId);
+        
+        
         ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureGreTunnels(ovsdbClient, opensyncAPConfig);       

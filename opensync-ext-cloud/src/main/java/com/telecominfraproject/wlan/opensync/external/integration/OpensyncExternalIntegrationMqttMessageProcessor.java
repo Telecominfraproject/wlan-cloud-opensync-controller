@@ -396,12 +396,12 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
             if (clientConnectEvent.hasStaMac()) {
                 com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
-                        new MacAddress(clientConnectEvent.getStaMac()));
+                        MacAddress.valueOf(clientConnectEvent.getStaMac()));
                 if (client == null) {
                     client = new com.telecominfraproject.wlan.client.models.Client();
 
                     client.setCustomerId(customerId);
-                    client.setMacAddress(new MacAddress(clientConnectEvent.getStaMac()));
+                    client.setMacAddress(MacAddress.valueOf(clientConnectEvent.getStaMac()));
 
                     client.setDetails(new ClientInfoDetails());
 
@@ -410,7 +410,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 }
 
                 ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                        new MacAddress(clientConnectEvent.getStaMac()));
+                        MacAddress.valueOf(clientConnectEvent.getStaMac()));
 
                 if (clientSession == null) {
                     clientSession = new ClientSession();
@@ -419,7 +419,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 clientSession.setCustomerId(customerId);
                 clientSession.setEquipmentId(equipmentId);
                 clientSession.setLocationId(locationId);
-                clientSession.setMacAddress(new MacAddress(clientConnectEvent.getStaMac()));
+                clientSession.setMacAddress(MacAddress.valueOf(clientConnectEvent.getStaMac()));
 
                 ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
                 clientSessionDetails.setSessionId(apEventClientSession.getSessionId());
@@ -530,12 +530,12 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             if (clientDisconnectEvent.hasStaMac()) {
 
                 com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
-                        new MacAddress(clientDisconnectEvent.getStaMac()));
+                        MacAddress.valueOf(clientDisconnectEvent.getStaMac()));
                 if (client == null) {
                     client = new com.telecominfraproject.wlan.client.models.Client();
 
                     client.setCustomerId(customerId);
-                    client.setMacAddress(new MacAddress(clientDisconnectEvent.getStaMac()));
+                    client.setMacAddress(MacAddress.valueOf(clientDisconnectEvent.getStaMac()));
 
                     client.setDetails(new ClientInfoDetails());
 
@@ -544,7 +544,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 }
 
                 ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                        new MacAddress(clientDisconnectEvent.getStaMac()));
+                        MacAddress.valueOf(clientDisconnectEvent.getStaMac()));
 
                 if (clientSession == null) {
                     clientSession = new ClientSession();
@@ -553,7 +553,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 clientSession.setCustomerId(customerId);
                 clientSession.setEquipmentId(equipmentId);
                 clientSession.setLocationId(locationId);
-                clientSession.setMacAddress(new MacAddress(clientDisconnectEvent.getStaMac()));
+                clientSession.setMacAddress(MacAddress.valueOf(clientDisconnectEvent.getStaMac()));
 
                 ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
 
@@ -612,12 +612,12 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             if (clientAuthEvent.hasStaMac()) {
 
                 com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
-                        new MacAddress(clientAuthEvent.getStaMac()));
+                        MacAddress.valueOf(clientAuthEvent.getStaMac()));
                 if (client == null) {
                     client = new com.telecominfraproject.wlan.client.models.Client();
 
                     client.setCustomerId(customerId);
-                    client.setMacAddress(new MacAddress(clientAuthEvent.getStaMac()));
+                    client.setMacAddress(MacAddress.valueOf(clientAuthEvent.getStaMac()));
 
                     client.setDetails(new ClientInfoDetails());
 
@@ -626,7 +626,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 }
 
                 ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                        new MacAddress(clientAuthEvent.getStaMac()));
+                        MacAddress.valueOf(clientAuthEvent.getStaMac()));
 
                 if (clientSession == null) {
                     clientSession = new ClientSession();
@@ -635,7 +635,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 clientSession.setCustomerId(customerId);
                 clientSession.setEquipmentId(equipmentId);
                 clientSession.setLocationId(locationId);
-                clientSession.setMacAddress(new MacAddress(clientAuthEvent.getStaMac()));
+                clientSession.setMacAddress(MacAddress.valueOf(clientAuthEvent.getStaMac()));
 
                 ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
 
@@ -671,12 +671,12 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
         for (ClientAssocEvent clientAssocEvent : apEventClientSession.getClientAssocEventList()) {
             if (clientAssocEvent.hasStaMac()) {
                 com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
-                        new MacAddress(clientAssocEvent.getStaMac()));
+                        MacAddress.valueOf(clientAssocEvent.getStaMac()));
                 if (client == null) {
                     client = new com.telecominfraproject.wlan.client.models.Client();
 
                     client.setCustomerId(customerId);
-                    client.setMacAddress(new MacAddress(clientAssocEvent.getStaMac()));
+                    client.setMacAddress(MacAddress.valueOf(clientAssocEvent.getStaMac()));
 
                     client.setDetails(new ClientInfoDetails());
 
@@ -685,7 +685,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 }
 
                 ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                        new MacAddress(clientAssocEvent.getStaMac()));
+                        MacAddress.valueOf(clientAssocEvent.getStaMac()));
 
                 if (clientSession == null) {
                     clientSession = new ClientSession();
@@ -693,7 +693,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 clientSession.setCustomerId(customerId);
                 clientSession.setEquipmentId(equipmentId);
                 clientSession.setLocationId(locationId);
-                clientSession.setMacAddress(new MacAddress(clientAssocEvent.getStaMac()));
+                clientSession.setMacAddress(MacAddress.valueOf(clientAssocEvent.getStaMac()));
 
                 ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
                 if (clientAssocEvent.hasUsing11K()) {
@@ -745,12 +745,12 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             if (clientFailureEvent.hasStaMac()) {
 
                 com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
-                        new MacAddress(clientFailureEvent.getStaMac()));
+                        MacAddress.valueOf(clientFailureEvent.getStaMac()));
                 if (client == null) {
                     client = new com.telecominfraproject.wlan.client.models.Client();
 
                     client.setCustomerId(customerId);
-                    client.setMacAddress(new MacAddress(clientFailureEvent.getStaMac()));
+                    client.setMacAddress(MacAddress.valueOf(clientFailureEvent.getStaMac()));
 
                     client.setDetails(new ClientInfoDetails());
 
@@ -759,7 +759,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 }
 
                 ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                        new MacAddress(clientFailureEvent.getStaMac()));
+                        MacAddress.valueOf(clientFailureEvent.getStaMac()));
 
                 if (clientSession == null) {
                     clientSession = new ClientSession();
@@ -768,7 +768,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 clientSession.setCustomerId(customerId);
                 clientSession.setEquipmentId(equipmentId);
                 clientSession.setLocationId(locationId);
-                clientSession.setMacAddress(new MacAddress(clientFailureEvent.getStaMac()));
+                clientSession.setMacAddress(MacAddress.valueOf(clientFailureEvent.getStaMac()));
 
                 ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
 
@@ -807,12 +807,12 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             if (clientFirstDataEvent.hasStaMac()) {
 
                 com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
-                        new MacAddress(clientFirstDataEvent.getStaMac()));
+                        MacAddress.valueOf(clientFirstDataEvent.getStaMac()));
                 if (client == null) {
                     client = new com.telecominfraproject.wlan.client.models.Client();
 
                     client.setCustomerId(customerId);
-                    client.setMacAddress(new MacAddress(clientFirstDataEvent.getStaMac()));
+                    client.setMacAddress(MacAddress.valueOf(clientFirstDataEvent.getStaMac()));
 
                     client.setDetails(new ClientInfoDetails());
 
@@ -821,7 +821,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 }
 
                 ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                        new MacAddress(clientFirstDataEvent.getStaMac()));
+                        MacAddress.valueOf(clientFirstDataEvent.getStaMac()));
 
                 if (clientSession == null) {
                     clientSession = new ClientSession();
@@ -830,7 +830,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 clientSession.setCustomerId(customerId);
                 clientSession.setEquipmentId(equipmentId);
                 clientSession.setLocationId(locationId);
-                clientSession.setMacAddress(new MacAddress(clientFirstDataEvent.getStaMac()));
+                clientSession.setMacAddress(MacAddress.valueOf(clientFirstDataEvent.getStaMac()));
 
                 ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
 
@@ -866,12 +866,12 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             if (clientIdEvent.hasCltMac()) {
 
                 com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
-                        new MacAddress(clientIdEvent.getCltMac()));
+                        MacAddress.valueOf(clientIdEvent.getCltMac()));
                 if (client == null) {
                     client = new com.telecominfraproject.wlan.client.models.Client();
 
                     client.setCustomerId(customerId);
-                    client.setMacAddress(new MacAddress(clientIdEvent.getCltMac()));
+                    client.setMacAddress(MacAddress.valueOf(clientIdEvent.getCltMac()));
 
                     client.setDetails(new ClientInfoDetails());
 
@@ -880,7 +880,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 }
 
                 ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                        new MacAddress(clientIdEvent.getCltMac()));
+                        MacAddress.valueOf(clientIdEvent.getCltMac()));
 
                 if (clientSession == null) {
                     clientSession = new ClientSession();
@@ -889,7 +889,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 clientSession.setCustomerId(customerId);
                 clientSession.setEquipmentId(equipmentId);
                 clientSession.setLocationId(locationId);
-                clientSession.setMacAddress(new MacAddress(clientIdEvent.getCltMac()));
+                clientSession.setMacAddress(MacAddress.valueOf(clientIdEvent.getCltMac()));
 
                 ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
 
@@ -915,12 +915,12 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             if (clientIpEvent.hasStaMac()) {
 
                 com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
-                        new MacAddress(clientIpEvent.getStaMac()));
+                        MacAddress.valueOf(clientIpEvent.getStaMac()));
                 if (client == null) {
                     client = new com.telecominfraproject.wlan.client.models.Client();
 
                     client.setCustomerId(customerId);
-                    client.setMacAddress(new MacAddress(clientIpEvent.getStaMac()));
+                    client.setMacAddress(MacAddress.valueOf(clientIpEvent.getStaMac()));
 
                     client.setDetails(new ClientInfoDetails());
 
@@ -929,7 +929,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 }
 
                 ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                        new MacAddress(clientIpEvent.getStaMac()));
+                        MacAddress.valueOf(clientIpEvent.getStaMac()));
 
                 if (clientSession == null) {
                     clientSession = new ClientSession();
@@ -938,7 +938,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 clientSession.setCustomerId(customerId);
                 clientSession.setEquipmentId(equipmentId);
                 clientSession.setLocationId(locationId);
-                clientSession.setMacAddress(new MacAddress(clientIpEvent.getStaMac()));
+                clientSession.setMacAddress(MacAddress.valueOf(clientIpEvent.getStaMac()));
 
                 ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
 
@@ -972,12 +972,12 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             if (clientTimeoutEvent.hasStaMac()) {
 
                 com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
-                        new MacAddress(clientTimeoutEvent.getStaMac()));
+                        MacAddress.valueOf(clientTimeoutEvent.getStaMac()));
                 if (client == null) {
                     client = new com.telecominfraproject.wlan.client.models.Client();
 
                     client.setCustomerId(customerId);
-                    client.setMacAddress(new MacAddress(clientTimeoutEvent.getStaMac()));
+                    client.setMacAddress(MacAddress.valueOf(clientTimeoutEvent.getStaMac()));
 
                     client.setDetails(new ClientInfoDetails());
 
@@ -986,7 +986,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 }
 
                 ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                        new MacAddress(clientTimeoutEvent.getStaMac()));
+                        MacAddress.valueOf(clientTimeoutEvent.getStaMac()));
 
                 if (clientSession == null) {
                     clientSession = new ClientSession();
@@ -995,7 +995,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 clientSession.setCustomerId(customerId);
                 clientSession.setEquipmentId(equipmentId);
                 clientSession.setLocationId(locationId);
-                clientSession.setMacAddress(new MacAddress(clientTimeoutEvent.getStaMac()));
+                clientSession.setMacAddress(MacAddress.valueOf(clientTimeoutEvent.getStaMac()));
 
                 ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
 
@@ -1621,7 +1621,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             List<MacAddress> clientMacList = new ArrayList<>();
             clientMacs.forEach(macStr -> {
                 try {
-                    clientMacList.add(new MacAddress(macStr));
+                    clientMacList.add(MacAddress.valueOf(macStr));
                 } catch (RuntimeException e) {
                     LOG.warn("Cannot parse mac address from MQTT ClientReport {} ", macStr);
                 }
@@ -1926,12 +1926,12 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
                 LOG.debug("Processing ClientReport from AP {}", cl.getMacAddress());
 
-                ServiceMetric smr = new ServiceMetric(customerId, equipmentId, new MacAddress(cl.getMacAddress()));
+                ServiceMetric smr = new ServiceMetric(customerId, equipmentId, MacAddress.valueOf(cl.getMacAddress()));
                 smr.setLocationId(locationId);
                 metricRecordList.add(smr);
 
                 smr.setCreatedTimestamp(clReport.getTimestampMs());
-                smr.setClientMac(new MacAddress(cl.getMacAddress()).getAddressAsLong());
+                smr.setClientMac(MacAddress.valueOf(cl.getMacAddress()).getAddressAsLong());
 
                 // clReport.getChannel();
                 ClientMetrics cMetrics = new ClientMetrics();
@@ -2058,7 +2058,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 }
 
                 nr.setChannel(nBss.getChannel());
-                nr.setMacAddress(new MacAddress(nBss.getBssid()));
+                nr.setMacAddress(MacAddress.valueOf(nBss.getBssid()));
                 nr.setNetworkType(NetworkType.AP);
                 nr.setPacketType(NeighborScanPacketType.BEACON);
                 nr.setPrivacy(((nBss.getSsid() == null) || nBss.getSsid().isEmpty()) ? true : false);
@@ -2085,7 +2085,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                     equipmentId, locationId, client.getMacAddress());
 
             com.telecominfraproject.wlan.client.models.Client clientInstance = clientServiceInterface
-                    .getOrNull(customerId, new MacAddress(client.getMacAddress()));
+                    .getOrNull(customerId, MacAddress.valueOf(client.getMacAddress()));
 
             boolean isReassociation = true;
             if (clientInstance == null) {
@@ -2293,7 +2293,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 statusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
                 for (ActiveBSSID activeBSSID : ((ActiveBSSIDs) activeBssidsStatus.getDetails()).getActiveBSSIDs()) {
                     if (activeBSSID.getRadioType().equals(radioType)) {
-                        ssidStatistics.setBssid(new MacAddress(activeBSSID.getBssid()));
+                        ssidStatistics.setBssid(MacAddress.valueOf(activeBSSID.getBssid()));
                         // ssid value, in case not in stats, else will take
                         // stats value after
                         ssid = activeBSSID.getSsid();
@@ -2346,7 +2346,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                             // disconnect occured during this window
                             if (client.hasMacAddress()) {
                                 ClientSession session = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                                        new MacAddress(client.getMacAddress()));
+                                        MacAddress.valueOf(client.getMacAddress()));
 
                                 if (session != null) {
                                     if ((session.getDetails().getAssociationState() != null) && !session.getDetails()
