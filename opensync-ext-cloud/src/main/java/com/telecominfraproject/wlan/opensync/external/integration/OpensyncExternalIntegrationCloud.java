@@ -989,7 +989,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
                 StatusDataType.ACTIVE_BSSIDS);
-        if (activeBssidsStatus != null) {
+        if (activeBssidsStatus != null && activeBssidsStatus.getDetails() != null) {
             updateClientDetailsStatus(customerId, equipmentId, (ActiveBSSIDs) activeBssidsStatus.getDetails());
         }
 
