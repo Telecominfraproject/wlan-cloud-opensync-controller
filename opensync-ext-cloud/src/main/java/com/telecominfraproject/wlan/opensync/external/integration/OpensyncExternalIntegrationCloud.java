@@ -309,7 +309,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             LOG.info("Clear existing status {} for AP {}",
                     statusServiceInterface.delete(ce.getCustomerId(), ce.getId()), apId);
-            
+
             updateApStatus(ce, connectNodeInfo);
 
             removeNonWifiClients(ce, connectNodeInfo);
@@ -573,8 +573,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         // need to make sure that this AP didn't accidentally get registered as
         // a client previously via a partial DHCP lease event
         LOG.info("Checking for non-wifi client types for Equipment {}", ce);
-        Client client = clientServiceInterface.getOrNull(ce.getCustomerId(),
-                ce.getBaseMacAddress());
+        Client client = clientServiceInterface.getOrNull(ce.getCustomerId(), ce.getBaseMacAddress());
 
         if (client != null) {
             ClientSession clientSession = clientServiceInterface.getSessionOrNull(ce.getCustomerId(), ce.getId(),
@@ -753,35 +752,33 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             if (ce != null) {
                 LOG.info("AP {} disconnected, delete status records {}", apId,
                         statusServiceInterface.delete(ce.getCustomerId(), ce.getId()));
+                updateApDisconnectedStatus(apId,ce);
+            } else {
+                LOG.error("updateDisconnectedApStatus::Cannot get Equipment for AP {} to update the EquipmentAdminStatus", apId);
+
             }
-            updateApDisconnectedStatus(apId);
         } catch (Exception e) {
             LOG.error("Exception when registering ap routing {}", apId, e);
         }
 
     }
 
-    private void updateApDisconnectedStatus(String apId) {
+    private void updateApDisconnectedStatus(String apId, Equipment ce) {
+        LOG.info("updateApDisconnectedStatus disconnected AP {}",apId);
         try {
-            Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
+            Status statusRecord = new Status();
+            statusRecord.setCustomerId(ce.getCustomerId());
+            statusRecord.setEquipmentId(ce.getId());
+            statusRecord.setStatusDataType(StatusDataType.EQUIPMENT_ADMIN);
 
-            if (ce == null) {
-                LOG.debug("updateDisconnectedApStatus::Cannot get Equipment for AP {}", apId);
-                return;
-            }
+            EquipmentAdminStatusData statusData = new EquipmentAdminStatusData();
+            statusData.setStatusMessage("AP Disconnected");
+            statusData.setStatusCode(StatusCode.disabled);
 
-            Status statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(),
-                    StatusDataType.EQUIPMENT_ADMIN);
-            if (statusRecord == null) {
-                LOG.debug(
-                        "updateApDisconnectedStatus::Cannot get EQUIPMENT_ADMIN status for CustomerId {} or EquipmentId {} for AP {}",
-                        ce.getCustomerId(), ce.getId(), apId);
-                return;
-            }
+            statusRecord.setDetails(statusData);
 
-            ((EquipmentAdminStatusData) statusRecord.getDetails()).setStatusCode(StatusCode.error);
-            // Update the equipment admin status
-            statusRecord = statusServiceInterface.update(statusRecord);
+            LOG.info("Updated EquipmentAdminStatus {} for disconnected AP {}",
+                    statusServiceInterface.update(statusRecord), apId);
 
         } catch (Exception e) {
             LOG.error("Exception in updateApDisconnectedStatus", e);
@@ -878,8 +875,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             ret.setCaptiveProfiles(profileServiceInterface.get(captiveProfileIds));
             ret.setBonjourGatewayProfiles(profileServiceInterface.get(bonjourGatewayProfileIds));
 
-            List<Client> blockedClients = clientServiceInterface
-                    .getBlockedClients(customerId);
+            List<Client> blockedClients = clientServiceInterface.getBlockedClients(customerId);
             List<MacAddress> blockList = Lists.newArrayList();
             if ((blockedClients != null) && !blockedClients.isEmpty()) {
                 blockedClients.forEach(client -> blockList.add(client.getMacAddress()));
@@ -1399,14 +1395,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
 
         for (OpensyncWifiAssociatedClients opensyncWifiAssociatedClients : wifiAssociatedClients) {
-            
+
             LOG.info("opensyncWifiAssociatedClients {}", opensyncWifiAssociatedClients.toPrettyString());
-            
-            String mMac = opensyncWifiAssociatedClients.mac;             
+
+            String mMac = opensyncWifiAssociatedClients.mac;
             MacAddress macAddress = MacAddress.valueOf(mMac);
-            
-            Client clientInstance = clientServiceInterface
-                    .getOrNull(customerId, macAddress);
+
+            Client clientInstance = clientServiceInterface.getOrNull(customerId, macAddress);
 
             boolean isReassociation = true;
             if (clientInstance == null) {
@@ -1725,8 +1720,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
-        Client client = clientServiceInterface.getOrNull(customerId,
-                MacAddress.valueOf(deletedClientMac));
+        Client client = clientServiceInterface.getOrNull(customerId, MacAddress.valueOf(deletedClientMac));
         ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
                 MacAddress.valueOf(deletedClientMac));
 
@@ -1795,8 +1789,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 }
                 MacAddress clientMacAddress = MacAddress.valueOf(dhcpLeasedIps.get("hwaddr"));
 
-                Client client = clientServiceInterface.getOrNull(customerId,
-                        clientMacAddress);
+                Client client = clientServiceInterface.getOrNull(customerId, clientMacAddress);
 
                 if (client == null) {
                     LOG.info("Cannot find client instance for {}", clientMacAddress);
@@ -1887,8 +1880,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 MacAddress clientMacAddress = MacAddress.valueOf(dhcpLeasedIps.get("hwaddr"));
 
-                Client client = clientServiceInterface.getOrNull(customerId,
-                        clientMacAddress);
+                Client client = clientServiceInterface.getOrNull(customerId, clientMacAddress);
                 if (client == null) {
                     LOG.info("Cannot find client instance for {}", clientMacAddress);
                     continue;
@@ -1971,32 +1963,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     protected ClientSession updateClientSession(int customerId, long equipmentId, long locationId,
             Map<String, String> dhcpLeasedIps, MacAddress clientMacAddress) {
+
         ClientSession session = clientServiceInterface.getSessionOrNull(customerId, equipmentId, clientMacAddress);
 
-        //         "hwaddr": --
-        //         "inet_addr": --
-        //         "hostname": --
-        //         "fingerprint": --
-        //         "vendor_class": --
-        //         "lease_time": --
-        //         "subnet_mask": --
-        //         "gateway": --
-        //         "dhcp_server": --
-        //         "primary_dns": --
-        //         "secondary_dns": --
-        //         "db_status":
-        //         "device_name":
-        //         "device_type":
-        //         "manuf_id":
-
         if (session == null) {
+
+            LOG.info("Cannot get session for client {} for customerId {} equipmentId {} locationId {}",
+                    clientMacAddress, customerId, equipmentId, locationId);
             return null;
         }
-        session.setCustomerId(customerId);
-        session.setEquipmentId(equipmentId);
-        session.setLocationId(locationId);
-        session.setMacAddress(clientMacAddress);
-        session.setDetails(new ClientSessionDetails());
 
         ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
 
@@ -2117,7 +2092,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         // TODO: will handle changes from Command_State table
     }
-    
+
     @Override
     public void clearEquipmentStatus(String apId) {
 
@@ -2132,8 +2107,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         long equipmentId = ovsdbSession.getEquipmentId();
 
         if ((customerId < 0) || (equipmentId < 0)) {
-            LOG.debug("clearEquipmentStatus::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
-                    customerId, equipmentId, apId);
+            LOG.debug("clearEquipmentStatus::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId,
+                    equipmentId, apId);
             return;
         }
 
@@ -2144,50 +2119,61 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
-        List<Status> statusesToClear = new ArrayList<>();
+        List<Status> statusList = new ArrayList<>();
 
-        Status activeBssids = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.ACTIVE_BSSIDS);
-        if (activeBssids != null) {
-            activeBssids.setDetails(new ActiveBSSIDs());
-            statusesToClear.add(activeBssids);
-        }
-        Status clientDetails = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.CLIENT_DETAILS);
-        if (clientDetails != null) {
-            clientDetails.setDetails(new ClientConnectionDetails());
-            statusesToClear.add(clientDetails);
-        }
-        Status radioUtilization = statusServiceInterface.getOrNull(customerId, equipmentId,
-                StatusDataType.RADIO_UTILIZATION);
-        if (radioUtilization != null) {
-            radioUtilization.setDetails(new RadioUtilizationReport());
-            statusesToClear.add(radioUtilization);
-        }
-        Status neighbourScanDetails = statusServiceInterface.getOrNull(customerId, equipmentId,
-                StatusDataType.NEIGHBOUR_SCAN);
-        if (neighbourScanDetails != null) {
-            neighbourScanDetails.setDetails(new EquipmentScanDetails());
-            statusesToClear.add(neighbourScanDetails);
-        }
-        Status operatingSystemPerformance = statusServiceInterface.getOrNull(customerId, equipmentId,
-                StatusDataType.OS_PERFORMANCE);
-        if (operatingSystemPerformance != null) {
-            operatingSystemPerformance.setDetails(new OperatingSystemPerformance());
-            statusesToClear.add(operatingSystemPerformance);
-        }
+        Status status = new Status();
+        status.setCustomerId(customerId);
+        status.setEquipmentId(equipmentId);
+        status.setStatusDataType(StatusDataType.ACTIVE_BSSIDS);
+        status.setDetails(new ActiveBSSIDs());
 
-        List<Status> clearedStatus = statusServiceInterface.update(statusesToClear);
-        
+        statusList.add(status);
+
+        status = new Status();
+        status.setCustomerId(customerId);
+        status.setEquipmentId(equipmentId);
+        status.setStatusDataType(StatusDataType.CLIENT_DETAILS);
+        status.setDetails(new ClientConnectionDetails());
+
+        statusList.add(status);
+
+        status = new Status();
+        status.setCustomerId(customerId);
+        status.setEquipmentId(equipmentId);
+        status.setStatusDataType(StatusDataType.RADIO_UTILIZATION);
+        status.setDetails(new RadioUtilizationReport());
+
+        statusList.add(status);
+
+        status = new Status();
+        status.setCustomerId(customerId);
+        status.setEquipmentId(equipmentId);
+        status.setStatusDataType(StatusDataType.NEIGHBOUR_SCAN);
+        status.setDetails(new EquipmentScanDetails());
+
+        statusList.add(status);
+
+        status = new Status();
+        status.setCustomerId(customerId);
+        status.setEquipmentId(equipmentId);
+        status.setStatusDataType(StatusDataType.OS_PERFORMANCE);
+        status.setDetails(new OperatingSystemPerformance());
+
+        statusList.add(status);
+
+        LOG.info("MJH statusList to clear {}", statusList);
+
+        List<Status> clearedStatus = statusServiceInterface.update(statusList);
 
         clearedStatus.stream().forEach(s -> {
-            LOG.info("Cleared Status {}", s.toPrettyString());
+            LOG.info("Cleared Status Data {}", s.toPrettyString());
         });
-        
-        
-        List<Status> customerDashboardStatus = statusServiceInterface.getForEquipment(customerId, Set.of(equipmentId), Set.of(StatusDataType.CUSTOMER_DASHBOARD));
-        for (Status status : customerDashboardStatus) {
-           LOG.info("Updated status {}", statusServiceInterface.update(status) );       
+
+        List<Status> customerDashboardStatus = statusServiceInterface.getForEquipment(customerId, Set.of(equipmentId),
+                Set.of(StatusDataType.CUSTOMER_DASHBOARD));
+        for (Status customerDashStatus : customerDashboardStatus) {
+            LOG.info("Updated customer status {}", statusServiceInterface.update(customerDashStatus));
         }
-        
-        
+
     }
 }

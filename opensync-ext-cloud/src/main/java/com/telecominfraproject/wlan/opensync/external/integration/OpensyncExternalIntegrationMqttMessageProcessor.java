@@ -1271,8 +1271,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 rtsStartEvent.setServerDnsName(apStreamVideoServer.getServerDnsName());
             }
 
-            if (apStreamVideoServer.hasClientMac()) {
-                rtsStartEvent.setClientMacAddress(MacAddress.valueOf(apStreamVideoServer.getClientMac().toByteArray()));
+            if (apStreamVideoServer.hasClientMac() && apStreamVideoServer.getClientMac().isValidUtf8()) {
+                rtsStartEvent.setClientMacAddress(MacAddress.valueOf(apStreamVideoServer.getClientMac().toStringUtf8()));
             }
 
             if (apStreamVideoServer.hasSessionId()) {
@@ -1383,9 +1383,9 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             StreamingVideoSessionStart apStreamVideoSessionStart = videoVoiceReport.getStreamVideoSessionStart();
             RealTimeStreamingStartSessionEvent rtsStartSessionEvent = new RealTimeStreamingStartSessionEvent(customerId,
                     equipmentId, eventTimestamp);
-            if (apStreamVideoSessionStart.hasClientMac()) {
+            if (apStreamVideoSessionStart.hasClientMac() && apStreamVideoSessionStart.getClientMac().isValidUtf8()) {
                 rtsStartSessionEvent.setClientMacAddress(
-                        MacAddress.valueOf(apStreamVideoSessionStart.getClientMac().toByteArray()));
+                        MacAddress.valueOf(apStreamVideoSessionStart.getClientMac().toStringUtf8()));
             }
 
             if (apStreamVideoSessionStart.hasServerIp()) {
@@ -1422,8 +1422,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             StreamingVideoStop apStreamVideoStop = videoVoiceReport.getStreamVideoStop();
             RealTimeStreamingStopEvent rtsStopEvent = new RealTimeStreamingStopEvent(customerId, equipmentId,
                     eventTimestamp);
-            if (apStreamVideoStop.hasClientMac()) {
-                rtsStopEvent.setClientMacAddress(MacAddress.valueOf(apStreamVideoStop.getClientMac().toByteArray()));
+            if (apStreamVideoStop.hasClientMac() && apStreamVideoStop.getClientMac().isValidUtf8()) {
+                rtsStopEvent.setClientMacAddress(MacAddress.valueOf(apStreamVideoStop.getClientMac().toStringUtf8()));
             }
 
             if (apStreamVideoStop.hasDurationSec()) {
