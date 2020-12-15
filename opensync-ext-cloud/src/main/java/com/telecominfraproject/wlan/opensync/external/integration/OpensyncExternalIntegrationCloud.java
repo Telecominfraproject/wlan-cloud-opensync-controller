@@ -985,8 +985,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
                 StatusDataType.ACTIVE_BSSIDS);
-        if (activeBssidsStatus != null && activeBssidsStatus.getDetails() != null) {
-            updateClientDetailsStatus(customerId, equipmentId, (ActiveBSSIDs) activeBssidsStatus.getDetails());
+        
+        ActiveBSSIDs bssidStatusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
+
+        if (activeBssidsStatus != null && bssidStatusDetails != null && bssidStatusDetails.getActiveBSSIDs() != null) {
+            updateClientDetailsStatus(customerId, equipmentId, bssidStatusDetails);
         }
 
         LOG.info("Finished wifiVIFStateDbTableUpdate updated {}", activeBssidsStatus);
