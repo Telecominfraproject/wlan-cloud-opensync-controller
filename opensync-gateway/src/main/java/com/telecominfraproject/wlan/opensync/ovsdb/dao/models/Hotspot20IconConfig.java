@@ -7,7 +7,7 @@ import com.vmware.ovsdb.protocol.operation.notation.Uuid;
 
 public class Hotspot20IconConfig implements Cloneable {
 
-    public static String[] ovsdbColumns = { "_version", "name", "url", "lang_code", "height", "img_type",
+    public static String[] ovsdbColumns = { "_version", "name", "url", "lang_code", "height", "icon_config_name", "img_type",
             "_uuid", "width" };
 
     public String name;
@@ -16,6 +16,7 @@ public class Hotspot20IconConfig implements Cloneable {
     public Integer height;
     public String imgType;
     public Integer width;
+    public String iconConfigName;
     public Uuid uuid;
     public Uuid version;
 
@@ -52,6 +53,7 @@ public class Hotspot20IconConfig implements Cloneable {
                 .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
             this.imgType = row.getStringColumn("img_type");
         }
+        this.iconConfigName = row.getStringColumn("icon_config_name");
 
     }
 
@@ -66,34 +68,36 @@ public class Hotspot20IconConfig implements Cloneable {
         }
     }
 
-
-    @Override
-    public String toString() {
-        return "Hotspot20IconConfig [name=" + name + ", url=" + url + ", langCode=" + langCode
-                + ", height=" + height + ", imgType=" + imgType + ", width=" + width + ", uuid=" + uuid + ", version="
-                + version + "]";
-    }
-
     @Override
     public int hashCode() {
-        return Objects.hash(height, imgType, langCode, name, url, uuid, version, width);
+        return Objects.hash(height, iconConfigName, imgType, langCode, name, url, uuid, version, width);
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) {
+        if (this == obj)
             return true;
-        }
-        if (!(obj instanceof Hotspot20IconConfig)) {
+        if (obj == null)
             return false;
-        }
+        if (getClass() != obj.getClass())
+            return false;
         Hotspot20IconConfig other = (Hotspot20IconConfig) obj;
-        return Objects.equals(height, other.height) && Objects.equals(imgType, other.imgType)
-                && Objects.equals(langCode, other.langCode) && Objects.equals(name, other.name)
-                && Objects.equals(url, other.url)
+        return Objects.equals(height, other.height) && Objects.equals(iconConfigName, other.iconConfigName)
+                && Objects.equals(imgType, other.imgType) && Objects.equals(langCode, other.langCode)
+                && Objects.equals(name, other.name) && Objects.equals(url, other.url)
                 && Objects.equals(uuid, other.uuid) && Objects.equals(version, other.version)
                 && Objects.equals(width, other.width);
     }
+
+    @Override
+    public String toString() {
+        return "Hotspot20IconConfig [name=" + name + ", url=" + url + ", langCode=" + langCode + ", height=" + height
+                + ", imgType=" + imgType + ", width=" + width + ", iconConfigName=" + iconConfigName + ", uuid=" + uuid
+                + ", version=" + version + "]";
+    }
+
+
+
 
 
 }

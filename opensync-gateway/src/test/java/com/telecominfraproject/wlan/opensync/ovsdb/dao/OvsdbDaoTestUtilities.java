@@ -3,6 +3,7 @@ package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -11,7 +12,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import org.apache.commons.codec.digest.DigestUtils;
+
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
+import com.telecominfraproject.wlan.opensync.util.OvsdbToWlanCloudTypeMappingUtility;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
@@ -150,7 +154,8 @@ public class OvsdbDaoTestUtilities {
         passpointOperatorProfile.setName("TipWlan-Hotspot20-Operator");
         passpointOperatorProfile.setProfileType(ProfileType.passpoint_operator);
         passpointOperatorProfile.setDetails(PasspointOperatorProfile.createWithDefaults());
-        ((PasspointOperatorProfile)passpointOperatorProfile.getDetails()).setDomainNameList(Set.of("rogers.com","telus.com","bell.ca"));      
+        ((PasspointOperatorProfile) passpointOperatorProfile.getDetails())
+                .setDomainNameList(Set.of("rogers.com", "telus.com", "bell.ca"));
 
         return passpointOperatorProfile;
     }
@@ -340,7 +345,7 @@ public class OvsdbDaoTestUtilities {
         OperationResult[] operationResult = new OperationResult[1];
         SelectResult selectResult = new SelectResult(ret);
         operationResult[0] = selectResult;
-
+        System.out.println("hs20Config " + Arrays.toString(operationResult));
         return operationResult;
     }
 
@@ -352,12 +357,12 @@ public class OvsdbDaoTestUtilities {
         OperationResult[] operationResult = new OperationResult[2];
         operationResult[0] = insertResult;
         operationResult[1] = insertResult2;
-
+        System.out.println("hs20InsertProviderRows " + Arrays.toString(operationResult));
         return operationResult;
     }
 
     static OperationResult[] hs20OsuProviders() {
-        List<Row> ret = new ArrayList<>();
+        List<Row> rows = new ArrayList<>();
 
         Map<String, Value> columns = new HashMap<>();
         columns.put("_uuid", new Atom<>(Uuid.of(UUID.fromString("33b78c84-3242-4477-831f-185c6532cfda"))));
@@ -371,46 +376,59 @@ public class OvsdbDaoTestUtilities {
                         new Atom<>(Uuid.of(UUID.fromString("7cf892c2-3f04-4851-986c-a7b7d8ad1dfa"))),
                         new Atom<>(Uuid.of(UUID.fromString("9449e6cf-de62-4805-855b-3fc9bb5cd3ec")))));
         columns.put("osu_nai", new Atom<>("anonymous@rogers.com"));
+        columns.put("osu_nai2", new Atom<>("anonymous@telus.com"));
+
+        columns.put("osu_provider_name", new Atom<>(OvsdbToWlanCloudTypeMappingUtility
+                .getApOsuProviderStringFromOsuProviderName("TipWlan-Hotspot20-OSU-Provider")));
+
         columns.put("server_uri", new Atom<>("https://example.com/osu/rogers"));
         columns.put("service_description", com.vmware.ovsdb.protocol.operation.notation.Set
                 .of(new Atom<>("eng:Example provider rogers"), new Atom<>("fra:Exemple de fournisseur rogers")));
 
-        ret.add(new Row(columns));
+        rows.add(new Row(columns));
 
-        columns = new HashMap<>();
-        columns.put("_uuid", new Atom<>(Uuid.of(UUID.fromString("ae51393c-f9e5-4021-af73-c5ad4b751f88"))));
-        columns.put("_version", new Atom<>(Uuid.of(UUID.randomUUID())));
-        columns.put("method_list", com.vmware.ovsdb.protocol.operation.notation.Set.of(new Atom<>(0), new Atom<>(1)));
-        columns.put("osu_friendly_name", com.vmware.ovsdb.protocol.operation.notation.Set
+        Map<String, Value> columns2 = new HashMap<>();
+        columns2.put("_uuid", new Atom<>(Uuid.of(UUID.fromString("ae51393c-f9e5-4021-af73-c5ad4b751f88"))));
+        columns2.put("_version", new Atom<>(Uuid.of(UUID.randomUUID())));
+        columns2.put("method_list", com.vmware.ovsdb.protocol.operation.notation.Set.of(new Atom<>(0), new Atom<>(1)));
+        columns2.put("osu_friendly_name", com.vmware.ovsdb.protocol.operation.notation.Set
                 .of(new Atom<>("eng:Example provider telus"), new Atom<>("fra:Exemple de fournisseur telus")));
-        columns.put("osu_icons",
+        columns2.put("osu_icons",
                 com.vmware.ovsdb.protocol.operation.notation.Set.of(
                         new Atom<>(Uuid.of(UUID.fromString("5f2d0e46-92bd-43a1-aa66-94474deb2212"))),
                         new Atom<>(Uuid.of(UUID.fromString("7cf892c2-3f04-4851-986c-a7b7d8ad1dfa"))),
                         new Atom<>(Uuid.of(UUID.fromString("9449e6cf-de62-4805-855b-3fc9bb5cd3ec")))));
-        columns.put("osu_nai", new Atom<>("anonymous@telus.com"));
-        columns.put("server_uri", new Atom<>("https://example.com/osu/telus"));
-        columns.put("service_description", com.vmware.ovsdb.protocol.operation.notation.Set
+        columns2.put("osu_nai", new Atom<>("anonymous@telus.com"));
+        columns2.put("osu_nai2", new Atom<>("anonymous@telus.com"));
+
+        columns2.put("osu_provider_name", new Atom<>(OvsdbToWlanCloudTypeMappingUtility
+                .getApOsuProviderStringFromOsuProviderName("TipWlan-Hotspot20-OSU-Provider-2")));
+
+        columns2.put("server_uri", new Atom<>("https://example.com/osu/telus"));
+        columns2.put("service_description", com.vmware.ovsdb.protocol.operation.notation.Set
                 .of(new Atom<>("eng:Example provider telus"), new Atom<>("fra:Exemple de fournisseur telus")));
+        rows.add(new Row(columns2));
 
-        OperationResult[] operationResult = new OperationResult[1];
-        SelectResult selectResult = new SelectResult(ret);
-        operationResult[0] = selectResult;
+        SelectResult selectResult = new SelectResult(rows);
 
-        return operationResult;
+        System.out.println("hs20OsuProviders Select Result " + selectResult.getRows());
+        List<OperationResult> resultList = List.of(selectResult);
+
+        return resultList.toArray(new SelectResult[0]);
     }
 
     static OperationResult[] hs20InsertIconRows() {
 
-        UpdateResult insertResult = new UpdateResult(1);
-        UpdateResult insertResult2 = new UpdateResult(2);
-        UpdateResult insertResult3 = new UpdateResult(3);
+        UpdateResult insertResult = new UpdateResult(3);
+        // UpdateResult insertResult2 = new UpdateResult(2);
+        // UpdateResult insertResult3 = new UpdateResult(3);
 
-        OperationResult[] operationResult = new OperationResult[3];
+        OperationResult[] operationResult = new OperationResult[1];
         operationResult[0] = insertResult;
-        operationResult[1] = insertResult2;
-        operationResult[2] = insertResult3;
+        // operationResult[1] = insertResult2;
+        // operationResult[2] = insertResult3;
 
+        System.out.println("hs20InsertIconRows operationResult " + Arrays.toString(operationResult));
         return operationResult;
     }
 
@@ -426,6 +444,9 @@ public class OvsdbDaoTestUtilities {
         columns.put("name", new Atom<>("icon32usa"));
         columns.put("path", new Atom<String>("/tmp/icon32usa.png"));
         columns.put("url", new Atom<String>("https://localhost:9096/icon32usa.png"));
+        String md5Hex = DigestUtils.md5Hex("https://localhost:9096/icon32usa.png").toUpperCase();
+        columns.put("icon_config_name", new Atom<>(md5Hex));
+
         columns.put("width", new Atom<>(32L));
 
         ret.add(new Row(columns));
@@ -439,6 +460,8 @@ public class OvsdbDaoTestUtilities {
         columns.put("name", new Atom<>("icon32eng"));
         columns.put("path", new Atom<String>("/tmp/icon32eng.png"));
         columns.put("url", new Atom<String>("https://localhost:9096/icon32eng.png"));
+        md5Hex = DigestUtils.md5Hex("https://localhost:9096/icon32eng.png").toUpperCase();
+        columns.put("icon_config_name", new Atom<>(md5Hex));
         columns.put("width", new Atom<>(32L));
 
         ret.add(new Row(columns));
@@ -452,6 +475,8 @@ public class OvsdbDaoTestUtilities {
         columns.put("name", new Atom<>("icon32fra"));
         columns.put("path", new Atom<String>("/tmp/icon32fra.png"));
         columns.put("url", new Atom<String>("https://localhost:9096/icon32fra.png"));
+        md5Hex = DigestUtils.md5Hex("https://localhost:9096/icon32fra.png").toUpperCase();
+        columns.put("icon_config_name", new Atom<>(md5Hex));
         columns.put("width", new Atom<>(32L));
 
         ret.add(new Row(columns));
@@ -461,6 +486,7 @@ public class OvsdbDaoTestUtilities {
         OperationResult[] operationResult = new OperationResult[1];
         operationResult[0] = selectResult;
 
+        System.out.println("hs20IconRows operationResult " + selectResult);
         return operationResult;
     }
 

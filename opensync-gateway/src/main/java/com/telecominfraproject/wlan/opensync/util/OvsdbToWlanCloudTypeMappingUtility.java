@@ -16,6 +16,8 @@ import sts.OpensyncStats.RadioBandType;
 import sts.OpensyncStats.StateUpDown;
 
 public class OvsdbToWlanCloudTypeMappingUtility {
+    
+    private static final String UCI_DASH_ALTERNATIVE_STRING = "dash";
 
     public static ClientType getClientTypeForDhcpFpDeviceType(DhcpFpDeviceType dhcpFpDeviceType) {
 
@@ -319,6 +321,20 @@ public class OvsdbToWlanCloudTypeMappingUtility {
             }
         }
         return key;
+    }
+    
+    public static String getApOsuProviderStringFromOsuProviderName(String cloudOsuProviderName) {
+        
+        
+        return cloudOsuProviderName.replaceAll("-", UCI_DASH_ALTERNATIVE_STRING);
+
+    }
+    
+    public static String getOsuProviderNameFromApOsuProviderStringFromOsuProviderName(String apOsuProviderName) {
+        
+        
+        return apOsuProviderName.replaceAll(UCI_DASH_ALTERNATIVE_STRING,"-");
+
     }
 
 }

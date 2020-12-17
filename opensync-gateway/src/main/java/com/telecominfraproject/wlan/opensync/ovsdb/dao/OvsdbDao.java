@@ -21,6 +21,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -1479,7 +1480,7 @@ public class OvsdbDao {
 
             for (Row row : ((SelectResult) result[0]).getRows()) {
                 Hotspot20OsuProviders hotspot20OsuProviders = new Hotspot20OsuProviders(row);
-                ret.put(hotspot20OsuProviders.serverUri, hotspot20OsuProviders);
+                ret.put(hotspot20OsuProviders.osuProviderName, hotspot20OsuProviders);
             }
 
             LOG.debug("Retrieved Hotspot20_OSU_Providers: {}", ret);
@@ -1512,7 +1513,7 @@ public class OvsdbDao {
 
             for (Row row : ((SelectResult) result[0]).getRows()) {
                 Hotspot20IconConfig hotspot20IconConfig = new Hotspot20IconConfig(row);
-                ret.put(hotspot20IconConfig.name, hotspot20IconConfig);
+                ret.put(hotspot20IconConfig.url, hotspot20IconConfig);
             }
 
             LOG.debug("Retrieved Hotspot20_Icon_Config: {}", ret);
@@ -2379,10 +2380,9 @@ public class OvsdbDao {
         }
         return ret;
     }
-    
-    
-    public List<OpensyncWifiAssociatedClients> getInitialOpensyncWifiAssociatedClients(TableUpdates tableUpdates, String apId,
-            OvsdbClient ovsdbClient) {
+
+    public List<OpensyncWifiAssociatedClients> getInitialOpensyncWifiAssociatedClients(TableUpdates tableUpdates,
+            String apId, OvsdbClient ovsdbClient) {
 
         LOG.info("getInitialOpensyncWifiAssociatedClients:");
         List<OpensyncWifiAssociatedClients> ret = new ArrayList<>();
@@ -2405,9 +2405,6 @@ public class OvsdbDao {
         return ret;
 
     }
-    
-    
-    
 
     public List<OpensyncWifiAssociatedClients> getOpensyncWifiAssociatedClients(RowUpdate rowUpdate, String apId,
             OvsdbClient ovsdbClient) {
@@ -3910,23 +3907,29 @@ public class OvsdbDao {
                         for (Profile provider : providerList) {
                             PasspointOsuProviderProfile providerProfile = (PasspointOsuProviderProfile) provider
                                     .getDetails();
-                            if (osuProviders.containsKey(providerProfile.getOsuServerUri())) {
-                                Hotspot20OsuProviders hotspot2OsuProviders = osuProviders
-                                        .get(providerProfile.getOsuServerUri());
 
+                            osuProviders.keySet().stream().filter(new Predicate<String>() {
+
+                                @Override
+                                public boolean test(String providerNameOnAp) {
+                                    return providerNameOnAp.startsWith(OvsdbToWlanCloudTypeMappingUtility
+                                            .getApOsuProviderStringFromOsuProviderName(provider.getName()));
+                                }
+
+                            }).forEach(p -> {
                                 providerProfile.getRoamingOi().stream().forEach(o -> {
                                     roamingOis.add(new Atom<>(o));
                                 });
-                                osuProvidersUuids.add(hotspot2OsuProviders.uuid);
-                                osuIconUuids.addAll(hotspot2OsuProviders.osuIcons);
+                                osuProvidersUuids.add(osuProviders.get(p).uuid);
+                                osuIconUuids.addAll(osuProviders.get(p).osuIcons);
                                 getNaiRealms(providerProfile, naiRealms);
 
                                 for (PasspointMccMnc passpointMccMnc : providerProfile.getMccMncList()) {
                                     mccMncBuffer.append(passpointMccMnc.getMccMncPairing());
                                     mccMncBuffer.append(";");
                                 }
+                            });
 
-                            }
                         }
 
                         String mccMncString = mccMncBuffer.toString();
@@ -4119,17 +4122,15 @@ public class OvsdbDao {
                     for (Profile provider : hs20cfg.getHotspot20ProviderSet()) {
                         PasspointOsuProviderProfile providerProfile = (PasspointOsuProviderProfile) provider
                                 .getDetails();
+                        String apOsuProviderName = OvsdbToWlanCloudTypeMappingUtility
+                                .getApOsuProviderStringFromOsuProviderName(provider.getName());
                         Map<String, Value> rowColumns = new HashMap<>();
                         rowColumns.put("osu_nai", new Atom<>(providerProfile.getOsuNaiStandalone()));
-                        // TODO: temporary check schema until AP has delivered
-                        // changes.
-                        if (schema.getTables().get(hotspot20OsuProvidersDbTable).getColumns().containsKey("osu_nai2")) {
-                            rowColumns.put("osu_nai2", new Atom<>(providerProfile.getOsuNaiShared()));
-                        }
-                        if (schema.getTables().get(hotspot20OsuProvidersDbTable).getColumns()
-                                .containsKey("osu_provider_name")) {
-                            rowColumns.put("osu_provider_name", new Atom<>(provider.getName()));
-                        }
+
+                        rowColumns.put("osu_nai2", new Atom<>(providerProfile.getOsuNaiShared()));
+
+                        rowColumns.put("osu_provider_name", new Atom<>(apOsuProviderName));
+
                         getOsuIconUuidsForOsuProvider(ovsdbClient, providerProfile, rowColumns);
                         getOsuProviderFriendlyNames(providerProfile, rowColumns);
                         getOsuProviderMethodList(providerProfile, rowColumns);
@@ -4140,7 +4141,7 @@ public class OvsdbDao {
 
                         Row row = new Row(rowColumns);
 
-                        if (!osuProviders.containsKey(providerProfile.getOsuServerUri())) {
+                        if (!osuProviders.containsKey(apOsuProviderName)) {
                             Insert newOsuProvider = new Insert(hotspot20OsuProvidersDbTable, row);
                             operations.add(newOsuProvider);
                         } else {
@@ -4232,8 +4233,8 @@ public class OvsdbDao {
         Set<Uuid> iconsSet = new HashSet<>();
         if (osuIconsMap.size() > 0) {
             for (PasspointOsuIcon icon : providerProfile.getOsuIconList()) {
-                if (osuIconsMap.containsKey(icon.getIconName())) {
-                    iconsSet.add(osuIconsMap.get(icon.getIconName()).uuid);
+                if (osuIconsMap.containsKey(icon.getImageUrl())) {
+                    iconsSet.add(osuIconsMap.get(icon.getImageUrl()).uuid);
                 }
             }
         }
@@ -4350,16 +4351,24 @@ public class OvsdbDao {
                             rowColumns.put("height", new Atom<>(passpointOsuIcon.getIconHeight()));
                             rowColumns.put("img_type", new Atom<>(PasspointOsuIcon.ICON_TYPE));
                             rowColumns.put("width", new Atom<>(passpointOsuIcon.getIconWidth()));
-
+                            if (passpointOsuIcon.getImageUrl() != null) {
+                                
+                                String md5Hex = DigestUtils
+                                        .md5Hex(passpointOsuIcon.getImageUrl()).toUpperCase();
+                                if (schema.getTables().get(hotspot20IconConfigDbTable).getColumns().containsKey("icon_config_name")) {
+                                rowColumns.put("icon_config_name",
+                                        new Atom<>(md5Hex));
+                                }
+                            }
                             Row row = new Row(rowColumns);
 
-                            if (!osuIconConfigs.containsKey(passpointOsuIcon.getIconName())) {
+                            if (!osuIconConfigs.containsKey(passpointOsuIcon.getImageUrl())) {
                                 Insert newHs20Config = new Insert(hotspot20IconConfigDbTable, row);
                                 operations.add(newHs20Config);
                             } else {
                                 List<Condition> conditions = new ArrayList<>();
-                                conditions.add(new Condition("name", Function.EQUALS,
-                                        new Atom<>(passpointOsuIcon.getIconName())));
+                                conditions.add(new Condition("url", Function.EQUALS,
+                                        new Atom<>(passpointOsuIcon.getImageUrl())));
                                 Update newHs20Config = new Update(hotspot20IconConfigDbTable, conditions, row);
                                 operations.add(newHs20Config);
                             }
