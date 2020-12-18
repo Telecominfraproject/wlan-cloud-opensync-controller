@@ -23,9 +23,6 @@
       "radiusServiceName": null,
       "radiusAccountingServiceName": null,
       "radiusAcountingServiceInterval": null,
-      "radiusNasId": null,
-      "radiusNasIp": null,
-      "radiusOperName": null,
       "captivePortalId": null,
       "bandwidthLimitDown": 0,
       "bandwidthLimitUp": 0,
@@ -62,7 +59,15 @@
       "enable80211w": null,
       "wepConfig": null,
       "forwardMode": "BRIDGE",
-      "profileType": "ssid"
+      "profileType": "ssid",
+      "radiusClientConfiguration": {
+        "model_type": "RadiusNasConfiguration",
+        "nasClientId": "DEFAULT",
+        "nasClientIp": "WAN_IP",
+        "userDefinedNasId": null,
+        "userDefinedNasIp": null,
+        "nasOperatorId": null
+      }
     },
     "createdTimestamp": 1606778369598,
     "lastModifiedTimestamp": 1606778369598,
@@ -92,9 +97,6 @@
       "radiusServiceName": null,
       "radiusAccountingServiceName": null,
       "radiusAcountingServiceInterval": null,
-      "radiusNasId": null,
-      "radiusNasIp": null,
-      "radiusOperName": null,
       "captivePortalId": null,
       "bandwidthLimitDown": 0,
       "bandwidthLimitUp": 0,
@@ -131,7 +133,15 @@
       "enable80211w": null,
       "wepConfig": null,
       "forwardMode": null,
-      "profileType": "ssid"
+      "profileType": "ssid",
+      "radiusClientConfiguration": {
+        "model_type": "RadiusNasConfiguration",
+        "nasClientId": "DEFAULT",
+        "nasClientIp": "WAN_IP",
+        "userDefinedNasId": null,
+        "userDefinedNasIp": null,
+        "nasOperatorId": null
+      }
     },
     "createdTimestamp": 1606778369943,
     "lastModifiedTimestamp": 1606778370811,
@@ -161,9 +171,6 @@
       "radiusServiceName": null,
       "radiusAccountingServiceName": null,
       "radiusAcountingServiceInterval": null,
-      "radiusNasId": null,
-      "radiusNasIp": null,
-      "radiusOperName": null,
       "captivePortalId": null,
       "bandwidthLimitDown": 0,
       "bandwidthLimitUp": 0,
@@ -200,7 +207,15 @@
       "enable80211w": null,
       "wepConfig": null,
       "forwardMode": null,
-      "profileType": "ssid"
+      "profileType": "ssid",
+      "radiusClientConfiguration": {
+        "model_type": "RadiusNasConfiguration",
+        "nasClientId": "DEFAULT",
+        "nasClientIp": "WAN_IP",
+        "userDefinedNasId": null,
+        "userDefinedNasIp": null,
+        "nasOperatorId": null
+      }
     },
     "createdTimestamp": 1606778369944,
     "lastModifiedTimestamp": 1606778370352,
