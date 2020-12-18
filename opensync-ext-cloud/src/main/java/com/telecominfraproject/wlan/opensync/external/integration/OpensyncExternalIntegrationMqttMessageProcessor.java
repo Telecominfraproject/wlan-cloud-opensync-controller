@@ -111,6 +111,7 @@ import sts.OpensyncStats.EventReport.ClientFirstDataEvent;
 import sts.OpensyncStats.EventReport.ClientIdEvent;
 import sts.OpensyncStats.EventReport.ClientIpEvent;
 import sts.OpensyncStats.EventReport.ClientTimeoutEvent;
+import sts.OpensyncStats.EventReport.DhcpTransaction;
 import sts.OpensyncStats.FrameType;
 import sts.OpensyncStats.Neighbor;
 import sts.OpensyncStats.Neighbor.NeighborBss;
@@ -323,6 +324,11 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             }
 
             publishChannelHopEvents(customerId, equipmentId, e);
+            
+            // TODO: add DHCP transaction processing, for now just log it 
+            for (DhcpTransaction dhcpTransaction : e.getDhcpTransactionList()) {
+                LOG.info("DhcpTransaction {}", dhcpTransaction);
+            }
 
         });
 
