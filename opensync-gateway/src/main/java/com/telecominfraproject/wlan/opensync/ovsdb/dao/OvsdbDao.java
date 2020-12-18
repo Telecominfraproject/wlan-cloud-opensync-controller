@@ -1502,7 +1502,11 @@ public class OvsdbDao {
 
         try {
             LOG.debug("Retrieving Hotspot20_Icon_Config:");
-
+            DatabaseSchema schema = ovsdbClient.getSchema(ovsdbName).get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+            if (!schema.getTables().get(hotspot20ConfigDbTable).getColumns().containsKey("icon_config_name")) {
+                LOG.info("Removed icon_config_name from Hotspot20_Icon_Config columns {}",
+                        columns.remove("icon_config_name"));
+            }
             operations.add(new Select(hotspot20IconConfigDbTable, conditions, columns));
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
