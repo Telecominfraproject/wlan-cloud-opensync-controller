@@ -99,6 +99,8 @@ import com.telecominfraproject.wlan.profile.radius.models.RadiusServer;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusServiceRegion;
 import com.telecominfraproject.wlan.profile.rf.models.RfConfiguration;
 import com.telecominfraproject.wlan.profile.rf.models.RfElementConfiguration;
+import com.telecominfraproject.wlan.profile.ssid.models.NasIdType;
+import com.telecominfraproject.wlan.profile.ssid.models.NasIpType;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.telecominfraproject.wlan.servicemetric.models.ServiceMetricDataType;
 import com.vmware.ovsdb.exception.OvsdbClientException;
@@ -2759,37 +2761,9 @@ public class OvsdbDao {
                     .of(security);
             updateColumns.put("security", securityMap);
 
-            Map<String, String> customOptions = new HashMap<>();
-            customOptions.put("rate_limit_en", rateLimitEnable ? "1" : "0");
-            customOptions.put("ssid_ul_limit", String.valueOf(ssidUlLimit * 1000));
-            customOptions.put("ssid_dl_limit", String.valueOf(ssidDlLimit * 1000));
-            customOptions.put("client_dl_limit", String.valueOf(clientDlLimit * 1000));
-            customOptions.put("client_ul_limit", String.valueOf(clientUlLimit * 1000));
-            customOptions.put("rts_threshold", String.valueOf(rtsCtsThreshold));
-            if (radiusNasId != null) {
-                customOptions.put("radius_nas_id", radiusNasId);
-            }
-            if (radiusNasIp != null) {
-                customOptions.put("radius_nas_ip", radiusNasIp);
-            }
-            if (radiusOperatorName != null) {
-                customOptions.put("radius_oper_name", radiusOperatorName);
-            }
-            // TODO: the frag_threshold is not supported on the AP
-            // customOptions.put("frag_threshold",
-            // String.valueOf(fragThresholdBytes));
-            customOptions.put("dtim_period", String.valueOf(dtimPeriod));
-
-            if (enable80211k) {
-                customOptions.put("ieee80211k", String.valueOf(1));
-            } else {
-                customOptions.put("ieee80211k", String.valueOf(0));
-            }
-
-            @SuppressWarnings("unchecked")
-            com.vmware.ovsdb.protocol.operation.notation.Map<String, String> customMap = com.vmware.ovsdb.protocol.operation.notation.Map
-                    .of(customOptions);
-            updateColumns.put("custom_options", customMap);
+            configureCustomOptionsForSsid(ovsdbClient, enable80211k, rateLimitEnable, ssidDlLimit, ssidUlLimit,
+                    clientDlLimit, clientUlLimit, rtsCtsThreshold, fragThresholdBytes, dtimPeriod, radiusNasId,
+                    radiusNasIp, radiusOperatorName, updateColumns);
 
             updateBlockList(updateColumns, macBlockList);
             Row row = new Row(updateColumns);
@@ -2830,7 +2804,129 @@ public class OvsdbDao {
 
     }
 
-    private void confirmRowExistsInTable(OvsdbClient ovsdbClient, Uuid rowUuid, String table) {
+    /**
+     * Populate the various <K,V> fields in the custom_options column of the
+     * Wifi_VIF_Config ovsdb table.
+     * 
+     * @param ovsdbClient
+     * @param enable80211k
+     * @param rateLimitEnable
+     * @param ssidDlLimit
+     * @param ssidUlLimit
+     * @param clientDlLimit
+     * @param clientUlLimit
+     * @param rtsCtsThreshold
+     * @param fragThresholdBytes
+     *            TODO
+     * @param dtimPeriod
+     * @param radiusNasId
+     * @param radiusNasIp
+     * @param radiusOperatorName
+     * @param updateColumns
+     */
+    void configureCustomOptionsForSsid(OvsdbClient ovsdbClient, boolean enable80211k, boolean rateLimitEnable,
+            int ssidDlLimit, int ssidUlLimit, int clientDlLimit, int clientUlLimit, int rtsCtsThreshold,
+            int fragThresholdBytes, int dtimPeriod, String radiusNasId, String radiusNasIp, String radiusOperatorName,
+            Map<String, Value> updateColumns) {
+        Map<String, String> customOptions = new HashMap<>();
+        configureCustomOptionsForRatesAndLimits(rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit,
+                rtsCtsThreshold, customOptions);
+
+        configureCustomOptionsForRadiusNas(ovsdbClient, radiusNasId, radiusNasIp, radiusOperatorName, customOptions);
+
+        configureCustomOptionsForDtimFragAnd80211k(enable80211k, dtimPeriod, fragThresholdBytes, customOptions);
+
+        @SuppressWarnings("unchecked")
+        com.vmware.ovsdb.protocol.operation.notation.Map<String, String> customMap = com.vmware.ovsdb.protocol.operation.notation.Map
+                .of(customOptions);
+        updateColumns.put("custom_options", customMap);
+    }
+
+    /**
+     * 
+     * @param enable80211k
+     * @param dtimPeriod
+     * @param fragThresholdBytes
+     *            TODO
+     * @param customOptions
+     */
+    private void configureCustomOptionsForDtimFragAnd80211k(boolean enable80211k, int dtimPeriod,
+            int fragThresholdBytes, Map<String, String> customOptions) {
+
+        // TODO: the frag_threshold is not supported on the AP
+        // customOptions.put("frag_threshold",
+        // String.valueOf(fragThresholdBytes));
+
+        customOptions.put("dtim_period", String.valueOf(dtimPeriod));
+
+        if (enable80211k) {
+            customOptions.put("ieee80211k", String.valueOf(1));
+        } else {
+            customOptions.put("ieee80211k", String.valueOf(0));
+        }
+    }
+
+    /**
+     * 
+     * @param rateLimitEnable
+     * @param ssidDlLimit
+     * @param ssidUlLimit
+     * @param clientDlLimit
+     * @param clientUlLimit
+     * @param rtsCtsThreshold
+     * @param customOptions
+     */
+    private void configureCustomOptionsForRatesAndLimits(boolean rateLimitEnable, int ssidDlLimit, int ssidUlLimit,
+            int clientDlLimit, int clientUlLimit, int rtsCtsThreshold, Map<String, String> customOptions) {
+        customOptions.put("rate_limit_en", rateLimitEnable ? "1" : "0");
+        customOptions.put("ssid_ul_limit", String.valueOf(ssidUlLimit * 1000));
+        customOptions.put("ssid_dl_limit", String.valueOf(ssidDlLimit * 1000));
+        customOptions.put("client_dl_limit", String.valueOf(clientDlLimit * 1000));
+        customOptions.put("client_ul_limit", String.valueOf(clientUlLimit * 1000));
+        customOptions.put("rts_threshold", String.valueOf(rtsCtsThreshold));
+    }
+
+    /**
+     * 
+     * @param ovsdbClient
+     * @param radiusNasId
+     * @param radiusNasIp
+     * @param radiusOperatorName
+     * @param customOptions
+     */
+    void configureCustomOptionsForRadiusNas(OvsdbClient ovsdbClient, String radiusNasId, String radiusNasIp,
+            String radiusOperatorName, Map<String, String> customOptions) {
+        ConnectNodeInfo partialConnectNode = new ConnectNodeInfo();
+        fillInWanIpAddressAndMac(ovsdbClient, partialConnectNode, defaultWanInterfaceType, defaultWanInterfaceName);
+
+        if (radiusNasId != null) {
+            if (radiusNasId.equals(NasIdType.DEFAULT.toString())) {
+                customOptions.put("radius_nas_id", partialConnectNode.macAddress);
+            } else {
+                customOptions.put("radius_nas_id", radiusNasId);
+            }
+        }
+        if (radiusNasIp != null) {
+            if (radiusNasIp.equals(NasIpType.WAN_IP.toString())) {
+                customOptions.put("radius_nas_ip", partialConnectNode.ipV4Address);
+            } else {
+                customOptions.put("radius_nas_ip", radiusNasIp);
+            }
+        }
+        if (radiusOperatorName != null) {
+            customOptions.put("radius_oper_name", radiusOperatorName);
+        }
+    }
+
+    /**
+     * Check existence of row with a given Uuid in the specified ovsdb table
+     * Used primarily for operation validation.
+     * 
+     * @param ovsdbClient
+     * @param rowUuid
+     * @param table
+     */
+    void confirmRowExistsInTable(OvsdbClient ovsdbClient, Uuid rowUuid, String table) {
         try {
             List<Condition> conditions = new ArrayList<>();
             conditions.add(new Condition("_uuid", Function.EQUALS, new Atom<>(rowUuid)));
@@ -2856,7 +2952,14 @@ public class OvsdbDao {
         }
     }
 
-    private void configureInetVifInterface(OvsdbClient ovsdbClient, String vifInterfaceName, boolean enabled,
+    /**
+     * 
+     * @param ovsdbClient
+     * @param vifInterfaceName
+     * @param enabled
+     * @param networkForwardMode
+     */
+    void configureInetVifInterface(OvsdbClient ovsdbClient, String vifInterfaceName, boolean enabled,
             NetworkForwardMode networkForwardMode) {
         Map<String, WifiInetConfigInfo> inetConfigs = getProvisionedWifiInetConfigs(ovsdbClient);
 
@@ -2917,8 +3020,20 @@ public class OvsdbDao {
         }
     }
 
-    private void updateVifConfigsSetForRadio(OvsdbClient ovsdbClient, String ssid, String radioFreqBand,
-            Uuid vifConfigUuid)
+    /**
+     * Update the vif_configs column of the Wifi_Radio_Config ovsdb table for
+     * the given freqBand
+     * 
+     * @param ovsdbClient
+     * @param ssid
+     * @param radioFreqBand
+     * @param vifConfigUuid
+     * @throws OvsdbClientException
+     * @throws InterruptedException
+     * @throws ExecutionException
+     * @throws TimeoutException
+     */
+    void updateVifConfigsSetForRadio(OvsdbClient ovsdbClient, String ssid, String radioFreqBand, Uuid vifConfigUuid)
             throws OvsdbClientException, InterruptedException, ExecutionException, TimeoutException {
         List<Operation> operations = new ArrayList<>();
         List<Condition> conditions = new ArrayList<>();
@@ -3061,7 +3176,8 @@ public class OvsdbDao {
                 boolean ssidBroadcast = ssidConfig.getBroadcastSsid() == StateSetting.enabled;
 
                 String ipAssignScheme = apElementConfig.getGettingIP().toString();
-                // the following 5 attributes only applicable to static config,
+                // the following 5 attributes only applicable to static
+                // ipAssignScheme,
                 // else they are
                 // ignored
                 String gateway = null;
@@ -3148,10 +3264,20 @@ public class OvsdbDao {
                 populateSecurityMap(opensyncApConfig, ssidConfig, security, ssidSecurityMode, opensyncSecurityMode);
 
                 if (opensyncSecurityMode.endsWith("EAP")) {
-                    radiusNasId = ssidConfig.getRadiusNasId();
-                    radiusNasIp = ssidConfig.getRadiusNasIp() != null ? ssidConfig.getRadiusNasIp().getHostAddress()
-                            : null;
-                    radiusOperName = ssidConfig.getRadiusOperName();
+                    if (ssidConfig.getRadiusClientConfiguration() != null) {
+                        radiusNasId = ssidConfig.getRadiusClientConfiguration().getNasClientId()
+                                .equals(NasIdType.USER_DEFINED)
+                                        ? ssidConfig.getRadiusClientConfiguration().getUserDefinedNasId()
+                                        : ssidConfig.getRadiusClientConfiguration().getNasClientId().toString();
+                        radiusNasIp = ssidConfig.getRadiusClientConfiguration().getNasClientIp()
+                                .equals(NasIpType.USER_DEFINED)
+                                        ? ssidConfig.getRadiusClientConfiguration().getUserDefinedNasIp()
+                                        : ssidConfig.getRadiusClientConfiguration().getNasClientIp().toString();
+                        radiusOperName = ssidConfig.getRadiusClientConfiguration().getNasOperatorId();
+                    } else {
+                        radiusNasId = NasIdType.DEFAULT.toString();
+                        radiusNasIp = NasIpType.WAN_IP.toString();
+                    }
                 }
 
                 // TODO put into AP captive parameter
@@ -3166,33 +3292,7 @@ public class OvsdbDao {
 
                 try {
 
-                    Map<String, WifiVifConfigInfo> provisionedVifs = getProvisionedWifiVifConfigs(ovsdbClient);
-
-                    List<String> interfaces = new ArrayList<>();
-                    interfaces.add(ifName);
-                    for (int i = 1; i < MAX_VIF_PER_FREQ; i++) {
-                        interfaces.add(ifName + "_" + Integer.toString(i));
-                    }
-                    for (String key : provisionedVifs.keySet()) {
-                        if (key.contains(ifName)) {
-                            String provisionedIfName = provisionedVifs.get(key).ifName;
-                            if (interfaces.remove(provisionedIfName)) {
-                                LOG.info(
-                                        "Interface {} already in use on Radio {}, cannot be used for new Wifi_VIF_Config.",
-                                        provisionedIfName, freqBand);
-                            }
-                        }
-                    }
-                    if (interfaces.isEmpty()) {
-                        throw new RuntimeException("No more available interfaces on AP "
-                                + opensyncApConfig.getCustomerEquipment().getName() + " for frequency band "
-                                + freqBand);
-                    } else {
-                        // take the first available interface for this band
-                        ifName = interfaces.get(0);
-                        LOG.info("Configuring new Wifi_VIF_Config for ssid {} with if_name {}", ssidConfig.getSsid(),
-                                ifName);
-                    }
+                    ifName = getInterfaceNameForVifConfig(ovsdbClient, opensyncApConfig, ssidConfig, freqBand, ifName);
 
                     Uuid vifConfigUuid = configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(), ssidBroadcast,
                             security, freqBand, ssidConfig.getVlanId() != null ? ssidConfig.getVlanId() : 1, rrmEnabled,
@@ -3218,7 +3318,57 @@ public class OvsdbDao {
 
     }
 
-    private void populateSecurityMap(OpensyncAPConfig opensyncApConfig, SsidConfiguration ssidConfig,
+    /**
+     * Get the interface name for the new Wifi_VIF_Config. Maximum of 8
+     * interface names per frequencyBand
+     * 
+     * @param ovsdbClient
+     * @param opensyncApConfig
+     * @param ssidConfig
+     * @param freqBand
+     * @param ifName
+     * @return the interface name, i.e. wlan0, wlan0_1, etc
+     */
+    String getInterfaceNameForVifConfig(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig,
+            SsidConfiguration ssidConfig, String freqBand, String ifName) {
+        Map<String, WifiVifConfigInfo> provisionedVifs = getProvisionedWifiVifConfigs(ovsdbClient);
+
+        List<String> interfaces = new ArrayList<>();
+        interfaces.add(ifName);
+        for (int i = 1; i < MAX_VIF_PER_FREQ; i++) {
+            interfaces.add(ifName + "_" + Integer.toString(i));
+        }
+        for (String key : provisionedVifs.keySet()) {
+            if (key.contains(ifName)) {
+                String provisionedIfName = provisionedVifs.get(key).ifName;
+                if (interfaces.remove(provisionedIfName)) {
+                    LOG.info("Interface {} already in use on Radio {}, cannot be used for new Wifi_VIF_Config.",
+                            provisionedIfName, freqBand);
+                }
+            }
+        }
+        if (interfaces.isEmpty()) {
+            throw new RuntimeException("No more available interfaces on AP "
+                    + opensyncApConfig.getCustomerEquipment().getName() + " for frequency band " + freqBand);
+        } else {
+            // take the first available interface for this band
+            ifName = interfaces.get(0);
+            LOG.info("Configuring new Wifi_VIF_Config for ssid {} with if_name {}", ssidConfig.getSsid(), ifName);
+        }
+        return ifName;
+    }
+
+    /**
+     * Constructs the map to place in the Wifi_VIF_Config ovsdb table's security
+     * column.
+     * 
+     * @param opensyncApConfig
+     * @param ssidConfig
+     * @param security
+     * @param ssidSecurityMode
+     * @param opensyncSecurityMode
+     */
+    void populateSecurityMap(OpensyncAPConfig opensyncApConfig, SsidConfiguration ssidConfig,
             Map<String, String> security, String ssidSecurityMode, String opensyncSecurityMode) {
         security.put("encryption", opensyncSecurityMode);
         // key and mode is N/A for OPEN security
@@ -3267,7 +3417,15 @@ public class OvsdbDao {
         }
     }
 
-    private String getOpensyncSecurityMode(String ssidSecurityMode, String opensyncSecurityMode) {
+    /**
+     * Maps between the osvdb security definitions and the cloud's security mode
+     * for the give SSID being configured.
+     * 
+     * @param ssidSecurityMode
+     * @param opensyncSecurityMode
+     * @return
+     */
+    String getOpensyncSecurityMode(String ssidSecurityMode, String opensyncSecurityMode) {
         if (ssidSecurityMode.equals("wpaPSK") || ssidSecurityMode.equals("wpa2PSK")
                 || ssidSecurityMode.equals("wpa2OnlyPSK")) {
             opensyncSecurityMode = "WPA-PSK";
@@ -3690,7 +3848,14 @@ public class OvsdbDao {
         }
     }
 
-    private void getCaptiveConfiguration(OpensyncAPConfig opensyncApConfig, SsidConfiguration ssidConfig,
+    /**
+     * 
+     * @param opensyncApConfig
+     * @param ssidConfig
+     * @param captiveMap
+     * @param walledGardenAllowlist
+     */
+    void getCaptiveConfiguration(OpensyncAPConfig opensyncApConfig, SsidConfiguration ssidConfig,
             Map<String, String> captiveMap, List<String> walledGardenAllowlist) {
         if ((ssidConfig.getCaptivePortalId() != null) && (opensyncApConfig.getCaptiveProfiles() != null)) {
             for (Profile profileCaptive : opensyncApConfig.getCaptiveProfiles()) {
@@ -3729,7 +3894,13 @@ public class OvsdbDao {
         }
     }
 
-    private String getCaptiveAuthentication(CaptivePortalAuthenticationType authentication) {
+    /**
+     * 
+     * @param authentication
+     * @return ovsdb value for captive portal authentication map entry based on
+     *         cloud type.
+     */
+    String getCaptiveAuthentication(CaptivePortalAuthenticationType authentication) {
         switch (authentication) {
         case guest:
             return "None";
@@ -3771,7 +3942,13 @@ public class OvsdbDao {
         }
     }
 
-    private String getCaptiveManagedFileUrl(String fileDesc, ManagedFileInfo fileInfo) {
+    /**
+     * 
+     * @param fileDesc
+     * @param fileInfo
+     * @return Url for captive portal file
+     */
+    String getCaptiveManagedFileUrl(String fileDesc, ManagedFileInfo fileInfo) {
         if ((fileInfo == null) || (fileInfo.getApExportUrl() == null)) {
             return "";
         }
@@ -3787,6 +3964,16 @@ public class OvsdbDao {
         return externalFileStoreURL + FILESTORE + "/" + fileInfo.getApExportUrl();
     }
 
+    /**
+     * Insert or update Wifi_Inet_Interface for Wifi_VIF_Config table entry
+     * 
+     * @param ovsdbClient
+     * @param ifName
+     * @param enabled
+     * @param ifType
+     * @param isUpdate
+     * @param isNat
+     */
     private void configureInetInterface(OvsdbClient ovsdbClient, String ifName, boolean enabled, String ifType,
             boolean isUpdate, boolean isNat) {
 
@@ -3838,6 +4025,12 @@ public class OvsdbDao {
 
     }
 
+    /**
+     * Configure a Hotspot20 Passpoint for AP
+     * 
+     * @param ovsdbClient
+     * @param opensyncApConfig
+     */
     public void provisionHotspot20Config(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
         try {
             DatabaseSchema schema = ovsdbClient.getSchema(ovsdbName).get(ovsdbTimeoutSec, TimeUnit.SECONDS);
@@ -3851,132 +4044,15 @@ public class OvsdbDao {
                     List<Operation> operations = new ArrayList<>();
                     for (Profile hotspotProfile : hs20cfg.getHotspot20ProfileSet()) {
 
-                        PasspointProfile hs2Profile = (PasspointProfile) hotspotProfile.getDetails();
-
-                        Profile operator = hs20cfg.getHotspot20OperatorSet().stream().filter(new Predicate<Profile>() {
-
-                            @Override
-                            public boolean test(Profile t) {
-                                return t.getId() == hs2Profile.getPasspointOperatorProfileId();
-                            }
-
-                        }).findFirst().get();
-
-                        PasspointOperatorProfile passpointOperatorProfile = (PasspointOperatorProfile) operator
-                                .getDetails();
-
-                        Profile venue = hs20cfg.getHotspot20VenueSet().stream().filter(new Predicate<Profile>() {
-
-                            @Override
-                            public boolean test(Profile t) {
-                                return t.getId() == hs2Profile.getPasspointVenueProfileId();
-                            }
-
-                        }).findFirst().get();
-
-                        PasspointVenueProfile passpointVenueProfile = (PasspointVenueProfile) venue.getDetails();
-
                         Map<String, Value> rowColumns = new HashMap<>();
 
-                        Set<Atom<String>> domainNames = new HashSet<>();
-                        for (String domainName : passpointOperatorProfile.getDomainNameList()) {
-                            domainNames.add(new Atom<>(domainName));
-                        }
-                        if (domainNames.size() > 0) {
-                            com.vmware.ovsdb.protocol.operation.notation.Set domainNameSet = com.vmware.ovsdb.protocol.operation.notation.Set
-                                    .of(domainNames);
-                            rowColumns.put("domain_name", domainNameSet);
-                        }
+                        PasspointProfile hs2Profile = (PasspointProfile) hotspotProfile.getDetails();
 
-                        Map<String, Hotspot20OsuProviders> osuProviders = getProvisionedHotspot20OsuProviders(
-                                ovsdbClient);
-                        List<Profile> providerList = new ArrayList<>();
-                        if (hs20cfg.getHotspot20ProviderSet() != null) {
-                            providerList = hs20cfg.getHotspot20ProviderSet().stream().filter(new Predicate<Profile>() {
+                        getPasspointConfigurationInformationFromDependencies(ovsdbClient, opensyncApConfig, hs20cfg,
+                                hotspotProfile, rowColumns, hs2Profile);
 
-                                @Override
-                                public boolean test(Profile t) {
-                                    return hotspotProfile.getChildProfileIds().contains(t.getId());
-                                }
-                            }).collect(Collectors.toList());
-
-                        }
-
-                        Set<Uuid> osuProvidersUuids = new HashSet<>();
-                        Set<Uuid> osuIconUuids = new HashSet<>();
-
-                        StringBuffer mccMncBuffer = new StringBuffer();
-                        Set<Atom<String>> naiRealms = new HashSet<>();
-                        Set<Atom<String>> roamingOis = new HashSet<>();
-                        for (Profile provider : providerList) {
-                            PasspointOsuProviderProfile providerProfile = (PasspointOsuProviderProfile) provider
-                                    .getDetails();
-
-                            osuProviders.keySet().stream().filter(new Predicate<String>() {
-
-                                @Override
-                                public boolean test(String providerNameOnAp) {
-                                    return providerNameOnAp.startsWith(OvsdbToWlanCloudTypeMappingUtility
-                                            .getApOsuProviderStringFromOsuProviderName(provider.getName()));
-                                }
-
-                            }).forEach(p -> {
-                                providerProfile.getRoamingOi().stream().forEach(o -> {
-                                    roamingOis.add(new Atom<>(o));
-                                });
-                                osuProvidersUuids.add(osuProviders.get(p).uuid);
-                                osuIconUuids.addAll(osuProviders.get(p).osuIcons);
-                                getNaiRealms(providerProfile, naiRealms);
-
-                                for (PasspointMccMnc passpointMccMnc : providerProfile.getMccMncList()) {
-                                    mccMncBuffer.append(passpointMccMnc.getMccMncPairing());
-                                    mccMncBuffer.append(";");
-                                }
-                            });
-
-                        }
-
-                        String mccMncString = mccMncBuffer.toString();
-                        if (mccMncString.endsWith(";")) {
-                            mccMncString = mccMncString.substring(0, mccMncString.lastIndexOf(";"));
-                        }
-
-                        rowColumns.put("mcc_mnc", new Atom<>(mccMncString));
-
-                        com.vmware.ovsdb.protocol.operation.notation.Set roamingOiSet = com.vmware.ovsdb.protocol.operation.notation.Set
-                                .of(roamingOis);
-                        rowColumns.put("roaming_oi", roamingOiSet);
-
-                        com.vmware.ovsdb.protocol.operation.notation.Set naiRealmsSet = com.vmware.ovsdb.protocol.operation.notation.Set
-                                .of(naiRealms);
-                        rowColumns.put("nai_realm", naiRealmsSet);
-
-                        if (osuProvidersUuids.size() > 0) {
-                            com.vmware.ovsdb.protocol.operation.notation.Set providerUuids = com.vmware.ovsdb.protocol.operation.notation.Set
-                                    .of(osuProvidersUuids);
-                            rowColumns.put("osu_providers", providerUuids);
-                        }
-
-                        if (osuIconUuids.size() > 0) {
-                            com.vmware.ovsdb.protocol.operation.notation.Set iconUuids = com.vmware.ovsdb.protocol.operation.notation.Set
-                                    .of(osuIconUuids);
-                            rowColumns.put("operator_icons", iconUuids);
-                        }
-
-                        hs2Profile.getIpAddressTypeAvailability();
                         rowColumns.put("deauth_request_timeout", new Atom<>(hs2Profile.getDeauthRequestTimeout()));
-                        rowColumns.put("osen",
-                                new Atom<>(passpointOperatorProfile.isServerOnlyAuthenticatedL2EncryptionNetwork()));
-
                         rowColumns.put("tos", new Atom<>(hs2Profile.getTermsAndConditionsFile().getApExportUrl()));
-
-                        Set<Atom<String>> operatorFriendlyName = new HashSet<>();
-                        passpointOperatorProfile.getOperatorFriendlyName().stream()
-                                .forEach(c -> operatorFriendlyName.add(new Atom<>(c.getAsDuple())));
-                        com.vmware.ovsdb.protocol.operation.notation.Set operatorFriendlyNameSet = com.vmware.ovsdb.protocol.operation.notation.Set
-                                .of(operatorFriendlyName);
-                        rowColumns.put("operator_friendly_name", operatorFriendlyNameSet);
-
                         rowColumns.put("enable", new Atom<>(hs2Profile.isEnableInterworkingAndHs20()));
                         rowColumns.put("network_auth_type",
                                 new Atom<>("0" + hs2Profile.getNetworkAuthenticationType().getId()));
@@ -3994,29 +4070,6 @@ public class OvsdbDao {
                                 .of(connectionCapabilities);
                         rowColumns.put("connection_capability", connectionCapabilitySet);
 
-                        Set<Atom<String>> venueNames = new HashSet<>();
-                        Set<Atom<String>> venueUrls = new HashSet<>();
-                        int index = 1;
-                        for (PasspointVenueName passpointVenueName : passpointVenueProfile.getVenueNameSet()) {
-                            venueNames.add(new Atom<String>(passpointVenueName.getAsDuple()));
-                            String url = String.valueOf(index) + ":" + passpointVenueName.getVenueUrl();
-                            venueUrls.add(new Atom<String>(url));
-                            index++;
-                        }
-                        com.vmware.ovsdb.protocol.operation.notation.Set venueNameSet = com.vmware.ovsdb.protocol.operation.notation.Set
-                                .of(venueNames);
-                        com.vmware.ovsdb.protocol.operation.notation.Set venueUrlSet = com.vmware.ovsdb.protocol.operation.notation.Set
-                                .of(venueUrls);
-                        rowColumns.put("venue_name", venueNameSet);
-                        rowColumns.put("venue_url", venueUrlSet);
-
-                        PasspointVenueTypeAssignment passpointVenueTypeAssignment = passpointVenueProfile
-                                .getVenueTypeAssignment();
-                        String groupType = String.valueOf(passpointVenueTypeAssignment.getVenueGroupId()) + ":"
-                                + passpointVenueTypeAssignment.getVenueTypeId();
-
-                        rowColumns.put("venue_group_type", new Atom<>(groupType));
-
                         // # format: <1-octet encoded value as hex str>
                         // # (ipv4_type & 0x3f) << 2 | (ipv6_type & 0x3) << 2
                         // 0x3f = 63 in decimal
@@ -4033,48 +4086,6 @@ public class OvsdbDao {
                                     .getByName(hs2Profile.getIpAddressTypeAvailability()).getId();
                             String hexString = Integer.toHexString((availability & 63) << 2);
                             rowColumns.put("ipaddr_type_availability", new Atom<>(hexString));
-                        }
-
-                        Map<String, WifiVifConfigInfo> vifConfigMap = getProvisionedWifiVifConfigs(ovsdbClient);
-
-                        Set<Uuid> vifConfigs = new HashSet<>();
-                        List<Atom<String>> hessids = new ArrayList<>();
-
-                        for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
-                            if (hs2Profile.getAssociatedAccessSsidProfileIds().contains(ssidProfile.getId())) {
-
-                                String accessSsidProfileName = ((SsidConfiguration) ssidProfile.getDetails()).getSsid();
-
-                                for (WifiVifConfigInfo vifConfig : vifConfigMap.values()) {
-                                    if (vifConfig.ssid.equals(accessSsidProfileName)) {
-                                        vifConfigs.add(vifConfig.uuid);
-                                    }
-                                }
-
-                                List<String> vifStates = getWifiVifStates(ovsdbClient, accessSsidProfileName);
-                                for (String mac : vifStates) {
-                                    hessids.add(new Atom<>(mac));
-                                }
-
-                            }
-                        }
-
-                        if (vifConfigs.size() > 0) {
-                            com.vmware.ovsdb.protocol.operation.notation.Set vifConfigUuids = com.vmware.ovsdb.protocol.operation.notation.Set
-                                    .of(vifConfigs);
-                            rowColumns.put("vif_config", vifConfigUuids);
-                        }
-
-                        if (hessids.size() > 0) {
-                            rowColumns.put("hessid", new Atom<>(hessids.get(0)));
-                        }
-
-                        for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
-                            if (ssidProfile.getId() == hs2Profile.getOsuSsidProfileId()) {
-                                rowColumns.put("osu_ssid",
-                                        new Atom<>(((SsidConfiguration) ssidProfile.getDetails()).getSsid()));
-                                break;
-                            }
                         }
 
                         Row row = new Row(rowColumns);
@@ -4112,6 +4123,310 @@ public class OvsdbDao {
 
     }
 
+    /**
+     * Passpoint configuration requires profile information from children, as
+     * well as information from parent VIF Configurations These values are
+     * placed in the rowColumns map to be passed into the transaction creating
+     * the Hotspot20_Config in ovsdb.
+     * 
+     * @param ovsdbClient
+     * @param opensyncApConfig
+     * @param hs20cfg
+     * @param hotspotProfile
+     * @param rowColumns
+     * @param hs2Profile
+     */
+    void getPasspointConfigurationInformationFromDependencies(OvsdbClient ovsdbClient,
+            OpensyncAPConfig opensyncApConfig, OpensyncAPHotspot20Config hs20cfg, Profile hotspotProfile,
+            Map<String, Value> rowColumns, PasspointProfile hs2Profile) {
+
+        getOperatorInformationForPasspointConfiguration(hs20cfg, rowColumns, hs2Profile);
+
+        getVenueInformationForPasspointConfiguration(hs20cfg, rowColumns, hs2Profile);
+
+        getOsuIconUuidsForPasspointConfiguration(ovsdbClient, hs20cfg, hotspotProfile, rowColumns);
+
+        getVifInformationForPasspointConfiguration(ovsdbClient, opensyncApConfig, rowColumns, hs2Profile);
+    }
+
+    /**
+     * Get the UUIDs for the associated access Wifi_VIF_Config parents, as well
+     * as the osu_ssid for the "OPEN" Wifi_VIF_Config used to connect to the
+     * passpoint
+     * 
+     * @param ovsdbClient
+     * @param opensyncApConfig
+     * @param rowColumns
+     * @param hs2Profile
+     */
+    void getVifInformationForPasspointConfiguration(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig,
+            Map<String, Value> rowColumns, PasspointProfile hs2Profile) {
+        Map<String, WifiVifConfigInfo> vifConfigMap = getProvisionedWifiVifConfigs(ovsdbClient);
+
+        Set<Uuid> vifConfigs = new HashSet<>();
+        List<Atom<String>> hessids = new ArrayList<>();
+
+        for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
+            if (hs2Profile.getAssociatedAccessSsidProfileIds().contains(ssidProfile.getId())) {
+
+                String accessSsidProfileName = ((SsidConfiguration) ssidProfile.getDetails()).getSsid();
+
+                for (WifiVifConfigInfo vifConfig : vifConfigMap.values()) {
+                    if (vifConfig.ssid.equals(accessSsidProfileName)) {
+                        vifConfigs.add(vifConfig.uuid);
+                    }
+                }
+
+                List<String> vifStates = getWifiVifStates(ovsdbClient, accessSsidProfileName);
+                for (String mac : vifStates) {
+                    hessids.add(new Atom<>(mac));
+                }
+
+            }
+        }
+
+        if (vifConfigs.size() > 0) {
+            com.vmware.ovsdb.protocol.operation.notation.Set vifConfigUuids = com.vmware.ovsdb.protocol.operation.notation.Set
+                    .of(vifConfigs);
+            rowColumns.put("vif_config", vifConfigUuids);
+        }
+
+        if (hessids.size() > 0) {
+            rowColumns.put("hessid", new Atom<>(hessids.get(0)));
+        }
+
+        for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
+            if (ssidProfile.getId() == hs2Profile.getOsuSsidProfileId()) {
+                rowColumns.put("osu_ssid", new Atom<>(((SsidConfiguration) ssidProfile.getDetails()).getSsid()));
+                break;
+            }
+        }
+    }
+
+    /**
+     * Adds map entries the UUIDs for the OSU Providers and Icons based on the
+     * entries in the for providers that are associated with this
+     * hotspotProfile.
+     * 
+     * @param ovsdbClient
+     * @param hs20cfg
+     * @param hotspotProfile
+     * @param rowColumns
+     */
+    void getOsuIconUuidsForPasspointConfiguration(OvsdbClient ovsdbClient, OpensyncAPHotspot20Config hs20cfg,
+            Profile hotspotProfile, Map<String, Value> rowColumns) {
+        Set<Uuid> osuIconUuids = getOsuProvidersInfoForPasspointConfiguration(ovsdbClient, hs20cfg, hotspotProfile,
+                rowColumns);
+
+        if (osuIconUuids.size() > 0) {
+            com.vmware.ovsdb.protocol.operation.notation.Set iconUuids = com.vmware.ovsdb.protocol.operation.notation.Set
+                    .of(osuIconUuids);
+            rowColumns.put("operator_icons", iconUuids);
+        }
+    }
+
+    /**
+     * Add the operator specific information, taken from the operator profile
+     * for the given hotspotProfile being configured.
+     * 
+     * @param hs20cfg
+     * @param rowColumns
+     * @param hs2Profile
+     */
+    void getOperatorInformationForPasspointConfiguration(OpensyncAPHotspot20Config hs20cfg,
+            Map<String, Value> rowColumns, PasspointProfile hs2Profile) {
+        PasspointOperatorProfile passpointOperatorProfile = getOperatorProfileForPasspoint(hs20cfg, hs2Profile);
+
+        Set<Atom<String>> domainNames = new HashSet<>();
+        for (String domainName : passpointOperatorProfile.getDomainNameList()) {
+            domainNames.add(new Atom<>(domainName));
+        }
+        if (domainNames.size() > 0) {
+            com.vmware.ovsdb.protocol.operation.notation.Set domainNameSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                    .of(domainNames);
+            rowColumns.put("domain_name", domainNameSet);
+        }
+        rowColumns.put("osen", new Atom<>(passpointOperatorProfile.isServerOnlyAuthenticatedL2EncryptionNetwork()));
+
+        Set<Atom<String>> operatorFriendlyName = new HashSet<>();
+        passpointOperatorProfile.getOperatorFriendlyName().stream()
+                .forEach(c -> operatorFriendlyName.add(new Atom<>(c.getAsDuple())));
+        com.vmware.ovsdb.protocol.operation.notation.Set operatorFriendlyNameSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                .of(operatorFriendlyName);
+        rowColumns.put("operator_friendly_name", operatorFriendlyNameSet);
+
+    }
+
+    /**
+     * Add the venue specific information, taken from the venue profile for the
+     * given hotspotProfile being configured.
+     * 
+     * @param hs20cfg
+     * @param rowColumns
+     * @param hs2Profile
+     */
+    void getVenueInformationForPasspointConfiguration(OpensyncAPHotspot20Config hs20cfg, Map<String, Value> rowColumns,
+            PasspointProfile hs2Profile) {
+        PasspointVenueProfile passpointVenueProfile = getVenueProfileForPasspoint(hs20cfg, hs2Profile);
+        Set<Atom<String>> venueNames = new HashSet<>();
+        Set<Atom<String>> venueUrls = new HashSet<>();
+        int index = 1;
+        for (PasspointVenueName passpointVenueName : passpointVenueProfile.getVenueNameSet()) {
+            venueNames.add(new Atom<String>(passpointVenueName.getAsDuple()));
+            String url = String.valueOf(index) + ":" + passpointVenueName.getVenueUrl();
+            venueUrls.add(new Atom<String>(url));
+            index++;
+        }
+        com.vmware.ovsdb.protocol.operation.notation.Set venueNameSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                .of(venueNames);
+        com.vmware.ovsdb.protocol.operation.notation.Set venueUrlSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                .of(venueUrls);
+        rowColumns.put("venue_name", venueNameSet);
+        rowColumns.put("venue_url", venueUrlSet);
+
+        PasspointVenueTypeAssignment passpointVenueTypeAssignment = passpointVenueProfile.getVenueTypeAssignment();
+        String groupType = String.valueOf(passpointVenueTypeAssignment.getVenueGroupId()) + ":"
+                + passpointVenueTypeAssignment.getVenueTypeId();
+
+        rowColumns.put("venue_group_type", new Atom<>(groupType));
+    }
+
+    /**
+     * Get's the OSU Provider related information for a given hotspot, the osu
+     * providers being configured on the ovsdb in Hotspot20_OSU_Providers and
+     * defined as children of the hotspot profile
+     * 
+     * @param ovsdbClient
+     * @param hs20cfg
+     * @param hotspotProfile
+     * @param rowColumns
+     * @return
+     */
+    Set<Uuid> getOsuProvidersInfoForPasspointConfiguration(OvsdbClient ovsdbClient, OpensyncAPHotspot20Config hs20cfg,
+            Profile hotspotProfile, Map<String, Value> rowColumns) {
+        Map<String, Hotspot20OsuProviders> osuProviders = getProvisionedHotspot20OsuProviders(ovsdbClient);
+        List<Profile> providerList = getOsuProvidersForPasspoint(hs20cfg, hotspotProfile);
+
+        Set<Uuid> osuProvidersUuids = new HashSet<>();
+        Set<Uuid> osuIconUuids = new HashSet<>();
+
+        StringBuffer mccMncBuffer = new StringBuffer();
+        Set<Atom<String>> naiRealms = new HashSet<>();
+        Set<Atom<String>> roamingOis = new HashSet<>();
+        for (Profile provider : providerList) {
+            PasspointOsuProviderProfile providerProfile = (PasspointOsuProviderProfile) provider.getDetails();
+
+            osuProviders.keySet().stream().filter(new Predicate<String>() {
+
+                @Override
+                public boolean test(String providerNameOnAp) {
+                    return providerNameOnAp.startsWith(OvsdbToWlanCloudTypeMappingUtility
+                            .getApOsuProviderStringFromOsuProviderName(provider.getName()));
+                }
+
+            }).forEach(p -> {
+                providerProfile.getRoamingOi().stream().forEach(o -> {
+                    roamingOis.add(new Atom<>(o));
+                });
+                osuProvidersUuids.add(osuProviders.get(p).uuid);
+                osuIconUuids.addAll(osuProviders.get(p).osuIcons);
+                getNaiRealms(providerProfile, naiRealms);
+
+                for (PasspointMccMnc passpointMccMnc : providerProfile.getMccMncList()) {
+                    mccMncBuffer.append(passpointMccMnc.getMccMncPairing());
+                    mccMncBuffer.append(";");
+                }
+            });
+
+        }
+
+        String mccMncString = mccMncBuffer.toString();
+        if (mccMncString.endsWith(";")) {
+            mccMncString = mccMncString.substring(0, mccMncString.lastIndexOf(";"));
+        }
+
+        rowColumns.put("mcc_mnc", new Atom<>(mccMncString));
+
+        com.vmware.ovsdb.protocol.operation.notation.Set roamingOiSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                .of(roamingOis);
+        rowColumns.put("roaming_oi", roamingOiSet);
+
+        com.vmware.ovsdb.protocol.operation.notation.Set naiRealmsSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                .of(naiRealms);
+        rowColumns.put("nai_realm", naiRealmsSet);
+
+        if (osuProvidersUuids.size() > 0) {
+            com.vmware.ovsdb.protocol.operation.notation.Set providerUuids = com.vmware.ovsdb.protocol.operation.notation.Set
+                    .of(osuProvidersUuids);
+            rowColumns.put("osu_providers", providerUuids);
+        }
+        return osuIconUuids;
+    }
+
+    /**
+     * Get providers profiles. Helper method.
+     * 
+     * @param hs20cfg
+     * @param hotspotProfile
+     * @return
+     */
+    List<Profile> getOsuProvidersForPasspoint(OpensyncAPHotspot20Config hs20cfg, Profile hotspotProfile) {
+        List<Profile> providerList = new ArrayList<>();
+        if (hs20cfg.getHotspot20ProviderSet() != null) {
+            providerList = hs20cfg.getHotspot20ProviderSet().stream().filter(new Predicate<Profile>() {
+
+                @Override
+                public boolean test(Profile t) {
+                    return hotspotProfile.getChildProfileIds().contains(t.getId());
+                }
+            }).collect(Collectors.toList());
+
+        }
+        return providerList;
+    }
+
+    /**
+     * Get's the Venue Profile for the hotspot, helper method
+     * 
+     * @param hs20cfg
+     * @param hs2Profile
+     * @return
+     */
+    PasspointVenueProfile getVenueProfileForPasspoint(OpensyncAPHotspot20Config hs20cfg, PasspointProfile hs2Profile) {
+        Profile venue = hs20cfg.getHotspot20VenueSet().stream().filter(new Predicate<Profile>() {
+
+            @Override
+            public boolean test(Profile t) {
+                return t.getId() == hs2Profile.getPasspointVenueProfileId();
+            }
+
+        }).findFirst().get();
+
+        PasspointVenueProfile passpointVenueProfile = (PasspointVenueProfile) venue.getDetails();
+        return passpointVenueProfile;
+    }
+
+    PasspointOperatorProfile getOperatorProfileForPasspoint(OpensyncAPHotspot20Config hs20cfg,
+            PasspointProfile hs2Profile) {
+        Profile operator = hs20cfg.getHotspot20OperatorSet().stream().filter(new Predicate<Profile>() {
+
+            @Override
+            public boolean test(Profile t) {
+                return t.getId() == hs2Profile.getPasspointOperatorProfileId();
+            }
+
+        }).findFirst().get();
+
+        PasspointOperatorProfile passpointOperatorProfile = (PasspointOperatorProfile) operator.getDetails();
+        return passpointOperatorProfile;
+    }
+
+    /**
+     * Provision the OSU Providers in the Hotspot20_OSU_Providers ovsdb table.
+     * 
+     * @param ovsdbClient
+     * @param opensyncApConfig
+     */
     public void provisionHotspot20OsuProviders(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
         try {
             DatabaseSchema schema = ovsdbClient.getSchema(ovsdbName).get(ovsdbTimeoutSec, TimeUnit.SECONDS);
@@ -4356,12 +4671,11 @@ public class OvsdbDao {
                             rowColumns.put("img_type", new Atom<>(PasspointOsuIcon.ICON_TYPE));
                             rowColumns.put("width", new Atom<>(passpointOsuIcon.getIconWidth()));
                             if (passpointOsuIcon.getImageUrl() != null) {
-                                
-                                String md5Hex = DigestUtils
-                                        .md5Hex(passpointOsuIcon.getImageUrl()).toUpperCase();
-                                if (schema.getTables().get(hotspot20IconConfigDbTable).getColumns().containsKey("icon_config_name")) {
-                                rowColumns.put("icon_config_name",
-                                        new Atom<>(md5Hex));
+
+                                String md5Hex = DigestUtils.md5Hex(passpointOsuIcon.getImageUrl()).toUpperCase();
+                                if (schema.getTables().get(hotspot20IconConfigDbTable).getColumns()
+                                        .containsKey("icon_config_name")) {
+                                    rowColumns.put("icon_config_name", new Atom<>(md5Hex));
                                 }
                             }
                             Row row = new Row(rowColumns);
