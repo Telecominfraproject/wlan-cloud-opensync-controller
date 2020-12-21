@@ -1670,19 +1670,36 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 busySelf += surveySample.getBusySelf() * surveySample.getDurationMs();
                 totalDurationMs += surveySample.getDurationMs();
                 noiseList.add(getNegativeSignedIntFrom8BitUnsigned(surveySample.getNoise()));
-
             }
 
             if (totalDurationMs > 0) {
                 RadioUtilization radioUtil = new RadioUtilization();
                 radioUtil.setTimestampSeconds((int) ((survey.getTimestampMs()) / 1000));
                 int pctBusyTx = busyTx / totalDurationMs;
+                if (pctBusyTx > 100 || pctBusyTx < 0) {
+                	LOG.error("WIFI-1237 survey.getBand {}, survey.getTimestampMs {} \n survey.getSurveyListList {} ",
+                			survey.getBand(), survey.getTimestampMs(), survey.getSurveyListList());
+                	LOG.error("WIFI-1237 pctBusyTx {} totalDurationMs {}, busyTx {} busyRx {} busy {} busySelf {}",
+                			pctBusyTx, totalDurationMs, busyTx, busyRx, busy, busySelf);
+                }
                 radioUtil.setAssocClientTx(pctBusyTx);
                 int pctBusyRx = busyRx / totalDurationMs;
+                if (pctBusyRx > 100 || pctBusyRx < 0) {
+                	LOG.error("WIFI-1237 survey.getBand {}, survey.getTimestampMs {} \n survey.getSurveyListList {} ",
+                			survey.getBand(), survey.getTimestampMs(), survey.getSurveyListList());
+                	LOG.error("WIFI-1237 pctBusyRx {} totalDurationMs {}, busyTx {} busyRx {} busy {} busySelf {}",
+                			pctBusyRx, totalDurationMs, busyTx, busyRx, busy, busySelf);
+                }
                 radioUtil.setAssocClientRx(pctBusyRx);
                 double pctIBSS = (busyTx + busySelf) / totalDurationMs;
                 radioUtil.setIbss(pctIBSS);
                 int nonWifi = (busy - (busyTx + busyRx)) / totalDurationMs;
+                if (nonWifi > 100 || nonWifi < 0) {
+                	LOG.error("WIFI-1237 survey.getBand {}, survey.getTimestampMs {} \n survey.getSurveyListList {} ",
+                			survey.getBand(), survey.getTimestampMs(), survey.getSurveyListList());
+                	LOG.error("WIFI-1237 nonWifi {}, busy {} busyTx {} busyRx {} busySelf {} totalDurationMs {}",
+                			nonWifi, busy, busyTx, busyRx, busySelf, totalDurationMs);
+                }
                 radioUtil.setNonWifi(nonWifi);
 
                 radioType = OvsdbToWlanCloudTypeMappingUtility
@@ -1709,7 +1726,6 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
                     apNodeMetrics.setChannelUtilization(radioType, totalUtilization.intValue());
                     capacityDetails.put(radioType, cap);
-
                 }
             }
         }
