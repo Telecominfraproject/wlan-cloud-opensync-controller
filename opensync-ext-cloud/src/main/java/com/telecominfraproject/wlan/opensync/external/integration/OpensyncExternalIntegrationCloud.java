@@ -307,8 +307,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             EquipmentRoutingRecord equipmentRoutingRecord = gatewayController.registerCustomerEquipment(ce.getName(),
                     ce.getCustomerId(), ce.getId());
 
+            // Status and client cleanup, when AP reconnects or has been
+            // disconnected, reset statuses, clients set to disconnected as
+            // SSIDs etc will be reconfigured on AP
             LOG.info("Clear existing status {} for AP {}",
                     statusServiceInterface.delete(ce.getCustomerId(), ce.getId()), apId);
+            LOG.info("Set pre-existing client sessions to disconnected for AP {}", apId);
+            disconnectClients(ce);
 
             updateApStatus(ce, connectNodeInfo);
 
@@ -752,9 +757,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             if (ce != null) {
                 LOG.info("AP {} disconnected, delete status records {}", apId,
                         statusServiceInterface.delete(ce.getCustomerId(), ce.getId()));
-                updateApDisconnectedStatus(apId,ce);
+                updateApDisconnectedStatus(apId, ce);
+                disconnectClients(ce);
             } else {
-                LOG.error("updateDisconnectedApStatus::Cannot get Equipment for AP {} to update the EquipmentAdminStatus", apId);
+                LOG.error(
+                        "updateDisconnectedApStatus::Cannot get Equipment for AP {} to update the EquipmentAdminStatus",
+                        apId);
 
             }
         } catch (Exception e) {
@@ -764,7 +772,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     }
 
     private void updateApDisconnectedStatus(String apId, Equipment ce) {
-        LOG.info("updateApDisconnectedStatus disconnected AP {}",apId);
+        LOG.info("updateApDisconnectedStatus disconnected AP {}", apId);
         try {
             Status statusRecord = new Status();
             statusRecord.setCustomerId(ce.getCustomerId());
@@ -784,6 +792,41 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             LOG.error("Exception in updateApDisconnectedStatus", e);
             throw e;
         }
+    }
+
+    private void disconnectClients(Equipment ce) {
+
+        LOG.info("OpensyncExternalIntegrationCloud::disconnectClients for Equipment {}", ce);
+        PaginationResponse<ClientSession> clientSessions = clientServiceInterface.getSessionsForCustomer(
+                ce.getCustomerId(), Set.of(ce.getId()), Set.of(ce.getLocationId()), null,
+                new PaginationContext<ClientSession>(100));
+
+        if (clientSessions == null) {
+            LOG.info("There are no existing client sessions to disconnect.");
+            return;
+        }
+
+        List<ClientSession> toBeDisconnected = new ArrayList<>();
+
+        clientSessions.getItems().stream().forEach(c -> {
+            if (!c.getDetails().getAssociationState().equals(AssociationState.Disconnected)) {
+                LOG.info("Change association state for client {} from {} to {}", c.getMacAddress(),
+                        c.getDetails().getAssociationState(), AssociationState.Disconnected);
+
+                c.getDetails().setAssociationState(AssociationState.Disconnected);
+                toBeDisconnected.add(c);
+
+            }
+        });
+
+        if (!toBeDisconnected.isEmpty()) {
+            LOG.info("Sending disconnect for client sessions {}", toBeDisconnected);
+            List<ClientSession> disconnectedSessions = clientServiceInterface.updateSessions(toBeDisconnected);
+            LOG.info("Result of client disconnect {}", disconnectedSessions);
+        } else {
+            LOG.info("There are no existing client sessions that are not already in Disconnected state.");
+        }
+
     }
 
     @Override
@@ -985,7 +1028,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
                 StatusDataType.ACTIVE_BSSIDS);
-        
+
         ActiveBSSIDs bssidStatusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
 
         if (activeBssidsStatus != null && bssidStatusDetails != null && bssidStatusDetails.getActiveBSSIDs() != null) {
@@ -2096,9 +2139,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         // TODO: will handle changes from Command_State table
     }
 
+    /**
+     * Clear the EquipmentStatus for this AP, and set all client sessions to
+     * disconnected. Done as part of a reconfiguration/configuration change
+     */
     @Override
     public void clearEquipmentStatus(String apId) {
 
+        LOG.info("OpensyncExternalIntegrationCloud::clearEquipmentStatus for AP {}", apId);
         OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
 
         if (ovsdbSession == null) {
@@ -2164,7 +2212,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         statusList.add(status);
 
-        LOG.info("MJH statusList to clear {}", statusList);
+        LOG.info("statusList to clear {}", statusList);
 
         List<Status> clearedStatus = statusServiceInterface.update(statusList);
 
@@ -2177,6 +2225,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         for (Status customerDashStatus : customerDashboardStatus) {
             LOG.info("Updated customer status {}", statusServiceInterface.update(customerDashStatus));
         }
+
+        // Set any existing client sessions to disconnected
+        LOG.info(
+                "OpensyncExternalIntegrationCloud::clearEquipmentStatus disconnect any existing client sessions on AP {}",
+                apId);
+        disconnectClients(ce);
 
     }
 }
