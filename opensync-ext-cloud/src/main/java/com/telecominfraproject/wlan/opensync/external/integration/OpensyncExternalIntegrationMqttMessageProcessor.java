@@ -138,7 +138,7 @@ import wc.stats.IpDnsTelemetry.WCStatsReport;
 public class OpensyncExternalIntegrationMqttMessageProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(OpensyncExternalIntegrationMqttMessageProcessor.class);
-
+    
     @Autowired
     private EquipmentServiceInterface equipmentServiceInterface;
     @Autowired
@@ -1670,19 +1670,23 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 busySelf += surveySample.getBusySelf() * surveySample.getDurationMs();
                 totalDurationMs += surveySample.getDurationMs();
                 noiseList.add(getNegativeSignedIntFrom8BitUnsigned(surveySample.getNoise()));
-
             }
 
             if (totalDurationMs > 0) {
                 RadioUtilization radioUtil = new RadioUtilization();
                 radioUtil.setTimestampSeconds((int) ((survey.getTimestampMs()) / 1000));
                 int pctBusyTx = busyTx / totalDurationMs;
+            	checkIfOutOfBound("pctBusyTx", pctBusyTx, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
+            
                 radioUtil.setAssocClientTx(pctBusyTx);
                 int pctBusyRx = busyRx / totalDurationMs;
+                checkIfOutOfBound("pctBusyRx", pctBusyRx, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
                 radioUtil.setAssocClientRx(pctBusyRx);
+                
                 double pctIBSS = (busyTx + busySelf) / totalDurationMs;
                 radioUtil.setIbss(pctIBSS);
                 int nonWifi = (busy - (busyTx + busyRx)) / totalDurationMs;
+                checkIfOutOfBound("nonWifi", nonWifi, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
                 radioUtil.setNonWifi(nonWifi);
 
                 radioType = OvsdbToWlanCloudTypeMappingUtility
@@ -1709,7 +1713,6 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
                     apNodeMetrics.setChannelUtilization(radioType, totalUtilization.intValue());
                     capacityDetails.put(radioType, cap);
-
                 }
             }
         }
@@ -1723,6 +1726,16 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
         radioUtilizationReport.setCapacityDetails(capacityDetails);
 
         updateDeviceStatusRadioUtilizationReport(customerId, equipmentId, radioUtilizationReport);
+    }
+    
+    private void checkIfOutOfBound(String checkedType, int checkedValue, Survey survey, int totalDurationMs, 
+    		int busyTx, int busyRx, int busy, int busySelf) {
+    	if (checkedValue > 100 || checkedValue < 0) {
+    		LOG.warn("Calculated value for {} {} is out of bounds on totalDurationMs {} for survey.getBand {}. busyTx {} busyRx {} busy {} busySelf {} "
+        			+ " survey.getTimestampMs {}, survey.getSurveyListList {}",
+        			checkedType, checkedValue, totalDurationMs, survey.getBand(), busyTx, busyRx, busy, busySelf, 
+        			survey.getTimestampMs(), survey.getSurveyListList());
+    	}
     }
 
     private void updateNetworkAdminStatusReport(int customerId, long equipmentId, ApNodeMetrics apNodeMetrics) {
