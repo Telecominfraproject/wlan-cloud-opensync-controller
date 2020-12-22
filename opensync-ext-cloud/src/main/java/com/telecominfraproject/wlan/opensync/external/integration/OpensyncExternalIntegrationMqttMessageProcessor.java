@@ -138,7 +138,7 @@ import wc.stats.IpDnsTelemetry.WCStatsReport;
 public class OpensyncExternalIntegrationMqttMessageProcessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(OpensyncExternalIntegrationMqttMessageProcessor.class);
-
+    
     @Autowired
     private EquipmentServiceInterface equipmentServiceInterface;
     @Autowired
@@ -1676,30 +1676,17 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 RadioUtilization radioUtil = new RadioUtilization();
                 radioUtil.setTimestampSeconds((int) ((survey.getTimestampMs()) / 1000));
                 int pctBusyTx = busyTx / totalDurationMs;
-                if (pctBusyTx > 100 || pctBusyTx < 0) {
-                	LOG.error("WIFI-1237 survey.getBand {}, survey.getTimestampMs {} \n survey.getSurveyListList {} ",
-                			survey.getBand(), survey.getTimestampMs(), survey.getSurveyListList());
-                	LOG.error("WIFI-1237 pctBusyTx {} totalDurationMs {}, busyTx {} busyRx {} busy {} busySelf {}",
-                			pctBusyTx, totalDurationMs, busyTx, busyRx, busy, busySelf);
-                }
+            	checkIfOutOfBound("pctBusyTx", pctBusyTx, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
+            
                 radioUtil.setAssocClientTx(pctBusyTx);
                 int pctBusyRx = busyRx / totalDurationMs;
-                if (pctBusyRx > 100 || pctBusyRx < 0) {
-                	LOG.error("WIFI-1237 survey.getBand {}, survey.getTimestampMs {} \n survey.getSurveyListList {} ",
-                			survey.getBand(), survey.getTimestampMs(), survey.getSurveyListList());
-                	LOG.error("WIFI-1237 pctBusyRx {} totalDurationMs {}, busyTx {} busyRx {} busy {} busySelf {}",
-                			pctBusyRx, totalDurationMs, busyTx, busyRx, busy, busySelf);
-                }
+                checkIfOutOfBound("pctBusyRx", pctBusyRx, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
                 radioUtil.setAssocClientRx(pctBusyRx);
+                
                 double pctIBSS = (busyTx + busySelf) / totalDurationMs;
                 radioUtil.setIbss(pctIBSS);
                 int nonWifi = (busy - (busyTx + busyRx)) / totalDurationMs;
-                if (nonWifi > 100 || nonWifi < 0) {
-                	LOG.error("WIFI-1237 survey.getBand {}, survey.getTimestampMs {} \n survey.getSurveyListList {} ",
-                			survey.getBand(), survey.getTimestampMs(), survey.getSurveyListList());
-                	LOG.error("WIFI-1237 nonWifi {}, busy {} busyTx {} busyRx {} busySelf {} totalDurationMs {}",
-                			nonWifi, busy, busyTx, busyRx, busySelf, totalDurationMs);
-                }
+                checkIfOutOfBound("nonWifi", nonWifi, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
                 radioUtil.setNonWifi(nonWifi);
 
                 radioType = OvsdbToWlanCloudTypeMappingUtility
@@ -1739,6 +1726,16 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
         radioUtilizationReport.setCapacityDetails(capacityDetails);
 
         updateDeviceStatusRadioUtilizationReport(customerId, equipmentId, radioUtilizationReport);
+    }
+    
+    private void checkIfOutOfBound(String checkedType, int checkedValue, Survey survey, int totalDurationMs, 
+    		int busyTx, int busyRx, int busy, int busySelf) {
+    	if (checkedValue > 100 || checkedValue < 0) {
+    		LOG.warn("Calculated value for {} {} is out of bounds on totalDurationMs {} for survey.getBand {}. busyTx {} busyRx {} busy {} busySelf {} "
+        			+ " survey.getTimestampMs {}, survey.getSurveyListList {}",
+        			checkedType, checkedValue, totalDurationMs, survey.getBand(), busyTx, busyRx, busy, busySelf, 
+        			survey.getTimestampMs(), survey.getSurveyListList());
+    	}
     }
 
     private void updateNetworkAdminStatusReport(int customerId, long equipmentId, ApNodeMetrics apNodeMetrics) {
