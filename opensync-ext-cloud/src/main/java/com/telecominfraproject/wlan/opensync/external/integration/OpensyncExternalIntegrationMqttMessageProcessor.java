@@ -398,223 +398,223 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
     protected void processClientConnectEvent(int customerId, long equipmentId, long locationId, EventReport e,
             sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
-        for (ClientConnectEvent clientConnectEvent : apEventClientSession.getClientConnectEventList()) {
+        ClientConnectEvent clientConnectEvent = apEventClientSession.getClientConnectEvent();
 
-            if (clientConnectEvent.hasStaMac()) {
-                com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
-                        MacAddress.valueOf(clientConnectEvent.getStaMac()));
-                if (client == null) {
-                    client = new com.telecominfraproject.wlan.client.models.Client();
+        if (clientConnectEvent.hasStaMac()) {
+            com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
+                    MacAddress.valueOf(clientConnectEvent.getStaMac()));
+            if (client == null) {
+                client = new com.telecominfraproject.wlan.client.models.Client();
 
-                    client.setCustomerId(customerId);
-                    client.setMacAddress(MacAddress.valueOf(clientConnectEvent.getStaMac()));
+                client.setCustomerId(customerId);
+                client.setMacAddress(MacAddress.valueOf(clientConnectEvent.getStaMac()));
 
-                    client.setDetails(new ClientInfoDetails());
+                client.setDetails(new ClientInfoDetails());
 
-                    client = clientServiceInterface.create(client);
-
-                }
-
-                ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                        MacAddress.valueOf(clientConnectEvent.getStaMac()));
-
-                if (clientSession == null) {
-                    clientSession = new ClientSession();
-                }
-
-                clientSession.setCustomerId(customerId);
-                clientSession.setEquipmentId(equipmentId);
-                clientSession.setLocationId(locationId);
-                clientSession.setMacAddress(MacAddress.valueOf(clientConnectEvent.getStaMac()));
-
-                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
-                clientSessionDetails.setSessionId(apEventClientSession.getSessionId());
-
-                if (clientConnectEvent.hasFbtUsed()) {
-
-                    // TODO: mapping?
-
-                }
-                if (clientConnectEvent.hasEvTimeBootupInUsAssoc()) {
-                    clientSessionDetails.setAssocTimestamp(clientConnectEvent.getEvTimeBootupInUsAssoc());
-                }
-
-                if (clientConnectEvent.hasEvTimeBootupInUsAuth()) {
-                    clientSessionDetails.setAuthTimestamp(clientConnectEvent.getEvTimeBootupInUsAuth());
-                }
-
-                if (clientConnectEvent.hasEvTimeBootupInUsEapol()) {
-                    ClientEapDetails eapDetails = new ClientEapDetails();
-                    eapDetails.setEapSuccessTimestamp(clientConnectEvent.getEvTimeBootupInUsEapol());
-                    clientSessionDetails.setEapDetails(eapDetails);
-                }
-
-                if (clientConnectEvent.hasEvTimeBootupInUsFirstRx()) {
-                    clientSessionDetails.setFirstDataRcvdTimestamp(clientConnectEvent.getEvTimeBootupInUsFirstRx());
-                }
-
-                if (clientConnectEvent.hasEvTimeBootupInUsFirstTx()) {
-                    clientSessionDetails.setFirstDataSentTimestamp(clientConnectEvent.getEvTimeBootupInUsFirstTx());
-                }
-
-                if (clientConnectEvent.hasEvTimeBootupInUsIp()) {
-                    clientSessionDetails.setIpTimestamp(clientConnectEvent.getEvTimeBootupInUsIp());
-                }
-
-                if (clientConnectEvent.hasEvTimeBootupInUsPortEnable()) {
-                    clientSessionDetails.setPortEnabledTimestamp(clientConnectEvent.getEvTimeBootupInUsPortEnable());
-                }
-
-                if (clientConnectEvent.hasCltId()) {
-                    clientSessionDetails.setHostname(clientConnectEvent.getCltId());
-                }
-
-                if (clientConnectEvent.hasSecType()) {
-                    clientSessionDetails.setSecurityType(OvsdbToWlanCloudTypeMappingUtility
-                            .getCloudSecurityTypeFromOpensyncStats(clientConnectEvent.getSecType()));
-                }
-
-                if (clientConnectEvent.hasBand()) {
-                    clientSessionDetails.setRadioType(OvsdbToWlanCloudTypeMappingUtility
-                            .getRadioTypeFromOpensyncStatsRadioBandType(clientConnectEvent.getBand()));
-                }
-
-                if (clientConnectEvent.hasAssocType()) {
-                    clientSessionDetails
-                            .setIsReassociation(clientConnectEvent.getAssocType().equals(AssocType.REASSOC));
-
-                }
-
-                if (clientConnectEvent.hasAssocRssi()) {
-                    clientSessionDetails.setAssocRssi(clientConnectEvent.getAssocRssi());
-                }
-
-                if (clientConnectEvent.hasSsid()) {
-                    clientSessionDetails.setSsid(clientConnectEvent.getSsid());
-                }
-
-                if (clientConnectEvent.hasUsing11K()) {
-                    clientSessionDetails.setIs11KUsed(clientConnectEvent.getUsing11K());
-                }
-
-                if (clientConnectEvent.hasUsing11R()) {
-                    clientSessionDetails.setIs11RUsed(clientConnectEvent.getUsing11R());
-
-                }
-
-                if (clientConnectEvent.hasUsing11V()) {
-                    clientSessionDetails.setIs11VUsed(clientConnectEvent.getUsing11V());
-                }
-
-                if (clientConnectEvent.hasIpAddr()) {
-                    try {
-                        clientSessionDetails
-                                .setIpAddress(InetAddress.getByAddress(clientConnectEvent.getIpAddr().toByteArray()));
-                    } catch (UnknownHostException e1) {
-                        LOG.error("Invalid Ip Address for client {}", clientConnectEvent.getIpAddr(), e);
-                    }
-                }
-                clientSessionDetails.setAssociationState(AssociationState._802_11_Associated);
-
-                if (clientSession.getDetails() == null) {
-                    clientSession.setDetails(clientSessionDetails);
-                } else {
-                    clientSession.getDetails().mergeSession(clientSessionDetails);
-                }
-
-                clientSession = clientServiceInterface.updateSession(clientSession);
+                client = clientServiceInterface.create(client);
 
             }
 
+            ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
+                    MacAddress.valueOf(clientConnectEvent.getStaMac()));
+
+            if (clientSession == null) {
+                clientSession = new ClientSession();
+            }
+
+            clientSession.setCustomerId(customerId);
+            clientSession.setEquipmentId(equipmentId);
+            clientSession.setLocationId(locationId);
+            clientSession.setMacAddress(MacAddress.valueOf(clientConnectEvent.getStaMac()));
+
+            ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+            clientSessionDetails.setSessionId(apEventClientSession.getSessionId());
+
+            if (clientConnectEvent.hasFbtUsed()) {
+
+                // TODO: mapping?
+
+            }
+            if (clientConnectEvent.hasEvTimeBootupInUsAssoc()) {
+                clientSessionDetails.setAssocTimestamp(clientConnectEvent.getEvTimeBootupInUsAssoc());
+            }
+
+            if (clientConnectEvent.hasEvTimeBootupInUsAuth()) {
+                clientSessionDetails.setAuthTimestamp(clientConnectEvent.getEvTimeBootupInUsAuth());
+            }
+
+            if (clientConnectEvent.hasEvTimeBootupInUsEapol()) {
+                ClientEapDetails eapDetails = new ClientEapDetails();
+                eapDetails.setEapSuccessTimestamp(clientConnectEvent.getEvTimeBootupInUsEapol());
+                clientSessionDetails.setEapDetails(eapDetails);
+            }
+
+            if (clientConnectEvent.hasEvTimeBootupInUsFirstRx()) {
+                clientSessionDetails.setFirstDataRcvdTimestamp(clientConnectEvent.getEvTimeBootupInUsFirstRx());
+            }
+
+            if (clientConnectEvent.hasEvTimeBootupInUsFirstTx()) {
+                clientSessionDetails.setFirstDataSentTimestamp(clientConnectEvent.getEvTimeBootupInUsFirstTx());
+            }
+
+            if (clientConnectEvent.hasEvTimeBootupInUsIp()) {
+                clientSessionDetails.setIpTimestamp(clientConnectEvent.getEvTimeBootupInUsIp());
+            }
+
+            if (clientConnectEvent.hasEvTimeBootupInUsPortEnable()) {
+                clientSessionDetails.setPortEnabledTimestamp(clientConnectEvent.getEvTimeBootupInUsPortEnable());
+            }
+
+            if (clientConnectEvent.hasCltId()) {
+                clientSessionDetails.setHostname(clientConnectEvent.getCltId());
+            }
+
+            if (clientConnectEvent.hasSecType()) {
+                clientSessionDetails.setSecurityType(OvsdbToWlanCloudTypeMappingUtility
+                        .getCloudSecurityTypeFromOpensyncStats(clientConnectEvent.getSecType()));
+            }
+
+            if (clientConnectEvent.hasBand()) {
+                clientSessionDetails.setRadioType(OvsdbToWlanCloudTypeMappingUtility
+                        .getRadioTypeFromOpensyncStatsRadioBandType(clientConnectEvent.getBand()));
+            }
+
+            if (clientConnectEvent.hasAssocType()) {
+                clientSessionDetails
+                .setIsReassociation(clientConnectEvent.getAssocType().equals(AssocType.REASSOC));
+
+            }
+
+            if (clientConnectEvent.hasAssocRssi()) {
+                clientSessionDetails.setAssocRssi(clientConnectEvent.getAssocRssi());
+            }
+
+            if (clientConnectEvent.hasSsid()) {
+                clientSessionDetails.setSsid(clientConnectEvent.getSsid());
+            }
+
+            if (clientConnectEvent.hasUsing11K()) {
+                clientSessionDetails.setIs11KUsed(clientConnectEvent.getUsing11K());
+            }
+
+            if (clientConnectEvent.hasUsing11R()) {
+                clientSessionDetails.setIs11RUsed(clientConnectEvent.getUsing11R());
+
+            }
+
+            if (clientConnectEvent.hasUsing11V()) {
+                clientSessionDetails.setIs11VUsed(clientConnectEvent.getUsing11V());
+            }
+
+            if (clientConnectEvent.hasIpAddr()) {
+                try {
+                    clientSessionDetails
+                    .setIpAddress(InetAddress.getByAddress(clientConnectEvent.getIpAddr().toByteArray()));
+                } catch (UnknownHostException e1) {
+                    LOG.error("Invalid Ip Address for client {}", clientConnectEvent.getIpAddr(), e);
+                }
+            }
+            clientSessionDetails.setAssociationState(AssociationState._802_11_Associated);
+
+            if (clientSession.getDetails() == null) {
+                clientSession.setDetails(clientSessionDetails);
+            } else {
+                clientSession.getDetails().mergeSession(clientSessionDetails);
+            }
+
+            clientSession = clientServiceInterface.updateSession(clientSession);
+
         }
+
+
     }
 
     protected void processClientDisconnectEvent(int customerId, long equipmentId, long locationId,
             sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
-        for (ClientDisconnectEvent clientDisconnectEvent : apEventClientSession.getClientDisconnectEventList()) {
+        ClientDisconnectEvent clientDisconnectEvent = apEventClientSession.getClientDisconnectEvent();
 
-            if (clientDisconnectEvent.hasStaMac()) {
+        if (clientDisconnectEvent.hasStaMac()) {
 
-                com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
-                        MacAddress.valueOf(clientDisconnectEvent.getStaMac()));
-                if (client == null) {
-                    client = new com.telecominfraproject.wlan.client.models.Client();
+            com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
+                    MacAddress.valueOf(clientDisconnectEvent.getStaMac()));
+            if (client == null) {
+                client = new com.telecominfraproject.wlan.client.models.Client();
 
-                    client.setCustomerId(customerId);
-                    client.setMacAddress(MacAddress.valueOf(clientDisconnectEvent.getStaMac()));
+                client.setCustomerId(customerId);
+                client.setMacAddress(MacAddress.valueOf(clientDisconnectEvent.getStaMac()));
 
-                    client.setDetails(new ClientInfoDetails());
+                client.setDetails(new ClientInfoDetails());
 
-                    client = clientServiceInterface.create(client);
+                client = clientServiceInterface.create(client);
 
-                }
-
-                ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                        MacAddress.valueOf(clientDisconnectEvent.getStaMac()));
-
-                if (clientSession == null) {
-                    clientSession = new ClientSession();
-                }
-
-                clientSession.setCustomerId(customerId);
-                clientSession.setEquipmentId(equipmentId);
-                clientSession.setLocationId(locationId);
-                clientSession.setMacAddress(MacAddress.valueOf(clientDisconnectEvent.getStaMac()));
-
-                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
-
-                if (clientDisconnectEvent.hasBand()) {
-                    clientSessionDetails.setRadioType(OvsdbToWlanCloudTypeMappingUtility
-                            .getRadioTypeFromOpensyncStatsRadioBandType(clientDisconnectEvent.getBand()));
-                }
-                if (clientDisconnectEvent.hasDevType()) {
-                }
-                if (clientDisconnectEvent.hasFrType()) {
-                    if (clientDisconnectEvent.getFrType().equals(FrameType.FT_DEAUTH)) {
-                    }
-                    if (clientDisconnectEvent.getFrType().equals(FrameType.FT_DISASSOC)) {
-                    }
-                }
-                if (clientDisconnectEvent.hasRssi()) {
-                    clientSessionDetails.setAssocRssi(clientDisconnectEvent.getRssi());
-                }
-
-                clientSessionDetails.setSessionId(apEventClientSession.getSessionId());
-
-                if (clientDisconnectEvent.hasLrcvUpTsInUs()) {
-                    clientSessionDetails.setLastRxTimestamp(clientDisconnectEvent.getLrcvUpTsInUs());
-                }
-
-                if (clientDisconnectEvent.hasLsentUpTsInUs()) {
-                    clientSessionDetails.setLastTxTimestamp(clientDisconnectEvent.getLsentUpTsInUs());
-                }
-
-                if (clientDisconnectEvent.hasInternalRc()) {
-                    clientSessionDetails.setDisconnectByClientInternalReasonCode(clientDisconnectEvent.getInternalRc());
-                }
-                if (clientDisconnectEvent.hasReason()) {
-                    clientSessionDetails.setDisconnectByClientReasonCode(clientDisconnectEvent.getReason());
-
-                }
-                clientSessionDetails.setAssociationState(AssociationState.Disconnected);
-
-                if (clientSession.getDetails() == null) {
-                    clientSession.setDetails(clientSessionDetails);
-                } else {
-                    clientSession.getDetails().mergeSession(clientSessionDetails);
-                }
-
-                clientSession = clientServiceInterface.updateSession(clientSession);
-
-            } else {
-                LOG.warn("Cannot update client or client session when no client mac address is present");
             }
+
+            ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
+                    MacAddress.valueOf(clientDisconnectEvent.getStaMac()));
+
+            if (clientSession == null) {
+                clientSession = new ClientSession();
+            }
+
+            clientSession.setCustomerId(customerId);
+            clientSession.setEquipmentId(equipmentId);
+            clientSession.setLocationId(locationId);
+            clientSession.setMacAddress(MacAddress.valueOf(clientDisconnectEvent.getStaMac()));
+
+            ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+
+            if (clientDisconnectEvent.hasBand()) {
+                clientSessionDetails.setRadioType(OvsdbToWlanCloudTypeMappingUtility
+                        .getRadioTypeFromOpensyncStatsRadioBandType(clientDisconnectEvent.getBand()));
+            }
+            if (clientDisconnectEvent.hasDevType()) {
+            }
+            if (clientDisconnectEvent.hasFrType()) {
+                if (clientDisconnectEvent.getFrType().equals(FrameType.FT_DEAUTH)) {
+                }
+                if (clientDisconnectEvent.getFrType().equals(FrameType.FT_DISASSOC)) {
+                }
+            }
+            if (clientDisconnectEvent.hasRssi()) {
+                clientSessionDetails.setAssocRssi(clientDisconnectEvent.getRssi());
+            }
+
+            clientSessionDetails.setSessionId(apEventClientSession.getSessionId());
+
+            if (clientDisconnectEvent.hasLrcvUpTsInUs()) {
+                clientSessionDetails.setLastRxTimestamp(clientDisconnectEvent.getLrcvUpTsInUs());
+            }
+
+            if (clientDisconnectEvent.hasLsentUpTsInUs()) {
+                clientSessionDetails.setLastTxTimestamp(clientDisconnectEvent.getLsentUpTsInUs());
+            }
+
+            if (clientDisconnectEvent.hasInternalRc()) {
+                clientSessionDetails.setDisconnectByClientInternalReasonCode(clientDisconnectEvent.getInternalRc());
+            }
+            if (clientDisconnectEvent.hasReason()) {
+                clientSessionDetails.setDisconnectByClientReasonCode(clientDisconnectEvent.getReason());
+
+            }
+            clientSessionDetails.setAssociationState(AssociationState.Disconnected);
+
+            if (clientSession.getDetails() == null) {
+                clientSession.setDetails(clientSessionDetails);
+            } else {
+                clientSession.getDetails().mergeSession(clientSessionDetails);
+            }
+
+            clientSession = clientServiceInterface.updateSession(clientSession);
+
+        } else {
+            LOG.warn("Cannot update client or client session when no client mac address is present");
         }
+
     }
 
     protected void processClientAuthEvent(int customerId, long equipmentId, long locationId,
             sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
-        for (ClientAuthEvent clientAuthEvent : apEventClientSession.getClientAuthEventList()) {
+        ClientAuthEvent clientAuthEvent = apEventClientSession.getClientAuthEvent();
             if (clientAuthEvent.hasStaMac()) {
 
                 com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
@@ -669,374 +669,374 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             } else {
                 LOG.warn("Cannot update client or client session when no client mac address is present");
             }
-        }
+        
     }
 
     protected void processClientAssocEvent(int customerId, long equipmentId, long locationId,
             sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
-        for (ClientAssocEvent clientAssocEvent : apEventClientSession.getClientAssocEventList()) {
-            if (clientAssocEvent.hasStaMac()) {
-                com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
-                        MacAddress.valueOf(clientAssocEvent.getStaMac()));
-                if (client == null) {
-                    client = new com.telecominfraproject.wlan.client.models.Client();
+        ClientAssocEvent clientAssocEvent = apEventClientSession.getClientAssocEvent();
+        if (clientAssocEvent.hasStaMac()) {
+            com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
+                    MacAddress.valueOf(clientAssocEvent.getStaMac()));
+            if (client == null) {
+                client = new com.telecominfraproject.wlan.client.models.Client();
 
-                    client.setCustomerId(customerId);
-                    client.setMacAddress(MacAddress.valueOf(clientAssocEvent.getStaMac()));
+                client.setCustomerId(customerId);
+                client.setMacAddress(MacAddress.valueOf(clientAssocEvent.getStaMac()));
 
-                    client.setDetails(new ClientInfoDetails());
+                client.setDetails(new ClientInfoDetails());
 
-                    client = clientServiceInterface.create(client);
+                client = clientServiceInterface.create(client);
 
-                }
-
-                ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                        MacAddress.valueOf(clientAssocEvent.getStaMac()));
-
-                if (clientSession == null) {
-                    clientSession = new ClientSession();
-                }
-                clientSession.setCustomerId(customerId);
-                clientSession.setEquipmentId(equipmentId);
-                clientSession.setLocationId(locationId);
-                clientSession.setMacAddress(MacAddress.valueOf(clientAssocEvent.getStaMac()));
-
-                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
-                if (clientAssocEvent.hasUsing11K()) {
-                    clientSessionDetails.setIs11KUsed(clientAssocEvent.getUsing11K());
-                }
-                if (clientAssocEvent.hasUsing11R()) {
-                    clientSessionDetails.setIs11RUsed(clientAssocEvent.getUsing11R());
-                }
-                if (clientAssocEvent.hasUsing11V()) {
-                    clientSessionDetails.setIs11VUsed(clientAssocEvent.getUsing11V());
-                }
-                if (clientAssocEvent.hasAssocType()) {
-                    clientSessionDetails.setIsReassociation(clientAssocEvent.getAssocType().equals(AssocType.REASSOC));
-                }
-                if (clientAssocEvent.hasBand()) {
-                    clientSessionDetails.setRadioType(OvsdbToWlanCloudTypeMappingUtility
-                            .getRadioTypeFromOpensyncStatsRadioBandType(clientAssocEvent.getBand()));
-                }
-                if (clientAssocEvent.hasRssi()) {
-                    clientSessionDetails.setAssocRssi(clientAssocEvent.getRssi());
-                }
-                clientSessionDetails.setSessionId(apEventClientSession.getSessionId());
-
-                if (clientAssocEvent.hasSsid()) {
-                    clientSessionDetails.setSsid(clientAssocEvent.getSsid());
-                }
-                if (clientAssocEvent.hasStatus()) {
-                    clientSessionDetails.setAssociationStatus(clientAssocEvent.getStatus());
-                    clientSessionDetails.setAssociationState(AssociationState._802_11_Associated);
-                }
-
-                if (clientSession.getDetails() == null) {
-                    clientSession.setDetails(clientSessionDetails);
-                } else {
-                    clientSession.getDetails().mergeSession(clientSessionDetails);
-                }
-
-                clientSession = clientServiceInterface.updateSession(clientSession);
-
-            } else {
-                LOG.warn("Cannot update client or client session when no client mac address is present");
             }
+
+            ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
+                    MacAddress.valueOf(clientAssocEvent.getStaMac()));
+
+            if (clientSession == null) {
+                clientSession = new ClientSession();
+            }
+            clientSession.setCustomerId(customerId);
+            clientSession.setEquipmentId(equipmentId);
+            clientSession.setLocationId(locationId);
+            clientSession.setMacAddress(MacAddress.valueOf(clientAssocEvent.getStaMac()));
+
+            ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+            if (clientAssocEvent.hasUsing11K()) {
+                clientSessionDetails.setIs11KUsed(clientAssocEvent.getUsing11K());
+            }
+            if (clientAssocEvent.hasUsing11R()) {
+                clientSessionDetails.setIs11RUsed(clientAssocEvent.getUsing11R());
+            }
+            if (clientAssocEvent.hasUsing11V()) {
+                clientSessionDetails.setIs11VUsed(clientAssocEvent.getUsing11V());
+            }
+            if (clientAssocEvent.hasAssocType()) {
+                clientSessionDetails.setIsReassociation(clientAssocEvent.getAssocType().equals(AssocType.REASSOC));
+            }
+            if (clientAssocEvent.hasBand()) {
+                clientSessionDetails.setRadioType(OvsdbToWlanCloudTypeMappingUtility
+                        .getRadioTypeFromOpensyncStatsRadioBandType(clientAssocEvent.getBand()));
+            }
+            if (clientAssocEvent.hasRssi()) {
+                clientSessionDetails.setAssocRssi(clientAssocEvent.getRssi());
+            }
+            clientSessionDetails.setSessionId(apEventClientSession.getSessionId());
+
+            if (clientAssocEvent.hasSsid()) {
+                clientSessionDetails.setSsid(clientAssocEvent.getSsid());
+            }
+            if (clientAssocEvent.hasStatus()) {
+                clientSessionDetails.setAssociationStatus(clientAssocEvent.getStatus());
+                clientSessionDetails.setAssociationState(AssociationState._802_11_Associated);
+            }
+
+            if (clientSession.getDetails() == null) {
+                clientSession.setDetails(clientSessionDetails);
+            } else {
+                clientSession.getDetails().mergeSession(clientSessionDetails);
+            }
+
+            clientSession = clientServiceInterface.updateSession(clientSession);
+
+        } else {
+            LOG.warn("Cannot update client or client session when no client mac address is present");
         }
+
     }
 
     protected void processClientFailureEvent(int customerId, long equipmentId, long locationId,
             sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
-        for (ClientFailureEvent clientFailureEvent : apEventClientSession.getClientFailureEventList()) {
-            if (clientFailureEvent.hasStaMac()) {
+        ClientFailureEvent clientFailureEvent = apEventClientSession.getClientFailureEvent();
+        if (clientFailureEvent.hasStaMac()) {
 
-                com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
-                        MacAddress.valueOf(clientFailureEvent.getStaMac()));
-                if (client == null) {
-                    client = new com.telecominfraproject.wlan.client.models.Client();
+            com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
+                    MacAddress.valueOf(clientFailureEvent.getStaMac()));
+            if (client == null) {
+                client = new com.telecominfraproject.wlan.client.models.Client();
 
-                    client.setCustomerId(customerId);
-                    client.setMacAddress(MacAddress.valueOf(clientFailureEvent.getStaMac()));
+                client.setCustomerId(customerId);
+                client.setMacAddress(MacAddress.valueOf(clientFailureEvent.getStaMac()));
 
-                    client.setDetails(new ClientInfoDetails());
+                client.setDetails(new ClientInfoDetails());
 
-                    client = clientServiceInterface.create(client);
+                client = clientServiceInterface.create(client);
 
-                }
-
-                ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                        MacAddress.valueOf(clientFailureEvent.getStaMac()));
-
-                if (clientSession == null) {
-                    clientSession = new ClientSession();
-                }
-
-                clientSession.setCustomerId(customerId);
-                clientSession.setEquipmentId(equipmentId);
-                clientSession.setLocationId(locationId);
-                clientSession.setMacAddress(MacAddress.valueOf(clientFailureEvent.getStaMac()));
-
-                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
-
-                if (clientFailureEvent.hasSsid()) {
-                    clientSessionDetails.setSsid(clientFailureEvent.getSsid());
-                }
-
-                clientSessionDetails.setSessionId(apEventClientSession.getSessionId());
-
-                ClientFailureDetails clientFailureDetails = new ClientFailureDetails();
-                if (clientFailureEvent.hasReasonStr()) {
-                    clientFailureDetails.setReason(clientFailureEvent.getReasonStr());
-                }
-                if (clientFailureEvent.hasReasonCode()) {
-                    clientFailureDetails.setReasonCode(clientFailureEvent.getReasonCode());
-                }
-                clientSessionDetails.setLastFailureDetails(clientFailureDetails);
-
-                if (clientSession.getDetails() == null) {
-                    clientSession.setDetails(clientSessionDetails);
-                } else {
-                    clientSession.getDetails().mergeSession(clientSessionDetails);
-                }
-
-                clientSession = clientServiceInterface.updateSession(clientSession);
-
-            } else {
-                LOG.warn("Cannot update client or client session when no client mac address is present");
             }
+
+            ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
+                    MacAddress.valueOf(clientFailureEvent.getStaMac()));
+
+            if (clientSession == null) {
+                clientSession = new ClientSession();
+            }
+
+            clientSession.setCustomerId(customerId);
+            clientSession.setEquipmentId(equipmentId);
+            clientSession.setLocationId(locationId);
+            clientSession.setMacAddress(MacAddress.valueOf(clientFailureEvent.getStaMac()));
+
+            ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+
+            if (clientFailureEvent.hasSsid()) {
+                clientSessionDetails.setSsid(clientFailureEvent.getSsid());
+            }
+
+            clientSessionDetails.setSessionId(apEventClientSession.getSessionId());
+
+            ClientFailureDetails clientFailureDetails = new ClientFailureDetails();
+            if (clientFailureEvent.hasReasonStr()) {
+                clientFailureDetails.setReason(clientFailureEvent.getReasonStr());
+            }
+            if (clientFailureEvent.hasReasonCode()) {
+                clientFailureDetails.setReasonCode(clientFailureEvent.getReasonCode());
+            }
+            clientSessionDetails.setLastFailureDetails(clientFailureDetails);
+
+            if (clientSession.getDetails() == null) {
+                clientSession.setDetails(clientSessionDetails);
+            } else {
+                clientSession.getDetails().mergeSession(clientSessionDetails);
+            }
+
+            clientSession = clientServiceInterface.updateSession(clientSession);
+
+        } else {
+            LOG.warn("Cannot update client or client session when no client mac address is present");
         }
+
     }
 
     protected void processClientFirstDataEvent(int customerId, long equipmentId, long locationId,
             sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
-        for (ClientFirstDataEvent clientFirstDataEvent : apEventClientSession.getClientFirstDataEventList()) {
-            if (clientFirstDataEvent.hasStaMac()) {
+        ClientFirstDataEvent clientFirstDataEvent = apEventClientSession.getClientFirstDataEvent();
+        if (clientFirstDataEvent.hasStaMac()) {
 
-                com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
-                        MacAddress.valueOf(clientFirstDataEvent.getStaMac()));
-                if (client == null) {
-                    client = new com.telecominfraproject.wlan.client.models.Client();
+            com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
+                    MacAddress.valueOf(clientFirstDataEvent.getStaMac()));
+            if (client == null) {
+                client = new com.telecominfraproject.wlan.client.models.Client();
 
-                    client.setCustomerId(customerId);
-                    client.setMacAddress(MacAddress.valueOf(clientFirstDataEvent.getStaMac()));
+                client.setCustomerId(customerId);
+                client.setMacAddress(MacAddress.valueOf(clientFirstDataEvent.getStaMac()));
 
-                    client.setDetails(new ClientInfoDetails());
+                client.setDetails(new ClientInfoDetails());
 
-                    client = clientServiceInterface.create(client);
+                client = clientServiceInterface.create(client);
 
-                }
-
-                ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                        MacAddress.valueOf(clientFirstDataEvent.getStaMac()));
-
-                if (clientSession == null) {
-                    clientSession = new ClientSession();
-                }
-
-                clientSession.setCustomerId(customerId);
-                clientSession.setEquipmentId(equipmentId);
-                clientSession.setLocationId(locationId);
-                clientSession.setMacAddress(MacAddress.valueOf(clientFirstDataEvent.getStaMac()));
-
-                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
-
-                if (clientFirstDataEvent.hasFdataRxUpTsInUs()) {
-                    clientSessionDetails.setFirstDataRcvdTimestamp(clientFirstDataEvent.getFdataRxUpTsInUs());
-                }
-
-                if (clientFirstDataEvent.hasFdataTxUpTsInUs()) {
-                    clientSessionDetails.setFirstDataSentTimestamp(clientFirstDataEvent.getFdataTxUpTsInUs());
-                }
-
-                clientSessionDetails.setSessionId(apEventClientSession.getSessionId());
-
-                clientSessionDetails.setAssociationState(AssociationState.Active_Data);
-
-                if (clientSession.getDetails() == null) {
-                    clientSession.setDetails(clientSessionDetails);
-                } else {
-                    clientSession.getDetails().mergeSession(clientSessionDetails);
-                }
-
-                clientSession = clientServiceInterface.updateSession(clientSession);
-
-            } else {
-                LOG.warn("Cannot update client or client session when no client mac address is present");
             }
+
+            ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
+                    MacAddress.valueOf(clientFirstDataEvent.getStaMac()));
+
+            if (clientSession == null) {
+                clientSession = new ClientSession();
+            }
+
+            clientSession.setCustomerId(customerId);
+            clientSession.setEquipmentId(equipmentId);
+            clientSession.setLocationId(locationId);
+            clientSession.setMacAddress(MacAddress.valueOf(clientFirstDataEvent.getStaMac()));
+
+            ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+
+            if (clientFirstDataEvent.hasFdataRxUpTsInUs()) {
+                clientSessionDetails.setFirstDataRcvdTimestamp(clientFirstDataEvent.getFdataRxUpTsInUs());
+            }
+
+            if (clientFirstDataEvent.hasFdataTxUpTsInUs()) {
+                clientSessionDetails.setFirstDataSentTimestamp(clientFirstDataEvent.getFdataTxUpTsInUs());
+            }
+
+            clientSessionDetails.setSessionId(apEventClientSession.getSessionId());
+
+            clientSessionDetails.setAssociationState(AssociationState.Active_Data);
+
+            if (clientSession.getDetails() == null) {
+                clientSession.setDetails(clientSessionDetails);
+            } else {
+                clientSession.getDetails().mergeSession(clientSessionDetails);
+            }
+
+            clientSession = clientServiceInterface.updateSession(clientSession);
+
+        } else {
+            LOG.warn("Cannot update client or client session when no client mac address is present");
         }
+
     }
 
     protected void processClientIdEvent(int customerId, long equipmentId, long locationId,
             sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
-        for (ClientIdEvent clientIdEvent : apEventClientSession.getClientIdEventList()) {
-            if (clientIdEvent.hasCltMac()) {
+        ClientIdEvent clientIdEvent = apEventClientSession.getClientIdEvent();
+        if (clientIdEvent.hasCltMac()) {
 
-                com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
-                        MacAddress.valueOf(clientIdEvent.getCltMac()));
-                if (client == null) {
-                    client = new com.telecominfraproject.wlan.client.models.Client();
+            com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
+                    MacAddress.valueOf(clientIdEvent.getCltMac()));
+            if (client == null) {
+                client = new com.telecominfraproject.wlan.client.models.Client();
 
-                    client.setCustomerId(customerId);
-                    client.setMacAddress(MacAddress.valueOf(clientIdEvent.getCltMac()));
+                client.setCustomerId(customerId);
+                client.setMacAddress(MacAddress.valueOf(clientIdEvent.getCltMac()));
 
-                    client.setDetails(new ClientInfoDetails());
+                client.setDetails(new ClientInfoDetails());
 
-                    client = clientServiceInterface.create(client);
+                client = clientServiceInterface.create(client);
 
-                }
-
-                ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                        MacAddress.valueOf(clientIdEvent.getCltMac()));
-
-                if (clientSession == null) {
-                    clientSession = new ClientSession();
-                }
-
-                clientSession.setCustomerId(customerId);
-                clientSession.setEquipmentId(equipmentId);
-                clientSession.setLocationId(locationId);
-                clientSession.setMacAddress(MacAddress.valueOf(clientIdEvent.getCltMac()));
-
-                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
-
-                clientSessionDetails.setSessionId(apEventClientSession.getSessionId());
-
-                if (clientSession.getDetails() == null) {
-                    clientSession.setDetails(clientSessionDetails);
-                } else {
-                    clientSession.getDetails().mergeSession(clientSessionDetails);
-                }
-
-                clientSession = clientServiceInterface.updateSession(clientSession);
-
-            } else {
-                LOG.warn("Cannot update client or client session when no client mac address is present");
             }
+
+            ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
+                    MacAddress.valueOf(clientIdEvent.getCltMac()));
+
+            if (clientSession == null) {
+                clientSession = new ClientSession();
+            }
+
+            clientSession.setCustomerId(customerId);
+            clientSession.setEquipmentId(equipmentId);
+            clientSession.setLocationId(locationId);
+            clientSession.setMacAddress(MacAddress.valueOf(clientIdEvent.getCltMac()));
+
+            ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+
+            clientSessionDetails.setSessionId(apEventClientSession.getSessionId());
+
+            if (clientSession.getDetails() == null) {
+                clientSession.setDetails(clientSessionDetails);
+            } else {
+                clientSession.getDetails().mergeSession(clientSessionDetails);
+            }
+
+            clientSession = clientServiceInterface.updateSession(clientSession);
+
+        } else {
+            LOG.warn("Cannot update client or client session when no client mac address is present");
         }
+
     }
 
     protected void processClientIpEvent(int customerId, long equipmentId, long locationId,
             sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
-        for (ClientIpEvent clientIpEvent : apEventClientSession.getClientIpEventList()) {
-            if (clientIpEvent.hasStaMac()) {
+        ClientIpEvent clientIpEvent = apEventClientSession.getClientIpEvent();
+        if (clientIpEvent.hasStaMac()) {
 
-                com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
-                        MacAddress.valueOf(clientIpEvent.getStaMac()));
-                if (client == null) {
-                    client = new com.telecominfraproject.wlan.client.models.Client();
+            com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
+                    MacAddress.valueOf(clientIpEvent.getStaMac()));
+            if (client == null) {
+                client = new com.telecominfraproject.wlan.client.models.Client();
 
-                    client.setCustomerId(customerId);
-                    client.setMacAddress(MacAddress.valueOf(clientIpEvent.getStaMac()));
+                client.setCustomerId(customerId);
+                client.setMacAddress(MacAddress.valueOf(clientIpEvent.getStaMac()));
 
-                    client.setDetails(new ClientInfoDetails());
+                client.setDetails(new ClientInfoDetails());
 
-                    client = clientServiceInterface.create(client);
+                client = clientServiceInterface.create(client);
 
-                }
-
-                ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                        MacAddress.valueOf(clientIpEvent.getStaMac()));
-
-                if (clientSession == null) {
-                    clientSession = new ClientSession();
-                }
-
-                clientSession.setCustomerId(customerId);
-                clientSession.setEquipmentId(equipmentId);
-                clientSession.setLocationId(locationId);
-                clientSession.setMacAddress(MacAddress.valueOf(clientIpEvent.getStaMac()));
-
-                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
-
-                clientSessionDetails.setSessionId(apEventClientSession.getSessionId());
-
-                try {
-                    clientSessionDetails
-                            .setIpAddress(InetAddress.getByAddress(clientIpEvent.getIpAddr().toByteArray()));
-                } catch (UnknownHostException e1) {
-                    // TODO Auto-generated catch block
-                    e1.printStackTrace();
-                }
-
-                if (clientSession.getDetails() == null) {
-                    clientSession.setDetails(clientSessionDetails);
-                } else {
-                    clientSession.getDetails().mergeSession(clientSessionDetails);
-                }
-
-                clientSession = clientServiceInterface.updateSession(clientSession);
-
-            } else {
-                LOG.warn("Cannot update client or client session when no clientmac address is present");
             }
+
+            ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
+                    MacAddress.valueOf(clientIpEvent.getStaMac()));
+
+            if (clientSession == null) {
+                clientSession = new ClientSession();
+            }
+
+            clientSession.setCustomerId(customerId);
+            clientSession.setEquipmentId(equipmentId);
+            clientSession.setLocationId(locationId);
+            clientSession.setMacAddress(MacAddress.valueOf(clientIpEvent.getStaMac()));
+
+            ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+
+            clientSessionDetails.setSessionId(apEventClientSession.getSessionId());
+
+            try {
+                clientSessionDetails
+                .setIpAddress(InetAddress.getByAddress(clientIpEvent.getIpAddr().toByteArray()));
+            } catch (UnknownHostException e1) {
+                // TODO Auto-generated catch block
+                e1.printStackTrace();
+            }
+
+            if (clientSession.getDetails() == null) {
+                clientSession.setDetails(clientSessionDetails);
+            } else {
+                clientSession.getDetails().mergeSession(clientSessionDetails);
+            }
+
+            clientSession = clientServiceInterface.updateSession(clientSession);
+
+        } else {
+            LOG.warn("Cannot update client or client session when no clientmac address is present");
         }
+
     }
 
     protected void processClientTimeoutEvent(int customerId, long equipmentId, long locationId,
             sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
-        for (ClientTimeoutEvent clientTimeoutEvent : apEventClientSession.getClientTimeoutEventList()) {
-            if (clientTimeoutEvent.hasStaMac()) {
+        ClientTimeoutEvent clientTimeoutEvent = apEventClientSession.getClientTimeoutEvent();
+        if (clientTimeoutEvent.hasStaMac()) {
 
-                com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
-                        MacAddress.valueOf(clientTimeoutEvent.getStaMac()));
-                if (client == null) {
-                    client = new com.telecominfraproject.wlan.client.models.Client();
+            com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
+                    MacAddress.valueOf(clientTimeoutEvent.getStaMac()));
+            if (client == null) {
+                client = new com.telecominfraproject.wlan.client.models.Client();
 
-                    client.setCustomerId(customerId);
-                    client.setMacAddress(MacAddress.valueOf(clientTimeoutEvent.getStaMac()));
+                client.setCustomerId(customerId);
+                client.setMacAddress(MacAddress.valueOf(clientTimeoutEvent.getStaMac()));
 
-                    client.setDetails(new ClientInfoDetails());
+                client.setDetails(new ClientInfoDetails());
 
-                    client = clientServiceInterface.create(client);
+                client = clientServiceInterface.create(client);
 
-                }
-
-                ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                        MacAddress.valueOf(clientTimeoutEvent.getStaMac()));
-
-                if (clientSession == null) {
-                    clientSession = new ClientSession();
-                }
-
-                clientSession.setCustomerId(customerId);
-                clientSession.setEquipmentId(equipmentId);
-                clientSession.setLocationId(locationId);
-                clientSession.setMacAddress(MacAddress.valueOf(clientTimeoutEvent.getStaMac()));
-
-                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
-
-                clientSessionDetails.setSessionId(apEventClientSession.getSessionId());
-
-                long timeoutTimestamp = 0L;
-                if (clientTimeoutEvent.hasLastRcvUpTsInUs()) {
-                    clientSessionDetails.setLastRxTimestamp(clientTimeoutEvent.getLastRcvUpTsInUs());
-
-                    timeoutTimestamp = clientTimeoutEvent.getLastRcvUpTsInUs();
-                }
-
-                if (clientTimeoutEvent.hasLastSentUpTsInUs()) {
-                    clientSessionDetails.setLastTxTimestamp(clientTimeoutEvent.getLastSentUpTsInUs());
-                    if (clientTimeoutEvent.getLastSentUpTsInUs() > timeoutTimestamp) {
-                        timeoutTimestamp = clientTimeoutEvent.getLastSentUpTsInUs();
-                    }
-                }
-
-                if (timeoutTimestamp > 0L) {
-                    clientSessionDetails.setTimeoutTimestamp(timeoutTimestamp);
-                }
-
-                if (clientSession.getDetails() == null) {
-                    clientSession.setDetails(clientSessionDetails);
-                } else {
-                    clientSession.getDetails().mergeSession(clientSessionDetails);
-                }
-
-                clientSession = clientServiceInterface.updateSession(clientSession);
-
-            } else {
-                LOG.warn("Cannot update client or client session when no client mac address is present");
             }
+
+            ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
+                    MacAddress.valueOf(clientTimeoutEvent.getStaMac()));
+
+            if (clientSession == null) {
+                clientSession = new ClientSession();
+            }
+
+            clientSession.setCustomerId(customerId);
+            clientSession.setEquipmentId(equipmentId);
+            clientSession.setLocationId(locationId);
+            clientSession.setMacAddress(MacAddress.valueOf(clientTimeoutEvent.getStaMac()));
+
+            ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+
+            clientSessionDetails.setSessionId(apEventClientSession.getSessionId());
+
+            long timeoutTimestamp = 0L;
+            if (clientTimeoutEvent.hasLastRcvUpTsInUs()) {
+                clientSessionDetails.setLastRxTimestamp(clientTimeoutEvent.getLastRcvUpTsInUs());
+
+                timeoutTimestamp = clientTimeoutEvent.getLastRcvUpTsInUs();
+            }
+
+            if (clientTimeoutEvent.hasLastSentUpTsInUs()) {
+                clientSessionDetails.setLastTxTimestamp(clientTimeoutEvent.getLastSentUpTsInUs());
+                if (clientTimeoutEvent.getLastSentUpTsInUs() > timeoutTimestamp) {
+                    timeoutTimestamp = clientTimeoutEvent.getLastSentUpTsInUs();
+                }
+            }
+
+            if (timeoutTimestamp > 0L) {
+                clientSessionDetails.setTimeoutTimestamp(timeoutTimestamp);
+            }
+
+            if (clientSession.getDetails() == null) {
+                clientSession.setDetails(clientSessionDetails);
+            } else {
+                clientSession.getDetails().mergeSession(clientSessionDetails);
+            }
+
+            clientSession = clientServiceInterface.updateSession(clientSession);
+
+        } else {
+            LOG.warn("Cannot update client or client session when no client mac address is present");
         }
+
     }
 
     void populateSipCallReport(List<ServiceMetric> metricRecordList, Report report, int customerId, long equipmentId,

@@ -812,22 +812,7 @@ public class OpensyncExternalIntegrationCloudTest {
         clientAssocBuilder.setInternalSc(1);
         clientAssocBuilder.setSsid("ssid-3");
         clientAssocBuilder.setStatus(1);
-
-        sts.OpensyncStats.EventReport.ClientAssocEvent.Builder clientAssocBuilder2 = EventReport.ClientAssocEvent
-                .getDefaultInstance().toBuilder();
-        clientAssocBuilder2.setAssocType(AssocType.ASSOC);
-        clientAssocBuilder2.setBand(RadioBandType.BAND2G);
-        clientAssocBuilder2.setRssi(-65);
-        clientAssocBuilder2.setStaMac("7C:AB:60:E6:EA:4D");
-        clientAssocBuilder2.setStaMacBytes(ByteString.copyFrom("7C:AB:60:E6:EA:4D".getBytes()));
-        clientAssocBuilder2.setSessionId(1000L);
-        clientAssocBuilder2.setInternalSc(1);
-        clientAssocBuilder2.setSsid("ssid-1");
-        clientAssocBuilder2.setStatus(1);
-
-        clientAssocEventList.add(clientAssocBuilder.build());
-        clientAssocEventList.add(clientAssocBuilder2.build());
-        
+       
         List<EventReport> eventReportList = new ArrayList<>();
 
         EventReport.Builder eventReportBuilder = EventReport.getDefaultInstance().toBuilder();
@@ -836,7 +821,7 @@ public class OpensyncExternalIntegrationCloudTest {
 
         clientSessionBuilder.setSessionId(1000L);
 
-        clientSessionBuilder.addAllClientAssocEvent(clientAssocEventList);
+        clientSessionBuilder.setClientAssocEvent(clientAssocBuilder.build());
         List<sts.OpensyncStats.EventReport.ClientSession> clientSessionList = new ArrayList<>();
         clientSessionList.add(clientSessionBuilder.build());
 
