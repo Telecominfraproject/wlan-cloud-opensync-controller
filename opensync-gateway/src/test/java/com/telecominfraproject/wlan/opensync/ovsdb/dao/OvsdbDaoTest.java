@@ -35,6 +35,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
+import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.location.models.Location;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
@@ -53,6 +54,7 @@ import com.vmware.ovsdb.protocol.operation.result.ErrorResult;
 import com.vmware.ovsdb.protocol.operation.result.InsertResult;
 import com.vmware.ovsdb.protocol.operation.result.OperationResult;
 import com.vmware.ovsdb.protocol.operation.result.SelectResult;
+import com.vmware.ovsdb.protocol.operation.result.UpdateResult;
 import com.vmware.ovsdb.protocol.schema.DatabaseSchema;
 import com.vmware.ovsdb.protocol.schema.TableSchema;
 import com.vmware.ovsdb.service.OvsdbClient;
@@ -699,6 +701,28 @@ public class OvsdbDaoTest {
 
         Mockito.verify(futureResult).get(30L, TimeUnit.SECONDS);
 
+    }
+    
+    @Test
+    public void testProcessNewChannelsRequest() throws Exception {
+        
+        
+        OperationResult[] testProcessNewChannelsRequestResult = new OperationResult[] { new UpdateResult(1), new UpdateResult(1), new UpdateResult(1), new UpdateResult(1), new UpdateResult(1), new UpdateResult(1) };
+
+        Mockito.when(futureResult.get(30L, TimeUnit.SECONDS)).thenReturn(testProcessNewChannelsRequestResult);
+
+        Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList())).thenReturn(futureResult);
+
+        ovsdbDao.processNewChannelsRequest(ovsdbClient,
+                Map.of(RadioType.is2dot4GHz, Integer.valueOf(1), RadioType.is5GHzL, Integer.valueOf(40),
+                        RadioType.is5GHzU, Integer.valueOf(153)),
+                Map.of(RadioType.is2dot4GHz, Integer.valueOf(6), RadioType.is5GHzL, Integer.valueOf(36),
+                        RadioType.is5GHzU, Integer.valueOf(149)));
+        
+        Mockito.verify(futureResult).get(30L, TimeUnit.SECONDS);
+
+        
+        
     }
 
     @Test(expected = RuntimeException.class)

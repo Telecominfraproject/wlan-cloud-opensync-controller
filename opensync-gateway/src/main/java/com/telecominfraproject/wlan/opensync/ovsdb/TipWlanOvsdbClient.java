@@ -896,19 +896,19 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         return key;
     }
 
-    public String processNewChannelsRequest(String apId, Map<RadioType, Integer> channelMap) {
-        LOG.debug("TipWlanOvsdbClient::processNewChannelsRequest for AP {}", apId);
+    public String processNewChannelsRequest(String apId, Map<RadioType, Integer> backupChannelMap, Map<RadioType,Integer> primaryChannelMap) {
+        LOG.info("TipWlanOvsdbClient::processNewChannelsRequest for AP {}", apId);
 
         try {
             OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
             OvsdbClient ovsdbClient = session.getOvsdbClient();
-            ovsdbDao.processNewChannelsRequest(ovsdbClient, channelMap);
-            LOG.debug("TipWlanOvsdbClient::processNewChannelsRequest change backup channels for AP   {}", apId);
-            return "Triggered a factory reset of AP  " + apId;
+            ovsdbDao.processNewChannelsRequest(ovsdbClient, backupChannelMap, primaryChannelMap);
+            LOG.info("TipWlanOvsdbClient::processNewChannelsRequest change backup and/or primary channels for AP {}", apId);
+            return " change backup and/or primary channels for AP " + apId;
         } catch (Exception e) {
-            LOG.error("TipWlanOvsdbClient::processNewChannelsRequest failed to change backup channels for AP {}", apId,
+            LOG.error("TipWlanOvsdbClient::processNewChannelsRequest failed to change backup and/or primary channels for AP {}", apId,
                     e);
-            return " failed to change backup channels for AP " + apId;
+            return "failed to change backup and/or primary channels for AP " + apId;
         }
     }
 

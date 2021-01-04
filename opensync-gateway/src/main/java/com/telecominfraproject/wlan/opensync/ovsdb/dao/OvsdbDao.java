@@ -5656,13 +5656,13 @@ public class OvsdbDao {
         }
     }
 
-    public void processNewChannelsRequest(OvsdbClient ovsdbClient, Map<RadioType, Integer> channelMap) {
+    public void processNewChannelsRequest(OvsdbClient ovsdbClient, Map<RadioType, Integer> backupChannelMap, Map<RadioType, Integer> primaryChannelMap) {
 
-        LOG.info("OvsdbDao::processNewChannelsRequest {}", channelMap);
+        LOG.info("OvsdbDao::processNewChannelsRequest backup {} primary {}", backupChannelMap, primaryChannelMap);
         try {
             List<Operation> operations = new ArrayList<>();
 
-            channelMap.entrySet().stream().forEach(c -> {
+            backupChannelMap.entrySet().stream().forEach(c -> {
                 String freqBand = OvsdbToWlanCloudTypeMappingUtility.getOvsdbRadioFreqBandForRadioType(c.getKey());
                 List<Condition> conditions = new ArrayList<>();
                 conditions.add(new Condition("freq_band", Function.EQUALS, new Atom<>(freqBand)));
@@ -5672,19 +5672,25 @@ public class OvsdbDao {
                 operations.add(new Update(wifiRrmConfigDbTable, conditions, row));
             });
 
+            primaryChannelMap.entrySet().stream().forEach(c -> {
+                String freqBand = OvsdbToWlanCloudTypeMappingUtility.getOvsdbRadioFreqBandForRadioType(c.getKey());
+                List<Condition> conditions = new ArrayList<>();
+                conditions.add(new Condition("freq_band", Function.EQUALS, new Atom<>(freqBand)));
+                Map<String, Value> updateColumns = new HashMap<>();
+                updateColumns.put("channel", new Atom<>(c.getValue()));
+                Row row = new Row(updateColumns);
+                operations.add(new Update(wifiRadioConfigDbTable, conditions, row));
+            });
+
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
 
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("processNewChannelsRequest::Update backup channel(s) for {}:", wifiRrmConfigDbTable);
-
-                for (OperationResult res : result) {
-                    LOG.debug("Op Result {}", res);
-                }
+            for (OperationResult res : result) {
+                LOG.info("Op Result {}", res);
             }
 
-            LOG.info("Updated Wifi_RRM_Config");
 
+            LOG.info("Updated ovsdb config for primary and backup channels.");
         } catch (ExecutionException e) {
             LOG.error("Error in processNewChannelsRequest", e);
         } catch (OvsdbClientException | TimeoutException | InterruptedException e) {
@@ -5693,6 +5699,8 @@ public class OvsdbDao {
         }
 
     }
+    
+    
 
     public AutoOrManualValue getSourcedValue(SourceType source, int profileValue, int equipmentValue) {
         if (source == SourceType.profile) {

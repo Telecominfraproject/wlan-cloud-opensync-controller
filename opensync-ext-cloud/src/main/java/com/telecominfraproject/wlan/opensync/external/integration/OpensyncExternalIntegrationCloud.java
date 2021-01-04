@@ -1248,7 +1248,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             currentActiveBSSIDs = new ArrayList<>();
         } else {
             currentActiveBSSIDs = currentActiveBSSIDs.stream()
-                    .filter(p -> (!p.getRadioType().equals(freqBand) || !p.getSsid().equals(ssid)))
+                    .filter(p -> (p.getRadioType() != null && p.getSsid() != null)).filter(p -> !p.getRadioType().equals(freqBand) || !p.getSsid().equals(ssid))
                     .collect(Collectors.toList());
             LOG.debug(
                     "Processing Wifi_VIF_State table update for AP {}, activeBSSIDs bssidList without current radio freq {} and ssid {}",

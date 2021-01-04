@@ -329,7 +329,9 @@ public class OpensyncCloudGatewayController {
         } else if (command instanceof CEGWNewChannelRequest) {
             CEGWNewChannelRequest request = (CEGWNewChannelRequest) command;
             Map<RadioType, Integer> newBackupChannels = request.getNewBackupChannels();
-            String resultDetails = tipwlanOvsdbClient.processNewChannelsRequest(inventoryId, newBackupChannels);
+            Map<RadioType, Integer> newPrimaryChannels = request.getNewPrimaryChannels();
+
+            String resultDetails = tipwlanOvsdbClient.processNewChannelsRequest(inventoryId, newBackupChannels,newPrimaryChannels);
             response.setResultDetail(resultDetails);
 
         } else if (command instanceof CEGWFirmwareDownloadRequest) {

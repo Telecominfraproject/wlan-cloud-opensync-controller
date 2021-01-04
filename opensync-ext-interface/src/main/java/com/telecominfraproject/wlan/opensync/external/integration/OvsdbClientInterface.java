@@ -32,6 +32,6 @@ public interface OvsdbClientInterface {
     
     String processFactoryResetRequest(String apId);
     
-    String processNewChannelsRequest(String apId, Map<RadioType,Integer> channelMap);
+    String processNewChannelsRequest(String apId, Map<RadioType,Integer> backupChannelMap, Map<RadioType,Integer> primaryChannelMap);
 
 }

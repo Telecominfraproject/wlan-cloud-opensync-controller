@@ -1,6 +1,7 @@
 package com.telecominfraproject.wlan.opensync.ovsdb;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
@@ -23,6 +24,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExternalIntegrationInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSession;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSessionMapInterface;
@@ -33,6 +35,7 @@ import com.vmware.ovsdb.callback.MonitorCallback;
 import com.vmware.ovsdb.exception.OvsdbClientException;
 import com.vmware.ovsdb.protocol.methods.MonitorRequests;
 import com.vmware.ovsdb.protocol.methods.TableUpdates;
+import com.vmware.ovsdb.protocol.operation.result.OperationResult;
 import com.vmware.ovsdb.service.OvsdbClient;
 
 import io.netty.handler.ssl.SslContext;
@@ -67,6 +70,9 @@ public class OpensyncGatewayTipWlanOvsdbClientTest {
 
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private CompletableFuture<TableUpdates> completableFuture;
+
+    @Mock(answer = Answers.RETURNS_MOCKS)
+    private CompletableFuture<OperationResult[]> operationResult;
 
     @Autowired
     TipWlanOvsdbClient tipwlanOvsdbClient;
@@ -153,6 +159,32 @@ public class OpensyncGatewayTipWlanOvsdbClientTest {
                 "http://127.0.0.1/~username/ea8300-2020-07-08-6632239/openwrt-ipq40xx-generic-linksys_ea8300-squashfs-sysupgrade.bin",
                 "openwrt-ipq40xx-generic-linksys_ea8300-squashfs-sysupgrade", "username",
                 "b0d03d8fba6b2261786ac97d49a629f2");
+
+    }
+
+    @Test
+    public void testProcessNewChannelsRequest() throws Exception {
+
+        OvsdbSession ovsdbSession = Mockito.mock(OvsdbSession.class, Mockito.RETURNS_DEEP_STUBS);
+        Mockito.when(ovsdbSession.getOvsdbClient()).thenReturn(ovsdbClient);
+
+        Mockito.when(ovsdbSessionMapInterface.getSession("Test_Client_21P10C68818122")).thenReturn(ovsdbSession);
+        
+        
+        String expectedResponse = " change backup and/or primary channels for AP Test_Client_21P10C68818122";
+
+        assert (tipwlanOvsdbClient.processNewChannelsRequest("Test_Client_21P10C68818122",
+                Map.of(RadioType.is2dot4GHz, Integer.valueOf(1), RadioType.is5GHzL, Integer.valueOf(40),
+                        RadioType.is5GHzU, Integer.valueOf(153)),
+                Map.of(RadioType.is2dot4GHz, Integer.valueOf(6), RadioType.is5GHzL, Integer.valueOf(36),
+                        RadioType.is5GHzU, Integer.valueOf(149)))
+                .equals(expectedResponse));
+
+        Mockito.verify(ovsdbDao).processNewChannelsRequest(ovsdbClient,
+                Map.of(RadioType.is2dot4GHz, Integer.valueOf(1), RadioType.is5GHzL, Integer.valueOf(40),
+                        RadioType.is5GHzU, Integer.valueOf(153)),
+                Map.of(RadioType.is2dot4GHz, Integer.valueOf(6), RadioType.is5GHzL, Integer.valueOf(36),
+                        RadioType.is5GHzU, Integer.valueOf(149)));
 
     }
 
