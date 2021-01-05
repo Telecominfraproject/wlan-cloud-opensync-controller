@@ -149,14 +149,17 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     private boolean isAutoconfigEnabled;
     @Value("${tip.wlan.ovsdb.defaultFwVersion:r10947-65030d81f3}")
     private String defaultFwVersion;
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_lan_type:bridge}")
+    @Value("${tip.wlan.ovsdb.wifi-iface.default_lan_type:bridge}")
     public String defaultLanInterfaceType;
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_lan_name:lan}")
+    @Value("${tip.wlan.ovsdb.wifi-iface.default_lan_name:lan}")
     public String defaultLanInterfaceName;
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_wan_type:bridge}")
+    @Value("${tip.wlan.ovsdb.wifi-iface.default_wan_type:bridge}")
     public String defaultWanInterfaceType;
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.wifi-iface.default_wan_name:wan}")
+    @Value("${tip.wlan.ovsdb.wifi-iface.default_wan_name:wan}")
     public String defaultWanInterfaceName;
+    
+    @Value("${tip.wlan.ovsdb.syncUpRadioConfigsForProvisionedEquipment:true}")
+    private boolean syncUpRadioConfigsForProvisionedEquipment;
 
     @Override
     public void apConnected(String apId, ConnectNodeInfo connectNodeInfo) {
@@ -300,6 +303,104 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         ce = equipmentServiceInterface.update(ce);
 
                     }
+                }
+                
+                if(syncUpRadioConfigsForProvisionedEquipment) {
+                    
+                    //sync up available radios reported by AP with the ApElementConfiguration, update equipment in DB if needed
+                    boolean needToUpdateEquipment = false;
+                    ApElementConfiguration apElementConfig = (ApElementConfiguration) ce.getDetails();
+                    if(apElementConfig == null) {
+                        apElementConfig = ApElementConfiguration.createWithDefaults();
+                        ce.setDetails(apElementConfig);
+                        needToUpdateEquipment = true;
+                    }
+                    
+                    
+                    if(apElementConfig.getDeviceName()==null || !apElementConfig.getDeviceName().equals(ce.getName())) {
+                        apElementConfig.setDeviceName(ce.getName());
+                        needToUpdateEquipment = true;
+                    }
+    
+                    if(apElementConfig.getEquipmentModel()==null || !apElementConfig.getEquipmentModel().equals(connectNodeInfo.model)) {
+                        apElementConfig.setEquipmentModel(connectNodeInfo.model);
+                        needToUpdateEquipment = true;
+                    }
+                                    
+                    Map<RadioType, RadioConfiguration> advancedRadioMap = apElementConfig.getAdvancedRadioMap();
+                    Map<RadioType, ElementRadioConfiguration> radioMap = apElementConfig.getRadioMap();
+                    
+                    if(advancedRadioMap == null) {
+                        advancedRadioMap  = new HashMap<>();
+                        apElementConfig.setAdvancedRadioMap(advancedRadioMap);
+                        needToUpdateEquipment = true;
+                    }
+                    
+                    if(radioMap == null) {
+                        radioMap = new HashMap<>();
+                        apElementConfig.setRadioMap(radioMap);
+                        needToUpdateEquipment = true;
+                    }
+                    
+                    Set<RadioType> radiosFromAp = new HashSet<>();
+                    
+                    //add missing radio configs from the AP into the DB
+                    for (String radio : connectNodeInfo.wifiRadioStates.keySet()) {
+                        RadioType radioType = RadioType.UNSUPPORTED;
+                        if (radio.equals("2.4G")) {
+                            radioType = RadioType.is2dot4GHz;
+                        } else if (radio.equals("5G")) {
+                            radioType = RadioType.is5GHz;
+                        } else if (radio.equals("5GL")) {
+                            radioType = RadioType.is5GHzL;
+                        } else if (radio.equals("5GU")) {
+                            radioType = RadioType.is5GHzU;
+                        }
+                        
+                        if (!radioType.equals(RadioType.UNSUPPORTED)) {
+                            
+                            radiosFromAp.add(radioType);
+                            
+                            RadioConfiguration advancedRadioConfiguration = advancedRadioMap.get(radioType);
+                            ElementRadioConfiguration radioConfiguration = radioMap.get(radioType);
+                            
+                            if(advancedRadioConfiguration == null) {
+                               advancedRadioConfiguration = RadioConfiguration.createWithDefaults(radioType);
+                               advancedRadioMap.put(radioType, advancedRadioConfiguration);
+                               needToUpdateEquipment = true;
+                            }
+                           
+                            if(radioConfiguration == null) {
+                               radioConfiguration = ElementRadioConfiguration.createWithDefaults(radioType);
+                               radioMap.put(radioType, radioConfiguration);
+                               needToUpdateEquipment = true;
+                            }
+    
+                        }
+                    }
+    
+                    //remove radio configs from the DB that are no longer present in the AP but still exist in DB
+                    for(RadioType radioType: RadioType.validValues()) {
+                        
+                        RadioConfiguration advancedRadioConfiguration = advancedRadioMap.get(radioType);
+                        
+                        if(advancedRadioConfiguration != null || !radiosFromAp.contains(radioType)) {
+                            advancedRadioMap.remove(radioType);
+                            needToUpdateEquipment = true;
+                        }
+    
+                        ElementRadioConfiguration radioConfiguration = radioMap.get(radioType);
+                        if(radioConfiguration != null || !radiosFromAp.contains(radioType)) {
+                            radioMap.remove(radioType);
+                            needToUpdateEquipment = true;
+                        }
+    
+                    }
+    
+                    if(needToUpdateEquipment) {
+                        ce = equipmentServiceInterface.update(ce);
+                    }
+    
                 }
 
             }
