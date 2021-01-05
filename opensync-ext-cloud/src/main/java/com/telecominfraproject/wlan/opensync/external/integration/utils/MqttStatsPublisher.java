@@ -1,4 +1,4 @@
-package com.telecominfraproject.wlan.opensync.external.integration;
+package com.telecominfraproject.wlan.opensync.external.integration.utils;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -30,7 +30,6 @@ import com.telecominfraproject.wlan.client.session.models.ClientSessionDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientSessionMetricDetails;
 import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherInterface;
 import com.telecominfraproject.wlan.core.model.equipment.ChannelBandwidth;
-import com.telecominfraproject.wlan.core.model.equipment.ChannelHopReason;
 import com.telecominfraproject.wlan.core.model.equipment.DetectedAuthMode;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.NeighborScanPacketType;
@@ -40,8 +39,9 @@ import com.telecominfraproject.wlan.core.model.equipment.SecurityType;
 import com.telecominfraproject.wlan.core.model.equipment.WiFiSessionUtility;
 import com.telecominfraproject.wlan.core.model.utils.DecibelUtils;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
-import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.Equipment;
+import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSession;
+import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSessionMapInterface;
 import com.telecominfraproject.wlan.opensync.util.OvsdbToWlanCloudTypeMappingUtility;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
 import com.telecominfraproject.wlan.profile.models.Profile;
@@ -78,7 +78,6 @@ import com.telecominfraproject.wlan.status.models.Status;
 import com.telecominfraproject.wlan.status.models.StatusCode;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
 import com.telecominfraproject.wlan.status.network.models.NetworkAdminStatusData;
-import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeChannelHopEvent;
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeEventType;
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeSipCallReportEvent;
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeSipCallStartEvent;
@@ -95,7 +94,6 @@ import sts.OpensyncStats.AssocType;
 import sts.OpensyncStats.CallReport;
 import sts.OpensyncStats.CallStart;
 import sts.OpensyncStats.CallStop;
-import sts.OpensyncStats.ChannelSwitchReason;
 import sts.OpensyncStats.Client;
 import sts.OpensyncStats.ClientReport;
 import sts.OpensyncStats.DNSProbeMetric;
@@ -135,10 +133,10 @@ import wc.stats.IpDnsTelemetry.WCStatsReport;
 
 @org.springframework.context.annotation.Profile("opensync_cloud_config")
 @Component
-public class OpensyncExternalIntegrationMqttMessageProcessor {
+public class MqttStatsPublisher {
 
-    private static final Logger LOG = LoggerFactory.getLogger(OpensyncExternalIntegrationMqttMessageProcessor.class);
-    
+    private static final Logger LOG = LoggerFactory.getLogger(MqttStatsPublisher.class);
+
     @Autowired
     private EquipmentServiceInterface equipmentServiceInterface;
     @Autowired
@@ -150,9 +148,11 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
     @Autowired
     private ClientServiceInterface clientServiceInterface;
     @Autowired
-    private CloudEventDispatcherInterface equipmentMetricsCollectorInterface;
+    private CloudEventDispatcherInterface cloudEventDispatcherInterface;
+    @Autowired
+    private RealtimeEventPublisher realtimeEventPublisher;
 
-    void processMqttMessage(String topic, WCStatsReport wcStatsReport) {
+    public void processMqttMessage(String topic, WCStatsReport wcStatsReport) {
         LOG.info("Received WCStatsReport {}", wcStatsReport.toString());
 
         LOG.debug("Received report on topic {}", topic);
@@ -192,7 +192,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
     }
 
-    void processMqttMessage(String topic, Report report) {
+    public void processMqttMessage(String topic, Report report) {
         LOG.info("Received report on topic {} for ap {}", topic, report.getNodeID());
         int customerId = extractCustomerIdFromTopic(topic);
         String apId = extractApIdFromTopic(topic);
@@ -251,12 +251,12 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
         if (!metricRecordList.isEmpty()) {
             LOG.debug("Publishing Metrics {}", metricRecordList);
-            equipmentMetricsCollectorInterface.publishMetrics(metricRecordList);
+            cloudEventDispatcherInterface.publishMetrics(metricRecordList);
         }
 
     }
 
-    void processMqttMessage(String topic, FlowReport flowReport) {
+    public void processMqttMessage(String topic, FlowReport flowReport) {
 
         LOG.info("Received report on topic {}", topic);
         int customerId = extractCustomerIdFromTopic(topic);
@@ -323,9 +323,9 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
             }
 
-            publishChannelHopEvents(customerId, equipmentId, e);
-            
-            // TODO: add DHCP transaction processing, for now just log it 
+            realtimeEventPublisher.publishChannelHopEvents(customerId, equipmentId, e);
+
+            // TODO: add DHCP transaction processing, for now just log it
             for (DhcpTransaction dhcpTransaction : e.getDhcpTransactionList()) {
                 LOG.info("DhcpTransaction {}", dhcpTransaction);
             }
@@ -334,205 +334,135 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
     }
 
-    private void publishChannelHopEvents(int customerId, long equipmentId, EventReport e) {
-        
-        LOG.info("publishChannelHopEvents for customerId {} equipmentId {}");
-        
-        List<SystemEvent> events = new ArrayList<>();
-        
-        for (sts.OpensyncStats.EventReport.ChannelSwitchEvent channelSwitchEvent : e.getChannelSwitchList()) {
-            Equipment equipment = equipmentServiceInterface.getOrNull(equipmentId);
-            if (equipment == null)
-                continue;
-            RadioType radioType = null;
-            Long timestamp = null;
-            ChannelHopReason reason = null;
-            Integer channel = null;
-            if (channelSwitchEvent.hasBand()) {                   
-               radioType = OvsdbToWlanCloudTypeMappingUtility
-                .getRadioTypeFromOpensyncStatsRadioBandType(channelSwitchEvent.getBand());            
-            }
-            if (RadioType.isUnsupported(radioType)) {
-                LOG.warn("publishChannelHopEvents:RadioType {} is unsupported, cannot send RealTimeChannelHopEvent for {}", radioType, channelSwitchEvent);
-                continue;
-            }
-            if (channelSwitchEvent.hasTimestampMs()) {
-                timestamp = channelSwitchEvent.getTimestampMs();
-            }
-            if (timestamp == null) {
-                LOG.warn("publishChannelHopEvents:timestamp is null, cannot send RealTimeChannelHopEvent for {}", channelSwitchEvent);
-                continue;  
-            }
-            
-            if (channelSwitchEvent.hasReason()) {
-                if (channelSwitchEvent.getReason().equals(ChannelSwitchReason.high_interference)) reason = ChannelHopReason.HighInterference;
-                else if (channelSwitchEvent.getReason().equals(ChannelSwitchReason.radar_detected)) reason = ChannelHopReason.RadarDetected;
-            }
-            if (ChannelHopReason.isUnsupported(reason)) {
-                LOG.warn("publishChannelHopEvents:reason {} is unsupported, cannot send RealTimeChannelHopEvent for {}", channelSwitchEvent.getReason(), channelSwitchEvent);
-                continue; 
-            }
-            if (channelSwitchEvent.hasChannel()) {
-                channel = channelSwitchEvent.getChannel();
-            }
-            if (channel == null) {
-                LOG.warn("publishChannelHopEvents:channel is null, cannot send RealTimeChannelHopEvent for {}", channelSwitchEvent);
-                continue; 
-            }
-
-            RealTimeChannelHopEvent channelHopEvent = new RealTimeChannelHopEvent(RealTimeEventType.Channel_Hop, customerId, equipmentId, radioType, channel, ((ApElementConfiguration)equipment.getDetails()).getRadioMap().get(radioType).getChannelNumber(), reason, timestamp);
-            
-            events.add(channelHopEvent);
-            
-            LOG.debug("publishChannelHopEvents:Adding ChannelHopEvent to bulk list {}", channelHopEvent);
-        }
-        
-
-        if (events.size() > 0) {
-            LOG.info("publishChannelHopEvents:publishEventsBulk: {}", events);
-            equipmentMetricsCollectorInterface.publishEventsBulk(events);
-        } else {
-            LOG.info("publishChannelHopEvents:No ChannelHopEvents in report");
-        }
-    }
-
+  
     protected void processClientConnectEvent(int customerId, long equipmentId, long locationId, EventReport e,
             sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
         ClientConnectEvent clientConnectEvent = apEventClientSession.getClientConnectEvent();
+        
+        realtimeEventPublisher.publishClientConnectSuccessEvent(customerId, equipmentId, clientConnectEvent);
 
-        if (clientConnectEvent.hasStaMac()) {
-            com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
-                    MacAddress.valueOf(clientConnectEvent.getStaMac()));
-            if (client == null) {
-                client = new com.telecominfraproject.wlan.client.models.Client();
+        com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
+                MacAddress.valueOf(clientConnectEvent.getStaMac()));
+        if (client == null) {
+            client = new com.telecominfraproject.wlan.client.models.Client();
 
-                client.setCustomerId(customerId);
-                client.setMacAddress(MacAddress.valueOf(clientConnectEvent.getStaMac()));
+            client.setCustomerId(customerId);
+            client.setMacAddress(MacAddress.valueOf(clientConnectEvent.getStaMac()));
 
-                client.setDetails(new ClientInfoDetails());
+            client.setDetails(new ClientInfoDetails());
 
-                client = clientServiceInterface.create(client);
-
-            }
-
-            ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                    MacAddress.valueOf(clientConnectEvent.getStaMac()));
-
-            if (clientSession == null) {
-                clientSession = new ClientSession();
-            }
-
-            clientSession.setCustomerId(customerId);
-            clientSession.setEquipmentId(equipmentId);
-            clientSession.setLocationId(locationId);
-            clientSession.setMacAddress(MacAddress.valueOf(clientConnectEvent.getStaMac()));
-
-            ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
-            clientSessionDetails.setSessionId(apEventClientSession.getSessionId());
-
-            if (clientConnectEvent.hasFbtUsed()) {
-
-                // TODO: mapping?
-
-            }
-            if (clientConnectEvent.hasEvTimeBootupInUsAssoc()) {
-                clientSessionDetails.setAssocTimestamp(clientConnectEvent.getEvTimeBootupInUsAssoc());
-            }
-
-            if (clientConnectEvent.hasEvTimeBootupInUsAuth()) {
-                clientSessionDetails.setAuthTimestamp(clientConnectEvent.getEvTimeBootupInUsAuth());
-            }
-
-            if (clientConnectEvent.hasEvTimeBootupInUsEapol()) {
-                ClientEapDetails eapDetails = new ClientEapDetails();
-                eapDetails.setEapSuccessTimestamp(clientConnectEvent.getEvTimeBootupInUsEapol());
-                clientSessionDetails.setEapDetails(eapDetails);
-            }
-
-            if (clientConnectEvent.hasEvTimeBootupInUsFirstRx()) {
-                clientSessionDetails.setFirstDataRcvdTimestamp(clientConnectEvent.getEvTimeBootupInUsFirstRx());
-            }
-
-            if (clientConnectEvent.hasEvTimeBootupInUsFirstTx()) {
-                clientSessionDetails.setFirstDataSentTimestamp(clientConnectEvent.getEvTimeBootupInUsFirstTx());
-            }
-
-            if (clientConnectEvent.hasEvTimeBootupInUsIp()) {
-                clientSessionDetails.setIpTimestamp(clientConnectEvent.getEvTimeBootupInUsIp());
-            }
-
-            if (clientConnectEvent.hasEvTimeBootupInUsPortEnable()) {
-                clientSessionDetails.setPortEnabledTimestamp(clientConnectEvent.getEvTimeBootupInUsPortEnable());
-            }
-
-            if (clientConnectEvent.hasCltId()) {
-                clientSessionDetails.setHostname(clientConnectEvent.getCltId());
-            }
-
-            if (clientConnectEvent.hasSecType()) {
-                clientSessionDetails.setSecurityType(OvsdbToWlanCloudTypeMappingUtility
-                        .getCloudSecurityTypeFromOpensyncStats(clientConnectEvent.getSecType()));
-            }
-
-            if (clientConnectEvent.hasBand()) {
-                clientSessionDetails.setRadioType(OvsdbToWlanCloudTypeMappingUtility
-                        .getRadioTypeFromOpensyncStatsRadioBandType(clientConnectEvent.getBand()));
-            }
-
-            if (clientConnectEvent.hasAssocType()) {
-                clientSessionDetails
-                .setIsReassociation(clientConnectEvent.getAssocType().equals(AssocType.REASSOC));
-
-            }
-
-            if (clientConnectEvent.hasAssocRssi()) {
-                clientSessionDetails.setAssocRssi(clientConnectEvent.getAssocRssi());
-            }
-
-            if (clientConnectEvent.hasSsid()) {
-                clientSessionDetails.setSsid(clientConnectEvent.getSsid());
-            }
-
-            if (clientConnectEvent.hasUsing11K()) {
-                clientSessionDetails.setIs11KUsed(clientConnectEvent.getUsing11K());
-            }
-
-            if (clientConnectEvent.hasUsing11R()) {
-                clientSessionDetails.setIs11RUsed(clientConnectEvent.getUsing11R());
-
-            }
-
-            if (clientConnectEvent.hasUsing11V()) {
-                clientSessionDetails.setIs11VUsed(clientConnectEvent.getUsing11V());
-            }
-
-            if (clientConnectEvent.hasIpAddr()) {
-                try {
-                    clientSessionDetails
-                    .setIpAddress(InetAddress.getByAddress(clientConnectEvent.getIpAddr().toByteArray()));
-                } catch (UnknownHostException e1) {
-                    LOG.error("Invalid Ip Address for client {}", clientConnectEvent.getIpAddr(), e);
-                }
-            }
-            clientSessionDetails.setAssociationState(AssociationState._802_11_Associated);
-
-            if (clientSession.getDetails() == null) {
-                clientSession.setDetails(clientSessionDetails);
-            } else {
-                clientSession.getDetails().mergeSession(clientSessionDetails);
-            }
-
-            clientSession = clientServiceInterface.updateSession(clientSession);
+            client = clientServiceInterface.create(client);
 
         }
 
+        ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
+                MacAddress.valueOf(clientConnectEvent.getStaMac()));
+
+        if (clientSession == null) {
+            clientSession = new ClientSession();
+        }
+
+        clientSession.setCustomerId(customerId);
+        clientSession.setEquipmentId(equipmentId);
+        clientSession.setLocationId(locationId);
+        clientSession.setMacAddress(MacAddress.valueOf(clientConnectEvent.getStaMac()));
+
+        ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+        clientSessionDetails.setSessionId(clientConnectEvent.getSessionId());
+
+        if (clientConnectEvent.hasEvTimeBootupInUsAssoc()) {
+            clientSessionDetails.setAssocTimestamp(clientConnectEvent.getEvTimeBootupInUsAssoc());
+        }
+
+        if (clientConnectEvent.hasEvTimeBootupInUsAuth()) {
+            clientSessionDetails.setAuthTimestamp(clientConnectEvent.getEvTimeBootupInUsAuth());
+        }
+
+        if (clientConnectEvent.hasEvTimeBootupInUsEapol()) {
+            ClientEapDetails eapDetails = new ClientEapDetails();
+            eapDetails.setEapSuccessTimestamp(clientConnectEvent.getEvTimeBootupInUsEapol());
+            clientSessionDetails.setEapDetails(eapDetails);
+        }
+
+        if (clientConnectEvent.hasEvTimeBootupInUsFirstRx()) {
+            clientSessionDetails.setFirstDataRcvdTimestamp(clientConnectEvent.getEvTimeBootupInUsFirstRx());
+        }
+
+        if (clientConnectEvent.hasEvTimeBootupInUsFirstTx()) {
+            clientSessionDetails.setFirstDataSentTimestamp(clientConnectEvent.getEvTimeBootupInUsFirstTx());
+        }
+
+        if (clientConnectEvent.hasEvTimeBootupInUsIp()) {
+            clientSessionDetails.setIpTimestamp(clientConnectEvent.getEvTimeBootupInUsIp());
+        }
+
+        if (clientConnectEvent.hasEvTimeBootupInUsPortEnable()) {
+            clientSessionDetails.setPortEnabledTimestamp(clientConnectEvent.getEvTimeBootupInUsPortEnable());
+        }
+
+        if (clientConnectEvent.hasCltId()) {
+            clientSessionDetails.setHostname(clientConnectEvent.getCltId());
+        }
+
+        if (clientConnectEvent.hasSecType()) {
+            clientSessionDetails.setSecurityType(OvsdbToWlanCloudTypeMappingUtility
+                    .getCloudSecurityTypeFromOpensyncStats(clientConnectEvent.getSecType()));
+        }
+
+        clientSessionDetails.setRadioType(OvsdbToWlanCloudTypeMappingUtility
+                .getRadioTypeFromOpensyncStatsRadioBandType(clientConnectEvent.getBand()));
+
+        if (clientConnectEvent.hasAssocType()) {
+
+            clientSessionDetails.setIsReassociation(clientConnectEvent.getAssocType().equals(AssocType.REASSOC));
+        }
+
+        if (clientConnectEvent.hasAssocRssi()) {
+            clientSessionDetails.setAssocRssi(clientConnectEvent.getAssocRssi());
+        }
+
+        clientSessionDetails.setSsid(clientConnectEvent.getSsid());
+
+        if (clientConnectEvent.hasUsing11K()) {
+            clientSessionDetails.setIs11KUsed(clientConnectEvent.getUsing11K());
+        }
+
+        if (clientConnectEvent.hasUsing11R()) {
+            clientSessionDetails.setIs11RUsed(clientConnectEvent.getUsing11R());
+
+        }
+
+        if (clientConnectEvent.hasUsing11V()) {
+            clientSessionDetails.setIs11VUsed(clientConnectEvent.getUsing11V());
+        }
+
+        if (clientConnectEvent.hasIpAddr()) {
+            try {
+                clientSessionDetails
+                        .setIpAddress(InetAddress.getByAddress(clientConnectEvent.getIpAddr().toByteArray()));
+            } catch (UnknownHostException e1) {
+                LOG.error("Invalid Ip Address for client {}", clientConnectEvent.getIpAddr(), e);
+            }
+        }
+
+        clientSessionDetails.setAssociationState(AssociationState._802_11_Associated);
+
+        if (clientSession.getDetails() == null) {
+            clientSession.setDetails(clientSessionDetails);
+        } else {
+            clientSession.getDetails().mergeSession(clientSessionDetails);
+        }
+
+        clientSession = clientServiceInterface.updateSession(clientSession);
 
     }
+
+    
 
     protected void processClientDisconnectEvent(int customerId, long equipmentId, long locationId,
             sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
         ClientDisconnectEvent clientDisconnectEvent = apEventClientSession.getClientDisconnectEvent();
-
+        realtimeEventPublisher.publishClientDisconnectEvent(customerId, equipmentId, clientDisconnectEvent);
         if (clientDisconnectEvent.hasStaMac()) {
 
             com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
@@ -615,66 +545,70 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
     protected void processClientAuthEvent(int customerId, long equipmentId, long locationId,
             sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
         ClientAuthEvent clientAuthEvent = apEventClientSession.getClientAuthEvent();
-            if (clientAuthEvent.hasStaMac()) {
+        realtimeEventPublisher.publishClientAuthSystemEvent(customerId, equipmentId, clientAuthEvent);
+        if (clientAuthEvent.hasStaMac()) {
 
-                com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
-                        MacAddress.valueOf(clientAuthEvent.getStaMac()));
-                if (client == null) {
-                    client = new com.telecominfraproject.wlan.client.models.Client();
+            com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
+                    MacAddress.valueOf(clientAuthEvent.getStaMac()));
+            if (client == null) {
+                client = new com.telecominfraproject.wlan.client.models.Client();
 
-                    client.setCustomerId(customerId);
-                    client.setMacAddress(MacAddress.valueOf(clientAuthEvent.getStaMac()));
+                client.setCustomerId(customerId);
+                client.setMacAddress(MacAddress.valueOf(clientAuthEvent.getStaMac()));
 
-                    client.setDetails(new ClientInfoDetails());
+                client.setDetails(new ClientInfoDetails());
 
-                    client = clientServiceInterface.create(client);
+                client = clientServiceInterface.create(client);
 
-                }
-
-                ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                        MacAddress.valueOf(clientAuthEvent.getStaMac()));
-
-                if (clientSession == null) {
-                    clientSession = new ClientSession();
-                }
-
-                clientSession.setCustomerId(customerId);
-                clientSession.setEquipmentId(equipmentId);
-                clientSession.setLocationId(locationId);
-                clientSession.setMacAddress(MacAddress.valueOf(clientAuthEvent.getStaMac()));
-
-                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
-
-                clientSessionDetails.setSessionId(apEventClientSession.getSessionId());
-
-                if (clientAuthEvent.hasBand()) {
-                    clientSessionDetails.setRadioType(OvsdbToWlanCloudTypeMappingUtility
-                            .getRadioTypeFromOpensyncStatsRadioBandType(clientAuthEvent.getBand()));
-                }
-                if (clientAuthEvent.hasSsid()) {
-                    clientSessionDetails.setSsid(clientAuthEvent.getSsid());
-                }
-                if (clientAuthEvent.hasAuthStatus()) {
-                    clientSessionDetails.setAssociationState(AssociationState._802_11_Authenticated);
-                }
-
-                if (clientSession.getDetails() == null) {
-                    clientSession.setDetails(clientSessionDetails);
-                } else {
-                    clientSession.getDetails().mergeSession(clientSessionDetails);
-                }
-
-                clientSession = clientServiceInterface.updateSession(clientSession);
-
-            } else {
-                LOG.warn("Cannot update client or client session when no client mac address is present");
             }
-        
+
+            ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
+                    MacAddress.valueOf(clientAuthEvent.getStaMac()));
+
+            if (clientSession == null) {
+                clientSession = new ClientSession();
+            }
+
+            clientSession.setCustomerId(customerId);
+            clientSession.setEquipmentId(equipmentId);
+            clientSession.setLocationId(locationId);
+            clientSession.setMacAddress(MacAddress.valueOf(clientAuthEvent.getStaMac()));
+
+            ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+
+            clientSessionDetails.setSessionId(apEventClientSession.getSessionId());
+
+            if (clientAuthEvent.hasBand()) {
+                clientSessionDetails.setRadioType(OvsdbToWlanCloudTypeMappingUtility
+                        .getRadioTypeFromOpensyncStatsRadioBandType(clientAuthEvent.getBand()));
+            }
+            if (clientAuthEvent.hasSsid()) {
+                clientSessionDetails.setSsid(clientAuthEvent.getSsid());
+            }
+            if (clientAuthEvent.hasAuthStatus()) {
+                clientSessionDetails.setAssociationState(AssociationState._802_11_Authenticated);
+            }
+
+            if (clientSession.getDetails() == null) {
+                clientSession.setDetails(clientSessionDetails);
+            } else {
+                clientSession.getDetails().mergeSession(clientSessionDetails);
+            }
+
+            clientSession = clientServiceInterface.updateSession(clientSession);
+
+        } else {
+            LOG.warn("Cannot update client or client session when no client mac address is present");
+        }
+
     }
 
+   
     protected void processClientAssocEvent(int customerId, long equipmentId, long locationId,
             sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
         ClientAssocEvent clientAssocEvent = apEventClientSession.getClientAssocEvent();
+        realtimeEventPublisher.publishClientAssocEvent(customerId, equipmentId, clientAssocEvent);
+
         if (clientAssocEvent.hasStaMac()) {
             com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
                     MacAddress.valueOf(clientAssocEvent.getStaMac()));
@@ -745,6 +679,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
     }
 
+   
+
     protected void processClientFailureEvent(int customerId, long equipmentId, long locationId,
             sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
         ClientFailureEvent clientFailureEvent = apEventClientSession.getClientFailureEvent();
@@ -807,9 +743,12 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
     }
 
+   
+
     protected void processClientFirstDataEvent(int customerId, long equipmentId, long locationId,
             sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
         ClientFirstDataEvent clientFirstDataEvent = apEventClientSession.getClientFirstDataEvent();
+        realtimeEventPublisher.publishClientFirstDataEvent(customerId, equipmentId, clientFirstDataEvent);
         if (clientFirstDataEvent.hasStaMac()) {
 
             com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
@@ -866,9 +805,11 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
     }
 
+
     protected void processClientIdEvent(int customerId, long equipmentId, long locationId,
             sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
         ClientIdEvent clientIdEvent = apEventClientSession.getClientIdEvent();
+        realtimeEventPublisher.publishClientIdEvent(customerId, equipmentId, clientIdEvent);
         if (clientIdEvent.hasCltMac()) {
 
             com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
@@ -915,9 +856,12 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
     }
 
+
+
     protected void processClientIpEvent(int customerId, long equipmentId, long locationId,
             sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
         ClientIpEvent clientIpEvent = apEventClientSession.getClientIpEvent();
+        realtimeEventPublisher.publishClientIpEvent(customerId, equipmentId, clientIpEvent);
         if (clientIpEvent.hasStaMac()) {
 
             com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
@@ -951,8 +895,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             clientSessionDetails.setSessionId(apEventClientSession.getSessionId());
 
             try {
-                clientSessionDetails
-                .setIpAddress(InetAddress.getByAddress(clientIpEvent.getIpAddr().toByteArray()));
+                clientSessionDetails.setIpAddress(InetAddress.getByAddress(clientIpEvent.getIpAddr().toByteArray()));
             } catch (UnknownHostException e1) {
                 // TODO Auto-generated catch block
                 e1.printStackTrace();
@@ -975,6 +918,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
     protected void processClientTimeoutEvent(int customerId, long equipmentId, long locationId,
             sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
         ClientTimeoutEvent clientTimeoutEvent = apEventClientSession.getClientTimeoutEvent();
+        realtimeEventPublisher.publishClientTimeoutEvent(customerId, equipmentId, clientTimeoutEvent);
         if (clientTimeoutEvent.hasStaMac()) {
 
             com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId,
@@ -1039,6 +983,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
     }
 
+   
+
     void populateSipCallReport(List<ServiceMetric> metricRecordList, Report report, int customerId, long equipmentId,
             String apId, long locationId) {
         // only in case it is not there, we will just use the time when we
@@ -1069,13 +1015,13 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
         }
 
         if (eventsList.size() > 0) {
-            equipmentMetricsCollectorInterface.publishEventsBulk(eventsList);
+            cloudEventDispatcherInterface.publishEventsBulk(eventsList);
         }
 
     }
 
     protected void processRealTimeSipCallReportEvent(int customerId, long equipmentId, long eventTimestamp,
-                                                     List<SystemEvent> eventsList, VideoVoiceReport videoVoiceReport) {
+            List<SystemEvent> eventsList, VideoVoiceReport videoVoiceReport) {
         if (videoVoiceReport.hasCallReport()) {
 
             CallReport callReport = videoVoiceReport.getCallReport();
@@ -1084,7 +1030,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                     eventTimestamp);
 
             if (callReport.hasClientMac() && callReport.getClientMac().isValidUtf8()) {
-                cloudSipCallReportEvent.setClientMacAddress(MacAddress.valueOf(callReport.getClientMac().toStringUtf8()));
+                cloudSipCallReportEvent
+                        .setClientMacAddress(MacAddress.valueOf(callReport.getClientMac().toStringUtf8()));
             }
             cloudSipCallReportEvent.setStatuses(processRtpFlowStats(callReport.getStatsList()));
             cloudSipCallReportEvent.setEventType(RealTimeEventType.SipCallReport);
@@ -1120,14 +1067,14 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
     private SIPCallReportReason getCallReportReason(CallReport.CallReportReason reason) {
         if (reason != null) {
             switch (reason) {
-                case ROAMED_TO:
-                    return SIPCallReportReason.ROAMED_TO;
-                case GOT_PUBLISH:
-                    return SIPCallReportReason.GOT_PUBLISH;
-                case ROAMED_FROM:
-                    return SIPCallReportReason.ROAMED_FROM;
-                default:
-                    return SIPCallReportReason.UNSUPPORTED;
+            case ROAMED_TO:
+                return SIPCallReportReason.ROAMED_TO;
+            case GOT_PUBLISH:
+                return SIPCallReportReason.GOT_PUBLISH;
+            case ROAMED_FROM:
+                return SIPCallReportReason.ROAMED_FROM;
+            default:
+                return SIPCallReportReason.UNSUPPORTED;
             }
         }
         return SIPCallReportReason.UNSUPPORTED;
@@ -1143,7 +1090,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                     eventTimestamp);
 
             if (apCallStart.hasClientMac() && apCallStart.getClientMac().isValidUtf8()) {
-                cloudSipCallStartEvent.setClientMacAddress(MacAddress.valueOf(apCallStart.getClientMac().toStringUtf8()));
+                cloudSipCallStartEvent
+                        .setClientMacAddress(MacAddress.valueOf(apCallStart.getClientMac().toStringUtf8()));
             }
 
             if (apCallStart.hasDeviceInfo()) {
@@ -1278,7 +1226,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             }
 
             if (apStreamVideoServer.hasClientMac() && apStreamVideoServer.getClientMac().isValidUtf8()) {
-                rtsStartEvent.setClientMacAddress(MacAddress.valueOf(apStreamVideoServer.getClientMac().toStringUtf8()));
+                rtsStartEvent
+                        .setClientMacAddress(MacAddress.valueOf(apStreamVideoServer.getClientMac().toStringUtf8()));
             }
 
             if (apStreamVideoServer.hasSessionId()) {
@@ -1294,7 +1243,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
         }
     }
 
-    private List<com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowStats> processRtpFlowStats(List<OpensyncStats.RtpFlowStats> stats) {
+    private List<com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowStats> processRtpFlowStats(
+            List<OpensyncStats.RtpFlowStats> stats) {
         List<com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowStats> cloudRtpFlowStatsList = new ArrayList<>();
         for (RtpFlowStats apRtpFlowStats : stats) {
 
@@ -1322,34 +1272,34 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
             if (apRtpFlowStats.hasDirection()) {
                 switch (apRtpFlowStats.getDirection()) {
-                    case RTP_DOWNSTREAM:
-                        cloudRtpStats.setDirection(
-                                com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowDirection.DOWNSTREAM);
-                        break;
-                    case RTP_UPSTREAM:
-                        cloudRtpStats.setDirection(
-                                com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowDirection.UPSTREAM);
-                        break;
-                    default:
-                        cloudRtpStats.setDirection(
-                                com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowDirection.UNSUPPORTED);
+                case RTP_DOWNSTREAM:
+                    cloudRtpStats.setDirection(
+                            com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowDirection.DOWNSTREAM);
+                    break;
+                case RTP_UPSTREAM:
+                    cloudRtpStats.setDirection(
+                            com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowDirection.UPSTREAM);
+                    break;
+                default:
+                    cloudRtpStats.setDirection(
+                            com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowDirection.UNSUPPORTED);
                 }
             }
 
             if (apRtpFlowStats.hasRtpFlowType()) {
                 switch (apRtpFlowStats.getRtpFlowType()) {
-                    case RTP_VIDEO:
-                        cloudRtpStats.setFlowType(
-                                com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowType.VIDEO);
-                        break;
-                    case RTP_VOICE:
-                        cloudRtpStats.setFlowType(
-                                com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowType.VOICE);
-                        break;
-                    default:
-                        cloudRtpStats.setFlowType(
-                                com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowType.UNSUPPORTED);
-                        break;
+                case RTP_VIDEO:
+                    cloudRtpStats
+                            .setFlowType(com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowType.VIDEO);
+                    break;
+                case RTP_VOICE:
+                    cloudRtpStats
+                            .setFlowType(com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowType.VOICE);
+                    break;
+                default:
+                    cloudRtpStats.setFlowType(
+                            com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowType.UNSUPPORTED);
+                    break;
                 }
             }
 
@@ -1676,13 +1626,13 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 RadioUtilization radioUtil = new RadioUtilization();
                 radioUtil.setTimestampSeconds((int) ((survey.getTimestampMs()) / 1000));
                 int pctBusyTx = busyTx / totalDurationMs;
-            	checkIfOutOfBound("pctBusyTx", pctBusyTx, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
-            
+                checkIfOutOfBound("pctBusyTx", pctBusyTx, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
+
                 radioUtil.setAssocClientTx(pctBusyTx);
                 int pctBusyRx = busyRx / totalDurationMs;
                 checkIfOutOfBound("pctBusyRx", pctBusyRx, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
                 radioUtil.setAssocClientRx(pctBusyRx);
-                
+
                 double pctIBSS = (busyTx + busySelf) / totalDurationMs;
                 radioUtil.setIbss(pctIBSS);
                 int nonWifi = (busy - (busyTx + busyRx)) / totalDurationMs;
@@ -1727,23 +1677,23 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
         updateDeviceStatusRadioUtilizationReport(customerId, equipmentId, radioUtilizationReport);
     }
-    
-    private void checkIfOutOfBound(String checkedType, int checkedValue, Survey survey, int totalDurationMs, 
-    		int busyTx, int busyRx, int busy, int busySelf) {
-    	if (checkedValue > 100 || checkedValue < 0) {
-    		LOG.warn("Calculated value for {} {} is out of bounds on totalDurationMs {} for survey.getBand {}. busyTx {} busyRx {} busy {} busySelf {} "
-        			+ " survey.getTimestampMs {}, survey.getSurveyListList {}",
-        			checkedType, checkedValue, totalDurationMs, survey.getBand(), busyTx, busyRx, busy, busySelf, 
-        			survey.getTimestampMs(), survey.getSurveyListList());
-    	}
+
+    private void checkIfOutOfBound(String checkedType, int checkedValue, Survey survey, int totalDurationMs, int busyTx,
+            int busyRx, int busy, int busySelf) {
+        if (checkedValue > 100 || checkedValue < 0) {
+            LOG.warn(
+                    "Calculated value for {} {} is out of bounds on totalDurationMs {} for survey.getBand {}. busyTx {} busyRx {} busy {} busySelf {} "
+                            + " survey.getTimestampMs {}, survey.getSurveyListList {}",
+                    checkedType, checkedValue, totalDurationMs, survey.getBand(), busyTx, busyRx, busy, busySelf,
+                    survey.getTimestampMs(), survey.getSurveyListList());
+        }
     }
 
     private void updateNetworkAdminStatusReport(int customerId, long equipmentId, ApNodeMetrics apNodeMetrics) {
         apNodeMetrics.getNetworkProbeMetrics().forEach(n -> {
 
-            
             LOG.info("Update NetworkAdminStatusReport for NetworkProbeMetrics {}", n.toString());
-            
+
             Status networkAdminStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
                     StatusDataType.NETWORK_ADMIN);
 
@@ -1756,9 +1706,9 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                 networkAdminStatus.setDetails(new NetworkAdminStatusData());
                 networkAdminStatus = statusServiceInterface.update(networkAdminStatus);
             }
-            
+
             NetworkAdminStatusData statusData = (NetworkAdminStatusData) networkAdminStatus.getDetails();
-            
+
             if (n.getDnsState() == null) {
                 LOG.debug("No DnsState present in networkProbeMetrics, DnsState and CloudLinkStatus set to 'normal");
                 statusData.setDnsStatus(StatusCode.normal);
@@ -1791,7 +1741,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
     }
 
     private static StatusCode stateUpDownErrorToStatusCode(StateUpDownError state) {
-        
+
         switch (state) {
         case enabled:
             return StatusCode.normal;
@@ -1887,7 +1837,6 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
                 }
 
-
             }
 
             if (networkProbe.hasVlanProbe()) {
@@ -1938,7 +1887,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
             for (Client cl : clReport.getClientListList()) {
 
                 if (cl.getMacAddress() == null) {
-                    LOG.debug("No mac address for Client {}, cannot set device mac address for client in ClientMetrics.",
+                    LOG.debug(
+                            "No mac address for Client {}, cannot set device mac address for client in ClientMetrics.",
                             cl);
                     continue;
                 }
@@ -2161,7 +2111,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
                         || ssidConfig.getSecureMode().equals(SecureMode.wpa2OnlyPSK)) {
                     latestClientSessionDetails.setSecurityType(SecurityType.PSK);
                 } else if (ssidConfig.getSecureMode().equals(SecureMode.wpa3OnlySAE)
-                        || ssidConfig.getSecureMode().equals(SecureMode.wpa3MixedSAE)){
+                        || ssidConfig.getSecureMode().equals(SecureMode.wpa3MixedSAE)) {
                     latestClientSessionDetails.setSecurityType(SecurityType.SAE);
                 } else if (ssidConfig.getSecureMode().equals(SecureMode.wpa2Radius)
                         || ssidConfig.getSecureMode().equals(SecureMode.wpaRadius)
@@ -2476,16 +2426,15 @@ public class OpensyncExternalIntegrationMqttMessageProcessor {
 
         ProfileContainer profileContainer = new ProfileContainer(
                 profileServiceInterface.getProfileWithChildren(profileId));
-        
+
         Profile rfProfile = profileContainer.getChildOfTypeOrNull(profileId, ProfileType.rf);
         RfConfiguration rfConfig = null;
         if (rfProfile != null) {
-         rfConfig = (RfConfiguration) profileContainer.getChildOfTypeOrNull(profileId, ProfileType.rf)
-                .getDetails();
+            rfConfig = (RfConfiguration) profileContainer.getChildOfTypeOrNull(profileId, ProfileType.rf).getDetails();
         }
-        
+
         if (rfConfig == null) {
-            LOG.warn("Cannot get RfConfiguration for customerId {} equipmentId {}", customerId,equipmentId);
+            LOG.warn("Cannot get RfConfiguration for customerId {} equipmentId {}", customerId, equipmentId);
             return;
         }
 

@@ -66,6 +66,7 @@ import com.telecominfraproject.wlan.opensync.external.integration.controller.Ope
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
+import com.telecominfraproject.wlan.opensync.external.integration.utils.MqttStatsPublisher;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
@@ -125,7 +126,7 @@ public class OpensyncExternalIntegrationCloudTest {
     @MockBean(answer = Answers.RETURNS_MOCKS)
     OpensyncCloudGatewayController gatewayController;
     @MockBean
-    OpensyncExternalIntegrationMqttMessageProcessor opensyncExternalIntegrationMqttProcessor;
+    MqttStatsPublisher opensyncExternalIntegrationMqttProcessor;
 
     @Autowired
     OpensyncExternalIntegrationCloud opensyncExternalIntegrationCloud;
@@ -458,16 +459,6 @@ public class OpensyncExternalIntegrationCloudTest {
         Mockito.when(customerServiceInterface.getOrNull(ArgumentMatchers.anyInt())).thenReturn(customer);
 
         assertNull(opensyncExternalIntegrationCloud.getApConfig("Test_Client_21P10C68818122"));
-
-    }
-
-    @Test
-    public void testExtractApIdFromTopic() {
-
-        String topic = "/ap/Test_Client_21P10C68818122/opensync";
-
-        assertEquals("Test_Client_21P10C68818122",
-                OpensyncExternalIntegrationMqttMessageProcessor.extractApIdFromTopic(topic));
 
     }
 

@@ -66,6 +66,7 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAWLANNode;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
+import com.telecominfraproject.wlan.opensync.external.integration.utils.MqttStatsPublisher;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpDeviceType;
 import com.telecominfraproject.wlan.opensync.util.OvsdbStringConstants;
 import com.telecominfraproject.wlan.opensync.util.OvsdbToWlanCloudTypeMappingUtility;
@@ -130,7 +131,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     @Autowired
     private FirmwareServiceInterface firmwareServiceInterface;
     @Autowired
-    private OpensyncExternalIntegrationMqttMessageProcessor mqttMessageProcessor;
+    private MqttStatsPublisher mqttMessageProcessor;
 
     @Autowired
     private OpensyncCloudGatewayController gatewayController;

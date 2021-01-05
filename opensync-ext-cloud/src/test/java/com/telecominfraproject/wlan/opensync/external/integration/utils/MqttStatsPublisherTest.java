@@ -1,4 +1,4 @@
-package com.telecominfraproject.wlan.opensync.external.integration;
+package com.telecominfraproject.wlan.opensync.external.integration.utils;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -7,7 +7,6 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.telecominfraproject.wlan.systemevent.models.SystemEvent;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -44,6 +43,9 @@ import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.Equipment;
 import com.telecominfraproject.wlan.firmware.FirmwareServiceInterface;
 import com.telecominfraproject.wlan.location.service.LocationServiceInterface;
+import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExternalIntegrationCloud;
+import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSession;
+import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSessionMapInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.controller.OpensyncCloudGatewayController;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
 import com.telecominfraproject.wlan.routing.RoutingServiceInterface;
@@ -73,12 +75,12 @@ import sts.OpensyncStats.VLANMetrics;
 
 @RunWith(SpringRunner.class)
 @ActiveProfiles(profiles = { "integration_test", })
-@SpringBootTest(webEnvironment = WebEnvironment.NONE, classes = OpensyncExternalIntegrationMqttMessageProcessorTest.class)
+@SpringBootTest(webEnvironment = WebEnvironment.NONE, classes = MqttStatsPublisherTest.class)
 @Import(value = { AlarmServiceInterface.class, OpensyncExternalIntegrationCloud.class,
-        OpensyncExternalIntegrationMqttMessageProcessorTest.Config.class,
+        MqttStatsPublisherTest.Config.class,
 
 })
-public class OpensyncExternalIntegrationMqttMessageProcessorTest {
+public class MqttStatsPublisherTest {
 
     @MockBean
     AlarmServiceInterface alarmServiceInterface;
@@ -104,9 +106,10 @@ public class OpensyncExternalIntegrationMqttMessageProcessorTest {
     FirmwareServiceInterface firmwareServiceInterface;
     @MockBean(answer = Answers.RETURNS_MOCKS)
     OpensyncCloudGatewayController gatewayController;
-
+    @MockBean
+    RealtimeEventPublisher realtimeEventPublisher;
     @Autowired
-    OpensyncExternalIntegrationMqttMessageProcessor opensyncExternalIntegrationMqttProcessor;
+    MqttStatsPublisher opensyncExternalIntegrationMqttProcessor;
 
     MockitoSession mockito;
 
@@ -114,8 +117,8 @@ public class OpensyncExternalIntegrationMqttMessageProcessorTest {
     static class Config {
 
         @Bean
-        public OpensyncExternalIntegrationMqttMessageProcessor opensyncExternalIntegrationMqttMessageProcessor() {
-            return new OpensyncExternalIntegrationMqttMessageProcessor();
+        public MqttStatsPublisher mqttStatsPublisher() {
+            return new MqttStatsPublisher();
         }
 
     }
@@ -133,14 +136,12 @@ public class OpensyncExternalIntegrationMqttMessageProcessorTest {
 
     }
 
-
     @Test
     public void testExtractApIdFromTopic() {
 
         String topic = "/ap/Test_Client_21P10C68818122/opensync";
 
-        assertEquals("Test_Client_21P10C68818122",
-                OpensyncExternalIntegrationMqttMessageProcessor.extractApIdFromTopic(topic));
+        assertEquals("Test_Client_21P10C68818122", MqttStatsPublisher.extractApIdFromTopic(topic));
 
     }
 
@@ -173,15 +174,15 @@ public class OpensyncExternalIntegrationMqttMessageProcessorTest {
         Equipment equipment = new Equipment();
 
         equipment.setDetails(ApElementConfiguration.createWithDefaults());
-        
+
         equipment.setId(1L);
 
         Mockito.when(
                 equipmentServiceInterface.getByInventoryIdOrNull(ArgumentMatchers.eq("Test_Client_21P10C68818122")))
                 .thenReturn(equipment);
-        
+
         equipment.setProfileId(0L);
-        
+
         Mockito.when(equipmentServiceInterface.getOrNull(1L)).thenReturn(equipment);
         Mockito.when(equipmentServiceInterface.get(1L)).thenReturn(equipment);
 
@@ -259,51 +260,56 @@ public class OpensyncExternalIntegrationMqttMessageProcessorTest {
         // TODO: implement me when wcs stats reports supported
     }
 
-    // Verify CallStart, CallStop and CallReport are properly processed and published as
+    // Verify CallStart, CallStop and CallReport are properly processed and
+    // published as
     // respective events (5 events in total)
     @Test
     public void testProcessMqttMessageStringMultipleVideoVoiceReport() {
-        OpensyncStats.VideoVoiceReport.Builder callStartVoiceReportBuilder = OpensyncStats.VideoVoiceReport.newBuilder().
-                setCallStart(getDefaultCallStart());
-        OpensyncStats.VideoVoiceReport.Builder callReportGotPublishVoiceReportBuilder = OpensyncStats.VideoVoiceReport.newBuilder().
-                setCallReport(getDefaultCallReport(OpensyncStats.CallReport.CallReportReason.GOT_PUBLISH, 121, 1028, 1316, 1888, 298, 2, 100, 200));
-        OpensyncStats.VideoVoiceReport.Builder callReportRoamedToVoiceReportBuilder = OpensyncStats.VideoVoiceReport.newBuilder().
-                setCallReport(getDefaultCallReport(OpensyncStats.CallReport.CallReportReason.ROAMED_TO, 123, 1020, 1116, 1345, 223, 0, 102, 203));
-        OpensyncStats.VideoVoiceReport.Builder callReportRoamedFromVoiceReportBuilder = OpensyncStats.VideoVoiceReport.newBuilder().
-                setCallReport(getDefaultCallReport(OpensyncStats.CallReport.CallReportReason.ROAMED_FROM, 122, 1029, 1300, 1234, 111, 3, 101, 201));
-        OpensyncStats.VideoVoiceReport.Builder callStopVoiceReportBuilder = OpensyncStats.VideoVoiceReport.newBuilder().
-                setCallStop(getDefaultCallStop());
+        OpensyncStats.VideoVoiceReport.Builder callStartVoiceReportBuilder = OpensyncStats.VideoVoiceReport.newBuilder()
+                .setCallStart(getDefaultCallStart());
+        OpensyncStats.VideoVoiceReport.Builder callReportGotPublishVoiceReportBuilder = OpensyncStats.VideoVoiceReport
+                .newBuilder().setCallReport(getDefaultCallReport(OpensyncStats.CallReport.CallReportReason.GOT_PUBLISH,
+                        121, 1028, 1316, 1888, 298, 2, 100, 200));
+        OpensyncStats.VideoVoiceReport.Builder callReportRoamedToVoiceReportBuilder = OpensyncStats.VideoVoiceReport
+                .newBuilder().setCallReport(getDefaultCallReport(OpensyncStats.CallReport.CallReportReason.ROAMED_TO,
+                        123, 1020, 1116, 1345, 223, 0, 102, 203));
+        OpensyncStats.VideoVoiceReport.Builder callReportRoamedFromVoiceReportBuilder = OpensyncStats.VideoVoiceReport
+                .newBuilder().setCallReport(getDefaultCallReport(OpensyncStats.CallReport.CallReportReason.ROAMED_FROM,
+                        122, 1029, 1300, 1234, 111, 3, 101, 201));
+        OpensyncStats.VideoVoiceReport.Builder callStopVoiceReportBuilder = OpensyncStats.VideoVoiceReport.newBuilder()
+                .setCallStop(getDefaultCallStop());
         // Create report with multiple voiceReports in one
-        Report multipleVoiceReportsInOneReport = Report.newBuilder().addVideoVoiceReport(callStartVoiceReportBuilder).
-                addVideoVoiceReport(callReportGotPublishVoiceReportBuilder).
-                addVideoVoiceReport(callReportRoamedFromVoiceReportBuilder).
-                addVideoVoiceReport(callReportRoamedToVoiceReportBuilder).
-                addVideoVoiceReport(callStopVoiceReportBuilder).
-                setNodeID("1").
-                build();
+        Report multipleVoiceReportsInOneReport = Report.newBuilder().addVideoVoiceReport(callStartVoiceReportBuilder)
+                .addVideoVoiceReport(callReportGotPublishVoiceReportBuilder)
+                .addVideoVoiceReport(callReportRoamedFromVoiceReportBuilder)
+                .addVideoVoiceReport(callReportRoamedToVoiceReportBuilder)
+                .addVideoVoiceReport(callStopVoiceReportBuilder).setNodeID("1").build();
 
-        opensyncExternalIntegrationMqttProcessor.populateSipCallReport(null, multipleVoiceReportsInOneReport, 1, 2L, "TestAP", 12L);
+        opensyncExternalIntegrationMqttProcessor.populateSipCallReport(null, multipleVoiceReportsInOneReport, 1, 2L,
+                "TestAP", 12L);
 
         Mockito.verify(equipmentMetricsCollectorInterface, Mockito.times(1)).publishEventsBulk(Mockito.anyList());
     }
 
     // Create report with 1 voiceReports that contains multiple Calls
-    // Note that GOT_PUBLISH and ROAMED_FROM are ignored in the CallReport. ROAMED_TO overwrites them
+    // Note that GOT_PUBLISH and ROAMED_FROM are ignored in the CallReport.
+    // ROAMED_TO overwrites them
     @Test
     public void testProcessMqttMessageStringOneVideoVoiceReport() {
 
-        OpensyncStats.VideoVoiceReport.Builder videoVoiceReportBuilder = OpensyncStats.VideoVoiceReport.newBuilder().
-                setCallReport(getDefaultCallReport(OpensyncStats.CallReport.CallReportReason.GOT_PUBLISH, 121, 1028, 1316,1888, 298, 2, 100,200)).
-                setCallReport(getDefaultCallReport(OpensyncStats.CallReport.CallReportReason.ROAMED_FROM, 122, 1029, 1300,1234, 111, 3, 101,201)).
-                setCallReport(getDefaultCallReport(OpensyncStats.CallReport.CallReportReason.ROAMED_TO, 123, 1020, 1116,1345, 223, 0, 102,203)).
-                setCallStart(getDefaultCallStart()).
-                setCallStop(getDefaultCallStop());
-        Report oneVoiceReportWithMultipleCallsInOneReport = Report.getDefaultInstance().toBuilder().
-                addVideoVoiceReport(videoVoiceReportBuilder).
-                setNodeID("1").
-                build();
+        OpensyncStats.VideoVoiceReport.Builder videoVoiceReportBuilder = OpensyncStats.VideoVoiceReport.newBuilder()
+                .setCallReport(getDefaultCallReport(OpensyncStats.CallReport.CallReportReason.GOT_PUBLISH, 121, 1028,
+                        1316, 1888, 298, 2, 100, 200))
+                .setCallReport(getDefaultCallReport(OpensyncStats.CallReport.CallReportReason.ROAMED_FROM, 122, 1029,
+                        1300, 1234, 111, 3, 101, 201))
+                .setCallReport(getDefaultCallReport(OpensyncStats.CallReport.CallReportReason.ROAMED_TO, 123, 1020,
+                        1116, 1345, 223, 0, 102, 203))
+                .setCallStart(getDefaultCallStart()).setCallStop(getDefaultCallStop());
+        Report oneVoiceReportWithMultipleCallsInOneReport = Report.getDefaultInstance().toBuilder()
+                .addVideoVoiceReport(videoVoiceReportBuilder).setNodeID("1").build();
 
-        opensyncExternalIntegrationMqttProcessor.populateSipCallReport(null, oneVoiceReportWithMultipleCallsInOneReport, 1, 2L, "TestAP", 12L);
+        opensyncExternalIntegrationMqttProcessor.populateSipCallReport(null, oneVoiceReportWithMultipleCallsInOneReport,
+                1, 2L, "TestAP", 12L);
 
         Mockito.verify(equipmentMetricsCollectorInterface, Mockito.times(1)).publishEventsBulk(Mockito.anyList());
     }
@@ -393,13 +399,13 @@ public class OpensyncExternalIntegrationMqttMessageProcessorTest {
         callStopBuilder.setSessionId(123L);
         callStopBuilder.setWifiSessionId(1234L);
         callStopBuilder.setReason(OpensyncStats.CallStop.CallStopReason.BYE_OK);
-        callStopBuilder.addStats(getRtpFlowStats(121, 1380, 1400,3000, 119, 3, 205,350));
+        callStopBuilder.addStats(getRtpFlowStats(121, 1380, 1400, 3000, 119, 3, 205, 350));
 
         return callStopBuilder.build();
     }
-    
+
     private OpensyncStats.RtpFlowStats getRtpFlowStats(int codec, int jitter, int latency, int totalPackets,
-                                                       int totalPacketsLost, int mos, int firstRtpSeq, int lastRtpSeq) {
+            int totalPacketsLost, int mos, int firstRtpSeq, int lastRtpSeq) {
         OpensyncStats.RtpFlowStats.Builder rtpFlowStatsBuilder = OpensyncStats.RtpFlowStats.newBuilder();
         rtpFlowStatsBuilder.setCodec(codec);
         rtpFlowStatsBuilder.setBlockCodecs(ByteString.copyFrom(new byte[] { (byte) 0xe6, 0x1 }));
@@ -417,8 +423,7 @@ public class OpensyncExternalIntegrationMqttMessageProcessorTest {
     }
 
     private OpensyncStats.CallReport getDefaultCallReport(OpensyncStats.CallReport.CallReportReason reason, int codec,
-                                                          int jitter, int latency, int totalPackets, int totalPacketsLost,
-                                                          int mos, int firstRtpSeq, int lastRtpSeq) {
+            int jitter, int latency, int totalPackets, int totalPacketsLost, int mos, int firstRtpSeq, int lastRtpSeq) {
         OpensyncStats.CallReport.Builder callReportBuilder = OpensyncStats.CallReport.newBuilder();
         callReportBuilder.setBand(RadioBandType.BAND5G);
         callReportBuilder.setChannel(40);
@@ -429,14 +434,13 @@ public class OpensyncExternalIntegrationMqttMessageProcessorTest {
         callReportBuilder.setSessionId(123L);
         callReportBuilder.setWifiSessionId(1234L);
         callReportBuilder.setReason(reason);
-        callReportBuilder.addStats(getRtpFlowStats(codec, jitter, latency, totalPackets, totalPacketsLost,
-                mos, firstRtpSeq, lastRtpSeq));
+        callReportBuilder.addStats(
+                getRtpFlowStats(codec, jitter, latency, totalPackets, totalPacketsLost, mos, firstRtpSeq, lastRtpSeq));
 
         return callReportBuilder.build();
     }
 
     private List<EventReport> getOpensyncStatsEventReportsList() {
-
 
         List<ClientAssocEvent> clientAssocEventList = new ArrayList<>();
         sts.OpensyncStats.EventReport.ClientAssocEvent.Builder clientAssocBuilder = EventReport.ClientAssocEvent
@@ -463,21 +467,21 @@ public class OpensyncExternalIntegrationMqttMessageProcessorTest {
         clientSessionBuilder.setClientAssocEvent(clientAssocBuilder.build());
         List<sts.OpensyncStats.EventReport.ClientSession> clientSessionList = new ArrayList<>();
         clientSessionList.add(clientSessionBuilder.build());
-        
-        sts.OpensyncStats.EventReport.ChannelSwitchEvent.Builder channelSwitchEventBuilder = sts.OpensyncStats.EventReport.ChannelSwitchEvent.getDefaultInstance().toBuilder();
-        channelSwitchEventBuilder.setBand(RadioBandType.BAND5GL).setChannel(40).setReason(ChannelSwitchReason.high_interference).setTimestampMs(System.currentTimeMillis());
+
+        sts.OpensyncStats.EventReport.ChannelSwitchEvent.Builder channelSwitchEventBuilder = sts.OpensyncStats.EventReport.ChannelSwitchEvent
+                .getDefaultInstance().toBuilder();
+        channelSwitchEventBuilder.setBand(RadioBandType.BAND5GL).setChannel(40)
+                .setReason(ChannelSwitchReason.high_interference).setTimestampMs(System.currentTimeMillis());
 
         List<ChannelSwitchEvent> channelSwitchEventList = new ArrayList<>();
         channelSwitchEventList.add(channelSwitchEventBuilder.build());
-        
+
         eventReportBuilder.addAllClientSession(clientSessionList);
         eventReportBuilder.addAllChannelSwitch(channelSwitchEventList);
 
         eventReportList.add(eventReportBuilder.build());
 
-
         return eventReportList;
-
 
     }
 
