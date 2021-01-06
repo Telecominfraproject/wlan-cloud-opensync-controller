@@ -14,6 +14,8 @@ import com.telecominfraproject.wlan.client.models.events.realtime.ClientConnectS
 import com.telecominfraproject.wlan.client.models.events.realtime.ClientDisconnectEvent.DisconnectFrameType;
 import com.telecominfraproject.wlan.client.models.events.realtime.ClientDisconnectEvent.DisconnectInitiator;
 import com.telecominfraproject.wlan.client.models.events.realtime.ClientTimeoutEvent.ClientTimeoutReason;
+import com.telecominfraproject.wlan.client.models.events.utils.WlanReasonCode;
+import com.telecominfraproject.wlan.client.models.events.utils.WlanStatusCode;
 import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherInterface;
 import com.telecominfraproject.wlan.core.model.equipment.ChannelHopReason;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
@@ -271,7 +273,7 @@ public class RealtimeEventPublisher {
             clientEvent.setLastSentTime(clientDisconnectEvent.getLsentUpTsInUs());
         }
         if (clientDisconnectEvent.hasReason()) {
-            clientEvent.setReasonCode(clientDisconnectEvent.getReason());
+            clientEvent.setReasonCode(WlanReasonCode.getById(clientDisconnectEvent.getReason()));
         }
         if (clientDisconnectEvent.hasRssi()) {
             clientEvent.setRssi(clientDisconnectEvent.getRssi());
@@ -304,7 +306,7 @@ public class RealtimeEventPublisher {
                 .getRadioTypeFromOpensyncStatsRadioBandType(clientAuthEvent.getBand()));
 
         if (clientAuthEvent.hasAuthStatus()) {
-            clientEvent.setAuthStatus(clientAuthEvent.getAuthStatus());
+            clientEvent.setAuthStatus(WlanStatusCode.getById(clientAuthEvent.getAuthStatus()));
         }
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
@@ -345,7 +347,7 @@ public class RealtimeEventPublisher {
         }
 
         if (clientAssocEvent.hasStatus()) {
-            clientEvent.setStatus(clientAssocEvent.getStatus());
+            clientEvent.setStatus(WlanStatusCode.getById(clientAssocEvent.getStatus()));
         }
 
         if (clientAssocEvent.hasUsing11K()) {
@@ -390,7 +392,7 @@ public class RealtimeEventPublisher {
         }
 
         if (clientFailureEvent.hasReasonCode()) {
-            clientEvent.setReasonCode(clientFailureEvent.getReasonCode());
+            clientEvent.setReasonCode(WlanReasonCode.getById(clientFailureEvent.getReasonCode()));
         }
 
         clientEvent.setCustomerId(customerId);
