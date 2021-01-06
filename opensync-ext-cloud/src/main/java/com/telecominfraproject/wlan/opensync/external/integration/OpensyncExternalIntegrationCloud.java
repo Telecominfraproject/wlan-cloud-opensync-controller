@@ -158,7 +158,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     public String defaultWanInterfaceType;
     @Value("${tip.wlan.ovsdb.wifi-iface.default_wan_name:wan}")
     public String defaultWanInterfaceName;
-    
+
     @Value("${tip.wlan.ovsdb.syncUpRadioConfigsForProvisionedEquipment:true}")
     private boolean syncUpRadioConfigsForProvisionedEquipment;
 
@@ -305,47 +305,49 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                     }
                 }
-                
-                if(syncUpRadioConfigsForProvisionedEquipment) {
-                    
-                    //sync up available radios reported by AP with the ApElementConfiguration, update equipment in DB if needed
+
+                if (syncUpRadioConfigsForProvisionedEquipment) {
+
+                    // sync up available radios reported by AP with the
+                    // ApElementConfiguration, update equipment in DB if needed
                     boolean needToUpdateEquipment = false;
                     ApElementConfiguration apElementConfig = (ApElementConfiguration) ce.getDetails();
-                    if(apElementConfig == null) {
+                    if (apElementConfig == null) {
                         apElementConfig = ApElementConfiguration.createWithDefaults();
                         ce.setDetails(apElementConfig);
                         needToUpdateEquipment = true;
                     }
-                    
-                    
-                    if(apElementConfig.getDeviceName()==null || !apElementConfig.getDeviceName().equals(ce.getName())) {
+
+                    if (apElementConfig.getDeviceName() == null
+                            || !apElementConfig.getDeviceName().equals(ce.getName())) {
                         apElementConfig.setDeviceName(ce.getName());
                         needToUpdateEquipment = true;
                     }
-    
-                    if(apElementConfig.getEquipmentModel()==null || !apElementConfig.getEquipmentModel().equals(connectNodeInfo.model)) {
+
+                    if (apElementConfig.getEquipmentModel() == null
+                            || !apElementConfig.getEquipmentModel().equals(connectNodeInfo.model)) {
                         apElementConfig.setEquipmentModel(connectNodeInfo.model);
                         needToUpdateEquipment = true;
                     }
-                                    
+
                     Map<RadioType, RadioConfiguration> advancedRadioMap = apElementConfig.getAdvancedRadioMap();
                     Map<RadioType, ElementRadioConfiguration> radioMap = apElementConfig.getRadioMap();
-                    
-                    if(advancedRadioMap == null) {
-                        advancedRadioMap  = new HashMap<>();
+
+                    if (advancedRadioMap == null) {
+                        advancedRadioMap = new HashMap<>();
                         apElementConfig.setAdvancedRadioMap(advancedRadioMap);
                         needToUpdateEquipment = true;
                     }
-                    
-                    if(radioMap == null) {
+
+                    if (radioMap == null) {
                         radioMap = new HashMap<>();
                         apElementConfig.setRadioMap(radioMap);
                         needToUpdateEquipment = true;
                     }
-                    
+
                     Set<RadioType> radiosFromAp = new HashSet<>();
-                    
-                    //add missing radio configs from the AP into the DB
+
+                    // add missing radio configs from the AP into the DB
                     for (String radio : connectNodeInfo.wifiRadioStates.keySet()) {
                         RadioType radioType = RadioType.UNSUPPORTED;
                         if (radio.equals("2.4G")) {
@@ -357,51 +359,52 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         } else if (radio.equals("5GU")) {
                             radioType = RadioType.is5GHzU;
                         }
-                        
+
                         if (!radioType.equals(RadioType.UNSUPPORTED)) {
-                            
+
                             radiosFromAp.add(radioType);
-                            
+
                             RadioConfiguration advancedRadioConfiguration = advancedRadioMap.get(radioType);
                             ElementRadioConfiguration radioConfiguration = radioMap.get(radioType);
-                            
-                            if(advancedRadioConfiguration == null) {
-                               advancedRadioConfiguration = RadioConfiguration.createWithDefaults(radioType);
-                               advancedRadioMap.put(radioType, advancedRadioConfiguration);
-                               needToUpdateEquipment = true;
+
+                            if (advancedRadioConfiguration == null) {
+                                advancedRadioConfiguration = RadioConfiguration.createWithDefaults(radioType);
+                                advancedRadioMap.put(radioType, advancedRadioConfiguration);
+                                needToUpdateEquipment = true;
                             }
-                           
-                            if(radioConfiguration == null) {
-                               radioConfiguration = ElementRadioConfiguration.createWithDefaults(radioType);
-                               radioMap.put(radioType, radioConfiguration);
-                               needToUpdateEquipment = true;
+
+                            if (radioConfiguration == null) {
+                                radioConfiguration = ElementRadioConfiguration.createWithDefaults(radioType);
+                                radioMap.put(radioType, radioConfiguration);
+                                needToUpdateEquipment = true;
                             }
-    
+
                         }
                     }
-    
-                    //remove radio configs from the DB that are no longer present in the AP but still exist in DB
-                    for(RadioType radioType: RadioType.validValues()) {
-                        
+
+                    // remove radio configs from the DB that are no longer
+                    // present in the AP but still exist in DB
+                    for (RadioType radioType : RadioType.validValues()) {
+
                         RadioConfiguration advancedRadioConfiguration = advancedRadioMap.get(radioType);
-                        
-                        if(advancedRadioConfiguration != null || !radiosFromAp.contains(radioType)) {
+
+                        if (advancedRadioConfiguration != null || !radiosFromAp.contains(radioType)) {
                             advancedRadioMap.remove(radioType);
                             needToUpdateEquipment = true;
                         }
-    
+
                         ElementRadioConfiguration radioConfiguration = radioMap.get(radioType);
-                        if(radioConfiguration != null || !radiosFromAp.contains(radioType)) {
+                        if (radioConfiguration != null || !radiosFromAp.contains(radioType)) {
                             radioMap.remove(radioType);
                             needToUpdateEquipment = true;
                         }
-    
+
                     }
-    
-                    if(needToUpdateEquipment) {
+
+                    if (needToUpdateEquipment) {
                         ce = equipmentServiceInterface.update(ce);
                     }
-    
+
                 }
 
             }
@@ -911,7 +914,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         List<ClientSession> toBeDisconnected = new ArrayList<>();
 
         clientSessions.getItems().stream().forEach(c -> {
-            if (!c.getDetails().getAssociationState().equals(AssociationState.Disconnected)) {
+            if (c.getDetails().getAssociationState() != null
+                    && !c.getDetails().getAssociationState().equals(AssociationState.Disconnected)) {
                 LOG.info("Change association state for client {} from {} to {}", c.getMacAddress(),
                         c.getDetails().getAssociationState(), AssociationState.Disconnected);
 
@@ -1226,29 +1230,35 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             }
 
             if (radioState.getAllowedChannels() != null) {
-                apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                        .setAllowedChannels(new ArrayList<>(radioState.getAllowedChannels()));
+                if (apElementConfiguration.getRadioMap().containsKey(radioState.getFreqBand())
+                        && apElementConfiguration.getRadioMap().get(radioState.getFreqBand()) != null) {
+                    apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
+                            .setAllowedChannels(new ArrayList<>(radioState.getAllowedChannels()));
 
-                LOG.debug("Updated AllowedChannels from Wifi_Radio_State table change for AP {}", apId);
+                    LOG.debug("Updated AllowedChannels from Wifi_Radio_State table change for AP {}", apId);
+                }
 
             }
 
             if (radioState.getTxPower() > 0) {
-                SourceType txPowerSource = apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                        .getEirpTxPower().getSource();
-                // Preserve the source while updating the value
-                if (txPowerSource == SourceType.auto) {
-                    apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                            .setEirpTxPower(SourceSelectionValue.createAutomaticInstance(radioState.getTxPower()));
-                } else if (txPowerSource == SourceType.profile) {
-                    apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                            .setEirpTxPower(SourceSelectionValue.createProfileInstance(radioState.getTxPower()));
-                } else {
-                    apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                            .setEirpTxPower(SourceSelectionValue.createManualInstance(radioState.getTxPower()));
-                }
+                if (apElementConfiguration.getRadioMap().containsKey(radioState.getFreqBand())
+                        && apElementConfiguration.getRadioMap().get(radioState.getFreqBand()) != null) {
+                    SourceType txPowerSource = apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
+                            .getEirpTxPower().getSource();
+                    // Preserve the source while updating the value
+                    if (txPowerSource == SourceType.auto) {
+                        apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
+                                .setEirpTxPower(SourceSelectionValue.createAutomaticInstance(radioState.getTxPower()));
+                    } else if (txPowerSource == SourceType.profile) {
+                        apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
+                                .setEirpTxPower(SourceSelectionValue.createProfileInstance(radioState.getTxPower()));
+                    } else {
+                        apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
+                                .setEirpTxPower(SourceSelectionValue.createManualInstance(radioState.getTxPower()));
+                    }
 
-                LOG.debug("Updated TxPower from Wifi_Radio_State table change for AP {}", apId);
+                    LOG.debug("Updated TxPower from Wifi_Radio_State table change for AP {}", apId);
+                }
             }
 
             StateSetting state = StateSetting.disabled;
@@ -1256,13 +1266,17 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 state = StateSetting.enabled;
             }
 
-            if (!apElementConfiguration.getAdvancedRadioMap().get(radioState.getFreqBand()).getRadioAdminState()
-                    .equals(state)) {
-                // only update if changed
-                apElementConfiguration.getAdvancedRadioMap().get(radioState.getFreqBand()).setRadioAdminState(state);
+            if (apElementConfiguration.getAdvancedRadioMap().containsKey(radioState.getFreqBand())
+                    && apElementConfiguration.getAdvancedRadioMap().get(radioState.getFreqBand()) != null) {
+                if (!apElementConfiguration.getAdvancedRadioMap().get(radioState.getFreqBand()).getRadioAdminState()
+                        .equals(state)) {
+                    // only update if changed
+                    apElementConfiguration.getAdvancedRadioMap().get(radioState.getFreqBand())
+                            .setRadioAdminState(state);
 
-                LOG.debug("Updated RadioAdminState from Wifi_Radio_State table change for AP {}", apId);
+                    LOG.debug("Updated RadioAdminState from Wifi_Radio_State table change for AP {}", apId);
 
+                }
             }
 
             protocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.PROTOCOL);
@@ -1350,7 +1364,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             currentActiveBSSIDs = new ArrayList<>();
         } else {
             currentActiveBSSIDs = currentActiveBSSIDs.stream()
-                    .filter(p -> (p.getRadioType() != null && p.getSsid() != null)).filter(p -> !p.getRadioType().equals(freqBand) || !p.getSsid().equals(ssid))
+                    .filter(p -> (p.getRadioType() != null && p.getSsid() != null))
+                    .filter(p -> !p.getRadioType().equals(freqBand) || !p.getSsid().equals(ssid))
                     .collect(Collectors.toList());
             LOG.debug(
                     "Processing Wifi_VIF_State table update for AP {}, activeBSSIDs bssidList without current radio freq {} and ssid {}",
@@ -1576,17 +1591,41 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientSession.setMacAddress(clientInstance.getMacAddress());
                 clientSession.setLocationId(ce.getLocationId());
                 ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
+                clientSessionDetails.setSessionId(clientInstance.getMacAddress().getAddressAsLong());
                 clientSessionDetails.setIsReassociation(isReassociation);
+                clientSessionDetails.setAssociationState(AssociationState._802_11_Associated);
+                clientSessionDetails.setAssocTimestamp(System.currentTimeMillis());
+
                 clientSession.setDetails(clientSessionDetails);
+                clientSessionDetails.setAssocTimestamp(System.currentTimeMillis());
+
+                LOG.info(
+                        "Client {} associated with AP, no current session. Adding session with a generated session id of {}.",
+                        clientInstance, clientInstance.getMacAddress().getAddressAsLong());
                 clientSession = clientServiceInterface.updateSession(clientSession);
+                LOG.info("Client {} associated with AP, no current session. Created session {}.", clientInstance,
+                        clientSession);
             }
 
-            ClientSessionDetails clientSessionDetails = clientSession.getDetails();
-            clientSessionDetails.setAssociationState(AssociationState._802_11_Associated);
-            clientSessionDetails.setAssocTimestamp(System.currentTimeMillis());
-            clientSession.getDetails().mergeSession(clientSessionDetails);
+            if (opensyncWifiAssociatedClients.state != null
+                    && opensyncWifiAssociatedClients.state.equalsIgnoreCase("active")) {
+                clientSession.getDetails().setAssociationState(AssociationState.Active_Data);
+                clientSession = clientServiceInterface.updateSession(clientSession);
 
-            clientSession = clientServiceInterface.updateSession(clientSession);
+            } else {
+                if (clientSession.getDetails().getAssociationState() != null) {
+                    if (!clientSession.getDetails().getAssociationState().equals(AssociationState._802_11_Associated)) {
+                        clientSession.getDetails().setAssociationState(AssociationState._802_11_Associated);
+                        clientSession.getDetails().setAssocTimestamp(System.currentTimeMillis());
+                        clientSession = clientServiceInterface.updateSession(clientSession);
+
+                    }
+                } else {
+                    clientSession.getDetails().setAssociationState(AssociationState._802_11_Associated);
+                    clientSession.getDetails().setAssocTimestamp(System.currentTimeMillis());
+                    clientSession = clientServiceInterface.updateSession(clientSession);
+                }
+            }
 
         }
 

@@ -25,14 +25,12 @@ import com.telecominfraproject.wlan.opensync.util.OvsdbToWlanCloudTypeMappingUti
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeChannelHopEvent;
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeEventType;
 import com.telecominfraproject.wlan.systemevent.models.SystemEvent;
-import com.telecominfraproject.wlan.systemevent.models.SystemEventRecord;
 
 import sts.OpensyncStats.AssocType;
 import sts.OpensyncStats.CTReasonType;
 import sts.OpensyncStats.ChannelSwitchReason;
 import sts.OpensyncStats.DeviceType;
 import sts.OpensyncStats.EventReport;
-import sts.OpensyncStats.FrameType;
 import sts.OpensyncStats.EventReport.ClientAssocEvent;
 import sts.OpensyncStats.EventReport.ClientAuthEvent;
 import sts.OpensyncStats.EventReport.ClientConnectEvent;
@@ -42,6 +40,15 @@ import sts.OpensyncStats.EventReport.ClientFirstDataEvent;
 import sts.OpensyncStats.EventReport.ClientIdEvent;
 import sts.OpensyncStats.EventReport.ClientIpEvent;
 import sts.OpensyncStats.EventReport.ClientTimeoutEvent;
+import sts.OpensyncStats.EventReport.DhcpAckEvent;
+import sts.OpensyncStats.EventReport.DhcpDeclineEvent;
+import sts.OpensyncStats.EventReport.DhcpDiscoverEvent;
+import sts.OpensyncStats.EventReport.DhcpInformEvent;
+import sts.OpensyncStats.EventReport.DhcpNakEvent;
+import sts.OpensyncStats.EventReport.DhcpOfferEvent;
+import sts.OpensyncStats.EventReport.DhcpRequestEvent;
+import sts.OpensyncStats.EventReport.DhcpTransaction;
+import sts.OpensyncStats.FrameType;
 
 @org.springframework.context.annotation.Profile("opensync_cloud_config")
 @Component
@@ -49,21 +56,21 @@ public class RealtimeEventPublisher {
 
     @Autowired
     private CloudEventDispatcherInterface cloudEventDispatcherInterface;
-    
+
     @Autowired
     private EquipmentServiceInterface equipmentServiceInterface;
 
-    private static final Logger LOG = LoggerFactory
-            .getLogger(RealtimeEventPublisher.class);
-    
+    private static final Logger LOG = LoggerFactory.getLogger(RealtimeEventPublisher.class);
+
     void publishChannelHopEvents(int customerId, long equipmentId, EventReport e) {
 
         LOG.info("publishChannelHopEvents for customerId {} equipmentId {}");
-
         List<SystemEvent> events = new ArrayList<>();
-        List<SystemEventRecord> eventRecords = new ArrayList<>();
 
         for (sts.OpensyncStats.EventReport.ChannelSwitchEvent channelSwitchEvent : e.getChannelSwitchList()) {
+
+            LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", e, customerId, equipmentId);
+
             Equipment equipment = equipmentServiceInterface.getOrNull(equipmentId);
             if (equipment == null)
                 continue;
@@ -116,21 +123,27 @@ public class RealtimeEventPublisher {
                     reason, timestamp);
 
             events.add(channelHopEvent);
-            eventRecords.add(new SystemEventRecord(channelHopEvent));
             LOG.debug("publishChannelHopEvents:Adding ChannelHopEvent to bulk list {}", channelHopEvent);
         }
 
         if (events.size() > 0) {
             LOG.info("publishChannelHopEvents:publishEventsBulk: {}", events);
             cloudEventDispatcherInterface.publishEventsBulk(events);
-        } else {
-            LOG.info("publishChannelHopEvents:No ChannelHopEvents in report");
         }
     }
 
-
     void publishClientConnectSuccessEvent(int customerId, long equipmentId, ClientConnectEvent clientConnectEvent) {
-        ClientConnectSuccessEvent clientEvent = new ClientConnectSuccessEvent();
+
+        LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientConnectEvent, customerId,
+                equipmentId);
+        ClientConnectSuccessEvent clientEvent;
+
+        if (clientConnectEvent.hasTimestampMs()) {
+            clientEvent = new ClientConnectSuccessEvent(Long.valueOf(clientConnectEvent.getTimestampMs()));
+        } else {
+            clientEvent = new ClientConnectSuccessEvent(System.currentTimeMillis());
+        }
+
         clientEvent.setMacAddress(MacAddress.valueOf(clientConnectEvent.getStaMac()));
         clientEvent.setRadioType(OvsdbToWlanCloudTypeMappingUtility
                 .getRadioTypeFromOpensyncStatsRadioBandType(clientConnectEvent.getBand()));
@@ -208,17 +221,22 @@ public class RealtimeEventPublisher {
 
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
+
+        LOG.info("publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
 
     }
 
     void publishClientDisconnectEvent(int customerId, long equipmentId, ClientDisconnectEvent clientDisconnectEvent) {
+
+        LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientDisconnectEvent, customerId,
+                equipmentId);
+
         com.telecominfraproject.wlan.client.models.events.realtime.ClientDisconnectEvent clientEvent;
 
         if (clientDisconnectEvent.hasTimestampMs()) {
-            long timestampMs = clientDisconnectEvent.getTimestampMs();
             clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientDisconnectEvent(
-                    timestampMs);
+                    Long.valueOf(clientDisconnectEvent.getTimestampMs()));
         } else {
             clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientDisconnectEvent(
                     System.currentTimeMillis());
@@ -261,17 +279,19 @@ public class RealtimeEventPublisher {
 
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
+
+        LOG.info("publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
 
     }
 
     void publishClientAuthSystemEvent(int customerId, long equipmentId, ClientAuthEvent clientAuthEvent) {
+        LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientAuthEvent, customerId, equipmentId);
 
         com.telecominfraproject.wlan.client.models.events.realtime.ClientAuthEvent clientEvent;
 
         if (clientAuthEvent.hasTimestampMs()) {
-            long timestamp = clientAuthEvent.getTimestampMs();
-            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientAuthEvent(timestamp);
+            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientAuthEvent(Long.valueOf(clientAuthEvent.getTimestampMs()));
         } else {
             clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientAuthEvent(
                     System.currentTimeMillis());
@@ -288,17 +308,19 @@ public class RealtimeEventPublisher {
         }
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
+
+        LOG.info("publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
 
     }
 
     void publishClientAssocEvent(int customerId, long equipmentId, ClientAssocEvent clientAssocEvent) {
+        LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientAssocEvent, customerId, equipmentId);
 
         com.telecominfraproject.wlan.client.models.events.realtime.ClientAssocEvent clientEvent;
 
-        if (clientAssocEvent.hasTimestampMs()) {
-            long timestamp = clientAssocEvent.getTimestampMs();
-            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientAssocEvent(timestamp);
+        if (clientAssocEvent.hasTimestampMs()) {                   
+            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientAssocEvent(Long.valueOf(clientAssocEvent.getTimestampMs()));
         } else {
             clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientAssocEvent(
                     System.currentTimeMillis());
@@ -340,16 +362,20 @@ public class RealtimeEventPublisher {
 
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
+
+        LOG.info("publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
 
     }
 
     void publishClientFailureEvent(int customerId, long equipmentId, ClientFailureEvent clientFailureEvent) {
+        LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientFailureEvent, customerId,
+                equipmentId);
+
         com.telecominfraproject.wlan.client.models.events.realtime.ClientFailureEvent clientEvent;
 
         if (clientFailureEvent.hasTimestampMs()) {
-            long timestamp = clientFailureEvent.getTimestampMs();
-            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientFailureEvent(timestamp);
+            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientFailureEvent(Long.valueOf(clientFailureEvent.getTimestampMs()));
         } else {
             clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientFailureEvent(
                     System.currentTimeMillis());
@@ -369,16 +395,20 @@ public class RealtimeEventPublisher {
 
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
+
+        LOG.info("publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
     }
-    
+
     void publishClientFirstDataEvent(int customerId, long equipmentId, ClientFirstDataEvent clientFirstDataEvent) {
+        LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientFirstDataEvent, customerId,
+                equipmentId);
+
         com.telecominfraproject.wlan.client.models.events.realtime.ClientFirstDataEvent clientEvent;
 
         if (clientFirstDataEvent.hasTimestampMs()) {
-            long timestamp = clientFirstDataEvent.getTimestampMs();
             clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientFirstDataEvent(
-                    timestamp);
+                    Long.valueOf(clientFirstDataEvent.getTimestampMs()));
         } else {
             clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientFirstDataEvent(
                     System.currentTimeMillis());
@@ -397,16 +427,20 @@ public class RealtimeEventPublisher {
 
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
+
+        LOG.info("publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
 
     }
 
     void publishClientIdEvent(int customerId, long equipmentId, ClientIdEvent clientIdEvent) {
+
+        LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientIdEvent, customerId, equipmentId);
+
         com.telecominfraproject.wlan.client.models.events.realtime.ClientIdEvent clientEvent;
 
         if (clientIdEvent.hasTimestampMs()) {
-            long timestamp = clientIdEvent.getTimestampMs();
-            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientIdEvent(timestamp);
+            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientIdEvent(Long.valueOf(clientIdEvent.getTimestampMs()));
         } else {
             clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientIdEvent(
                     System.currentTimeMillis());
@@ -420,16 +454,20 @@ public class RealtimeEventPublisher {
 
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
+
+        LOG.info("publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
     }
-    
+
     void publishClientIpEvent(int customerId, long equipmentId, ClientIpEvent clientIpEvent) {
+
+        LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientIpEvent, customerId, equipmentId);
+
         com.telecominfraproject.wlan.client.models.events.realtime.ClientIpAddressEvent clientEvent;
 
         if (clientIpEvent.hasTimestampMs()) {
-            long timestamp = clientIpEvent.getTimestampMs();
             clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientIpAddressEvent(
-                    timestamp);
+                    Long.valueOf(clientIpEvent.getTimestampMs()));
         } else {
             clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientIpAddressEvent(
                     System.currentTimeMillis());
@@ -443,16 +481,20 @@ public class RealtimeEventPublisher {
 
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
+
+        LOG.info("publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
     }
-    
+
     void publishClientTimeoutEvent(int customerId, long equipmentId, ClientTimeoutEvent clientTimeoutEvent) {
+
+        LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientTimeoutEvent, customerId,
+                equipmentId);
 
         com.telecominfraproject.wlan.client.models.events.realtime.ClientTimeoutEvent clientEvent;
 
         if (clientTimeoutEvent.hasTimestampMs()) {
-            long timestamp = clientTimeoutEvent.getTimestampMs();
-            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientTimeoutEvent(timestamp);
+            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientTimeoutEvent(Long.valueOf(clientTimeoutEvent.getTimestampMs()));
         } else {
             clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientTimeoutEvent(
                     System.currentTimeMillis());
@@ -474,7 +516,50 @@ public class RealtimeEventPublisher {
 
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
+
+        LOG.info("publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
 
+    }
+
+    void publishDhcpTransactionEvents(int customerId, long equipmentId,
+            List<DhcpTransaction> dhcpTransactionList) {
+        for (DhcpTransaction dhcpTransaction : dhcpTransactionList) {
+
+            for (DhcpAckEvent ackEvent : dhcpTransaction.getDhcpAckEventList()) {
+                LOG.info("DhcpAckEvent {}", ackEvent);
+
+            }
+
+            for (DhcpNakEvent nakEvent : dhcpTransaction.getDhcpNakEventList()) {
+                LOG.info("DhcpNakEvent {}", nakEvent);
+
+            }
+
+            for (DhcpOfferEvent offerEvent : dhcpTransaction.getDhcpOfferEventList()) {
+                LOG.info("DhcpOfferEvent {}", offerEvent);
+
+            }
+
+            for (DhcpInformEvent informEvent : dhcpTransaction.getDhcpInformEventList()) {
+                LOG.info("DhcpInformEvent {}", informEvent);
+
+            }
+
+            for (DhcpDeclineEvent declineEvent : dhcpTransaction.getDhcpDeclineEventList()) {
+                LOG.info("DhcpDeclineEvent {}", declineEvent);
+
+            }
+
+            for (DhcpRequestEvent requestEvent : dhcpTransaction.getDhcpRequestEventList()) {
+                LOG.info("DhcpRequestEvent {}", requestEvent);
+
+            }
+
+            for (DhcpDiscoverEvent discoverEvent : dhcpTransaction.getDhcpDiscoverEventList()) {
+                LOG.info("DhcpDiscoverEvent {}", discoverEvent);
+
+            }
+        }
     }
 }
