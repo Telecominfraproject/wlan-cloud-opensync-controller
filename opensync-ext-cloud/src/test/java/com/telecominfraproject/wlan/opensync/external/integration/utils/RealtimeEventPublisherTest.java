@@ -19,6 +19,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import com.google.protobuf.ByteString;
+import com.telecominfraproject.wlan.client.models.events.realtime.ClientAssocEvent;
+import com.telecominfraproject.wlan.client.models.events.realtime.ClientAuthEvent;
+import com.telecominfraproject.wlan.client.models.events.utils.WlanStatusCode;
 import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherInterface;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExternalIntegrationCloud;
@@ -26,6 +29,7 @@ import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExtern
 import sts.OpensyncStats;
 import sts.OpensyncStats.RadioBandType;
 import sts.OpensyncStats.Report;
+
 @RunWith(SpringRunner.class)
 @ActiveProfiles(profiles = { "integration_test", })
 @SpringBootTest(webEnvironment = WebEnvironment.NONE, classes = RealtimeEventPublisherTest.class)
@@ -33,7 +37,7 @@ import sts.OpensyncStats.Report;
 
 })
 public class RealtimeEventPublisherTest {
-    
+
     @MockBean
     private CloudEventDispatcherInterface cloudEventDispatcherInterface;
 
@@ -68,57 +72,76 @@ public class RealtimeEventPublisherTest {
     }
 
     @Ignore
-    void testPublishChannelHopEvents() {
+    public void testPublishChannelHopEvents() {
         // TODO: implement
     }
 
     @Ignore
-    void testPublishClientConnectSuccessEvent() {
+    public void testPublishClientConnectSuccessEvent() {
         // TODO: implement
     }
 
     @Ignore
-    void testPublishClientDisconnectEvent() {
+    public void testPublishClientDisconnectEvent() {
+        // TODO: implement
+    }
+
+    @Test
+    public void testPublishClientAuthSystemEvent() throws Exception {
+
+        OpensyncStats.EventReport.ClientAuthEvent clientAuthEvent = OpensyncStats.EventReport.ClientAuthEvent
+                .newBuilder().setBand(RadioBandType.BAND5GL).setSsid("TipWlan-cloud-3-radios")
+                .setStaMac("c0:9a:d0:76:a9:69").setSessionId(Long.parseUnsignedLong("12377998144488079334"))
+                .setAuthStatus(WlanStatusCode.WLAN_STATUS_SUCCESS.getId()).setTimestampMs(1610050309).build();
+
+        realtimeEventPublisher.publishClientAuthSystemEvent(2, 1L, clientAuthEvent);
+
+        Mockito.verify(cloudEventDispatcherInterface, Mockito.times(1))
+                .publishEvent(Mockito.any(ClientAuthEvent.class));
+    }
+
+    @Test
+    public void testPublishClientAssocEvent() throws Exception {
+
+        OpensyncStats.EventReport.ClientAssocEvent clientAssocEvent = OpensyncStats.EventReport.ClientAssocEvent
+                .newBuilder().setBand(RadioBandType.BAND5GL).setRssi(-37).setSsid("TipWlan-cloud-3-radios")
+                .setStaMac("c0:9a:d0:76:a9:69").setSessionId(Long.parseUnsignedLong("12377998144488079334"))
+                .setUsing11K(true).setUsing11V(true).setStatus(WlanStatusCode.WLAN_STATUS_SUCCESS.getId())
+                .setTimestampMs(1610050309).build();
+
+        realtimeEventPublisher.publishClientAssocEvent(2, 1L, clientAssocEvent);
+
+        Mockito.verify(cloudEventDispatcherInterface, Mockito.times(1))
+                .publishEvent(Mockito.any(ClientAssocEvent.class));
+    }
+
+    @Ignore
+    public void testPublishClientFailureEvent() {
         // TODO: implement
     }
 
     @Ignore
-    void testPublishClientAuthSystemEvent() {
+    public void testPublishClientFirstDataEvent() {
         // TODO: implement
     }
 
     @Ignore
-    void testPublishClientAssocEvent() {
+    public void testPublishClientIdEvent() {
         // TODO: implement
     }
 
     @Ignore
-    void testPublishClientFailureEvent() {
+    public void testPublishClientIpEvent() {
         // TODO: implement
     }
 
     @Ignore
-    void testPublishClientFirstDataEvent() {
+    public void testPublishClientTimeoutEvent() {
         // TODO: implement
     }
 
     @Ignore
-    void testPublishClientIdEvent() {
-        // TODO: implement
-    }
-
-    @Ignore
-    void testPublishClientIpEvent() {
-        // TODO: implement
-    }
-
-    @Ignore
-    void testPublishClientTimeoutEvent() {
-        // TODO: implement
-    }
-
-    @Ignore
-    void testPublishDhcpTransactionEvents() {
+    public void testPublishDhcpTransactionEvents() {
         // TODO: implement
     }
 
@@ -145,11 +168,11 @@ public class RealtimeEventPublisherTest {
                 .addVideoVoiceReport(callReportRoamedToVoiceReportBuilder)
                 .addVideoVoiceReport(callStopVoiceReportBuilder).setNodeID("1").build();
 
-        realtimeEventPublisher.publishSipCallEvents(1, 2L,multipleVoiceReportsInOneReport.getVideoVoiceReportList());
+        realtimeEventPublisher.publishSipCallEvents(1, 2L, multipleVoiceReportsInOneReport.getVideoVoiceReportList());
 
         Mockito.verify(cloudEventDispatcherInterface, Mockito.times(1)).publishEventsBulk(Mockito.anyList());
     }
-   
+
     private OpensyncStats.CallStart getDefaultCallStart() {
         OpensyncStats.CallStart.Builder callStartBuilder = OpensyncStats.CallStart.newBuilder();
         callStartBuilder.setBand(RadioBandType.BAND5G);
@@ -217,6 +240,5 @@ public class RealtimeEventPublisherTest {
 
         return callReportBuilder.build();
     }
-
 
 }
