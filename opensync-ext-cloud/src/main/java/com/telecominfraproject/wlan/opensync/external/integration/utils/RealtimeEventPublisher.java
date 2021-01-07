@@ -26,10 +26,22 @@ import com.telecominfraproject.wlan.equipment.models.Equipment;
 import com.telecominfraproject.wlan.opensync.util.OvsdbToWlanCloudTypeMappingUtility;
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeChannelHopEvent;
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeEventType;
+import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeSipCallReportEvent;
+import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeSipCallStartEvent;
+import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeSipCallStopEvent;
+import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeStreamingStartEvent;
+import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeStreamingStartSessionEvent;
+import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeStreamingStopEvent;
+import com.telecominfraproject.wlan.systemevent.equipment.realtime.SIPCallReportReason;
+import com.telecominfraproject.wlan.systemevent.equipment.realtime.SipCallStopReason;
 import com.telecominfraproject.wlan.systemevent.models.SystemEvent;
 
+import sts.OpensyncStats;
 import sts.OpensyncStats.AssocType;
 import sts.OpensyncStats.CTReasonType;
+import sts.OpensyncStats.CallReport;
+import sts.OpensyncStats.CallStart;
+import sts.OpensyncStats.CallStop;
 import sts.OpensyncStats.ChannelSwitchReason;
 import sts.OpensyncStats.DeviceType;
 import sts.OpensyncStats.EventReport;
@@ -51,6 +63,11 @@ import sts.OpensyncStats.EventReport.DhcpOfferEvent;
 import sts.OpensyncStats.EventReport.DhcpRequestEvent;
 import sts.OpensyncStats.EventReport.DhcpTransaction;
 import sts.OpensyncStats.FrameType;
+import sts.OpensyncStats.RtpFlowStats;
+import sts.OpensyncStats.StreamingVideoServerDetected;
+import sts.OpensyncStats.StreamingVideoSessionStart;
+import sts.OpensyncStats.StreamingVideoStop;
+import sts.OpensyncStats.VideoVoiceReport;
 
 @org.springframework.context.annotation.Profile("opensync_cloud_config")
 @Component
@@ -564,4 +581,438 @@ public class RealtimeEventPublisher {
             }
         }
     }
+    
+    void publishSipCallEvents(int customerId, long equipmentId, List<VideoVoiceReport> sipCallReportList) {
+        // only in case it is not there, we will just use the time when we
+        // received the report/event
+        long eventTimestamp = System.currentTimeMillis();
+
+        List<SystemEvent> eventsList = new ArrayList<>();
+        for (VideoVoiceReport videoVoiceReport : sipCallReportList) {
+
+            if (videoVoiceReport.hasTimestampMs()) {
+                eventTimestamp = videoVoiceReport.getTimestampMs();
+            }
+
+            LOG.debug("Received VideoVoiceReport {} for SIP call", videoVoiceReport);
+
+            processRealTimeSipCallReportEvent(customerId, equipmentId, eventTimestamp, eventsList, videoVoiceReport);
+
+            processRealTimeSipCallStartEvent(customerId, equipmentId, eventTimestamp, eventsList, videoVoiceReport);
+
+            processRealTimeSipCallStopEvent(customerId, equipmentId, eventTimestamp, eventsList, videoVoiceReport);
+
+            processRtsStartEvent(customerId, equipmentId, eventTimestamp, eventsList, videoVoiceReport);
+
+            processRtsStartSessionEvent(customerId, equipmentId, eventTimestamp, eventsList, videoVoiceReport);
+
+            processRtsStopEvent(customerId, equipmentId, eventTimestamp, eventsList, videoVoiceReport);
+
+        }
+
+        if (eventsList.size() > 0) {
+            cloudEventDispatcherInterface.publishEventsBulk(eventsList);
+        }
+
+    }
+
+    protected void processRealTimeSipCallReportEvent(int customerId, long equipmentId, long eventTimestamp,
+            List<SystemEvent> eventsList, VideoVoiceReport videoVoiceReport) {
+        if (videoVoiceReport.hasCallReport()) {
+
+            CallReport callReport = videoVoiceReport.getCallReport();
+
+            RealTimeSipCallReportEvent cloudSipCallReportEvent = new RealTimeSipCallReportEvent(customerId, equipmentId,
+                    eventTimestamp);
+
+            if (callReport.hasClientMac() && callReport.getClientMac().isValidUtf8()) {
+                cloudSipCallReportEvent
+                        .setClientMacAddress(MacAddress.valueOf(callReport.getClientMac().toStringUtf8()));
+            }
+            cloudSipCallReportEvent.setStatuses(processRtpFlowStats(callReport.getStatsList()));
+            cloudSipCallReportEvent.setEventType(RealTimeEventType.SipCallReport);
+
+            cloudSipCallReportEvent.setSipCallId(callReport.getWifiSessionId());
+            cloudSipCallReportEvent.setAssociationId(callReport.getSessionId());
+
+            if (callReport.hasReason()) {
+                cloudSipCallReportEvent.setReportReason(getCallReportReason(callReport.getReason()));
+            }
+            if (callReport.hasProviderDomain()) {
+                cloudSipCallReportEvent.setProviderDomain(callReport.getProviderDomain());
+            }
+
+            if (callReport.getCodecsCount() > 0) {
+                cloudSipCallReportEvent.setCodecs(callReport.getCodecsList());
+            }
+
+            if (callReport.hasChannel()) {
+                cloudSipCallReportEvent.setChannel(callReport.getChannel());
+            }
+
+            if (callReport.hasBand()) {
+                cloudSipCallReportEvent.setRadioType(OvsdbToWlanCloudTypeMappingUtility
+                        .getRadioTypeFromOpensyncStatsRadioBandType(callReport.getBand()));
+            }
+
+            eventsList.add(cloudSipCallReportEvent);
+
+        }
+    }
+
+    private SIPCallReportReason getCallReportReason(CallReport.CallReportReason reason) {
+        if (reason != null) {
+            switch (reason) {
+            case ROAMED_TO:
+                return SIPCallReportReason.ROAMED_TO;
+            case GOT_PUBLISH:
+                return SIPCallReportReason.GOT_PUBLISH;
+            case ROAMED_FROM:
+                return SIPCallReportReason.ROAMED_FROM;
+            default:
+                return SIPCallReportReason.UNSUPPORTED;
+            }
+        }
+        return SIPCallReportReason.UNSUPPORTED;
+    }
+
+    protected void processRealTimeSipCallStartEvent(int customerId, long equipmentId, long eventTimestamp,
+            List<SystemEvent> eventsList, VideoVoiceReport videoVoiceReport) {
+        if (videoVoiceReport.hasCallStart()) {
+
+            CallStart apCallStart = videoVoiceReport.getCallStart();
+
+            RealTimeSipCallStartEvent cloudSipCallStartEvent = new RealTimeSipCallStartEvent(customerId, equipmentId,
+                    eventTimestamp);
+
+            if (apCallStart.hasClientMac() && apCallStart.getClientMac().isValidUtf8()) {
+                cloudSipCallStartEvent
+                        .setClientMacAddress(MacAddress.valueOf(apCallStart.getClientMac().toStringUtf8()));
+            }
+
+            if (apCallStart.hasDeviceInfo()) {
+                cloudSipCallStartEvent.setDeviceInfo(apCallStart.getDeviceInfo());
+            }
+
+            if (apCallStart.hasProviderDomain()) {
+                cloudSipCallStartEvent.setProviderDomain(apCallStart.getProviderDomain());
+            }
+
+            if (apCallStart.hasSessionId()) {
+                cloudSipCallStartEvent.setAssociationId(apCallStart.getSessionId());
+            }
+
+            if (apCallStart.hasWifiSessionId()) {
+                cloudSipCallStartEvent.setAssociationId(apCallStart.getWifiSessionId());
+            }
+
+            if (apCallStart.getCodecsCount() > 0) {
+                cloudSipCallStartEvent.setCodecs(apCallStart.getCodecsList());
+            }
+
+            if (apCallStart.hasChannel()) {
+                cloudSipCallStartEvent.setChannel(apCallStart.getChannel());
+            }
+
+            if (apCallStart.hasBand()) {
+                cloudSipCallStartEvent.setRadioType(OvsdbToWlanCloudTypeMappingUtility
+                        .getRadioTypeFromOpensyncStatsRadioBandType(apCallStart.getBand()));
+            }
+
+            eventsList.add(cloudSipCallStartEvent);
+
+        }
+    }
+
+    protected void processRealTimeSipCallStopEvent(int customerId, long equipmentId, long eventTimestamp,
+            List<SystemEvent> eventsList, VideoVoiceReport videoVoiceReport) {
+        if (videoVoiceReport.hasCallStop()) {
+
+            CallStop apCallStop = videoVoiceReport.getCallStop();
+
+            RealTimeSipCallStopEvent cloudSipCallStopEvent = new RealTimeSipCallStopEvent(customerId, equipmentId,
+                    eventTimestamp);
+
+            if (apCallStop.hasCallDuration()) {
+
+                cloudSipCallStopEvent.setCallDuration(apCallStop.getCallDuration());
+
+            }
+
+            if (apCallStop.hasClientMac() && apCallStop.getClientMac().isValidUtf8()) {
+
+                cloudSipCallStopEvent.setClientMacAddress(MacAddress.valueOf(apCallStop.getClientMac().toStringUtf8()));
+
+            }
+
+            if (apCallStop.hasReason()) {
+
+                switch (apCallStop.getReason()) {
+                case BYE_OK:
+                    cloudSipCallStopEvent.setReason(SipCallStopReason.BYE_OK);
+                    break;
+                case CALL_DROPPED:
+                    cloudSipCallStopEvent.setReason(SipCallStopReason.DROPPED);
+                    break;
+
+                default:
+                    cloudSipCallStopEvent.setReason(SipCallStopReason.UNSUPPORTED);
+                }
+
+            }
+
+            if (apCallStop.hasSessionId()) {
+
+                cloudSipCallStopEvent.setAssociationId(apCallStop.getSessionId());
+
+            }
+
+            if (apCallStop.hasWifiSessionId()) {
+                cloudSipCallStopEvent.setSipCallId(apCallStop.getWifiSessionId());
+
+            }
+
+            if (apCallStop.getStatsCount() > 0) {
+                cloudSipCallStopEvent.setStatuses(processRtpFlowStats(apCallStop.getStatsList()));
+            }
+
+            if (apCallStop.hasProviderDomain()) {
+                cloudSipCallStopEvent.setProviderDomain(apCallStop.getProviderDomain());
+            }
+
+            if (apCallStop.getCodecsCount() > 0) {
+                cloudSipCallStopEvent.setCodecs(apCallStop.getCodecsList());
+            }
+
+            if (apCallStop.hasChannel()) {
+                cloudSipCallStopEvent.setChannel(apCallStop.getChannel());
+            }
+
+            if (apCallStop.hasBand()) {
+                cloudSipCallStopEvent.setRadioType(OvsdbToWlanCloudTypeMappingUtility
+                        .getRadioTypeFromOpensyncStatsRadioBandType(apCallStop.getBand()));
+            }
+
+            eventsList.add(cloudSipCallStopEvent);
+
+        }
+    }
+
+    protected void processRtsStartEvent(int customerId, long equipmentId, long eventTimestamp,
+            List<SystemEvent> eventsList, VideoVoiceReport videoVoiceReport) {
+        if (videoVoiceReport.hasStreamVideoServer()) {
+            StreamingVideoServerDetected apStreamVideoServer = videoVoiceReport.getStreamVideoServer();
+            RealTimeStreamingStartEvent rtsStartEvent = new RealTimeStreamingStartEvent(customerId, equipmentId,
+                    eventTimestamp);
+            if (apStreamVideoServer.hasServerIp()) {
+                try {
+                    rtsStartEvent
+                            .setServerIp(InetAddress.getByAddress(apStreamVideoServer.getServerIp().toByteArray()));
+                } catch (UnknownHostException e) {
+                    LOG.error("Cannot get IP Address from {}", apStreamVideoServer.getServerIp(), e);
+                }
+            }
+            if (apStreamVideoServer.hasStreamingVideoType()) {
+                rtsStartEvent.setType(OvsdbToWlanCloudTypeMappingUtility
+                        .getCloudStreamingVideoTypeFromApReport(apStreamVideoServer.getStreamingVideoType()));
+            }
+
+            if (apStreamVideoServer.hasServerDnsName()) {
+                rtsStartEvent.setServerDnsName(apStreamVideoServer.getServerDnsName());
+            }
+
+            if (apStreamVideoServer.hasClientMac() && apStreamVideoServer.getClientMac().isValidUtf8()) {
+                rtsStartEvent
+                        .setClientMacAddress(MacAddress.valueOf(apStreamVideoServer.getClientMac().toStringUtf8()));
+            }
+
+            if (apStreamVideoServer.hasSessionId()) {
+                rtsStartEvent.setSessionId(apStreamVideoServer.getSessionId());
+            }
+
+            if (apStreamVideoServer.hasVideoSessionId()) {
+                rtsStartEvent.setVideoSessionId(apStreamVideoServer.getVideoSessionId());
+            }
+
+            eventsList.add(rtsStartEvent);
+
+        }
+    }
+
+    private List<com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowStats> processRtpFlowStats(
+            List<OpensyncStats.RtpFlowStats> stats) {
+        List<com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowStats> cloudRtpFlowStatsList = new ArrayList<>();
+        for (RtpFlowStats apRtpFlowStats : stats) {
+
+            com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowStats cloudRtpStats = new com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowStats();
+
+            if (apRtpFlowStats.hasCodec()) {
+                cloudRtpStats.setCodec(apRtpFlowStats.getCodec());
+            }
+
+            if (apRtpFlowStats.hasBlockCodecs()) {
+                cloudRtpStats.setBlockCodecs(apRtpFlowStats.getBlockCodecs().toByteArray());
+            }
+
+            if (apRtpFlowStats.hasLatency()) {
+                cloudRtpStats.setLatency(apRtpFlowStats.getLatency());
+            }
+
+            if (apRtpFlowStats.hasRtpSeqFirst()) {
+                cloudRtpStats.setFirstRTPSeq(apRtpFlowStats.getRtpSeqFirst());
+            }
+
+            if (apRtpFlowStats.hasRtpSeqLast()) {
+                cloudRtpStats.setLastRTPSeq(apRtpFlowStats.getRtpSeqLast());
+            }
+
+            if (apRtpFlowStats.hasDirection()) {
+                switch (apRtpFlowStats.getDirection()) {
+                case RTP_DOWNSTREAM:
+                    cloudRtpStats.setDirection(
+                            com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowDirection.DOWNSTREAM);
+                    break;
+                case RTP_UPSTREAM:
+                    cloudRtpStats.setDirection(
+                            com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowDirection.UPSTREAM);
+                    break;
+                default:
+                    cloudRtpStats.setDirection(
+                            com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowDirection.UNSUPPORTED);
+                }
+            }
+
+            if (apRtpFlowStats.hasRtpFlowType()) {
+                switch (apRtpFlowStats.getRtpFlowType()) {
+                case RTP_VIDEO:
+                    cloudRtpStats
+                            .setFlowType(com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowType.VIDEO);
+                    break;
+                case RTP_VOICE:
+                    cloudRtpStats
+                            .setFlowType(com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowType.VOICE);
+                    break;
+                default:
+                    cloudRtpStats.setFlowType(
+                            com.telecominfraproject.wlan.systemevent.equipment.realtime.RtpFlowType.UNSUPPORTED);
+                    break;
+                }
+            }
+
+            if (apRtpFlowStats.hasJitter()) {
+                cloudRtpStats.setJitter(apRtpFlowStats.getJitter());
+            }
+
+            if (apRtpFlowStats.hasTotalPacketsSent()) {
+                cloudRtpStats.setTotalPacket(apRtpFlowStats.getTotalPacketsSent());
+            }
+
+            if (apRtpFlowStats.hasTotalPacketsLost()) {
+                cloudRtpStats.setTotalPacketLost(apRtpFlowStats.getTotalPacketsLost());
+            }
+
+            if (apRtpFlowStats.hasMosx100()) {
+                cloudRtpStats.setMosMultipliedBy100(apRtpFlowStats.getMosx100());
+            }
+
+            if (apRtpFlowStats.hasPacketLossConsec()) {
+                cloudRtpStats.setPacketLossConsecutive(apRtpFlowStats.getPacketLossConsec());
+            }
+
+            if (apRtpFlowStats.hasPacketLossPercent()) {
+                cloudRtpStats.setPacketLossPercentage(apRtpFlowStats.getPacketLossPercent());
+            }
+
+            cloudRtpFlowStatsList.add(cloudRtpStats);
+
+        }
+        return cloudRtpFlowStatsList;
+    }
+
+    protected void processRtsStartSessionEvent(int customerId, long equipmentId, long eventTimestamp,
+            List<SystemEvent> eventsList, VideoVoiceReport videoVoiceReport) {
+        if (videoVoiceReport.hasStreamVideoSessionStart()) {
+            StreamingVideoSessionStart apStreamVideoSessionStart = videoVoiceReport.getStreamVideoSessionStart();
+            RealTimeStreamingStartSessionEvent rtsStartSessionEvent = new RealTimeStreamingStartSessionEvent(customerId,
+                    equipmentId, eventTimestamp);
+            if (apStreamVideoSessionStart.hasClientMac() && apStreamVideoSessionStart.getClientMac().isValidUtf8()) {
+                rtsStartSessionEvent.setClientMacAddress(
+                        MacAddress.valueOf(apStreamVideoSessionStart.getClientMac().toStringUtf8()));
+            }
+
+            if (apStreamVideoSessionStart.hasServerIp()) {
+                try {
+                    rtsStartSessionEvent.setServerIp(
+                            InetAddress.getByAddress(apStreamVideoSessionStart.getServerIp().toByteArray()));
+                } catch (UnknownHostException e) {
+                    LOG.error("Cannot get IP Address from {}", apStreamVideoSessionStart.getServerIp(), e);
+
+                }
+            }
+
+            if (apStreamVideoSessionStart.hasSessionId()) {
+                rtsStartSessionEvent.setSessionId(apStreamVideoSessionStart.getSessionId());
+
+            }
+
+            if (apStreamVideoSessionStart.hasStreamingVideoType()) {
+                rtsStartSessionEvent.setType(OvsdbToWlanCloudTypeMappingUtility
+                        .getCloudStreamingVideoTypeFromApReport(apStreamVideoSessionStart.getStreamingVideoType()));
+
+            }
+
+            if (apStreamVideoSessionStart.hasVideoSessionId()) {
+                rtsStartSessionEvent.setVideoSessionId(apStreamVideoSessionStart.getVideoSessionId());
+            }
+            eventsList.add(rtsStartSessionEvent);
+        }
+    }
+
+    protected void processRtsStopEvent(int customerId, long equipmentId, long eventTimestamp,
+            List<SystemEvent> eventsList, VideoVoiceReport videoVoiceReport) {
+        if (videoVoiceReport.hasStreamVideoStop()) {
+            StreamingVideoStop apStreamVideoStop = videoVoiceReport.getStreamVideoStop();
+            RealTimeStreamingStopEvent rtsStopEvent = new RealTimeStreamingStopEvent(customerId, equipmentId,
+                    eventTimestamp);
+            if (apStreamVideoStop.hasClientMac() && apStreamVideoStop.getClientMac().isValidUtf8()) {
+                rtsStopEvent.setClientMacAddress(MacAddress.valueOf(apStreamVideoStop.getClientMac().toStringUtf8()));
+            }
+
+            if (apStreamVideoStop.hasDurationSec()) {
+                rtsStopEvent.setDurationInSecs(apStreamVideoStop.getDurationSec());
+            }
+
+            if (apStreamVideoStop.hasServerIp()) {
+                try {
+                    rtsStopEvent.setServerIp(InetAddress.getByAddress(apStreamVideoStop.getServerIp().toByteArray()));
+                } catch (UnknownHostException e) {
+                    LOG.error("Cannot get IP Address from {}", apStreamVideoStop.getServerIp(), e);
+
+                }
+            }
+
+            if (apStreamVideoStop.hasSessionId()) {
+                rtsStopEvent.setSessionId(apStreamVideoStop.getSessionId());
+            }
+
+            if (apStreamVideoStop.hasStreamingVideoType()) {
+
+                rtsStopEvent.setType(OvsdbToWlanCloudTypeMappingUtility
+                        .getCloudStreamingVideoTypeFromApReport(apStreamVideoStop.getStreamingVideoType()));
+
+            }
+
+            if (apStreamVideoStop.hasTotalBytes()) {
+                rtsStopEvent.setTotalBytes(apStreamVideoStop.getTotalBytes());
+            }
+
+            if (apStreamVideoStop.hasVideoSessionId()) {
+                rtsStopEvent.setVideoSessionId(apStreamVideoStop.getVideoSessionId());
+            }
+
+            eventsList.add(rtsStopEvent);
+
+        }
+    }
+
 }
