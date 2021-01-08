@@ -588,7 +588,7 @@ public class OpensyncExternalIntegrationCloudTest {
         equipment.setProfileId(1);
         equipment.setDetails(ApElementConfiguration.createWithDefaults());
 
-        Mockito.when(equipmentServiceInterface.getByInventoryIdOrNull(apId)).thenReturn(equipment);
+        Mockito.when(equipmentServiceInterface.getOrNull(1L)).thenReturn(equipment);
         Mockito.when(equipmentServiceInterface.get(equipment.getId())).thenReturn(equipment);
         Mockito.when(equipmentServiceInterface.update(equipment)).thenReturn(equipment);
         
@@ -620,7 +620,7 @@ public class OpensyncExternalIntegrationCloudTest {
         Mockito.verify(session).getCustomerId();
         Mockito.verify(session).getEquipmentId();
         Mockito.verify(ovsdbSessionMapInterface).getSession(apId);
-        Mockito.verify(equipmentServiceInterface).getByInventoryIdOrNull(apId);
+        Mockito.verify(equipmentServiceInterface).getOrNull(1L);
 
         Mockito.verify(statusServiceInterface).getOrNull(2, 1L, StatusDataType.CLIENT_DETAILS);
         Mockito.verify(statusServiceInterface).getOrNull(2, 1L, StatusDataType.ACTIVE_BSSIDS);

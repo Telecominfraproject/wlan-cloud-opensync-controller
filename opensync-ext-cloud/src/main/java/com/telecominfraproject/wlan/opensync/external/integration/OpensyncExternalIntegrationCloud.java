@@ -4,6 +4,7 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -315,7 +316,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     if (apElementConfig == null) {
                         apElementConfig = ApElementConfiguration.createWithDefaults();
                         ce.setDetails(apElementConfig);
-                        needToUpdateEquipment = true;
+                        ce = equipmentServiceInterface.update(ce);
+                        apElementConfig = (ApElementConfiguration) ce.getDetails();
                     }
 
                     if (apElementConfig.getDeviceName() == null
@@ -333,76 +335,60 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     Map<RadioType, RadioConfiguration> advancedRadioMap = apElementConfig.getAdvancedRadioMap();
                     Map<RadioType, ElementRadioConfiguration> radioMap = apElementConfig.getRadioMap();
 
-                    if (advancedRadioMap == null) {
-                        advancedRadioMap = new HashMap<>();
+                    if (apElementConfig.getAdvancedRadioMap() == null) {
+                        advancedRadioMap = new EnumMap<>(RadioType.class);
                         apElementConfig.setAdvancedRadioMap(advancedRadioMap);
                         needToUpdateEquipment = true;
                     }
 
                     if (radioMap == null) {
-                        radioMap = new HashMap<>();
+                        radioMap = new EnumMap<>(RadioType.class);
                         apElementConfig.setRadioMap(radioMap);
                         needToUpdateEquipment = true;
                     }
 
                     Set<RadioType> radiosFromAp = new HashSet<>();
+                    connectNodeInfo.wifiRadioStates.keySet().forEach(k -> {
+                        radiosFromAp.add(OvsdbToWlanCloudTypeMappingUtility.getRadioTypeForOvsdbRadioFreqBand(k));
+                    });
 
                     // add missing radio configs from the AP into the DB
-                    for (String radio : connectNodeInfo.wifiRadioStates.keySet()) {
-                        RadioType radioType = RadioType.UNSUPPORTED;
-                        if (radio.equals("2.4G")) {
-                            radioType = RadioType.is2dot4GHz;
-                        } else if (radio.equals("5G")) {
-                            radioType = RadioType.is5GHz;
-                        } else if (radio.equals("5GL")) {
-                            radioType = RadioType.is5GHzL;
-                        } else if (radio.equals("5GU")) {
-                            radioType = RadioType.is5GHzU;
+                    for (RadioType radio : radiosFromAp) {
+                        if (!advancedRadioMap.containsKey(radio) || advancedRadioMap.get(radio) == null) {
+                            advancedRadioMap.put(radio, RadioConfiguration.createWithDefaults(radio));
+                            needToUpdateEquipment = true;
                         }
-
-                        if (!radioType.equals(RadioType.UNSUPPORTED)) {
-
-                            radiosFromAp.add(radioType);
-
-                            RadioConfiguration advancedRadioConfiguration = advancedRadioMap.get(radioType);
-                            ElementRadioConfiguration radioConfiguration = radioMap.get(radioType);
-
-                            if (advancedRadioConfiguration == null) {
-                                advancedRadioConfiguration = RadioConfiguration.createWithDefaults(radioType);
-                                advancedRadioMap.put(radioType, advancedRadioConfiguration);
-                                needToUpdateEquipment = true;
-                            }
-
-                            if (radioConfiguration == null) {
-                                radioConfiguration = ElementRadioConfiguration.createWithDefaults(radioType);
-                                radioMap.put(radioType, radioConfiguration);
-                                needToUpdateEquipment = true;
-                            }
-
+                        if (!radioMap.containsKey(radio) || radioMap.get(radio) == null) {
+                            radioMap.putIfAbsent(radio, ElementRadioConfiguration.createWithDefaults(radio));
+                            needToUpdateEquipment = true;
                         }
                     }
 
                     // remove radio configs from the DB that are no longer
                     // present in the AP but still exist in DB
-                    for (RadioType radioType : RadioType.validValues()) {
-
-                        RadioConfiguration advancedRadioConfiguration = advancedRadioMap.get(radioType);
-
-                        if (advancedRadioConfiguration != null || !radiosFromAp.contains(radioType)) {
-                            advancedRadioMap.remove(radioType);
+                    for (RadioType radio : advancedRadioMap.keySet()) {
+                        if (!radiosFromAp.contains(radio)) {
+                            advancedRadioMap.remove(radio);
                             needToUpdateEquipment = true;
                         }
-
-                        ElementRadioConfiguration radioConfiguration = radioMap.get(radioType);
-                        if (radioConfiguration != null || !radiosFromAp.contains(radioType)) {
-                            radioMap.remove(radioType);
+                    }
+                    for (RadioType radio : radioMap.keySet()) {
+                        if (!radiosFromAp.contains(radio)) {
+                            radioMap.remove(radio);
                             needToUpdateEquipment = true;
                         }
-
                     }
 
                     if (needToUpdateEquipment) {
+
+                        apElementConfig.setAdvancedRadioMap(advancedRadioMap);
+                        apElementConfig.setRadioMap(radioMap);
+                        ce.setDetails(apElementConfig);
+
                         ce = equipmentServiceInterface.update(ce);
+                        apElementConfig = (ApElementConfiguration) ce.getDetails();
+                        LOG.info("Equipment {} values for RadioMap {} AdvancedRadioMap {}", ce.getName(),
+                                apElementConfig.getRadioMap(), apElementConfig.getAdvancedRadioMap());
                     }
 
                 }
@@ -947,7 +933,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 throw new IllegalStateException("AP is not connected " + apId);
             }
             int customerId = ovsdbSession.getCustomerId();
-
             Equipment equipmentConfig = equipmentServiceInterface.getByInventoryIdOrNull(apId);
             if (equipmentConfig == null) {
                 throw new IllegalStateException("Cannot retrieve configuration for " + apId);
@@ -1075,7 +1060,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
-        Equipment apNode = equipmentServiceInterface.getByInventoryIdOrNull(apId);
+        Equipment apNode = equipmentServiceInterface.getOrNull(equipmentId);
         if (apNode == null) {
             LOG.debug("wifiVIFStateDbTableUpdate::Cannot get EquipmentId for AP {}", apId);
             return; // we don't have the required info to get the
@@ -1120,6 +1105,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             RadioType radioType = null;
             Map<RadioType, RfElementConfiguration> rfElementMap = rfConfig.getRfConfigMap();
             Map<RadioType, ElementRadioConfiguration> elementRadioMap = apElementConfig.getRadioMap();
+
+            if (apElementConfig.getAdvancedRadioMap().isEmpty()) {
+                LOG.warn("No AdvancedRadioMap for ap {} {}", apId, apElementConfig);
+                continue;
+            }
             for (RadioType rType : elementRadioMap.keySet()) {
                 boolean autoChannelSelection = rfElementMap.get(rType).getAutoChannelSelection();
                 if (elementRadioMap.get(rType).getActiveChannel(autoChannelSelection) == channel) {
@@ -1134,11 +1124,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
                 StatusDataType.ACTIVE_BSSIDS);
+        if (activeBssidsStatus != null) {
+            ActiveBSSIDs bssidStatusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
 
-        ActiveBSSIDs bssidStatusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
-
-        if (activeBssidsStatus != null && bssidStatusDetails != null && bssidStatusDetails.getActiveBSSIDs() != null) {
-            updateClientDetailsStatus(customerId, equipmentId, bssidStatusDetails);
+            if (bssidStatusDetails != null && bssidStatusDetails.getActiveBSSIDs() != null) {
+                updateClientDetailsStatus(customerId, equipmentId, bssidStatusDetails);
+            }
         }
 
         LOG.info("Finished wifiVIFStateDbTableUpdate updated {}", activeBssidsStatus);
@@ -1167,7 +1158,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         Map<RadioType, Integer> clientsPerRadioType = new HashMap<>();
 
         for (ActiveBSSID bssid : statusDetails.getActiveBSSIDs()) {
-
+            if (bssid.getRadioType() == null) {
+                LOG.info("No radio type for BSSID, ignore");
+                continue;
+            }
             if (!clientsPerRadioType.containsKey(bssid.getRadioType())) {
                 clientsPerRadioType.put(bssid.getRadioType(), 0);
             }

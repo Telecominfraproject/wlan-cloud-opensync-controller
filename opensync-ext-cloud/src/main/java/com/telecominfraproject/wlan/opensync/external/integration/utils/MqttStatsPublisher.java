@@ -1805,16 +1805,10 @@ public class MqttStatsPublisher {
 
             Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
                     StatusDataType.ACTIVE_BSSIDS);
-            ActiveBSSIDs statusDetails = null;
-            if (activeBssidsStatus != null) {
-                statusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
+            if (activeBssidsStatus != null && activeBssidsStatus.getDetails() != null && ((ActiveBSSIDs) activeBssidsStatus.getDetails()).getActiveBSSIDs() != null) {               
                 for (ActiveBSSID activeBSSID : ((ActiveBSSIDs) activeBssidsStatus.getDetails()).getActiveBSSIDs()) {
                     if (activeBSSID.getRadioType().equals(radioType)) {
                         ssidStatistics.setBssid(MacAddress.valueOf(activeBSSID.getBssid()));
-                        // ssid value, in case not in stats, else will take
-                        // stats value after
-                        ssid = activeBSSID.getSsid();
-                        statusDetails.getActiveBSSIDs().indexOf(activeBSSID);
                     }
                 }
             }
@@ -1905,8 +1899,6 @@ public class MqttStatsPublisher {
 
             }
 
-            // we can only get Rssi as an unsigned int from opensync, so some
-            // shifting
             ssidStatistics.setRxLastRssi(lastRssi);
             ssidStatistics.setNumRxData(Long.valueOf(rxFrames).intValue());
             ssidStatistics.setRxBytes(rxBytes - rxErrors - rxRetries);

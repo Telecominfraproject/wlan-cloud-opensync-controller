@@ -3089,13 +3089,13 @@ public class OvsdbDao {
             rrmEnabled = opensyncApConfig.getEquipmentLocation().getDetails().isRrmEnabled();
         }
         List<MacAddress> macBlockList = opensyncApConfig.getBlockedClients();
-        LOG.debug("configureSsids with blockList {}", macBlockList);
+        LOG.debug("configureSsids {} with blockList {}", opensyncApConfig.getSsidProfile(), macBlockList);
 
         List<RadioType> enabledRadiosFromAp = new ArrayList<>();
         getEnabledRadios(ovsdbClient, enabledRadiosFromAp);
 
         for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
-
+            
             SsidConfiguration ssidConfig = (SsidConfiguration) ssidProfile.getDetails();
             ApElementConfiguration apElementConfig = (ApElementConfiguration) opensyncApConfig.getCustomerEquipment()
                     .getDetails();
@@ -3198,15 +3198,21 @@ public class OvsdbDao {
                     }
                 }
 
-                RadioConfiguration radioConfiguration = apElementConfig.getAdvancedRadioMap().get(radioType);
-                if (radioConfiguration == null) {
-                    continue; // don't have a radio of this kind in the map
-                }
                 RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(radioType);
-                int dtimPeriod = radioConfiguration.getDtimPeriod();
                 int rtsCtsThreshold = rfElementConfig.getRtsCtsThreshold();
-                int fragThresholdBytes = radioConfiguration.getFragmentationThresholdBytes();
                 RadioMode radioMode = rfElementConfig.getRadioMode();
+
+                int dtimPeriod = 2;
+                int fragThresholdBytes = 2346;
+                boolean uapsdEnabled = true;
+                boolean apBridge = true;
+                RadioConfiguration radioConfiguration = apElementConfig.getAdvancedRadioMap().get(radioType);
+                if (radioConfiguration != null) {
+                    dtimPeriod = radioConfiguration.getDtimPeriod();
+                    uapsdEnabled = radioConfiguration.getUapsdState() == StateSetting.enabled;
+                    apBridge = radioConfiguration.getStationIsolation() == StateSetting.disabled; // stationIsolation                   
+                    fragThresholdBytes = radioConfiguration.getFragmentationThresholdBytes();
+                } 
                 String minHwMode = "11n"; // min_hw_mode is 11ac, wifi 5, we can
                 // also take ++ (11ax) but 2.4GHz only
                 // Wifi4 --
@@ -3217,9 +3223,7 @@ public class OvsdbDao {
                     minHwMode = "11x";
                 }
 
-                boolean uapsdEnabled = radioConfiguration.getUapsdState() == StateSetting.enabled;
 
-                boolean apBridge = radioConfiguration.getStationIsolation() == StateSetting.disabled; // stationIsolation
                 // off by default
                 boolean enable80211r = false;
                 int mobilityDomain = 0;
@@ -5656,7 +5660,8 @@ public class OvsdbDao {
         }
     }
 
-    public void processNewChannelsRequest(OvsdbClient ovsdbClient, Map<RadioType, Integer> backupChannelMap, Map<RadioType, Integer> primaryChannelMap) {
+    public void processNewChannelsRequest(OvsdbClient ovsdbClient, Map<RadioType, Integer> backupChannelMap,
+            Map<RadioType, Integer> primaryChannelMap) {
 
         LOG.info("OvsdbDao::processNewChannelsRequest backup {} primary {}", backupChannelMap, primaryChannelMap);
         try {
@@ -5689,7 +5694,6 @@ public class OvsdbDao {
                 LOG.info("Op Result {}", res);
             }
 
-
             LOG.info("Updated ovsdb config for primary and backup channels.");
         } catch (ExecutionException e) {
             LOG.error("Error in processNewChannelsRequest", e);
@@ -5699,8 +5703,6 @@ public class OvsdbDao {
         }
 
     }
-    
-    
 
     public AutoOrManualValue getSourcedValue(SourceType source, int profileValue, int equipmentValue) {
         if (source == SourceType.profile) {
