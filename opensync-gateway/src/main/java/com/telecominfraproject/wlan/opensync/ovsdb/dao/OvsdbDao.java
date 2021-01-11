@@ -3277,7 +3277,7 @@ public class OvsdbDao {
                                 .equals(NasIpType.USER_DEFINED)
                                         ? ssidConfig.getRadiusClientConfiguration().getUserDefinedNasIp()
                                         : ssidConfig.getRadiusClientConfiguration().getNasClientIp().toString();
-                        radiusOperName = ssidConfig.getRadiusClientConfiguration().getNasOperatorId();
+                        radiusOperName = ssidConfig.getRadiusClientConfiguration().getOperatorId();
                     } else {
                         radiusNasId = NasIdType.DEFAULT.toString();
                         radiusNasIp = NasIpType.WAN_IP.toString();

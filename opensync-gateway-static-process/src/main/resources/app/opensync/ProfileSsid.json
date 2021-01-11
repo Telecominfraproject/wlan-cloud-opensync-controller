@@ -66,7 +66,7 @@
         "nasClientIp": "WAN_IP",
         "userDefinedNasId": null,
         "userDefinedNasIp": null,
-        "nasOperatorId": null
+        "operatorId": null
       }
     },
     "createdTimestamp": 1606778369598,
@@ -140,7 +140,7 @@
         "nasClientIp": "WAN_IP",
         "userDefinedNasId": null,
         "userDefinedNasIp": null,
-        "nasOperatorId": null
+        "operatorId": null
       }
     },
     "createdTimestamp": 1606778369943,
@@ -214,7 +214,7 @@
         "nasClientIp": "WAN_IP",
         "userDefinedNasId": null,
         "userDefinedNasIp": null,
-        "nasOperatorId": null
+        "operatorId": null
       }
     },
     "createdTimestamp": 1606778369944,
