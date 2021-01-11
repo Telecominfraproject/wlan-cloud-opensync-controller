@@ -366,13 +366,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                     // remove radio configs from the DB that are no longer
                     // present in the AP but still exist in DB
-                    for (RadioType radio : advancedRadioMap.keySet()) {
+                    
+                    for (RadioType radio : new ArrayList<>(advancedRadioMap.keySet())) {
                         if (!radiosFromAp.contains(radio)) {
                             advancedRadioMap.remove(radio);
                             needToUpdateEquipment = true;
                         }
                     }
-                    for (RadioType radio : radioMap.keySet()) {
+                    for (RadioType radio : new ArrayList<>(radioMap.keySet())) {
                         if (!radiosFromAp.contains(radio)) {
                             radioMap.remove(radio);
                             needToUpdateEquipment = true;
