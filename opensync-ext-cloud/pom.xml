@@ -77,6 +77,12 @@
         <groupId>com.telecominfraproject.wlan</groupId>
         <version>${tip-wlan-cloud.release.version}</version>
       </dependency>      
+
+      <dependency>
+        <artifactId>system-event-models</artifactId>
+        <groupId>com.telecominfraproject.wlan</groupId>
+        <version>${tip-wlan-cloud.release.version}</version>
+      </dependency>      
       
       <dependency>
         <artifactId>alarm-service-interface</artifactId>

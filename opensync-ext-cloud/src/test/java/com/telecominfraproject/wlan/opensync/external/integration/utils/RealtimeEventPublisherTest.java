@@ -1,5 +1,10 @@
 package com.telecominfraproject.wlan.opensync.external.integration.utils;
 
+import java.net.InetAddress;
+import java.sql.Date;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -25,8 +30,17 @@ import com.telecominfraproject.wlan.client.models.events.utils.WlanStatusCode;
 import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherInterface;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExternalIntegrationCloud;
-
+import sts.OpensyncStats.EventReport.DhcpNakEvent;
+import sts.OpensyncStats.EventReport.DhcpOfferEvent;
+import sts.OpensyncStats.EventReport.DhcpRequestEvent;
 import sts.OpensyncStats;
+import sts.OpensyncStats.EventReport.DhcpAckEvent;
+
+import sts.OpensyncStats.EventReport.DhcpCommonData;
+import sts.OpensyncStats.EventReport.DhcpDeclineEvent;
+import sts.OpensyncStats.EventReport.DhcpDiscoverEvent;
+import sts.OpensyncStats.EventReport.DhcpInformEvent;
+import sts.OpensyncStats.EventReport.DhcpTransaction;
 import sts.OpensyncStats.RadioBandType;
 import sts.OpensyncStats.Report;
 
@@ -140,9 +154,128 @@ public class RealtimeEventPublisherTest {
         // TODO: implement
     }
 
-    @Ignore
-    public void testPublishDhcpTransactionEvents() {
-        // TODO: implement
+    @Test
+    public void testPublishDhcpTransactionEvents() throws Exception {
+        
+        long timestamp = System.currentTimeMillis();
+        List<DhcpTransaction> dhcpTransactionList = new ArrayList<>();
+        DhcpAckEvent ackEvent = DhcpAckEvent.newBuilder()
+                .setDhcpCommonData(DhcpCommonData.newBuilder(DhcpCommonData.getDefaultInstance())
+                        .setClientIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.250").getAddress()))
+                        .setDhcpServerIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.1").getAddress()))
+                        .setDeviceMacAddress("c0:9a:d0:76:a9:69")
+                        .setXId(123456789)
+                        .setTimestampMs(Long.valueOf(timestamp/1000).intValue()).build())
+                .setGatewayIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.1").getAddress()))
+                .setPrimaryDns(ByteString.copyFrom(InetAddress.getByName("64.71.255.204").getAddress()))
+                .setSecondaryDns(ByteString.copyFrom(InetAddress.getByName("64.71.255.198").getAddress()))
+                .setSubnetMask(ByteString.copyFrom(InetAddress.getByName("255.255.255.0").getAddress()))
+                .setLeaseTime(172800).setTimeOffset(10).build();
+        
+        DhcpAckEvent ackEvent2 = DhcpAckEvent.newBuilder()
+                .setDhcpCommonData(DhcpCommonData.newBuilder(DhcpCommonData.getDefaultInstance())
+                        .setClientIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.65").getAddress()))
+                        .setDhcpServerIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.1").getAddress()))
+                        .setDeviceMacAddress("f6:f0:65:99:e2:33")
+                        .setXId(123456789)
+                        .setTimestampMs(Long.valueOf(timestamp/1000).intValue()).build())
+                .setGatewayIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.1").getAddress()))
+                .setPrimaryDns(ByteString.copyFrom(InetAddress.getByName("64.71.255.204").getAddress()))
+                .setSecondaryDns(ByteString.copyFrom(InetAddress.getByName("64.71.255.198").getAddress()))
+                .setSubnetMask(ByteString.copyFrom(InetAddress.getByName("255.255.255.0").getAddress()))
+                .setLeaseTime(172800).setTimeOffset(10).build();
+        
+        List<DhcpAckEvent> ackEventList = List.of(ackEvent, ackEvent2);
+        
+        DhcpNakEvent nakEvent1 = DhcpNakEvent.newBuilder().setDhcpCommonData(DhcpCommonData.newBuilder(DhcpCommonData.getDefaultInstance())
+                        .setClientIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.129").getAddress()))
+                        .setDhcpServerIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.1").getAddress()))
+                        .setDeviceMacAddress("24:f5:a2:ef:2e:53")
+                        .setXId(123456789)
+                        .setTimestampMs(Long.valueOf(timestamp/1000).intValue()).build()).setFromInternal(true).build();
+        
+        List<DhcpNakEvent> nakEventList = List.of(nakEvent1);
+        
+        DhcpOfferEvent offerEvent1 = DhcpOfferEvent.newBuilder().setDhcpCommonData(DhcpCommonData.newBuilder(DhcpCommonData.getDefaultInstance())
+                .setClientIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.250").getAddress()))
+                .setDhcpServerIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.1").getAddress()))
+                .setDeviceMacAddress("c0:9a:d0:76:a9:69")
+                .setXId(123456789)
+                .setTimestampMs(Long.valueOf(timestamp/1000).intValue()).build()).setFromInternal(true).build();
+        
+        DhcpOfferEvent offerEvent2 = DhcpOfferEvent.newBuilder().setDhcpCommonData(DhcpCommonData.newBuilder(DhcpCommonData.getDefaultInstance())
+                .setClientIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.65").getAddress()))
+                .setDhcpServerIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.1").getAddress()))
+                .setDeviceMacAddress("f6:f0:65:99:e2:33")
+                .setXId(123456789)
+                .setTimestampMs(Long.valueOf(timestamp/1000).intValue()).build()).setFromInternal(true).build();
+
+        List<DhcpOfferEvent> offerEventList = List.of(offerEvent1,offerEvent2);
+        
+        DhcpDiscoverEvent discoverEvent1 = DhcpDiscoverEvent.newBuilder().setDhcpCommonData(DhcpCommonData.newBuilder(DhcpCommonData.getDefaultInstance())
+                .setClientIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.250").getAddress()))
+                .setDhcpServerIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.1").getAddress()))
+                .setDeviceMacAddress("c0:9a:d0:76:a9:69")
+                .setXId(123456789)
+                .setTimestampMs(Long.valueOf(timestamp/1000).intValue()).build()).setHostname("My-iPhone").build();
+        
+        DhcpDiscoverEvent discoverEvent2 = DhcpDiscoverEvent.newBuilder().setDhcpCommonData(DhcpCommonData.newBuilder(DhcpCommonData.getDefaultInstance())
+                .setClientIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.65").getAddress()))
+                .setDhcpServerIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.1").getAddress()))
+                .setDeviceMacAddress("f6:f0:65:99:e2:33")
+                .setXId(123456789)
+                .setTimestampMs(Long.valueOf(timestamp/1000).intValue()).build()).setHostname("My-iPad").build();
+
+        List<DhcpDiscoverEvent> discoverEventList = List.of(discoverEvent1,discoverEvent2);
+        
+        DhcpRequestEvent requestEvent1 = DhcpRequestEvent.newBuilder().setDhcpCommonData(DhcpCommonData.newBuilder(DhcpCommonData.getDefaultInstance())
+                .setClientIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.250").getAddress()))
+                .setDhcpServerIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.1").getAddress()))
+                .setDeviceMacAddress("c0:9a:d0:76:a9:69")
+                .setXId(123456789)
+                .setTimestampMs(Long.valueOf(timestamp/1000).intValue()).build()).setHostname("My-iPhone").build();
+        
+        DhcpRequestEvent requestEvent2 = DhcpRequestEvent.newBuilder().setDhcpCommonData(DhcpCommonData.newBuilder(DhcpCommonData.getDefaultInstance())
+                .setClientIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.65").getAddress()))
+                .setDhcpServerIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.1").getAddress()))
+                .setDeviceMacAddress("f6:f0:65:99:e2:33")
+                .setXId(123456789)
+                .setTimestampMs(Long.valueOf(timestamp/1000).intValue()).build()).setHostname("My-iPad").build();
+
+        List<DhcpRequestEvent> requestEventList = List.of(requestEvent1,requestEvent2);
+        
+        DhcpInformEvent informEvent = DhcpInformEvent.newBuilder().setDhcpCommonData(DhcpCommonData.newBuilder(DhcpCommonData.getDefaultInstance())
+                .setClientIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.250").getAddress()))
+                .setDhcpServerIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.1").getAddress()))
+                .setDeviceMacAddress("c0:9a:d0:76:a9:69")
+                .setXId(123456789)
+                .setTimestampMs(Long.valueOf(timestamp/1000).intValue()).build()).build();
+        
+        List<DhcpInformEvent> informEventList = List.of(informEvent);
+
+        
+        DhcpDeclineEvent declineEvent = DhcpDeclineEvent.newBuilder().setDhcpCommonData(DhcpCommonData.newBuilder(DhcpCommonData.getDefaultInstance())
+                .setClientIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.129").getAddress()))
+                .setDhcpServerIp(ByteString.copyFrom(InetAddress.getByName("10.0.0.1").getAddress()))
+                .setDeviceMacAddress("24:f5:a2:ef:2e:53")
+                .setXId(123456789)
+                .setTimestampMs(Long.valueOf(timestamp/1000).intValue()).build()).build();
+
+        List<DhcpDeclineEvent> declineEventList = List.of(declineEvent);
+        
+        
+        DhcpTransaction dhcpTransaction = DhcpTransaction.newBuilder(DhcpTransaction.getDefaultInstance())
+                .addAllDhcpAckEvent(ackEventList).addAllDhcpNakEvent(nakEventList).addAllDhcpOfferEvent(offerEventList)
+                .addAllDhcpInformEvent(informEventList).addAllDhcpDeclineEvent(declineEventList)
+                .addAllDhcpDiscoverEvent(discoverEventList).addAllDhcpRequestEvent(requestEventList).setXId(123456789)
+                .build();
+
+        dhcpTransactionList.add(dhcpTransaction);
+        
+        realtimeEventPublisher.publishDhcpTransactionEvents(2, 1L, dhcpTransactionList);
+
+        Mockito.verify(cloudEventDispatcherInterface).publishEventsBulk(Mockito.anyList());
+
     }
 
     @Test
