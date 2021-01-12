@@ -274,7 +274,7 @@ public class RealtimeEventPublisherTest {
         
         realtimeEventPublisher.publishDhcpTransactionEvents(2, 1L, dhcpTransactionList);
 
-        Mockito.verify(cloudEventDispatcherInterface).publishEventsBulk(Mockito.anyList());
+        Mockito.verify(cloudEventDispatcherInterface,Mockito.times(1)).publishEventsBulk(Mockito.anyList());
 
     }
 

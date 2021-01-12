@@ -226,7 +226,7 @@ public class MqttStatsPublisher {
             // equipmentId, locationId);
 
         } catch (Exception e) {
-            LOG.error("Exception when processing populateApSsidMetrics", e);
+            LOG.error("Exception when processing stats messages from AP", e);
         }
 
         if (!metricRecordList.isEmpty()) {

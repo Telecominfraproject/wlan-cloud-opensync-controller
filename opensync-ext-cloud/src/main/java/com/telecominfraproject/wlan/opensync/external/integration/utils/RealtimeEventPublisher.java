@@ -37,6 +37,7 @@ import com.telecominfraproject.wlan.systemevent.equipment.realtime.SIPCallReport
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.SipCallStopReason;
 import com.telecominfraproject.wlan.systemevent.models.SystemEvent;
 
+import io.netty.util.internal.MacAddressUtil;
 import sts.OpensyncStats;
 import sts.OpensyncStats.AssocType;
 import sts.OpensyncStats.CTReasonType;
@@ -545,7 +546,7 @@ public class RealtimeEventPublisher {
 
     void publishDhcpTransactionEvents(int customerId, long equipmentId,
             List<DhcpTransaction> dhcpTransactionList) {
-        
+        LOG.info("Publish Dhcp Transaction Events for customer {} equipmentId {}", customerId, equipmentId);
         List<SystemEvent> dhcpEventsList = new ArrayList<>();
         for (DhcpTransaction dhcpTransaction : dhcpTransactionList) {
 
@@ -609,6 +610,8 @@ public class RealtimeEventPublisher {
                     cloudDhcpAck.setTimeOffset(ackEvent.getTimeOffset());
                 }
                 
+                LOG.debug("Cloud DhcpAckEvent {}", cloudDhcpAck);
+
                 dhcpEventsList.add(cloudDhcpAck);
             }
 
@@ -629,7 +632,10 @@ public class RealtimeEventPublisher {
                 
                 if (nakEvent.hasFromInternal()) {
                     cloudDhcpNak.setFromInternal(nakEvent.getFromInternal());
-                }       
+                }  
+                
+                LOG.debug("Cloud DhcpNakEvent {}", cloudDhcpNak);
+
                 dhcpEventsList.add(cloudDhcpNak);
 
             }
@@ -692,6 +698,9 @@ public class RealtimeEventPublisher {
                     cloudDhcpDecline.setxId(dhcpTransaction.getXId());
                 }
 
+                LOG.debug("Cloud DhcpDeclineEvent {}", cloudDhcpDecline);
+
+                
                 dhcpEventsList.add(cloudDhcpDecline);
 
             }
@@ -714,6 +723,9 @@ public class RealtimeEventPublisher {
                 if (requestEvent.hasHostname()) {
                     cloudDhcpRequest.setHostName(requestEvent.getHostname());
                 }
+                
+                LOG.debug("Cloud DhcpRequestEvent {}", cloudDhcpRequest);
+
                 
                 dhcpEventsList.add(cloudDhcpRequest);
 
@@ -739,12 +751,15 @@ public class RealtimeEventPublisher {
                     cloudDhcpDiscover.setHostName(discoverEvent.getHostname());
                 }
                 
+                LOG.debug("Cloud DhcpDiscoverEvent {}", cloudDhcpDiscover);
+
                 dhcpEventsList.add(cloudDhcpDiscover);
 
             }
         }
         
         if (dhcpEventsList.size() > 0) {
+            LOG.info("Publishing DhcpEvents {}", dhcpEventsList);
             cloudEventDispatcherInterface.publishEventsBulk(dhcpEventsList);
         }
     }
@@ -760,7 +775,12 @@ public class RealtimeEventPublisher {
         }
         
         if (dhcpCommonData.hasDeviceMacAddress()) {
-            cloudDhcpEvent.setDeviceMacAddress(MacAddress.valueOf(dhcpCommonData.getDeviceMacAddress()));
+
+            try {
+                cloudDhcpEvent.setDeviceMacAddress(MacAddress.valueOf(dhcpCommonData.getDeviceMacAddress()));
+            } catch (Exception e) {
+                LOG.error("Could not parse device_mac_address from DhcpCommonData ", dhcpCommonData, e);
+            }
         }
         
         if (dhcpCommonData.hasDhcpServerIp()) {
