@@ -847,8 +847,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             }
             Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
             if (ce != null) {
-                LOG.info("AP {} disconnected, delete status records {}", apId,
-                        statusServiceInterface.delete(ce.getCustomerId(), ce.getId()));
+                List<Status> deletedStatuses = statusServiceInterface.deleteOnEquipmentDisconnect(ce.getCustomerId(), ce.getId());
+                LOG.info("AP {} disconnected, deleted status records {}", apId, deletedStatuses);
                 updateApDisconnectedStatus(apId, ce);
                 disconnectClients(ce);
             } else {
