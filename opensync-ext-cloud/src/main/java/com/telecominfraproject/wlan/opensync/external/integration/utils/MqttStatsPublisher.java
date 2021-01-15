@@ -9,7 +9,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,8 +34,6 @@ import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.NeighborScanPacketType;
 import com.telecominfraproject.wlan.core.model.equipment.NetworkType;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
-import com.telecominfraproject.wlan.core.model.equipment.SecurityType;
-import com.telecominfraproject.wlan.core.model.equipment.WiFiSessionUtility;
 import com.telecominfraproject.wlan.core.model.utils.DecibelUtils;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
 import com.telecominfraproject.wlan.equipment.models.Equipment;
@@ -48,9 +45,6 @@ import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileContainer;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
 import com.telecominfraproject.wlan.profile.rf.models.RfConfiguration;
-import com.telecominfraproject.wlan.profile.ssid.models.RadioBasedSsidConfiguration;
-import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
-import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration.SecureMode;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.ApNodeMetrics;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.ApPerformance;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.DnsProbeMetric;
@@ -440,6 +434,8 @@ public class MqttStatsPublisher {
                 clientSession.setDetails(clientSessionDetails);
             } else {
                 clientSession.getDetails().mergeSession(clientSessionDetails);
+                // in case previous session Id was not good, use the provided one
+                clientSession.getDetails().setSessionId(clientConnectEvent.getSessionId());
             }
 
             clientSession = clientServiceInterface.updateSession(clientSession);
@@ -522,6 +518,8 @@ public class MqttStatsPublisher {
                 clientSession.setDetails(clientSessionDetails);
             } else {
                 clientSession.getDetails().mergeSession(clientSessionDetails);
+                clientSession.getDetails().setSessionId(clientDisconnectEvent.getSessionId());
+
             }
 
             clientSession = clientServiceInterface.updateSession(clientSession);
@@ -584,6 +582,8 @@ public class MqttStatsPublisher {
                 clientSession.setDetails(clientSessionDetails);
             } else {
                 clientSession.getDetails().mergeSession(clientSessionDetails);
+                clientSession.getDetails().setSessionId(clientAuthEvent.getSessionId());
+
             }
 
             clientSession = clientServiceInterface.updateSession(clientSession);
@@ -659,6 +659,7 @@ public class MqttStatsPublisher {
                 clientSession.setDetails(clientSessionDetails);
             } else {
                 clientSession.getDetails().mergeSession(clientSessionDetails);
+                clientSession.getDetails().setSessionId(clientAssocEvent.getSessionId());
             }
 
             clientSession = clientServiceInterface.updateSession(clientSession);
@@ -722,6 +723,7 @@ public class MqttStatsPublisher {
                 clientSession.setDetails(clientSessionDetails);
             } else {
                 clientSession.getDetails().mergeSession(clientSessionDetails);
+                clientSession.getDetails().setSessionId(clientFailureEvent.getSessionId());
             }
 
             clientSession = clientServiceInterface.updateSession(clientSession);
@@ -781,6 +783,7 @@ public class MqttStatsPublisher {
                 clientSession.setDetails(clientSessionDetails);
             } else {
                 clientSession.getDetails().mergeSession(clientSessionDetails);
+                clientSession.getDetails().setSessionId(clientFirstDataEvent.getSessionId());
             }
 
             clientSession = clientServiceInterface.updateSession(clientSession);
@@ -831,6 +834,8 @@ public class MqttStatsPublisher {
                 clientSession.setDetails(clientSessionDetails);
             } else {
                 clientSession.getDetails().mergeSession(clientSessionDetails);
+                clientSession.getDetails().setSessionId(clientIdEvent.getSessionId());
+
             }
 
             clientSession = clientServiceInterface.updateSession(clientSession);
@@ -888,6 +893,7 @@ public class MqttStatsPublisher {
                 clientSession.setDetails(clientSessionDetails);
             } else {
                 clientSession.getDetails().mergeSession(clientSessionDetails);
+                clientSession.getDetails().setSessionId(clientIpEvent.getSessionId());
             }
 
             clientSession = clientServiceInterface.updateSession(clientSession);
@@ -956,6 +962,7 @@ public class MqttStatsPublisher {
                 clientSession.setDetails(clientSessionDetails);
             } else {
                 clientSession.getDetails().mergeSession(clientSessionDetails);
+                clientSession.getDetails().setSessionId(clientTimeoutEvent.getSessionId());
             }
 
             clientSession = clientServiceInterface.updateSession(clientSession);
@@ -1460,14 +1467,12 @@ public class MqttStatsPublisher {
 
                 cMetrics.setRadioType(OvsdbToWlanCloudTypeMappingUtility
                         .getRadioTypeFromOpensyncStatsRadioBandType(clReport.getBand()));
-                // we'll report each device as having a single (very long)
-                // session
-                long sessionId = WiFiSessionUtility.encodeWiFiAssociationId(clReport.getTimestampMs() / 1000L,
-                        MacAddress.convertMacStringToLongValue(cl.getMacAddress()));
-
-                LOG.debug("populateApClientMetrics Session Id {}", sessionId);
-                cMetrics.setSessionId(sessionId);
-
+                
+                ClientSession session = clientServiceInterface.getSessionOrNull(customerId, equipmentId, MacAddress.valueOf(cl.getMacAddress()));
+                if (session != null) {
+                    cMetrics.setSessionId(session.getDetails().getSessionId());
+                    LOG.debug("populateApClientMetrics Session Id {}", session.getDetails().getSessionId());
+                }
                 if (cl.hasStats()) {
                     if (cl.getStats().hasRssi()) {
                         int rssi = cl.getStats().getRssi();
@@ -1601,96 +1606,15 @@ public class MqttStatsPublisher {
             LOG.info("handleClientSessionUpdate for customerId {} equipmentId {} locationId {} client {} ", customerId,
                     equipmentId, locationId, client.getMacAddress());
 
-            com.telecominfraproject.wlan.client.models.Client clientInstance = clientServiceInterface
-                    .getOrNull(customerId, MacAddress.valueOf(client.getMacAddress()));
-
-            boolean isReassociation = true;
-            if (clientInstance == null) {
-
-                LOG.debug("Cannot get client instance for {}", client.getMacAddress());
-                return null;
-
-            }
-
-            LOG.debug("Client {}", clientInstance);
-
             ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                    clientInstance.getMacAddress());
+                    MacAddress.valueOf(client.getMacAddress()));
 
             if (clientSession == null) {
-                LOG.warn("Cannot get client session for {}", clientInstance.getMacAddress());
+                LOG.warn("Cannot get client session for {}", client.getMacAddress());
                 return null;
             }
 
             ClientSessionDetails latestClientSessionDetails = clientSession.getDetails();
-            latestClientSessionDetails.setIsReassociation(isReassociation);
-            latestClientSessionDetails.setSsid(client.getSsid());
-            latestClientSessionDetails.setRadioType(radioType);
-            latestClientSessionDetails.setSessionId(clientInstance.getMacAddress().getAddressAsLong());
-            latestClientSessionDetails.setLastEventTimestamp(timestamp);
-            latestClientSessionDetails.setFirstDataSentTimestamp(timestamp - client.getDurationMs());
-            latestClientSessionDetails.setFirstDataRcvdTimestamp(timestamp - client.getDurationMs());
-            latestClientSessionDetails.setAssociationState(AssociationState.Active_Data);
-            int rssi = client.getStats().getRssi();
-            latestClientSessionDetails.setAssocRssi(rssi);
-            latestClientSessionDetails.setLastRxTimestamp(timestamp);
-            latestClientSessionDetails.setLastTxTimestamp(timestamp);
-
-            Equipment ce = equipmentServiceInterface.get(equipmentId);
-            ProfileContainer profileContainer = new ProfileContainer(
-                    profileServiceInterface.getProfileWithChildren(ce.getProfileId()));
-
-            List<Profile> ssidConfigList = new ArrayList<>();
-            ssidConfigList = profileContainer.getChildrenOfType(ce.getProfileId(), ProfileType.ssid).stream()
-                    .filter(t -> {
-
-                        SsidConfiguration ssidConfig = (SsidConfiguration) t.getDetails();
-                        return ssidConfig.getSsid().equals(client.getSsid())
-                                && ssidConfig.getAppliedRadios().contains(radioType);
-                    }).collect(Collectors.toList());
-
-            if (!ssidConfigList.isEmpty()) {
-                Profile ssidProfile = ssidConfigList.iterator().next();
-                SsidConfiguration ssidConfig = (SsidConfiguration) ssidProfile.getDetails();
-                if (ssidConfig.getSecureMode().equals(SecureMode.open)) {
-                    latestClientSessionDetails.setSecurityType(SecurityType.OPEN);
-                } else if (ssidConfig.getSecureMode().equals(SecureMode.wpaPSK)
-                        || ssidConfig.getSecureMode().equals(SecureMode.wpa2PSK)
-                        || ssidConfig.getSecureMode().equals(SecureMode.wpa2OnlyPSK)) {
-                    latestClientSessionDetails.setSecurityType(SecurityType.PSK);
-                } else if (ssidConfig.getSecureMode().equals(SecureMode.wpa3OnlySAE)
-                        || ssidConfig.getSecureMode().equals(SecureMode.wpa3MixedSAE)) {
-                    latestClientSessionDetails.setSecurityType(SecurityType.SAE);
-                } else if (ssidConfig.getSecureMode().equals(SecureMode.wpa2Radius)
-                        || ssidConfig.getSecureMode().equals(SecureMode.wpaRadius)
-                        || ssidConfig.getSecureMode().equals(SecureMode.wpa2OnlyRadius)) {
-                    latestClientSessionDetails.setSecurityType(SecurityType.RADIUS);
-                    latestClientSessionDetails.setEapDetails(new ClientEapDetails());
-                } else if (ssidConfig.getSecureMode().equals(SecureMode.wpaEAP)
-                        || ssidConfig.getSecureMode().equals(SecureMode.wpa2EAP)
-                        || ssidConfig.getSecureMode().equals(SecureMode.wpa2OnlyEAP)
-                        || ssidConfig.getSecureMode().equals(SecureMode.wpa3OnlyEAP)
-                        || ssidConfig.getSecureMode().equals(SecureMode.wpa3MixedEAP)) {
-                    latestClientSessionDetails.setSecurityType(SecurityType.RADIUS);
-                    latestClientSessionDetails.setEapDetails(new ClientEapDetails());
-                } else {
-                    latestClientSessionDetails.setSecurityType(SecurityType.UNSUPPORTED);
-                }
-
-                if (ssidConfig.getVlanId() > 1) {
-                    latestClientSessionDetails.setDynamicVlan(ssidConfig.getVlanId());
-                }
-
-                RadioBasedSsidConfiguration radioConfig = ssidConfig.getRadioBasedConfigs().get(radioType);
-                latestClientSessionDetails
-                        .setIs11KUsed(radioConfig.getEnable80211k() != null ? radioConfig.getEnable80211k() : false);
-                latestClientSessionDetails
-                        .setIs11RUsed(radioConfig.getEnable80211r() != null ? radioConfig.getEnable80211r() : false);
-                latestClientSessionDetails
-                        .setIs11VUsed(radioConfig.getEnable80211v() != null ? radioConfig.getEnable80211v() : false);
-
-            }
-
             latestClientSessionDetails.setMetricDetails(calculateClientSessionMetricDetails(client, timestamp));
 
             clientSession.getDetails().mergeSession(latestClientSessionDetails);

@@ -37,7 +37,6 @@ import com.telecominfraproject.wlan.systemevent.equipment.realtime.SIPCallReport
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.SipCallStopReason;
 import com.telecominfraproject.wlan.systemevent.models.SystemEvent;
 
-import io.netty.util.internal.MacAddressUtil;
 import sts.OpensyncStats;
 import sts.OpensyncStats.AssocType;
 import sts.OpensyncStats.CTReasonType;
@@ -158,14 +157,7 @@ public class RealtimeEventPublisher {
 
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientConnectEvent, customerId,
                 equipmentId);
-        ClientConnectSuccessEvent clientEvent;
-
-        if (clientConnectEvent.hasTimestampMs()) {
-            clientEvent = new ClientConnectSuccessEvent(Long.valueOf(clientConnectEvent.getTimestampMs()));
-        } else {
-            clientEvent = new ClientConnectSuccessEvent(System.currentTimeMillis());
-        }
-
+        ClientConnectSuccessEvent clientEvent = new ClientConnectSuccessEvent(clientConnectEvent.getTimestampMs());
         clientEvent.setMacAddress(MacAddress.valueOf(clientConnectEvent.getStaMac()));
         clientEvent.setRadioType(OvsdbToWlanCloudTypeMappingUtility
                 .getRadioTypeFromOpensyncStatsRadioBandType(clientConnectEvent.getBand()));
@@ -254,17 +246,8 @@ public class RealtimeEventPublisher {
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientDisconnectEvent, customerId,
                 equipmentId);
 
-        com.telecominfraproject.wlan.client.models.events.realtime.ClientDisconnectEvent clientEvent;
-
-        if (clientDisconnectEvent.hasTimestampMs()) {
-            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientDisconnectEvent(
-                    Long.valueOf(clientDisconnectEvent.getTimestampMs()));
-        } else {
-            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientDisconnectEvent(
-                    System.currentTimeMillis());
-
-        }
-
+        com.telecominfraproject.wlan.client.models.events.realtime.ClientDisconnectEvent clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientDisconnectEvent(
+                clientDisconnectEvent.getTimestampMs());
         clientEvent.setDeviceMacAddress(MacAddress.valueOf(clientDisconnectEvent.getStaMac()));
         clientEvent.setSessionId(clientDisconnectEvent.getSessionId());
         clientEvent.setRadioType(OvsdbToWlanCloudTypeMappingUtility
@@ -310,15 +293,8 @@ public class RealtimeEventPublisher {
     void publishClientAuthSystemEvent(int customerId, long equipmentId, ClientAuthEvent clientAuthEvent) {
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientAuthEvent, customerId, equipmentId);
 
-        com.telecominfraproject.wlan.client.models.events.realtime.ClientAuthEvent clientEvent;
-
-        if (clientAuthEvent.hasTimestampMs()) {
-            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientAuthEvent(Long.valueOf(clientAuthEvent.getTimestampMs()));
-        } else {
-            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientAuthEvent(
-                    System.currentTimeMillis());
-        }
-
+        com.telecominfraproject.wlan.client.models.events.realtime.ClientAuthEvent clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientAuthEvent(
+                clientAuthEvent.getTimestampMs());
         clientEvent.setSessionId(clientAuthEvent.getSessionId());
         clientEvent.setSsid(clientAuthEvent.getSsid());
         clientEvent.setDeviceMacAddress(MacAddress.valueOf(clientAuthEvent.getStaMac()));
@@ -339,14 +315,8 @@ public class RealtimeEventPublisher {
     void publishClientAssocEvent(int customerId, long equipmentId, ClientAssocEvent clientAssocEvent) {
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientAssocEvent, customerId, equipmentId);
 
-        com.telecominfraproject.wlan.client.models.events.realtime.ClientAssocEvent clientEvent;
-
-        if (clientAssocEvent.hasTimestampMs()) {                   
-            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientAssocEvent(Long.valueOf(clientAssocEvent.getTimestampMs()));
-        } else {
-            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientAssocEvent(
-                    System.currentTimeMillis());
-        }
+        com.telecominfraproject.wlan.client.models.events.realtime.ClientAssocEvent clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientAssocEvent(
+                clientAssocEvent.getTimestampMs());
 
         clientEvent.setSessionId(clientAssocEvent.getSessionId());
         clientEvent.setSsid(clientAssocEvent.getSsid());
@@ -394,14 +364,8 @@ public class RealtimeEventPublisher {
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientFailureEvent, customerId,
                 equipmentId);
 
-        com.telecominfraproject.wlan.client.models.events.realtime.ClientFailureEvent clientEvent;
-
-        if (clientFailureEvent.hasTimestampMs()) {
-            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientFailureEvent(Long.valueOf(clientFailureEvent.getTimestampMs()));
-        } else {
-            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientFailureEvent(
-                    System.currentTimeMillis());
-        }
+        com.telecominfraproject.wlan.client.models.events.realtime.ClientFailureEvent clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientFailureEvent(
+                clientFailureEvent.getTimestampMs());
 
         clientEvent.setSessionId(clientFailureEvent.getSessionId());
         clientEvent.setDeviceMacAddress(MacAddress.valueOf(clientFailureEvent.getStaMac()));
@@ -426,15 +390,8 @@ public class RealtimeEventPublisher {
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientFirstDataEvent, customerId,
                 equipmentId);
 
-        com.telecominfraproject.wlan.client.models.events.realtime.ClientFirstDataEvent clientEvent;
-
-        if (clientFirstDataEvent.hasTimestampMs()) {
-            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientFirstDataEvent(
-                    Long.valueOf(clientFirstDataEvent.getTimestampMs()));
-        } else {
-            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientFirstDataEvent(
-                    System.currentTimeMillis());
-        }
+        com.telecominfraproject.wlan.client.models.events.realtime.ClientFirstDataEvent clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientFirstDataEvent(
+                clientFirstDataEvent.getTimestampMs());
 
         clientEvent.setSessionId(clientFirstDataEvent.getSessionId());
         clientEvent.setDeviceMacAddress(MacAddress.valueOf(clientFirstDataEvent.getStaMac()));
@@ -459,14 +416,8 @@ public class RealtimeEventPublisher {
 
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientIdEvent, customerId, equipmentId);
 
-        com.telecominfraproject.wlan.client.models.events.realtime.ClientIdEvent clientEvent;
-
-        if (clientIdEvent.hasTimestampMs()) {
-            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientIdEvent(Long.valueOf(clientIdEvent.getTimestampMs()));
-        } else {
-            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientIdEvent(
-                    System.currentTimeMillis());
-        }
+        com.telecominfraproject.wlan.client.models.events.realtime.ClientIdEvent clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientIdEvent(
+                clientIdEvent.getTimestampMs());
 
         clientEvent.setSessionId(clientIdEvent.getSessionId());
         clientEvent.setDeviceMacAddress(MacAddress.valueOf(clientIdEvent.getCltMac()));
@@ -485,15 +436,8 @@ public class RealtimeEventPublisher {
 
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientIpEvent, customerId, equipmentId);
 
-        com.telecominfraproject.wlan.client.models.events.realtime.ClientIpAddressEvent clientEvent;
-
-        if (clientIpEvent.hasTimestampMs()) {
-            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientIpAddressEvent(
-                    Long.valueOf(clientIpEvent.getTimestampMs()));
-        } else {
-            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientIpAddressEvent(
-                    System.currentTimeMillis());
-        }
+        com.telecominfraproject.wlan.client.models.events.realtime.ClientIpAddressEvent clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientIpAddressEvent(
+                clientIpEvent.getTimestampMs());
 
         clientEvent.setSessionId(clientIpEvent.getSessionId());
         clientEvent.setDeviceMacAddress(MacAddress.valueOf(clientIpEvent.getStaMac()));
@@ -513,14 +457,8 @@ public class RealtimeEventPublisher {
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientTimeoutEvent, customerId,
                 equipmentId);
 
-        com.telecominfraproject.wlan.client.models.events.realtime.ClientTimeoutEvent clientEvent;
-
-        if (clientTimeoutEvent.hasTimestampMs()) {
-            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientTimeoutEvent(Long.valueOf(clientTimeoutEvent.getTimestampMs()));
-        } else {
-            clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientTimeoutEvent(
-                    System.currentTimeMillis());
-        }
+        com.telecominfraproject.wlan.client.models.events.realtime.ClientTimeoutEvent clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientTimeoutEvent(
+                clientTimeoutEvent.getTimestampMs());
 
         clientEvent.setSessionId(clientTimeoutEvent.getSessionId());
         clientEvent.setDeviceMacAddress(MacAddress.valueOf(clientTimeoutEvent.getStaMac()));
@@ -544,22 +482,22 @@ public class RealtimeEventPublisher {
 
     }
 
-    void publishDhcpTransactionEvents(int customerId, long equipmentId,
-            List<DhcpTransaction> dhcpTransactionList) {
+    void publishDhcpTransactionEvents(int customerId, long equipmentId, List<DhcpTransaction> dhcpTransactionList) {
         LOG.info("Publish Dhcp Transaction Events for customer {} equipmentId {}", customerId, equipmentId);
         List<SystemEvent> dhcpEventsList = new ArrayList<>();
         for (DhcpTransaction dhcpTransaction : dhcpTransactionList) {
 
             for (DhcpAckEvent ackEvent : dhcpTransaction.getDhcpAckEventList()) {
                 LOG.debug("DhcpAckEvent {}", ackEvent);
-                
+
                 com.telecominfraproject.wlan.systemevent.equipment.DhcpAckEvent cloudDhcpAck = new com.telecominfraproject.wlan.systemevent.equipment.DhcpAckEvent();
 
                 cloudDhcpAck.setCustomerId(customerId);
                 cloudDhcpAck.setEquipmentId(equipmentId);
-                
+
                 if (ackEvent.hasDhcpCommonData()) {
-                    cloudDhcpAck = (com.telecominfraproject.wlan.systemevent.equipment.DhcpAckEvent) getDhcpCommonDataForEvent(cloudDhcpAck, ackEvent.getDhcpCommonData());
+                    cloudDhcpAck = (com.telecominfraproject.wlan.systemevent.equipment.DhcpAckEvent) getDhcpCommonDataForEvent(
+                            cloudDhcpAck, ackEvent.getDhcpCommonData());
                 } else {
                     cloudDhcpAck.setxId(dhcpTransaction.getXId());
                 }
@@ -571,45 +509,48 @@ public class RealtimeEventPublisher {
                         LOG.error("Invalid GatewayIP", e);
                     }
                 }
-                
+
                 if (ackEvent.hasLeaseTime()) {
                     cloudDhcpAck.setLeaseTime(ackEvent.getLeaseTime());
                 }
-                
+
                 if (ackEvent.hasPrimaryDns()) {
                     try {
                         cloudDhcpAck.setPrimaryDns(InetAddress.getByAddress(ackEvent.getPrimaryDns().toByteArray()));
                     } catch (UnknownHostException e) {
                         LOG.error("Invalid PrimaryDNS", e);
-                    }                }
-                
+                    }
+                }
+
                 if (ackEvent.hasSecondaryDns()) {
                     try {
-                        cloudDhcpAck.setSecondaryDns(InetAddress.getByAddress(ackEvent.getSecondaryDns().toByteArray()));
+                        cloudDhcpAck
+                                .setSecondaryDns(InetAddress.getByAddress(ackEvent.getSecondaryDns().toByteArray()));
                     } catch (UnknownHostException e) {
                         LOG.error("Invalid SecondaryDNS", e);
                     }
                 }
-                
+
                 if (ackEvent.hasRebindingTime()) {
                     cloudDhcpAck.setRebindingTime(ackEvent.getRebindingTime());
                 }
-                
+
                 if (ackEvent.hasRenewalTime()) {
                     cloudDhcpAck.setRenewalTime(ackEvent.getRenewalTime());
                 }
-                
+
                 if (ackEvent.hasSubnetMask()) {
                     try {
                         cloudDhcpAck.setSubnetMask(InetAddress.getByAddress(ackEvent.getSubnetMask().toByteArray()));
                     } catch (UnknownHostException e) {
                         LOG.error("Invalid SubnetMask", e);
-                    }                  }
-                
+                    }
+                }
+
                 if (ackEvent.hasTimeOffset()) {
                     cloudDhcpAck.setTimeOffset(ackEvent.getTimeOffset());
                 }
-                
+
                 LOG.debug("Cloud DhcpAckEvent {}", cloudDhcpAck);
 
                 dhcpEventsList.add(cloudDhcpAck);
@@ -617,23 +558,24 @@ public class RealtimeEventPublisher {
 
             for (DhcpNakEvent nakEvent : dhcpTransaction.getDhcpNakEventList()) {
                 LOG.debug("DhcpNakEvent {}", nakEvent);
-                
+
                 com.telecominfraproject.wlan.systemevent.equipment.DhcpNakEvent cloudDhcpNak = new com.telecominfraproject.wlan.systemevent.equipment.DhcpNakEvent();
 
                 cloudDhcpNak.setCustomerId(customerId);
                 cloudDhcpNak.setEquipmentId(equipmentId);
-                
-                if (nakEvent.hasDhcpCommonData()) {                 
-                    cloudDhcpNak = (com.telecominfraproject.wlan.systemevent.equipment.DhcpNakEvent) getDhcpCommonDataForEvent(cloudDhcpNak, nakEvent.getDhcpCommonData());
-                    
+
+                if (nakEvent.hasDhcpCommonData()) {
+                    cloudDhcpNak = (com.telecominfraproject.wlan.systemevent.equipment.DhcpNakEvent) getDhcpCommonDataForEvent(
+                            cloudDhcpNak, nakEvent.getDhcpCommonData());
+
                 } else {
                     cloudDhcpNak.setxId(dhcpTransaction.getXId());
                 }
-                
+
                 if (nakEvent.hasFromInternal()) {
                     cloudDhcpNak.setFromInternal(nakEvent.getFromInternal());
-                }  
-                
+                }
+
                 LOG.debug("Cloud DhcpNakEvent {}", cloudDhcpNak);
 
                 dhcpEventsList.add(cloudDhcpNak);
@@ -642,39 +584,40 @@ public class RealtimeEventPublisher {
 
             for (DhcpOfferEvent offerEvent : dhcpTransaction.getDhcpOfferEventList()) {
                 LOG.debug("DhcpOfferEvent {}", offerEvent);
-                
+
                 com.telecominfraproject.wlan.systemevent.equipment.DhcpOfferEvent cloudDhcpOffer = new com.telecominfraproject.wlan.systemevent.equipment.DhcpOfferEvent();
 
                 cloudDhcpOffer.setCustomerId(customerId);
                 cloudDhcpOffer.setEquipmentId(equipmentId);
-                
-                if (offerEvent.hasDhcpCommonData()) {                  
-                    cloudDhcpOffer = (com.telecominfraproject.wlan.systemevent.equipment.DhcpOfferEvent) getDhcpCommonDataForEvent(cloudDhcpOffer, offerEvent.getDhcpCommonData());
-                    
+
+                if (offerEvent.hasDhcpCommonData()) {
+                    cloudDhcpOffer = (com.telecominfraproject.wlan.systemevent.equipment.DhcpOfferEvent) getDhcpCommonDataForEvent(
+                            cloudDhcpOffer, offerEvent.getDhcpCommonData());
+
                 } else {
                     cloudDhcpOffer.setxId(dhcpTransaction.getXId());
                 }
-                
-                
+
                 if (offerEvent.hasFromInternal()) {
                     cloudDhcpOffer.setFromInternal(offerEvent.getFromInternal());
-                }                
-                
+                }
+
                 dhcpEventsList.add(cloudDhcpOffer);
 
             }
 
             for (DhcpInformEvent informEvent : dhcpTransaction.getDhcpInformEventList()) {
                 LOG.debug("DhcpInformEvent {}", informEvent);
-                
+
                 com.telecominfraproject.wlan.systemevent.equipment.DhcpInformEvent cloudDhcpInform = new com.telecominfraproject.wlan.systemevent.equipment.DhcpInformEvent();
 
                 cloudDhcpInform.setCustomerId(customerId);
                 cloudDhcpInform.setEquipmentId(equipmentId);
-                
-                if (informEvent.hasDhcpCommonData()) {                  
-                    cloudDhcpInform = (com.telecominfraproject.wlan.systemevent.equipment.DhcpInformEvent) getDhcpCommonDataForEvent(cloudDhcpInform, informEvent.getDhcpCommonData());
-                    
+
+                if (informEvent.hasDhcpCommonData()) {
+                    cloudDhcpInform = (com.telecominfraproject.wlan.systemevent.equipment.DhcpInformEvent) getDhcpCommonDataForEvent(
+                            cloudDhcpInform, informEvent.getDhcpCommonData());
+
                 } else {
                     cloudDhcpInform.setxId(dhcpTransaction.getXId());
                 }
@@ -685,22 +628,22 @@ public class RealtimeEventPublisher {
 
             for (DhcpDeclineEvent declineEvent : dhcpTransaction.getDhcpDeclineEventList()) {
                 LOG.debug("DhcpDeclineEvent {}", declineEvent);
-                
+
                 com.telecominfraproject.wlan.systemevent.equipment.DhcpDeclineEvent cloudDhcpDecline = new com.telecominfraproject.wlan.systemevent.equipment.DhcpDeclineEvent();
 
                 cloudDhcpDecline.setCustomerId(customerId);
                 cloudDhcpDecline.setEquipmentId(equipmentId);
-                
-                if (declineEvent.hasDhcpCommonData()) {             
-                    cloudDhcpDecline = (com.telecominfraproject.wlan.systemevent.equipment.DhcpDeclineEvent) getDhcpCommonDataForEvent(cloudDhcpDecline, declineEvent.getDhcpCommonData());
-                    
+
+                if (declineEvent.hasDhcpCommonData()) {
+                    cloudDhcpDecline = (com.telecominfraproject.wlan.systemevent.equipment.DhcpDeclineEvent) getDhcpCommonDataForEvent(
+                            cloudDhcpDecline, declineEvent.getDhcpCommonData());
+
                 } else {
                     cloudDhcpDecline.setxId(dhcpTransaction.getXId());
                 }
 
                 LOG.debug("Cloud DhcpDeclineEvent {}", cloudDhcpDecline);
 
-                
                 dhcpEventsList.add(cloudDhcpDecline);
 
             }
@@ -712,68 +655,67 @@ public class RealtimeEventPublisher {
 
                 cloudDhcpRequest.setCustomerId(customerId);
                 cloudDhcpRequest.setEquipmentId(equipmentId);
-                
-                if (requestEvent.hasDhcpCommonData()) {               
-                    cloudDhcpRequest = (com.telecominfraproject.wlan.systemevent.equipment.DhcpRequestEvent) getDhcpCommonDataForEvent(cloudDhcpRequest, requestEvent.getDhcpCommonData());
-                    
+
+                if (requestEvent.hasDhcpCommonData()) {
+                    cloudDhcpRequest = (com.telecominfraproject.wlan.systemevent.equipment.DhcpRequestEvent) getDhcpCommonDataForEvent(
+                            cloudDhcpRequest, requestEvent.getDhcpCommonData());
+
                 } else {
                     cloudDhcpRequest.setxId(dhcpTransaction.getXId());
                 }
-                
+
                 if (requestEvent.hasHostname()) {
                     cloudDhcpRequest.setHostName(requestEvent.getHostname());
                 }
-                
+
                 LOG.debug("Cloud DhcpRequestEvent {}", cloudDhcpRequest);
 
-                
                 dhcpEventsList.add(cloudDhcpRequest);
 
-                
             }
 
             for (DhcpDiscoverEvent discoverEvent : dhcpTransaction.getDhcpDiscoverEventList()) {
                 LOG.debug("DhcpDiscoverEvent {}", discoverEvent);
-                
+
                 com.telecominfraproject.wlan.systemevent.equipment.DhcpDiscoverEvent cloudDhcpDiscover = new com.telecominfraproject.wlan.systemevent.equipment.DhcpDiscoverEvent();
 
                 cloudDhcpDiscover.setCustomerId(customerId);
                 cloudDhcpDiscover.setEquipmentId(equipmentId);
-                
-                if (discoverEvent.hasDhcpCommonData()) {           
-                    cloudDhcpDiscover = (com.telecominfraproject.wlan.systemevent.equipment.DhcpDiscoverEvent) getDhcpCommonDataForEvent(cloudDhcpDiscover, discoverEvent.getDhcpCommonData());
-                    
+
+                if (discoverEvent.hasDhcpCommonData()) {
+                    cloudDhcpDiscover = (com.telecominfraproject.wlan.systemevent.equipment.DhcpDiscoverEvent) getDhcpCommonDataForEvent(
+                            cloudDhcpDiscover, discoverEvent.getDhcpCommonData());
+
                 } else {
                     cloudDhcpDiscover.setxId(dhcpTransaction.getXId());
                 }
-                
+
                 if (discoverEvent.hasHostname()) {
                     cloudDhcpDiscover.setHostName(discoverEvent.getHostname());
                 }
-                
+
                 LOG.debug("Cloud DhcpDiscoverEvent {}", cloudDhcpDiscover);
 
                 dhcpEventsList.add(cloudDhcpDiscover);
 
             }
         }
-        
+
         if (dhcpEventsList.size() > 0) {
             LOG.info("Publishing DhcpEvents {}", dhcpEventsList);
             cloudEventDispatcherInterface.publishEventsBulk(dhcpEventsList);
         }
     }
 
-    BaseDhcpEvent getDhcpCommonDataForEvent(BaseDhcpEvent cloudDhcpEvent,
-            DhcpCommonData dhcpCommonData) {
-        if(dhcpCommonData.hasXId()) {
+    BaseDhcpEvent getDhcpCommonDataForEvent(BaseDhcpEvent cloudDhcpEvent, DhcpCommonData dhcpCommonData) {
+        if (dhcpCommonData.hasXId()) {
             cloudDhcpEvent.setxId(dhcpCommonData.getXId());
-        } 
-        
+        }
+
         if (dhcpCommonData.hasVlanId()) {
             cloudDhcpEvent.setVlanId(dhcpCommonData.getVlanId());
         }
-        
+
         if (dhcpCommonData.hasDeviceMacAddress()) {
 
             try {
@@ -782,38 +724,37 @@ public class RealtimeEventPublisher {
                 LOG.error("Could not parse device_mac_address from DhcpCommonData ", dhcpCommonData, e);
             }
         }
-        
+
         if (dhcpCommonData.hasDhcpServerIp()) {
             try {
-                cloudDhcpEvent.setDhcpServerIp(InetAddress.getByAddress(dhcpCommonData.getDhcpServerIp().toByteArray()));
+                cloudDhcpEvent
+                        .setDhcpServerIp(InetAddress.getByAddress(dhcpCommonData.getDhcpServerIp().toByteArray()));
             } catch (UnknownHostException e) {
-                LOG.error("Invalid Dhcp Server IP",e );
+                LOG.error("Invalid Dhcp Server IP", e);
             }
         }
-        
+
         if (dhcpCommonData.hasClientIp()) {
             try {
                 cloudDhcpEvent.setClientIp(InetAddress.getByAddress(dhcpCommonData.getClientIp().toByteArray()));
             } catch (UnknownHostException e) {
-                LOG.error("Invalid Client IP",e );
+                LOG.error("Invalid Client IP", e);
             }
         }
-        
+
         if (dhcpCommonData.hasRelayIp()) {
             try {
                 cloudDhcpEvent.setRelayIp(InetAddress.getByAddress(dhcpCommonData.getRelayIp().toByteArray()));
             } catch (UnknownHostException e) {
-                LOG.error("Invalid Relay IP",e );
+                LOG.error("Invalid Relay IP", e);
             }
         }
-        
-        if (dhcpCommonData.hasTimestampMs()) {
-                cloudDhcpEvent.setEventTimestamp(dhcpCommonData.getTimestampMs());                      
-        }
-        
+
+        cloudDhcpEvent.setEventTimestamp(dhcpCommonData.getTimestampMs());
+
         return cloudDhcpEvent;
     }
-    
+
     void publishSipCallEvents(int customerId, long equipmentId, List<VideoVoiceReport> sipCallReportList) {
         // only in case it is not there, we will just use the time when we
         // received the report/event

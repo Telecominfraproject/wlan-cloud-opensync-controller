@@ -790,8 +790,6 @@ public class OpensyncExternalIntegrationCloudTest {
 
     private List<EventReport> getOpensyncStatsEventReportsList() {
 
-
-        List<ClientAssocEvent> clientAssocEventList = new ArrayList<>();
         sts.OpensyncStats.EventReport.ClientAssocEvent.Builder clientAssocBuilder = EventReport.ClientAssocEvent
                 .getDefaultInstance().toBuilder();
         clientAssocBuilder.setAssocType(AssocType.ASSOC);
@@ -803,7 +801,8 @@ public class OpensyncExternalIntegrationCloudTest {
         clientAssocBuilder.setInternalSc(1);
         clientAssocBuilder.setSsid("ssid-3");
         clientAssocBuilder.setStatus(1);
-       
+        clientAssocBuilder.setTimestampMs(System.currentTimeMillis());
+
         List<EventReport> eventReportList = new ArrayList<>();
 
         EventReport.Builder eventReportBuilder = EventReport.getDefaultInstance().toBuilder();
