@@ -158,7 +158,7 @@ public class RealtimeEventPublisher {
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientConnectEvent, customerId,
                 equipmentId);
         ClientConnectSuccessEvent clientEvent = new ClientConnectSuccessEvent(clientConnectEvent.getTimestampMs());
-        clientEvent.setMacAddress(MacAddress.valueOf(clientConnectEvent.getStaMac()));
+        clientEvent.setClientMacAddress(MacAddress.valueOf(clientConnectEvent.getStaMac()));
         clientEvent.setRadioType(OvsdbToWlanCloudTypeMappingUtility
                 .getRadioTypeFromOpensyncStatsRadioBandType(clientConnectEvent.getBand()));
         clientEvent.setSsid(clientConnectEvent.getSsid());
@@ -248,7 +248,7 @@ public class RealtimeEventPublisher {
 
         com.telecominfraproject.wlan.client.models.events.realtime.ClientDisconnectEvent clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientDisconnectEvent(
                 clientDisconnectEvent.getTimestampMs());
-        clientEvent.setDeviceMacAddress(MacAddress.valueOf(clientDisconnectEvent.getStaMac()));
+        clientEvent.setClientMacAddress(MacAddress.valueOf(clientDisconnectEvent.getStaMac()));
         clientEvent.setSessionId(clientDisconnectEvent.getSessionId());
         clientEvent.setRadioType(OvsdbToWlanCloudTypeMappingUtility
                 .getRadioTypeFromOpensyncStatsRadioBandType(clientDisconnectEvent.getBand()));
@@ -297,7 +297,7 @@ public class RealtimeEventPublisher {
                 clientAuthEvent.getTimestampMs());
         clientEvent.setSessionId(clientAuthEvent.getSessionId());
         clientEvent.setSsid(clientAuthEvent.getSsid());
-        clientEvent.setDeviceMacAddress(MacAddress.valueOf(clientAuthEvent.getStaMac()));
+        clientEvent.setClientMacAddress(MacAddress.valueOf(clientAuthEvent.getStaMac()));
         clientEvent.setRadioType(OvsdbToWlanCloudTypeMappingUtility
                 .getRadioTypeFromOpensyncStatsRadioBandType(clientAuthEvent.getBand()));
 
@@ -320,7 +320,7 @@ public class RealtimeEventPublisher {
 
         clientEvent.setSessionId(clientAssocEvent.getSessionId());
         clientEvent.setSsid(clientAssocEvent.getSsid());
-        clientEvent.setDeviceMacAddress(MacAddress.valueOf(clientAssocEvent.getStaMac()));
+        clientEvent.setClientMacAddress(MacAddress.valueOf(clientAssocEvent.getStaMac()));
         clientEvent.setRadioType(OvsdbToWlanCloudTypeMappingUtility
                 .getRadioTypeFromOpensyncStatsRadioBandType(clientAssocEvent.getBand()));
 
@@ -368,7 +368,7 @@ public class RealtimeEventPublisher {
                 clientFailureEvent.getTimestampMs());
 
         clientEvent.setSessionId(clientFailureEvent.getSessionId());
-        clientEvent.setDeviceMacAddress(MacAddress.valueOf(clientFailureEvent.getStaMac()));
+        clientEvent.setClientMacAddress(MacAddress.valueOf(clientFailureEvent.getStaMac()));
         clientEvent.setSsid(clientFailureEvent.getSsid());
 
         if (clientFailureEvent.hasReasonStr()) {
@@ -394,7 +394,7 @@ public class RealtimeEventPublisher {
                 clientFirstDataEvent.getTimestampMs());
 
         clientEvent.setSessionId(clientFirstDataEvent.getSessionId());
-        clientEvent.setDeviceMacAddress(MacAddress.valueOf(clientFirstDataEvent.getStaMac()));
+        clientEvent.setClientMacAddress(MacAddress.valueOf(clientFirstDataEvent.getStaMac()));
 
         if (clientFirstDataEvent.hasFdataTxUpTsInUs()) {
             clientEvent.setFirstDataSentTs(clientFirstDataEvent.getFdataTxUpTsInUs());
@@ -420,7 +420,7 @@ public class RealtimeEventPublisher {
                 clientIdEvent.getTimestampMs());
 
         clientEvent.setSessionId(clientIdEvent.getSessionId());
-        clientEvent.setDeviceMacAddress(MacAddress.valueOf(clientIdEvent.getCltMac()));
+        clientEvent.setClientMacAddress(MacAddress.valueOf(clientIdEvent.getCltMac()));
         if (clientIdEvent.hasCltId()) {
             clientEvent.setUserId(clientIdEvent.getCltId());
         }
@@ -440,7 +440,7 @@ public class RealtimeEventPublisher {
                 clientIpEvent.getTimestampMs());
 
         clientEvent.setSessionId(clientIpEvent.getSessionId());
-        clientEvent.setDeviceMacAddress(MacAddress.valueOf(clientIpEvent.getStaMac()));
+        clientEvent.setClientMacAddress(MacAddress.valueOf(clientIpEvent.getStaMac()));
         if (clientIpEvent.hasIpAddr()) {
             clientEvent.setIpAddr(clientIpEvent.getIpAddr().toByteArray());
         }
@@ -461,7 +461,7 @@ public class RealtimeEventPublisher {
                 clientTimeoutEvent.getTimestampMs());
 
         clientEvent.setSessionId(clientTimeoutEvent.getSessionId());
-        clientEvent.setDeviceMacAddress(MacAddress.valueOf(clientTimeoutEvent.getStaMac()));
+        clientEvent.setClientMacAddress(MacAddress.valueOf(clientTimeoutEvent.getStaMac()));
         if (clientTimeoutEvent.hasRCode()) {
             clientEvent.setTimeoutReason(clientTimeoutEvent.getRCode().equals(CTReasonType.CTR_IDLE_TOO_LONG)
                     ? ClientTimeoutReason.IdleTooLong
@@ -719,7 +719,7 @@ public class RealtimeEventPublisher {
         if (dhcpCommonData.hasDeviceMacAddress()) {
 
             try {
-                cloudDhcpEvent.setDeviceMacAddress(MacAddress.valueOf(dhcpCommonData.getDeviceMacAddress()));
+                cloudDhcpEvent.setClientMacAddress(MacAddress.valueOf(dhcpCommonData.getDeviceMacAddress()));
             } catch (Exception e) {
                 LOG.error("Could not parse device_mac_address from DhcpCommonData ", dhcpCommonData, e);
             }
