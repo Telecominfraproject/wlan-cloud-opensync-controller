@@ -77,6 +77,9 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
     @Autowired
     private OvsdbSessionMapInterface ovsdbSessionMapInterface;
 
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.manager.collectionIntervalSec.event:60}")
+    private long collectionIntervalSecEvent;
+
     @PostConstruct
     private void postCreate() {
         listenForConnections();
@@ -231,6 +234,8 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
                 ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
             }
+            ovsdbDao.updateEventReportingInterval(ovsdbClient, collectionIntervalSecEvent);
+
 
         } else {
             LOG.info("No Configuration available for {}", apId);
@@ -301,8 +306,9 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
         ovsdbDao.configureStatsFromProfile(ovsdbClient, opensyncAPConfig);
         if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
-            ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
+            ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);        
         }
+        ovsdbDao.updateEventReportingInterval(ovsdbClient, collectionIntervalSecEvent);
         LOG.debug("Finished processConfigChanged for {}", apId);
 
     }

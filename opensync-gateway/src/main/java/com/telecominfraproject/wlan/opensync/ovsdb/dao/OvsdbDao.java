@@ -4886,9 +4886,6 @@ public class OvsdbDao {
                             provisionWifiStatsConfigFromProfile("client", radioType, reportingInterval,
                                     samplingInterval, operations);
 
-                            provisionWifiStatsConfigFromProfile("event", radioType, reportingInterval, samplingInterval,
-                                    operations);
-
                             provisionWifiStatsConfigFromProfile("video_voice", reportingInterval, samplingInterval,
                                     operations);
                             LOG.debug("{}", BaseJsonModel.toPrettyJsonString(parameters));
@@ -5073,7 +5070,6 @@ public class OvsdbDao {
             // TODO: when schema support is added, these should be part of the
             // bulk provisioning operation above.
             provisionVideoVoiceStats(ovsdbClient);
-            provisionEventReporting(radioConfigs, ovsdbClient);
 
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             throw new RuntimeException(e);
@@ -5251,61 +5247,6 @@ public class OvsdbDao {
                 } else {
                     LOG.debug("Updated {}:", wifiStatsConfigDbTable);
                     LOG.debug("Op Result {}", res);
-                }
-            }
-
-        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-
-    }
-
-    /**
-     * @param ovsdbClient
-     *
-     */
-    public void provisionEventReporting(Map<String, WifiRadioConfigInfo> radioConfigs, OvsdbClient ovsdbClient) {
-        try {
-
-            List<Operation> operations = new ArrayList<>();
-
-            radioConfigs.values().stream().forEach(new Consumer<WifiRadioConfigInfo>() {
-
-                @Override
-                public void accept(WifiRadioConfigInfo rc) {
-
-                    //
-                    Map<String, Value> rowColumns = new HashMap<>();
-                    rowColumns.put("radio_type", new Atom<>(rc.freqBand));
-                    rowColumns.put("reporting_interval", new Atom<>(5));
-                    rowColumns.put("report_type", new Atom<>("raw"));
-                    rowColumns.put("stats_type", new Atom<>("event"));
-                    Row updateRow = new Row(rowColumns);
-                    operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
-
-                }
-            });
-
-            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
-            if (LOG.isDebugEnabled()) {
-
-                for (OperationResult res : result) {
-                    if (res instanceof InsertResult) {
-                        LOG.info("provisionEventReporting insert new row result {}", ((InsertResult) res));
-                        // for insert, make sure it is actually in the table
-                        confirmRowExistsInTable(ovsdbClient, ((InsertResult) res).getUuid(), wifiStatsConfigDbTable);
-                    } else if (res instanceof UpdateResult) {
-                        LOG.info("provisionEventReporting update row result {}", ((UpdateResult) res));
-                    } else if (res instanceof ErrorResult) {
-                        LOG.error("Could not update {}:", wifiStatsConfigDbTable);
-                        LOG.error("Error: {} Details: {}", ((ErrorResult) res).getError(),
-                                ((ErrorResult) res).getDetails());
-                    } else {
-                        LOG.debug("Updated {}:", wifiStatsConfigDbTable);
-                        LOG.debug("Op Result {}", res);
-                    }
                 }
             }
 
@@ -5711,6 +5652,45 @@ public class OvsdbDao {
             return AutoOrManualValue.createAutomaticInstance(equipmentValue);
         }
         return AutoOrManualValue.createManualInstance(equipmentValue);
+    }
+
+    public void updateEventReportingInterval(OvsdbClient ovsdbClient, long eventReportingIntervalSeconds) {
+
+        try {
+            List<Operation> operations = new ArrayList<>();
+            Map<String, Value> updateColumns = new HashMap<>();
+
+            // turn on stats collection over MQTT: (reporting_interval is in
+            // seconds)
+            // $ ovsh i Wifi_Stats_Config reporting_interval:=10
+            // radio_type:="2.4G" stats_type:="device"
+
+            updateColumns.put("reporting_interval", new Atom<>(eventReportingIntervalSeconds));
+            updateColumns.put("radio_type", new Atom<>("2.4G"));
+            updateColumns.put("stats_type", new Atom<>("event"));
+
+            Row row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            LOG.debug("Updated {}:", wifiStatsConfigDbTable);
+
+            for (OperationResult res : result) {
+                LOG.debug("updateEventReportingInterval Result {}", res);
+                if (res instanceof InsertResult) {
+                    LOG.info("updateEventReportingInterval insert new row result {}", ((InsertResult) res));
+                    // for insert, make sure it is actually in the table
+                    confirmRowExistsInTable(ovsdbClient, ((InsertResult) res).getUuid(), wifiStatsConfigDbTable);
+                }
+            }
+
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+            
     }
 
 }
