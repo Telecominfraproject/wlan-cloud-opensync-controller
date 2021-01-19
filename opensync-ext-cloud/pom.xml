@@ -73,6 +73,12 @@
       </dependency>      
       
       <dependency>
+        <artifactId>service-metric-models</artifactId>
+        <groupId>com.telecominfraproject.wlan</groupId>
+        <version>${tip-wlan-cloud.release.version}</version>
+      </dependency>      
+
+      <dependency>
         <artifactId>system-event-service-interface</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>
         <version>${tip-wlan-cloud.release.version}</version>
@@ -80,12 +86,6 @@
 
       <dependency>
         <artifactId>system-event-models</artifactId>
-        <groupId>com.telecominfraproject.wlan</groupId>
-        <version>${tip-wlan-cloud.release.version}</version>
-      </dependency>      
-
-      <dependency>
-        <artifactId>client-models</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>
         <version>${tip-wlan-cloud.release.version}</version>
       </dependency>      
@@ -104,6 +104,12 @@
 
       <dependency>
         <artifactId>client-service-interface</artifactId>
+        <groupId>com.telecominfraproject.wlan</groupId>
+        <version>${tip-wlan-cloud.release.version}</version>
+      </dependency>      
+
+      <dependency>
+        <artifactId>client-models</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>
         <version>${tip-wlan-cloud.release.version}</version>
       </dependency>      

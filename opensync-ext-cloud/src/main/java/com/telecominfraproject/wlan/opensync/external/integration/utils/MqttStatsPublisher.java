@@ -21,7 +21,6 @@ import com.google.protobuf.util.JsonFormat;
 import com.google.protobuf.util.JsonFormat.TypeRegistry;
 import com.telecominfraproject.wlan.client.ClientServiceInterface;
 import com.telecominfraproject.wlan.client.info.models.ClientInfoDetails;
-import com.telecominfraproject.wlan.client.session.models.AssociationState;
 import com.telecominfraproject.wlan.client.session.models.ClientEapDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientFailureDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientSession;
@@ -50,6 +49,7 @@ import com.telecominfraproject.wlan.servicemetric.apnode.models.ApPerformance;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.DnsProbeMetric;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.EthernetLinkState;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.NetworkProbeMetrics;
+import com.telecominfraproject.wlan.servicemetric.apnode.models.PerProcessUtilization;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.RadioStatistics;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.RadioUtilization;
 import com.telecominfraproject.wlan.servicemetric.apnode.models.StateUpDownError;
@@ -1021,6 +1021,16 @@ public class MqttStatsPublisher {
             }
             apPerformance.setUpTime((long) deviceReport.getUptime());
 
+            List<PerProcessUtilization> cpuPerProcess = new ArrayList<>();
+            deviceReport.getPsCpuUtilList().stream()
+                    .forEach(c -> cpuPerProcess.add(new PerProcessUtilization(c.getPid(), c.getCmd(), c.getUtil())));
+            apPerformance.setPsCpuUtil(cpuPerProcess);
+
+            List<PerProcessUtilization> memPerProcess = new ArrayList<>();
+            deviceReport.getPsMemUtilList().stream()
+                    .forEach(c -> memPerProcess.add(new PerProcessUtilization(c.getPid(), c.getCmd(), c.getUtil())));
+            apPerformance.setPsMemUtil(memPerProcess);
+            
             updateDeviceStatusForReport(customerId, equipmentId, deviceReport, avgRadioTemp);
 
         }
@@ -1784,19 +1794,17 @@ public class MqttStatsPublisher {
 
                                 if (session != null) {
 
-                                        ClientSessionDetails latestSessionDetails = new ClientSessionDetails();
+                                    ClientSessionDetails latestSessionDetails = new ClientSessionDetails();
 
+                                    // could still be values from before
+                                    // disconnect occured.
+                                    latestSessionDetails.setMetricDetails(
+                                            calculateClientSessionMetricDetails(client, clientReport.getTimestampMs()));
 
-                                        // could still be values from before
-                                        // disconnect occured.
-                                        latestSessionDetails.setMetricDetails(calculateClientSessionMetricDetails(
-                                                client, clientReport.getTimestampMs()));
+                                    session.getDetails().mergeSession(latestSessionDetails);
 
-                                        session.getDetails().mergeSession(latestSessionDetails);
+                                    clientServiceInterface.updateSession(session);
 
-                                        clientServiceInterface.updateSession(session);
-
-                                    
                                 }
 
                             }
