@@ -1,37 +1,41 @@
 [
-	{
-		"model_type": "Profile",
-		"id": 17,
-		"customerId": 2,
-		"profileType": "passpoint_operator",
-		"name": "TipWlan-Passpoint-Operator",
-		"details": {
-			"model_type": "PasspointOperatorProfile",
-			"serverOnlyAuthenticatedL2EncryptionNetwork": false,
-			"x509CertificateLocation": "/etc/ca.pem",
-			"operatorFriendlyName": [
-				{
-					"model_type": "PasspointDuple",
-					"locale": "en_CA",
-					"dupleIso3Language": "eng",
-					"dupleName": "Default friendly passpoint_operator name",
-					"defaultDupleSeparator": ":",
-					"asDuple": "eng:Default friendly passpoint_operator name"
-				},
-				{
-					"model_type": "PasspointDuple",
-					"locale": "fr_CA",
-					"dupleIso3Language": "fra",
-					"dupleName": "Nom de l'opérateur convivial par défaut",
-					"defaultDupleSeparator": ":",
-					"asDuple": "fra:Nom de l'opérateur convivial par défaut"
-				}
-			],
-			"profileType": "passpoint_operator"
-		},
-		"createdTimestamp": 1606778369945,
-		"lastModifiedTimestamp": 1606778369945,
-		"childProfileIds": [
-		]
-	}
+{
+    "model_type": "Profile",
+    "id": 34,
+    "customerId": 2,
+    "profileType": "passpoint_operator",
+    "name": "operator-profile-2021-01-21T21:28:58.994Z",
+    "details": {
+        "model_type": "PasspointOperatorProfile",
+        "serverOnlyAuthenticatedL2EncryptionNetwork": false,
+        "x509CertificateLocation": "/etc/ca.pem",
+        "operatorFriendlyName": [
+            {
+                "model_type": "PasspointDuple",
+                "locale": "fra",
+                "dupleIso3Language": "fra",
+                "dupleName": "Nom de l'opérateur convivial par défaut",
+                "defaultDupleSeparator": ":",
+                "asDuple": "fra:Nom de l'opérateur convivial par défaut"
+            },
+            {
+                "model_type": "PasspointDuple",
+                "locale": "eng",
+                "dupleIso3Language": "eng",
+                "dupleName": "Default friendly passpoint_operator name",
+                "defaultDupleSeparator": ":",
+                "asDuple": "eng:Default friendly passpoint_operator name"
+            }
+        ],
+        "domainNameList": [
+            "bell.ca",
+            "telus.com",
+            "rogers.com"
+        ],
+        "profileType": "passpoint_operator"
+    },
+    "createdTimestamp": 1611264539004,
+    "lastModifiedTimestamp": 1611264539004,
+    "childProfileIds": []
+}
 ]

@@ -32,7 +32,6 @@ import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioBestApSettings;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.core.model.equipment.SourceType;
-import com.telecominfraproject.wlan.core.model.json.BaseJsonModel;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.ElementRadioConfiguration;
 import com.telecominfraproject.wlan.equipment.models.ManagementRate;
@@ -69,11 +68,7 @@ import com.telecominfraproject.wlan.profile.bonjour.models.BonjourGatewayProfile
 import com.telecominfraproject.wlan.profile.bonjour.models.BonjourServiceSet;
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalAuthenticationType;
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalConfiguration;
-import com.telecominfraproject.wlan.profile.metrics.ServiceMetricConfigParameters;
-import com.telecominfraproject.wlan.profile.metrics.ServiceMetricRadioConfigParameters;
-import com.telecominfraproject.wlan.profile.metrics.ServiceMetricSurveyConfigParameters;
 import com.telecominfraproject.wlan.profile.metrics.ServiceMetricsChannelUtilizationSurveyType;
-import com.telecominfraproject.wlan.profile.metrics.ServiceMetricsCollectionConfigProfile;
 import com.telecominfraproject.wlan.profile.metrics.ServiceMetricsStatsReportFormat;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.common.ManagedFileInfo;
@@ -96,13 +91,11 @@ import com.telecominfraproject.wlan.profile.passpoint.models.venue.PasspointVenu
 import com.telecominfraproject.wlan.profile.passpoint.models.venue.PasspointVenueTypeAssignment;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusProfile;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusServer;
-import com.telecominfraproject.wlan.profile.radius.models.RadiusServiceRegion;
 import com.telecominfraproject.wlan.profile.rf.models.RfConfiguration;
 import com.telecominfraproject.wlan.profile.rf.models.RfElementConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.NasIdType;
 import com.telecominfraproject.wlan.profile.ssid.models.NasIpType;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
-import com.telecominfraproject.wlan.servicemetric.models.ServiceMetricDataType;
 import com.vmware.ovsdb.exception.OvsdbClientException;
 import com.vmware.ovsdb.protocol.methods.RowUpdate;
 import com.vmware.ovsdb.protocol.methods.TableUpdate;
@@ -3095,7 +3088,7 @@ public class OvsdbDao {
         getEnabledRadios(ovsdbClient, enabledRadiosFromAp);
 
         for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
-            
+
             SsidConfiguration ssidConfig = (SsidConfiguration) ssidProfile.getDetails();
             ApElementConfiguration apElementConfig = (ApElementConfiguration) opensyncApConfig.getCustomerEquipment()
                     .getDetails();
@@ -3210,9 +3203,9 @@ public class OvsdbDao {
                 if (radioConfiguration != null) {
                     dtimPeriod = radioConfiguration.getDtimPeriod();
                     uapsdEnabled = radioConfiguration.getUapsdState() == StateSetting.enabled;
-                    apBridge = radioConfiguration.getStationIsolation() == StateSetting.disabled; // stationIsolation                   
+                    apBridge = radioConfiguration.getStationIsolation() == StateSetting.disabled; // stationIsolation
                     fragThresholdBytes = radioConfiguration.getFragmentationThresholdBytes();
-                } 
+                }
                 String minHwMode = "11n"; // min_hw_mode is 11ac, wifi 5, we can
                 // also take ++ (11ax) but 2.4GHz only
                 // Wifi4 --
@@ -3222,7 +3215,6 @@ public class OvsdbDao {
                 if (!radioType.equals(RadioType.is2dot4GHz) && radioMode.equals(RadioMode.modeX)) {
                     minHwMode = "11x";
                 }
-
 
                 // off by default
                 boolean enable80211r = false;
@@ -3392,26 +3384,26 @@ public class OvsdbDao {
             } else if (ssidSecurityMode.equals("wpa2OnlyEAP") || ssidSecurityMode.equals("wpa2OnlyRadius")) {
                 security.put("mode", "2");
                 getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
-                if (ssidConfig.getRadiusAccountingServiceName() != null) {
+                if (ssidConfig.getRadiusAccountingServiceId() > 0) {
                     getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
                 }
             } else if (ssidSecurityMode.equals("wpa3OnlyEAP")) {
                 security.put("mode", "3");
                 getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
-                if (ssidConfig.getRadiusAccountingServiceName() != null) {
+                if (ssidConfig.getRadiusAccountingServiceId() > 0) {
                     getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
                 }
             } else if (ssidSecurityMode.equals("wpa2EAP") || ssidSecurityMode.equals("wpa2Radius")
                     || ssidSecurityMode.equals("wpa3MixedEAP")) {
                 security.put("mode", "mixed");
                 getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
-                if (ssidConfig.getRadiusAccountingServiceName() != null) {
+                if (ssidConfig.getRadiusAccountingServiceId() > 0) {
                     getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
                 }
             } else if (ssidSecurityMode.equals("wpaEAP") || ssidSecurityMode.equals("wpaRadius")) {
                 security.put("mode", "1");
                 getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
-                if (ssidConfig.getRadiusAccountingServiceName() != null) {
+                if (ssidConfig.getRadiusAccountingServiceId() > 0) {
                     getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
                 }
             } else if (ssidSecurityMode.equals("wep")) {
@@ -3742,62 +3734,49 @@ public class OvsdbDao {
     void getRadiusAccountingConfiguration(OpensyncAPConfig opensyncApConfig, SsidConfiguration ssidConfig,
             Map<String, String> security) {
 
-        LOG.info("getRadiusAccountingConfiguration for ssidConfig {} from radiusProfiles {}", ssidConfig,
+        LOG.debug("getRadiusAccountingConfiguration for ssidConfig {} from radiusProfiles {}", ssidConfig,
                 opensyncApConfig.getRadiusProfiles());
 
-        List<Profile> radiusServiceList = opensyncApConfig.getRadiusProfiles().stream()
+        LOG.debug("Radius Accounting Profiles {}", opensyncApConfig.getRadiusProfiles());
+
+        List<Profile> radiusProfileList = opensyncApConfig.getRadiusProfiles().stream()
                 .filter(new Predicate<Profile>() {
 
                     @Override
-                    public boolean test(Profile p) {
-                        return p.getName().equals((ssidConfig.getRadiusAccountingServiceName()));
+                    public boolean test(Profile t) {
+                        return t.getId() == ssidConfig.getRadiusAccountingServiceId();
                     }
+
                 }).collect(Collectors.toList());
 
-        if (radiusServiceList != null && radiusServiceList.size() > 0) {
-            Profile profileRadius = radiusServiceList.get(0);
-            String region = opensyncApConfig.getEquipmentLocation().getName();
-            List<RadiusServer> radiusServerList = new ArrayList<>();
-            RadiusProfile radiusProfileDetails = ((RadiusProfile) profileRadius.getDetails());
-            RadiusServiceRegion radiusServiceRegion = radiusProfileDetails.findServiceRegion(region);
-            if (radiusServiceRegion != null) {
-                radiusServerList = radiusServiceRegion
-                        .findServerConfiguration(ssidConfig.getRadiusAccountingServiceName());
-                if (radiusServerList != null && radiusServerList.size() > 0) {
-                    RadiusServer rServer = radiusServerList.get(0);
-                    if (rServer != null) {
-                        security.put("radius_acct_ip",
-                                rServer.getIpAddress() != null ? rServer.getIpAddress().getHostAddress() : null);
-                        security.put("radius_acct_port",
-                                rServer.getAuthPort() != null ? String.valueOf(rServer.getAuthPort()) : null);
-                        security.put("radius_acct_secret", rServer.getSecret());
-                        if (ssidConfig.getRadiusAcountingServiceInterval() != null) {
-                            // if the value is present, use the
-                            // radius_acct_interval
-                            security.put("radius_acct_interval",
-                                    ssidConfig.getRadiusAcountingServiceInterval().toString());
+        if (radiusProfileList != null && radiusProfileList.size() > 0) {
+            Profile profileRadius = radiusProfileList.get(0);
+            RadiusProfile profileDetails = ((RadiusProfile) profileRadius.getDetails());
+            RadiusServer rServer = profileDetails.getPrimaryRadiusServer();
+            security.put("radius_acct_ip",
+                    rServer.getIpAddress() != null ? rServer.getIpAddress().getHostAddress() : null);
+            security.put("radius_acct_port",
+                    rServer.getAuthPort() != null ? String.valueOf(rServer.getAuthPort()) : null);
+            security.put("radius_acct_secret", rServer.getSecret());
+            if (ssidConfig.getRadiusAcountingServiceInterval() != null) {
+                // if the value is present, use the
+                // radius_acct_interval
+                security.put("radius_acct_interval",
+                        ssidConfig.getRadiusAcountingServiceInterval().toString());
 
-                        } else {
-                            LOG.info("No radius_acct_interval defined for ssid {}, Setting radius_acct_interval to 0",
-                                    ssidConfig.getSsid(), rServer);
-                            security.put("radius_acct_interval", "0");
-                        }
-                        LOG.info(
-                                "set Radius Accounting server attributes radius_acct_ip {} radius_acct_port {} radius_acct_secret {} radius_acct_interval {}",
-                                security.get("radius_acct_ip"), security.get("radius_acct_port"),
-                                security.get("radius_acct_secret"), security.get("radius_acct_interval"));
-
-                    }
-
-                } else {
-                    LOG.warn("Could not get RadiusServerConfiguration for {} from RadiusProfile {}",
-                            ssidConfig.getRadiusAccountingServiceName(), profileRadius);
-                }
             } else {
-                LOG.warn("Could not get RadiusServiceRegion {} from RadiusProfile {}", region, profileRadius);
+                LOG.info("No radius_acct_interval defined for ssid {}, Setting radius_acct_interval to 0",
+                        ssidConfig.getSsid(), rServer);
+                security.put("radius_acct_interval", "0");
             }
+            LOG.info(
+                    "set Radius Accounting server attributes radius_acct_ip {} radius_acct_port {} radius_acct_secret {} radius_acct_interval {}",
+                    security.get("radius_acct_ip"), security.get("radius_acct_port"),
+                    security.get("radius_acct_secret"), security.get("radius_acct_interval"));
+
+
         } else {
-            LOG.warn("Could not find radius profile {} in {}", ssidConfig.getRadiusAccountingServiceName(),
+            LOG.warn("Could not find radius profile {} in {}", ssidConfig.getRadiusServiceId(),
                     opensyncApConfig.getRadiusProfiles());
         }
 
@@ -3809,45 +3788,33 @@ public class OvsdbDao {
         LOG.debug("getRadiusConfiguration for ssidConfig {} from radiusProfiles {}", ssidConfig,
                 opensyncApConfig.getRadiusProfiles());
 
-        List<Profile> radiusServiceList = opensyncApConfig.getRadiusProfiles().stream()
+        LOG.debug("Radius Profiles {}", opensyncApConfig.getRadiusProfiles());
+
+        List<Profile> radiusProfileList = opensyncApConfig.getRadiusProfiles().stream()
                 .filter(new Predicate<Profile>() {
 
                     @Override
-                    public boolean test(Profile p) {
-                        return p.getName().equals((ssidConfig.getRadiusServiceName()));
+                    public boolean test(Profile t) {
+                        return t.getId() == ssidConfig.getRadiusServiceId();
                     }
+
                 }).collect(Collectors.toList());
 
-        if (radiusServiceList != null && radiusServiceList.size() > 0) {
-            Profile profileRadius = radiusServiceList.get(0);
-            String region = opensyncApConfig.getEquipmentLocation().getName();
-            List<RadiusServer> radiusServerList = new ArrayList<>();
-            RadiusProfile radiusProfileDetails = ((RadiusProfile) profileRadius.getDetails());
-            RadiusServiceRegion radiusServiceRegion = radiusProfileDetails.findServiceRegion(region);
-            if (radiusServiceRegion != null) {
-                radiusServerList = radiusServiceRegion.findServerConfiguration(ssidConfig.getRadiusServiceName());
-                if (radiusServerList != null && radiusServerList.size() > 0) {
-                    RadiusServer rServer = radiusServerList.get(0);
-                    if (rServer != null) {
-                        security.put("radius_server_ip",
-                                rServer.getIpAddress() != null ? rServer.getIpAddress().getHostAddress() : null);
-                        security.put("radius_server_port",
-                                rServer.getAuthPort() != null ? String.valueOf(rServer.getAuthPort()) : null);
-                        security.put("radius_server_secret", rServer.getSecret());
-                        LOG.info(
-                                "set Radius server attributes radius_server_ip {} radius_server_port {} radius_server_secret {}",
-                                security.get("radius_server_ip"), security.get("radius_server_port"),
-                                security.get("radius_server_secret"));
-                    }
-                } else {
-                    LOG.warn("Could not get RadiusServerConfiguration for {} from RadiusProfile {}",
-                            ssidConfig.getRadiusServiceName(), profileRadius);
-                }
-            } else {
-                LOG.warn("Could not get RadiusServiceRegion {} from RadiusProfile {}", region, profileRadius);
-            }
+        if (radiusProfileList != null && radiusProfileList.size() > 0) {
+            Profile profileRadius = radiusProfileList.get(0);
+            RadiusProfile profileDetails = ((RadiusProfile) profileRadius.getDetails());
+            RadiusServer radiusServer = profileDetails.getPrimaryRadiusServer();
+            security.put("radius_server_ip",
+                    radiusServer.getIpAddress() != null ? radiusServer.getIpAddress().getHostAddress() : null);
+            security.put("radius_server_port",
+                    radiusServer.getAuthPort() != null ? String.valueOf(radiusServer.getAuthPort()) : null);
+            security.put("radius_server_secret", radiusServer.getSecret());
+            LOG.info("set Radius server attributes radius_server_ip {} radius_server_port {} radius_server_secret {}",
+                    security.get("radius_server_ip"), security.get("radius_server_port"),
+                    security.get("radius_server_secret"));
+
         } else {
-            LOG.warn("Could not find radius profile {} in {}", ssidConfig.getRadiusServiceName(),
+            LOG.warn("Could not find radius profile {} in {}", ssidConfig.getRadiusServiceId(),
                     opensyncApConfig.getRadiusProfiles());
         }
     }
@@ -4811,125 +4778,153 @@ public class OvsdbDao {
     }
 
     public void configureStatsFromProfile(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
+        configureStats(ovsdbClient);
 
-        if (opensyncApConfig.getMetricsProfiles() == null || opensyncApConfig.getMetricsProfiles().isEmpty()) {
-            configureStats(ovsdbClient);
-        } else {
-
-            List<Operation> operations = new ArrayList<>();
-
-            for (Profile metricsProfile : opensyncApConfig.getMetricsProfiles()) {
-
-                ServiceMetricsCollectionConfigProfile details = ((ServiceMetricsCollectionConfigProfile) metricsProfile
-                        .getDetails());
-
-                for (ServiceMetricDataType dataType : details.getMetricConfigParameterMap().keySet()) {
-
-                    if (dataType.equals(ServiceMetricDataType.ApNode)
-                            || dataType.equals(ServiceMetricDataType.Neighbour)
-                            || dataType.equals(ServiceMetricDataType.Channel)) {
-
-                        details.getMetricConfigParameterMap().get(dataType).stream().forEach(c -> {
-                            ServiceMetricSurveyConfigParameters parameters = (ServiceMetricSurveyConfigParameters) c;
-
-                            Map<String, Integer> thresholdMap = new HashMap<>();
-                            thresholdMap.put("max_delay", parameters.getDelayMillisecondsThreshold());
-                            thresholdMap.put("util", parameters.getPercentUtilizationThreshold());
-
-                            @SuppressWarnings("unchecked")
-                            com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer> thresholds = com.vmware.ovsdb.protocol.operation.notation.Map
-                                    .of(thresholdMap);
-
-                            RadioType radioType = parameters.getRadioType();
-                            ServiceMetricsChannelUtilizationSurveyType channelType = parameters.getChannelSurveyType();
-                            int scanInterval = parameters.getScanIntervalMillis();
-                            ServiceMetricsStatsReportFormat format = parameters.getStatsReportFormat();
-                            int reportingInterval = parameters.getReportingIntervalSeconds();
-                            int samplingInterval = parameters.getSamplingInterval();
-
-                            if (dataType.equals(ServiceMetricDataType.ApNode)
-                                    || dataType.equals(ServiceMetricDataType.Channel)) {
-                                provisionWifiStatsConfigFromProfile("survey", getAllowedChannels(ovsdbClient),
-                                        radioType, channelType, scanInterval, format, reportingInterval,
-                                        samplingInterval, operations, thresholds);
-                                if (dataType.equals(ServiceMetricDataType.ApNode)) {
-                                    // extra reports that are part of ApNode
-                                    // metric
-                                    if (channelType.equals(ServiceMetricsChannelUtilizationSurveyType.ON_CHANNEL)) {
-                                        provisionWifiStatsConfigFromProfile("device", reportingInterval,
-                                                samplingInterval, operations);
-                                        if (((ApNetworkConfiguration) opensyncApConfig.getApProfile().getDetails())
-                                                .getSyntheticClientEnabled()) {
-                                            provisionWifiStatsConfigFromProfile("network_probe", reportingInterval,
-                                                    samplingInterval, operations);
-                                        }
-                                    }
-
-                                }
-                            } else if (dataType.equals(ServiceMetricDataType.Neighbour)) {
-                                provisionWifiStatsConfigFromProfile("neighbor", getAllowedChannels(ovsdbClient),
-                                        radioType, channelType, scanInterval, format, reportingInterval,
-                                        samplingInterval, operations, thresholds);
-                            }
-
-                        });
-
-                    } else if (dataType.equals(ServiceMetricDataType.ApSsid)
-                            || dataType.equals(ServiceMetricDataType.Client)) {
-                        details.getMetricConfigParameterMap().get(dataType).stream().forEach(c -> {
-                            ServiceMetricRadioConfigParameters parameters = (ServiceMetricRadioConfigParameters) c;
-
-                            RadioType radioType = parameters.getRadioType();
-                            int reportingInterval = parameters.getReportingIntervalSeconds();
-                            int samplingInterval = parameters.getSamplingInterval();
-
-                            provisionWifiStatsConfigFromProfile("client", radioType, reportingInterval,
-                                    samplingInterval, operations);
-
-                            provisionWifiStatsConfigFromProfile("video_voice", reportingInterval, samplingInterval,
-                                    operations);
-                            LOG.debug("{}", BaseJsonModel.toPrettyJsonString(parameters));
-                        });
-                    } else {
-                        details.getMetricConfigParameterMap().get(dataType).stream().forEach(c -> {
-                            ServiceMetricConfigParameters parameters = (ServiceMetricConfigParameters) c;
-                            int reportingInterval = parameters.getReportingIntervalSeconds();
-                            int samplingInterval = parameters.getSamplingInterval();
-                            provisionWifiStatsConfigFromProfile("video_voice", reportingInterval, samplingInterval,
-                                    operations);
-                            // TODO: add when schema supports
-                            // provisionWifiStatsConfigFromProfile("event",
-                            // reportingInterval,
-                            // samplingInterval, operations);
-
-                            LOG.debug("{}", BaseJsonModel.toPrettyJsonString(parameters));
-                        });
-                    }
-
-                }
-
-            }
-
-            if (!operations.isEmpty()) {
-                LOG.debug("Sending batch of operations : {} ", operations);
-
-                try {
-                    CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-                    OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug("Updated {}:", wifiStatsConfigDbTable);
-
-                        for (OperationResult res : result) {
-                            LOG.debug("Op Result {}", res);
-                        }
-                    }
-                } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-
-        }
+        // if (opensyncApConfig.getMetricsProfiles() == null ||
+        // opensyncApConfig.getMetricsProfiles().isEmpty()) {
+        // configureStats(ovsdbClient);
+        // } else {
+        //
+        // List<Operation> operations = new ArrayList<>();
+        //
+        // for (Profile metricsProfile : opensyncApConfig.getMetricsProfiles())
+        // {
+        //
+        // ServiceMetricsCollectionConfigProfile details =
+        // ((ServiceMetricsCollectionConfigProfile) metricsProfile
+        // .getDetails());
+        //
+        // for (ServiceMetricDataType dataType :
+        // details.getMetricConfigParameterMap().keySet()) {
+        //
+        // if (dataType.equals(ServiceMetricDataType.ApNode)
+        // || dataType.equals(ServiceMetricDataType.Neighbour)
+        // || dataType.equals(ServiceMetricDataType.Channel)) {
+        //
+        // details.getMetricConfigParameterMap().get(dataType).stream().forEach(c
+        // -> {
+        // ServiceMetricSurveyConfigParameters parameters =
+        // (ServiceMetricSurveyConfigParameters) c;
+        //
+        // Map<String, Integer> thresholdMap = new HashMap<>();
+        // thresholdMap.put("max_delay",
+        // parameters.getDelayMillisecondsThreshold());
+        // thresholdMap.put("util",
+        // parameters.getPercentUtilizationThreshold());
+        //
+        // @SuppressWarnings("unchecked")
+        // com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer>
+        // thresholds = com.vmware.ovsdb.protocol.operation.notation.Map
+        // .of(thresholdMap);
+        //
+        // RadioType radioType = parameters.getRadioType();
+        // ServiceMetricsChannelUtilizationSurveyType channelType =
+        // parameters.getChannelSurveyType();
+        // int scanInterval = parameters.getScanIntervalMillis();
+        // ServiceMetricsStatsReportFormat format =
+        // parameters.getStatsReportFormat();
+        // int reportingInterval = parameters.getReportingIntervalSeconds();
+        // int samplingInterval = parameters.getSamplingInterval();
+        //
+        // if (dataType.equals(ServiceMetricDataType.ApNode)
+        // || dataType.equals(ServiceMetricDataType.Channel)) {
+        // provisionWifiStatsConfigFromProfile("survey",
+        // getAllowedChannels(ovsdbClient),
+        // radioType, channelType, scanInterval, format, reportingInterval,
+        // samplingInterval, operations, thresholds);
+        // if (dataType.equals(ServiceMetricDataType.ApNode)) {
+        // // extra reports that are part of ApNode
+        // // metric
+        // if
+        // (channelType.equals(ServiceMetricsChannelUtilizationSurveyType.ON_CHANNEL))
+        // {
+        // provisionWifiStatsConfigFromProfile("device", reportingInterval,
+        // samplingInterval, operations);
+        // if (((ApNetworkConfiguration)
+        // opensyncApConfig.getApProfile().getDetails())
+        // .getSyntheticClientEnabled()) {
+        // provisionWifiStatsConfigFromProfile("network_probe",
+        // reportingInterval,
+        // samplingInterval, operations);
+        // }
+        // }
+        //
+        // }
+        // } else if (dataType.equals(ServiceMetricDataType.Neighbour)) {
+        // provisionWifiStatsConfigFromProfile("neighbor",
+        // getAllowedChannels(ovsdbClient),
+        // radioType, channelType, scanInterval, format, reportingInterval,
+        // samplingInterval, operations, thresholds);
+        // }
+        //
+        // });
+        //
+        // } else if (dataType.equals(ServiceMetricDataType.ApSsid)
+        // || dataType.equals(ServiceMetricDataType.Client)) {
+        // details.getMetricConfigParameterMap().get(dataType).stream().forEach(c
+        // -> {
+        // ServiceMetricRadioConfigParameters parameters =
+        // (ServiceMetricRadioConfigParameters) c;
+        //
+        // RadioType radioType = parameters.getRadioType();
+        // int reportingInterval = parameters.getReportingIntervalSeconds();
+        // int samplingInterval = parameters.getSamplingInterval();
+        //
+        // provisionWifiStatsConfigFromProfile("client", radioType,
+        // reportingInterval,
+        // samplingInterval, operations);
+        //
+        // provisionWifiStatsConfigFromProfile("video_voice", reportingInterval,
+        // samplingInterval,
+        // operations);
+        // LOG.debug("{}", BaseJsonModel.toPrettyJsonString(parameters));
+        // });
+        // } else {
+        // details.getMetricConfigParameterMap().get(dataType).stream().forEach(c
+        // -> {
+        // ServiceMetricConfigParameters parameters =
+        // (ServiceMetricConfigParameters) c;
+        // int reportingInterval = parameters.getReportingIntervalSeconds();
+        // int samplingInterval = parameters.getSamplingInterval();
+        // provisionWifiStatsConfigFromProfile("video_voice", reportingInterval,
+        // samplingInterval,
+        // operations);
+        // // TODO: add when schema supports
+        // // provisionWifiStatsConfigFromProfile("event",
+        // // reportingInterval,
+        // // samplingInterval, operations);
+        //
+        // LOG.debug("{}", BaseJsonModel.toPrettyJsonString(parameters));
+        // });
+        // }
+        //
+        // }
+        //
+        // }
+        //
+        // if (!operations.isEmpty()) {
+        // LOG.debug("Sending batch of operations : {} ", operations);
+        //
+        // try {
+        // CompletableFuture<OperationResult[]> fResult =
+        // ovsdbClient.transact(ovsdbName, operations);
+        // OperationResult[] result = fResult.get(ovsdbTimeoutSec,
+        // TimeUnit.SECONDS);
+        //
+        // if (LOG.isDebugEnabled()) {
+        // LOG.debug("Updated {}:", wifiStatsConfigDbTable);
+        //
+        // for (OperationResult res : result) {
+        // LOG.debug("Op Result {}", res);
+        // }
+        // }
+        // } catch (OvsdbClientException | TimeoutException | ExecutionException
+        // | InterruptedException e) {
+        // throw new RuntimeException(e);
+        // }
+        // }
+        //
+        // }
 
     }
 
@@ -5029,7 +5024,6 @@ public class OvsdbDao {
 
     }
 
-    @Deprecated
     public void configureStats(OvsdbClient ovsdbClient) {
 
         try {
@@ -5143,7 +5137,7 @@ public class OvsdbDao {
                     rowColumns.put("report_type", new Atom<>("raw"));
                     rowColumns.put("sampling_interval", new Atom<>(10));
                     rowColumns.put("stats_type", new Atom<>("survey"));
-                    rowColumns.put("survey_interval_ms", new Atom<>(65));
+                    rowColumns.put("survey_interval_ms", new Atom<>(0));
                     rowColumns.put("survey_type", new Atom<>("on-chan"));
 
                     Row updateRow = new Row(rowColumns);
@@ -5168,12 +5162,12 @@ public class OvsdbDao {
                     rowColumns.put("channel_list", channels);
 
                     rowColumns.put("radio_type", new Atom<>(rc.freqBand));
-                    rowColumns.put("reporting_interval", new Atom<>(300));
+                    rowColumns.put("reporting_interval", new Atom<>(120));
                     rowColumns.put("report_type", new Atom<>("raw"));
                     rowColumns.put("stats_type", new Atom<>("survey"));
                     rowColumns.put("survey_type", new Atom<>("off-chan"));
-                    rowColumns.put("sampling_interval", new Atom<>(30));
-                    rowColumns.put("survey_interval_ms", new Atom<>(65));
+                    rowColumns.put("sampling_interval", new Atom<>(10));
+                    rowColumns.put("survey_interval_ms", new Atom<>(50));
                     rowColumns.put("threshold", thresholds);
                     Row updateRow = new Row(rowColumns);
                     operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
@@ -5690,7 +5684,6 @@ public class OvsdbDao {
             throw new RuntimeException(e);
         }
 
-            
     }
 
 }

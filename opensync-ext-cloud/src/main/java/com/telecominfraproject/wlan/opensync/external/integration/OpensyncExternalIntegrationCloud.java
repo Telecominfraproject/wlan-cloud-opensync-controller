@@ -471,7 +471,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             ssidProfile.setName(autoProvisionedSsid + radioType.name() + " for " + ce.getName());
             SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
 
-            ssidConfig.setSsid(ssidProfile.getName());
+            ssidConfig.setSsid(autoProvisionedSsid);
             ssidConfig.setSsidAdminState(StateSetting.enabled);
             ssidConfig.setBroadcastSsid(StateSetting.enabled);
             ssidConfig.setSecureMode(SecureMode.wpa2PSK);
@@ -975,7 +975,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 hotspot20ProfileSet
                         .addAll(profileContainer.getChildrenOfType(ssidProfile.getId(), ProfileType.passpoint));
 
-                radiusSet.addAll(profileContainer.getChildrenOfType(ret.getApProfile().getId(), ProfileType.radius));
+                radiusSet.addAll(profileContainer.getChildrenOfType(ssidProfile.getId(), ProfileType.radius));
                 if (ssidProfile.getDetails() != null) {
                     Long captivePortId = ((SsidConfiguration) ssidProfile.getDetails()).getCaptivePortalId();
                     if (captivePortId != null) {

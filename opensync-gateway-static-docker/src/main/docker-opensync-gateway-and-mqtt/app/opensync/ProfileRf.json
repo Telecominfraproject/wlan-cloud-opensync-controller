@@ -1,6 +1,6 @@
 {
     "model_type": "Profile",
-    "id": 11,
+    "id": 4,
     "customerId": 2,
     "profileType": "rf",
     "name": "TipWlan-rf",
@@ -198,7 +198,7 @@
         },
         "profileType": "rf"
     },
-    "createdTimestamp": 1606778369933,
-    "lastModifiedTimestamp": 1606778369933,
+    "createdTimestamp": 1611262628788,
+    "lastModifiedTimestamp": 1611262628788,
     "childProfileIds": []
 }

@@ -1,221 +1,261 @@
 {
-  "model_type": "Equipment",
-  "id": 51,
-  "customerId": 2,
-  "profileId": 12,
-  "locationId": 8,
-  "equipmentType": "AP",
-  "inventoryId": "Test_Client_21P10C68818122",
-  "name": "Test_Client_21P10C68818122",
-  "details": {
-    "model_type": "ApElementConfiguration",
-    "equipmentModel": "EA8300-CA",
-    "elementConfigVersion": "AP-V1",
+    "model_type": "Equipment",
+    "id": 1,
+    "customerId": 2,
+    "profileId": 38,
+    "locationId": 8,
     "equipmentType": "AP",
-    "deviceMode": "standaloneAP",
-    "gettingIP": "dhcp",
-    "staticIP": null,
-    "staticIpMaskCidr": null,
-    "staticIpGw": null,
-    "gettingDNS": "dhcp",
-    "staticDnsIp1": null,
-    "staticDnsIp2": null,
-    "peerInfoList": [],
-    "deviceName": "Default Device Name",
-    "locationData": null,
-    "locallyConfiguredMgmtVlan": 0,
-    "locallyConfigured": false,
-    "deploymentType": "CEILING",
-    "syntheticClientEnabled": null,
-    "frameReportThrottleEnabled": true,
-    "antennaType": "OMNI",
-    "costSavingEventsEnabled": true,
-    "forwardMode": "BRIDGE",
-    "radioMap": {
-      "is2dot4GHz": {
-        "model_type": "ElementRadioConfiguration",
-        "radioType": "is2dot4GHz",
-        "channelNumber": 6,
-        "manualChannelNumber": 6,
-        "backupChannelNumber": 11,
-        "bannedChannels": [],
-        "allowedChannels": [],
-        "rxCellSizeDb": {
-          "model_type": "SourceSelectionValue",
-        "source": "auto",
-          "value": -90
+    "inventoryId": "Open_AP_21P10C68818122",
+    "name": "Open_AP_21P10C68818122",
+    "details": {
+        "model_type": "ApElementConfiguration",
+        "equipmentModel": "EA8300-CA",
+        "elementConfigVersion": "AP-V1",
+        "equipmentType": "AP",
+        "deviceMode": "standaloneAP",
+        "gettingIP": "dhcp",
+        "staticIP": null,
+        "staticIpMaskCidr": null,
+        "staticIpGw": null,
+        "gettingDNS": "dhcp",
+        "staticDnsIp1": null,
+        "staticDnsIp2": null,
+        "peerInfoList": [],
+        "deviceName": "Open_AP_21P10C68818122",
+        "locationData": null,
+        "locallyConfiguredMgmtVlan": 0,
+        "locallyConfigured": false,
+        "deploymentType": "CEILING",
+        "syntheticClientEnabled": null,
+        "frameReportThrottleEnabled": true,
+        "antennaType": "OMNI",
+        "costSavingEventsEnabled": true,
+        "forwardMode": "BRIDGE",
+        "radioMap": {
+            "is2dot4GHz": {
+                "model_type": "ElementRadioConfiguration",
+                "radioType": "is2dot4GHz",
+                "channelNumber": 6,
+                "manualChannelNumber": 6,
+                "backupChannelNumber": 11,
+                "allowedChannels": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8,
+                    9,
+                    10,
+                    11
+                ],
+                "rxCellSizeDb": {
+                    "model_type": "SourceSelectionValue",
+                    "source": "profile",
+                    "value": -90
+                },
+                "probeResponseThresholdDb": {
+                    "model_type": "SourceSelectionValue",
+                    "source": "profile",
+                    "value": -90
+                },
+                "clientDisconnectThresholdDb": {
+                    "model_type": "SourceSelectionValue",
+                    "source": "profile",
+                    "value": -90
+                },
+                "eirpTxPower": {
+                    "model_type": "SourceSelectionValue",
+                    "source": "profile",
+                    "value": 18
+                },
+                "perimeterDetectionEnabled": true,
+                "bestAPSteerType": "both",
+                "deauthAttackDetection": null,
+                "allowedChannelsPowerLevels": []
+            },
+            "is5GHzU": {
+                "model_type": "ElementRadioConfiguration",
+                "radioType": "is5GHzU",
+                "channelNumber": 149,
+                "manualChannelNumber": 149,
+                "backupChannelNumber": 154,
+                "allowedChannels": [
+                    161,
+                    149,
+                    165,
+                    153,
+                    157
+                ],
+                "rxCellSizeDb": {
+                    "model_type": "SourceSelectionValue",
+                    "source": "profile",
+                    "value": -90
+                },
+                "probeResponseThresholdDb": {
+                    "model_type": "SourceSelectionValue",
+                    "source": "profile",
+                    "value": -90
+                },
+                "clientDisconnectThresholdDb": {
+                    "model_type": "SourceSelectionValue",
+                    "source": "profile",
+                    "value": -90
+                },
+                "eirpTxPower": {
+                    "model_type": "SourceSelectionValue",
+                    "source": "profile",
+                    "value": 18
+                },
+                "perimeterDetectionEnabled": true,
+                "bestAPSteerType": "both",
+                "deauthAttackDetection": null,
+                "allowedChannelsPowerLevels": []
+            },
+            "is5GHzL": {
+                "model_type": "ElementRadioConfiguration",
+                "radioType": "is5GHzL",
+                "channelNumber": 36,
+                "manualChannelNumber": 36,
+                "backupChannelNumber": 44,
+                "allowedChannels": [
+                    48,
+                    36,
+                    40,
+                    44
+                ],
+                "rxCellSizeDb": {
+                    "model_type": "SourceSelectionValue",
+                    "source": "profile",
+                    "value": -90
+                },
+                "probeResponseThresholdDb": {
+                    "model_type": "SourceSelectionValue",
+                    "source": "profile",
+                    "value": -90
+                },
+                "clientDisconnectThresholdDb": {
+                    "model_type": "SourceSelectionValue",
+                    "source": "profile",
+                    "value": -90
+                },
+                "eirpTxPower": {
+                    "model_type": "SourceSelectionValue",
+                    "source": "profile",
+                    "value": 18
+                },
+                "perimeterDetectionEnabled": true,
+                "bestAPSteerType": "both",
+                "deauthAttackDetection": null,
+                "allowedChannelsPowerLevels": []
+            }
         },
-        "probeResponseThresholdDb": {
-          "model_type": "SourceSelectionValue",
-        "source": "auto",
-          "value": -90
-        },
-        "clientDisconnectThresholdDb": {
-          "model_type": "SourceSelectionValue",
-        	 "source": "auto",
-          "value": -90
-        },
-        "eirpTxPower": {
-          "model_type": "SourceSelectionValue",
-        	 "source": "auto",
-          "value": 32
-        },
-        "perimeterDetectionEnabled": true,
-        "bestAPSteerType": "both",
-        "deauthAttackDetection": null,
-        "allowedChannelsPowerLevels": [],
-        "activeChannel": 6
-      },
-      "is5GHzU": {
-        "model_type": "ElementRadioConfiguration",
-        "radioType": "is5GHzU",
-        "channelNumber": 149,
-        "manualChannelNumber": 149,
-        "backupChannelNumber": 154,
-        "bannedChannels": [],
-        "allowedChannels": [],
-        "rxCellSizeDb": {
-          "model_type": "SourceSelectionValue",
-        	 "source": "auto",
-          "value": -90
-        },
-        "probeResponseThresholdDb": {
-          "model_type": "SourceSelectionValue",
-        	 "source": "auto",
-          "value": -90
-        },
-        "clientDisconnectThresholdDb": {
-          "model_type": "SourceSelectionValue",
-        	 "source": "auto",
-          "value": -90
-        },
-        "eirpTxPower": {
-          "model_type": "SourceSelectionValue",
-        	 "source": "auto",
-          "value": 32
-        },
-        "perimeterDetectionEnabled": true,
-        "bestAPSteerType": "both",
-        "deauthAttackDetection": null,
-        "allowedChannelsPowerLevels": [],
-        "activeChannel": 149
-      },
-      "is5GHzL": {
-        "model_type": "ElementRadioConfiguration",
-        "radioType": "is5GHzL",
-        "channelNumber": 36,
-        "manualChannelNumber": 36,
-        "backupChannelNumber": 44,
-        "bannedChannels": [],
-        "allowedChannels": [],
-        "rxCellSizeDb": {
-          "model_type": "SourceSelectionValue",
-        	 "source": "auto",
-          "value": -90
-        },
-        "probeResponseThresholdDb": {
-          "model_type": "SourceSelectionValue",
-        	 "source": "auto",
-          "value": -90
-        },
-        "clientDisconnectThresholdDb": {
-          "model_type": "SourceSelectionValue",
-        	 "source": "auto",
-          "value": -90
-        },
-        "eirpTxPower": {
-          "model_type": "SourceSelectionValue",
-        	 "source": "auto",
-          "value": 32
-        },
-        "perimeterDetectionEnabled": true,
-        "bestAPSteerType": "both",
-        "deauthAttackDetection": null,
-        "allowedChannelsPowerLevels": [],
-        "activeChannel": 36
-      }
+        "advancedRadioMap": {
+            "is2dot4GHz": {
+                "model_type": "RadioConfiguration",
+                "radioType": "is2dot4GHz",
+                "radioAdminState": "enabled",
+                "fragmentationThresholdBytes": 2346,
+                "uapsdState": "enabled",
+                "stationIsolation": "disabled",
+                "multicastRate": {
+                    "model_type": "SourceSelectionMulticast",
+                    "source": "profile",
+                    "value": "auto"
+                },
+                "managementRate": {
+                    "model_type": "SourceSelectionManagement",
+                    "source": "profile",
+                    "value": "auto"
+                },
+                "bestApSettings": {
+                    "model_type": "SourceSelectionSteering",
+                    "source": "manual",
+                    "value": {
+                        "model_type": "RadioBestApSettings",
+                        "mlComputed": true,
+                        "dropInSnrPercentage": 20,
+                        "minLoadFactor": 50
+                    }
+                },
+                "legacyBSSRate": "enabled",
+                "dtimPeriod": 2,
+                "deauthAttackDetection": null
+            },
+            "is5GHzU": {
+                "model_type": "RadioConfiguration",
+                "radioType": "is5GHzU",
+                "radioAdminState": "enabled",
+                "fragmentationThresholdBytes": 2346,
+                "uapsdState": "enabled",
+                "stationIsolation": "disabled",
+                "multicastRate": {
+                    "model_type": "SourceSelectionMulticast",
+                    "source": "profile",
+                    "value": "auto"
+                },
+                "managementRate": {
+                    "model_type": "SourceSelectionManagement",
+                    "source": "profile",
+                    "value": "auto"
+                },
+                "bestApSettings": {
+                    "model_type": "SourceSelectionSteering",
+                    "source": "manual",
+                    "value": {
+                        "model_type": "RadioBestApSettings",
+                        "mlComputed": true,
+                        "dropInSnrPercentage": 30,
+                        "minLoadFactor": 40
+                    }
+                },
+                "legacyBSSRate": "enabled",
+                "dtimPeriod": 2,
+                "deauthAttackDetection": null
+            },
+            "is5GHzL": {
+                "model_type": "RadioConfiguration",
+                "radioType": "is5GHzL",
+                "radioAdminState": "enabled",
+                "fragmentationThresholdBytes": 2346,
+                "uapsdState": "enabled",
+                "stationIsolation": "disabled",
+                "multicastRate": {
+                    "model_type": "SourceSelectionMulticast",
+                    "source": "profile",
+                    "value": "auto"
+                },
+                "managementRate": {
+                    "model_type": "SourceSelectionManagement",
+                    "source": "profile",
+                    "value": "auto"
+                },
+                "bestApSettings": {
+                    "model_type": "SourceSelectionSteering",
+                    "source": "manual",
+                    "value": {
+                        "model_type": "RadioBestApSettings",
+                        "mlComputed": true,
+                        "dropInSnrPercentage": 30,
+                        "minLoadFactor": 40
+                    }
+                },
+                "legacyBSSRate": "enabled",
+                "dtimPeriod": 2,
+                "deauthAttackDetection": null
+            }
+        }
     },
-    "advancedRadioMap": {
-      "is2dot4GHz": {
-        "model_type": "RadioConfiguration",
-        "radioType": "is2dot4GHz",
-        "radioAdminState": "enabled",
-        "fragmentationThresholdBytes": 2346,
-        "uapsdState": "enabled",
-        "stationIsolation": "disabled",
-        "managementRate": {
-          "model_type": "SourceSelectionManagement",
-          "source": "auto",
-          "value": "auto"
-        },
-        "bestApSettings": {
-        "model_type": "SourceSelectionSteering",
-          "source": "auto",
-          "value": {
-	          "model_type": "RadioBestApSettings",
-	          "mlComputed": true,
-	          "dropInSnrPercentage": 30,
-	          "minLoadFactor": 40
-          }
-        },
-        "legacyBSSRate": "enabled",
-        "deauthAttackDetection": null
-      },
-      "is5GHzU": {
-        "model_type": "RadioConfiguration",
-        "radioType": "is5GHzU",
-        "radioAdminState": "enabled",
-        "fragmentationThresholdBytes": 2346,
-        "uapsdState": "enabled",
-        "stationIsolation": "disabled",
-        "managementRate": {
-          "model_type": "SourceSelectionManagement",
-          "source": "auto",
-          "value": "auto"
-        },
-        "bestApSettings": {
-        "model_type": "SourceSelectionSteering",
-          "source": "auto",
-          "value": {
-	          "model_type": "RadioBestApSettings",
-	          "mlComputed": true,
-	          "dropInSnrPercentage": 30,
-	          "minLoadFactor": 40
-          }
-        },
-        "legacyBSSRate": "enabled",
-        "deauthAttackDetection": null
-      },
-      "is5GHzL": {
-        "model_type": "RadioConfiguration",
-        "radioType": "is5GHzL",
-        "radioAdminState": "enabled",
-        "fragmentationThresholdBytes": 2346,
-        "uapsdState": "enabled",
-        "stationIsolation": "disabled",
-        "managementRate": {
-          "model_type": "SourceSelectionManagement",
-          "source": "auto",
-          "value": "auto"
-        },
-        "bestApSettings": {
-        "model_type": "SourceSelectionSteering",
-          "source": "auto",
-          "value": {
-	          "model_type": "RadioBestApSettings",
-	          "mlComputed": true,
-	          "dropInSnrPercentage": 30,
-	          "minLoadFactor": 40
-          }
-        },
-        "legacyBSSRate": "enabled",
-        "deauthAttackDetection": null
-      }
-    }
-  },
-  "latitude": null,
-  "longitude": null,
-  "serial": "21P10C68818122",
-  "createdTimestamp": 1591653239821,
-  "lastModifiedTimestamp": 1591653241398
+    "latitude": null,
+    "longitude": null,
+    "baseMacAddress": {
+        "model_type": "MacAddress",
+        "address": "JPWi7y5T",
+        "addressAsString": "24:f5:a2:ef:2e:53"
+    },
+    "serial": "21P10C68818122",
+    "createdTimestamp": 0,
+    "lastModifiedTimestamp": 1611264546193
 }

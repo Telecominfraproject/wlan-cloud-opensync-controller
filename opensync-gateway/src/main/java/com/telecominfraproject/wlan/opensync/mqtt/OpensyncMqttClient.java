@@ -141,7 +141,7 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                         // new Topic("#", QoS.AT_LEAST_ONCE),
                         // new Topic("test/#", QoS.EXACTLY_ONCE),
                         // new Topic("foo/+/bar", QoS.AT_LEAST_ONCE)
-                        Topic[] topics = { new Topic("/ap/+/opensync", QoS.AT_LEAST_ONCE), };
+                        Topic[] topics = { new Topic("#", QoS.AT_LEAST_ONCE), };
 
                         futureConnection.subscribe(topics);
                         LOG.info("Subscribed to mqtt topics {}", Arrays.asList(topics));

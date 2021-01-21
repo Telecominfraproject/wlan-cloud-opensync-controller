@@ -178,7 +178,7 @@ public class OvsdbDaoTest {
         Profile profileRadius = OvsdbDaoTestUtilities.createRadiusProfile(DEFAULT_CUSTOMER_ID);
         apConfig.setRadiusProfiles(List.of(profileRadius));
         SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
-        ssidConfig.setRadiusServiceName("Radius-Profile");
+        ssidConfig.setRadiusServiceId(profileRadius.getId());
         Map<String, String> security = new HashMap<>();
         Location location = new Location();
         location.setName("Ottawa");
@@ -195,7 +195,7 @@ public class OvsdbDaoTest {
         Profile profileRadius = OvsdbDaoTestUtilities.createRadiusProfile(DEFAULT_CUSTOMER_ID);
         apConfig.setRadiusProfiles(List.of(profileRadius));
         SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
-        ssidConfig.setRadiusAccountingServiceName("Radius-Profile");
+        ssidConfig.setRadiusAccountingServiceId(profileRadius.getId());
         ssidConfig.setRadiusAcountingServiceInterval(60);
         Map<String, String> security = new HashMap<>();
         Location location = new Location();
@@ -215,13 +215,13 @@ public class OvsdbDaoTest {
         Profile profileRadius = OvsdbDaoTestUtilities.createRadiusProfile(DEFAULT_CUSTOMER_ID);
         apConfig.setRadiusProfiles(List.of(profileRadius));
         SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
-        ssidConfig.setRadiusAccountingServiceName("Radius-Profile");
+        ssidConfig.setRadiusAccountingServiceId(profileRadius.getId());
         Map<String, String> security = new HashMap<>();
         Location location = new Location();
         location.setName("Ottawa");
         apConfig.setEquipmentLocation(location);
         ovsdbDao.getRadiusAccountingConfiguration(apConfig, ssidConfig, security);
-        assert (security.get("radius_acct_interval").equals("0"));
+        assert (security.get("radius_acct_interval").equals("60"));
         assert (security.get("radius_acct_ip").equals("192.168.0.1"));
         assert (security.get("radius_acct_port").equals("1812"));
         assert (security.get("radius_acct_secret").equals("testing123"));

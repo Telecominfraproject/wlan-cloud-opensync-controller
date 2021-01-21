@@ -190,22 +190,21 @@ public class MqttStatsPublisher {
         long locationId = ce.getLocationId();
         long profileId = ce.getProfileId();
 
-        if (LOG.isTraceEnabled()) {
-            // prepare a JSONPrinter to format protobuf messages as
-            // json
-            List<Descriptors.Descriptor> protobufDescriptors = new ArrayList<>();
-            protobufDescriptors.addAll(OpensyncStats.getDescriptor().getMessageTypes());
-            TypeRegistry oldRegistry = TypeRegistry.newBuilder().add(protobufDescriptors).build();
-            JsonFormat.Printer jsonPrinter = JsonFormat.printer().preservingProtoFieldNames()
-                    .includingDefaultValueFields().usingTypeRegistry(oldRegistry);
+        // prepare a JSONPrinter to format protobuf messages as
+        // json
+        List<Descriptors.Descriptor> protobufDescriptors = new ArrayList<>();
+        protobufDescriptors.addAll(OpensyncStats.getDescriptor().getMessageTypes());
+        TypeRegistry oldRegistry = TypeRegistry.newBuilder().add(protobufDescriptors).build();
+        JsonFormat.Printer jsonPrinter = JsonFormat.printer().preservingProtoFieldNames()
+                .includingDefaultValueFields().usingTypeRegistry(oldRegistry);
 
-            try {
-                LOG.trace("MQTT OpensyncStats.report = {}", jsonPrinter.print(report));
+        try {
+            LOG.info(jsonPrinter.print(report));
 
-            } catch (InvalidProtocolBufferException e1) {
-                LOG.error("Couldn't parse OpensyncStats.report.", e1);
-            }
+        } catch (InvalidProtocolBufferException e1) {
+            LOG.error("Couldn't parse OpensyncStats.report.", e1);
         }
+        
 
         List<ServiceMetric> metricRecordList = new ArrayList<>();
 

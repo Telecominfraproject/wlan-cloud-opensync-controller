@@ -1,34 +1,32 @@
 [
-        {
-            "model_type": "Profile",
-            "id": 1,
-            "customerId": 2,
-            "profileType": "radius",
-            "name": "Radius-Profile",
-            "details": {
-                "model_type": "RadiusProfile",
-                "subnetConfiguration": null,
-                "serviceRegionMap": {
-                    "Ottawa": {
-                        "model_type": "RadiusServiceRegion",
-                        "serverMap": {
-                            "Radius-Profile": [
-                                {
-                                    "model_type": "RadiusServer",
-                                    "ipAddress": "192.168.0.1",
-                                    "secret": "testing123",
-                                    "authPort": 1812,
-                                    "timeout": null
-                                }
-                            ]
-                        },
-                        "regionName": "Ottawa"
-                    }
-                },
-                "profileType": "radius"
-            },
-            "createdTimestamp": 1601961451668,
-            "lastModifiedTimestamp": 1601961451668,
-            "childProfileIds": []
-        }
+  {
+    "model_type": "Profile",
+    "id": 1,
+    "customerId": 2,
+    "profileType": "radius",
+    "name": "Radius-Profile",
+    "details": {
+      "model_type": "RadiusProfile",
+      "primaryRadiusServer": {
+        "model_type": "RadiusServer",
+        "ipAddress": "192.168.0.1",
+        "secret": "testing123",
+        "authPort": 1812,
+        "timeout": null
+      },
+      "secondaryRadiusServer": {
+        "model_type": "RadiusServer",
+        "ipAddress": "192.168.0.2",
+        "secret": "testing123",
+        "authPort": 1812,
+        "timeout": null
+      },
+      "radiusSubnetConfiguration": null,
+      "profileType": "radius"
+    },
+    "createdTimestamp": 1611262628767,
+    "lastModifiedTimestamp": 1611262628767,
+    "childProfileIds": [
+    ]
+  }
 ]

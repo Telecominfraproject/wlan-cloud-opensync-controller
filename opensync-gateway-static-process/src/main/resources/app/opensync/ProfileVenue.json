@@ -1,43 +1,42 @@
 [
-	{
-		"model_type": "Profile",
-		"id": 18,
-		"customerId": 2,
-		"profileType": "passpoint_venue",
-		"name": "TipWlan-Passpoint-Venue",
-		"details": {
-			"model_type": "PasspointVenueProfile",
-			"venueNameSet": [
-				{
-					"model_type": "PasspointVenueName",
-					"locale": "fr_CA",
-					"dupleIso3Language": "fra",
-					"dupleName": "Exemple de lieu",
-					"defaultDupleSeparator": ":",
-					"venueUrl": "http://www.example.com/info-fra",
-					"asDuple": "fra:Exemple de lieu"
-				},
-				{
-					"model_type": "PasspointVenueName",
-					"locale": "en_CA",
-					"dupleIso3Language": "eng",
-					"dupleName": "Example passpoint_venue",
-					"defaultDupleSeparator": ":",
-					"venueUrl": "http://www.example.com/info-eng",
-					"asDuple": "eng:Example passpoint_venue"
-				}
-			],
-			"venueTypeAssignment": {
-				"model_type": "PasspointVenueTypeAssignment",
-				"venueDescription": "Research and Development Facility",
-				"venueGroupId": 2,
-				"venueTypeId": 8
-			},
-			"profileType": "passpoint_venue"
-		},
-		"createdTimestamp": 1606778369950,
-		"lastModifiedTimestamp": 1606778369950,
-		"childProfileIds": [
-		]
-	}
+{
+    "model_type": "Profile",
+    "id": 33,
+    "customerId": 2,
+    "profileType": "passpoint_venue",
+    "name": "venue-profile-2021-01-21T21:28:58.934Z",
+    "details": {
+        "model_type": "PasspointVenueProfile",
+        "venueNameSet": [
+            {
+                "model_type": "PasspointVenueName",
+                "locale": "fra",
+                "dupleIso3Language": "fra",
+                "dupleName": "Exemple de lieu",
+                "defaultDupleSeparator": ":",
+                "venueUrl": "http://www.example.com/info-fra",
+                "asDuple": "fra:Exemple de lieu"
+            },
+            {
+                "model_type": "PasspointVenueName",
+                "locale": "eng",
+                "dupleIso3Language": "eng",
+                "dupleName": "Example passpoint_venue",
+                "defaultDupleSeparator": ":",
+                "venueUrl": "http://www.example.com/info-eng",
+                "asDuple": "eng:Example passpoint_venue"
+            }
+        ],
+        "venueTypeAssignment": {
+            "model_type": "PasspointVenueTypeAssignment",
+            "venueDescription": "Research and Development Facility",
+            "venueGroupId": 2,
+            "venueTypeId": 8
+        },
+        "profileType": "passpoint_venue"
+    },
+    "createdTimestamp": 1611264538947,
+    "lastModifiedTimestamp": 1611264538947,
+    "childProfileIds": []
+}
 ]
