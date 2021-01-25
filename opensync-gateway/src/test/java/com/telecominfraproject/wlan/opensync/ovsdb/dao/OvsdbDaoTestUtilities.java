@@ -557,28 +557,34 @@ public class OvsdbDaoTestUtilities {
         profileRadius.setProfileType(ProfileType.radius);
         profileRadius.setName("Radius-Profile");
 
-        RadiusProfile radiusDetails = new RadiusProfile();
-        RadiusServer primaryRadiusServer = new RadiusServer();
-        primaryRadiusServer.setAuthPort(1812);
+        RadiusProfile radiusProfileDetails = new RadiusProfile();
+        RadiusServer primaryRadiusAuthServer = new RadiusServer();
+        primaryRadiusAuthServer.setPort(1812);
         try {
-            primaryRadiusServer.setIpAddress(InetAddress.getByName("192.168.0.1"));
+            primaryRadiusAuthServer.setIpAddress(InetAddress.getByName("192.168.0.1"));
+            primaryRadiusAuthServer.setPort(RadiusProfile.DEFAULT_RADIUS_AUTH_PORT);
+            primaryRadiusAuthServer.setSecret("secret");
+            primaryRadiusAuthServer.setTimeout(RadiusProfile.DEFAULT_RADIUS_TIMEOUT);
         } catch (UnknownHostException e) {
             throw new IllegalArgumentException(e);
         }
-        primaryRadiusServer.setSecret("testing123");
-        radiusDetails.setPrimaryRadiusServer(primaryRadiusServer);
-        
-        RadiusServer secondaryRadiusServer = new RadiusServer();
-        secondaryRadiusServer.setAuthPort(1812);
+        radiusProfileDetails.setPrimaryRadiusAuthServer(primaryRadiusAuthServer);
+
+        RadiusServer primaryRadiusAccountingServer = new RadiusServer();
+        primaryRadiusAccountingServer.setPort(1812);
         try {
-            secondaryRadiusServer.setIpAddress(InetAddress.getByName("192.168.0.2"));
+            primaryRadiusAccountingServer.setIpAddress(InetAddress.getByName("192.168.0.1"));
+            primaryRadiusAccountingServer.setPort(RadiusProfile.DEFAULT_RADIUS_ACCOUNTING_PORT);
+            primaryRadiusAccountingServer.setSecret("secret");
+            primaryRadiusAccountingServer.setTimeout(RadiusProfile.DEFAULT_RADIUS_TIMEOUT);
         } catch (UnknownHostException e) {
             throw new IllegalArgumentException(e);
         }
-        secondaryRadiusServer.setSecret("testing123");
-        radiusDetails.setSecondaryRadiusServer(secondaryRadiusServer);
+        radiusProfileDetails.setPrimaryRadiusAccountingServer(primaryRadiusAccountingServer);
         
-        profileRadius.setDetails(radiusDetails);
+        
+        
+        profileRadius.setDetails(radiusProfileDetails);
         profileRadius.setId(RADIUS_PROFILE_ID);
         
         return profileRadius;

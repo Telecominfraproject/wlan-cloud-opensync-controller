@@ -21,7 +21,6 @@
       "keyRefresh": 0,
       "noLocalSubnets": false,
       "radiusServiceId": 0,
-      "radiusAccountingServiceId": 0,
       "radiusAcountingServiceInterval": 60,
       "captivePortalId": null,
       "bandwidthLimitDown": 0,

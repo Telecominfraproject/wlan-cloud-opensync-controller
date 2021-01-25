@@ -7,21 +7,13 @@
     "name": "Radius-Profile",
     "details": {
       "model_type": "RadiusProfile",
-      "primaryRadiusServer": {
+      "primaryRadiusAuthServer": {
         "model_type": "RadiusServer",
         "ipAddress": "192.168.0.1",
         "secret": "testing123",
-        "authPort": 1812,
+        "port": 1812,
         "timeout": null
       },
-      "secondaryRadiusServer": {
-        "model_type": "RadiusServer",
-        "ipAddress": "192.168.0.2",
-        "secret": "testing123",
-        "authPort": 1812,
-        "timeout": null
-      },
-      "radiusSubnetConfiguration": null,
       "profileType": "radius"
     },
     "createdTimestamp": 1611262628767,

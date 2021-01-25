@@ -44,6 +44,7 @@ import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.telecominfraproject.wlan.profile.network.models.GreTunnelConfiguration;
+import com.telecominfraproject.wlan.profile.radius.models.RadiusProfile;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.vmware.ovsdb.exception.OvsdbClientException;
 import com.vmware.ovsdb.protocol.operation.notation.Atom;
@@ -177,16 +178,21 @@ public class OvsdbDaoTest {
         OpensyncAPConfig apConfig = new OpensyncAPConfig();
         Profile profileRadius = OvsdbDaoTestUtilities.createRadiusProfile(DEFAULT_CUSTOMER_ID);
         apConfig.setRadiusProfiles(List.of(profileRadius));
+        Profile ssidProfile = new Profile();
         SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
         ssidConfig.setRadiusServiceId(profileRadius.getId());
+        ssidConfig.setRadiusServiceId(profileRadius.getId());
+        ssidConfig.setRadiusAcountingServiceInterval(60);
+        ssidProfile.setDetails(ssidConfig);
+        apConfig.setSsidProfile(List.of(ssidProfile));
         Map<String, String> security = new HashMap<>();
         Location location = new Location();
         location.setName("Ottawa");
         apConfig.setEquipmentLocation(location);
         ovsdbDao.getRadiusConfiguration(apConfig, ssidConfig, security);
         assert (security.get("radius_server_ip").equals("192.168.0.1"));
-        assert (security.get("radius_server_port").equals("1812"));
-        assert (security.get("radius_server_secret").equals("testing123"));
+        assert (security.get("radius_server_port").equals(String.valueOf(RadiusProfile.DEFAULT_RADIUS_AUTH_PORT)));
+        assert (security.get("radius_server_secret").equals(RadiusProfile.DEFAULT_RADIUS_SECRET));
     }
 
     @Test
@@ -194,9 +200,16 @@ public class OvsdbDaoTest {
         OpensyncAPConfig apConfig = new OpensyncAPConfig();
         Profile profileRadius = OvsdbDaoTestUtilities.createRadiusProfile(DEFAULT_CUSTOMER_ID);
         apConfig.setRadiusProfiles(List.of(profileRadius));
+        Profile ssidProfile = new Profile();
+        ssidProfile.setCustomerId(DEFAULT_CUSTOMER_ID);
+        ssidProfile.setName("SsidProfile");
+        ssidProfile.setProfileType(ProfileType.ssid);
         SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
-        ssidConfig.setRadiusAccountingServiceId(profileRadius.getId());
+        
+        ssidConfig.setRadiusServiceId(OvsdbDaoTestUtilities.RADIUS_PROFILE_ID);
         ssidConfig.setRadiusAcountingServiceInterval(60);
+        ssidProfile.setDetails(ssidConfig);
+        apConfig.setSsidProfile(List.of(ssidProfile));
         Map<String, String> security = new HashMap<>();
         Location location = new Location();
         location.setName("Ottawa");
@@ -205,8 +218,8 @@ public class OvsdbDaoTest {
         assert (Integer.valueOf(security.get("radius_acct_interval"))
                 .equals(ssidConfig.getRadiusAcountingServiceInterval()));
         assert (security.get("radius_acct_ip").equals("192.168.0.1"));
-        assert (security.get("radius_acct_port").equals("1812"));
-        assert (security.get("radius_acct_secret").equals("testing123"));
+        assert (security.get("radius_acct_port").equals("1813"));
+        assert (security.get("radius_acct_secret").equals("secret"));
     }
 
     @Test
@@ -215,16 +228,17 @@ public class OvsdbDaoTest {
         Profile profileRadius = OvsdbDaoTestUtilities.createRadiusProfile(DEFAULT_CUSTOMER_ID);
         apConfig.setRadiusProfiles(List.of(profileRadius));
         SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
-        ssidConfig.setRadiusAccountingServiceId(profileRadius.getId());
+        ssidConfig.setRadiusServiceId(OvsdbDaoTestUtilities.RADIUS_PROFILE_ID);
         Map<String, String> security = new HashMap<>();
         Location location = new Location();
         location.setName("Ottawa");
         apConfig.setEquipmentLocation(location);
         ovsdbDao.getRadiusAccountingConfiguration(apConfig, ssidConfig, security);
+
         assert (security.get("radius_acct_interval").equals("60"));
         assert (security.get("radius_acct_ip").equals("192.168.0.1"));
-        assert (security.get("radius_acct_port").equals("1812"));
-        assert (security.get("radius_acct_secret").equals("testing123"));
+        assert (security.get("radius_acct_port").equals("1813"));
+        assert (security.get("radius_acct_secret").equals("secret"));
     }
 
     @Ignore
