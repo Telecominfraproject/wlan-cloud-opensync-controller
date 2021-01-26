@@ -3455,6 +3455,14 @@ public class OvsdbDao {
 
     private void configureGreTunnel(OvsdbClient ovsdbClient, Profile apNetworkConfiguration) {
 
+//        NAT               false
+//        if_name        gre1
+//        if_type          gre
+//        gre_local_inet_addr (Not needed): WAN IP shall be used
+//        gre_remote_inet_addr  <Tunnel end point IP address>
+//        gre_ifname: Not needed
+        
+        
         try {
             LOG.debug("Configure Gre Tunnel {}", apNetworkConfiguration);
             List<Operation> operations = new ArrayList<>();
@@ -3462,10 +3470,6 @@ public class OvsdbDao {
             ApNetworkConfiguration details = (ApNetworkConfiguration) apNetworkConfiguration.getDetails();
 
             for (GreTunnelConfiguration greTunnelConfiguration : details.getGreTunnelConfigurations()) {
-                if (greTunnelConfiguration.getGreParentIfName() == null) {
-                    LOG.info("Cannot configure GRE profile without gre_ifname");
-                    continue;
-                }
 
                 if (greTunnelConfiguration.getGreRemoteInetAddr() == null) {
                     LOG.info("Cannot configure GRE profile without gre_remote_inet_addr");
@@ -3478,27 +3482,14 @@ public class OvsdbDao {
                 }
 
                 Map<String, Value> tableColumns = new HashMap<>();
-                tableColumns.put("gre_ifname", new Atom<>(greTunnelConfiguration.getGreParentIfName()));
                 tableColumns.put("gre_remote_inet_addr",
                         new Atom<>(greTunnelConfiguration.getGreRemoteInetAddr().getHostAddress()));
                 tableColumns.put("if_name", new Atom<>(greTunnelConfiguration.getGreTunnelName()));
-
-                // optional
-                if (greTunnelConfiguration.getGreLocalInetAddr() != null) {
-                    tableColumns.put("gre_local_inet_addr",
-                            new Atom<>(greTunnelConfiguration.getGreLocalInetAddr().getHostAddress()));
-                }
-
-                // optional
-                if (greTunnelConfiguration.getGreRemoteMacAddr() != null) {
-                    tableColumns.put("gre_remote_mac_addr",
-                            new Atom<>(greTunnelConfiguration.getGreRemoteMacAddr().getAddressAsString()));
-                }
-
                 tableColumns.put("if_type", new Atom<>("gre"));
-                tableColumns.put("network", new Atom<>(true));
-                tableColumns.put("NAT", new Atom<>(false));
                 tableColumns.put("enabled", new Atom<>(true));
+                tableColumns.put("network", new Atom<>(true));
+                tableColumns.put("dhcp_sniff", new Atom<>(true));
+                tableColumns.put("NAT", new Atom<>(false));
 
                 operations.add(new Insert(wifiInetConfigDbTable, new Row(tableColumns)));
 
@@ -3562,6 +3553,12 @@ public class OvsdbDao {
     private void createVlanInterfaceInGreTunnel(OvsdbClient ovsdbClient, int vlanId, String greTunnel) {
         try {
 
+            
+//            if_name        gre_<vlan id>
+//            if_type          vlan
+//            parent_ifname  gre
+//            vlan_id         <vlan id>
+            
             List<Operation> operations = new ArrayList<>();
             Map<String, Value> tableColumns = new HashMap<>();
 
@@ -3575,22 +3572,18 @@ public class OvsdbDao {
 
             tableColumns.put("if_type", new Atom<>("vlan"));
             tableColumns.put("vlan_id", new Atom<>(vlanId));
-            tableColumns.put("if_name", new Atom<>(parentTunnel.ifName + "_" + Integer.toString(vlanId)));
-            tableColumns.put("parent_ifname", new Atom<>(parentTunnel.ifName));
+            tableColumns.put("if_name", new Atom<>("gre_" + Integer.toString(vlanId)));
+            tableColumns.put("parent_ifname", new Atom<>("gre"));
             tableColumns.put("enabled", new Atom<>(true));
             tableColumns.put("network", new Atom<>(true));
             tableColumns.put("dhcp_sniff", new Atom<>(true));
-            tableColumns.put("ip_assign_scheme", new Atom<>(parentTunnel.ipAssignScheme));
-            tableColumns.put("NAT", new Atom<>(parentTunnel.nat));
-
-            tableColumns.put("mtu", new Atom<>(1500));
 
             Row row = new Row(tableColumns);
 
-            if (inetConfigMap.containsKey(parentTunnel.ifName + "_" + Integer.toString(vlanId))) {
+            if (inetConfigMap.containsKey("gre_" + Integer.toString(vlanId))) {
                 List<Condition> conditions = new ArrayList<>();
                 conditions.add(new Condition("vlan_id", Function.EQUALS, new Atom<>(vlanId)));
-                conditions.add(new Condition("parent_ifname", Function.EQUALS, new Atom<>(parentTunnel.ifName)));
+                conditions.add(new Condition("parent_ifname", Function.EQUALS, new Atom<>("gre")));
             } else {
                 operations.add(new Insert(wifiInetConfigDbTable, row));
             }
