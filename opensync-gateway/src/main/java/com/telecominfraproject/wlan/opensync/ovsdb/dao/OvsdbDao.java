@@ -62,14 +62,11 @@ import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiVifConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpDbStatus;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpDeviceType;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpManufId;
-import com.telecominfraproject.wlan.opensync.util.OvsdbStringConstants;
 import com.telecominfraproject.wlan.opensync.util.OvsdbToWlanCloudTypeMappingUtility;
 import com.telecominfraproject.wlan.profile.bonjour.models.BonjourGatewayProfile;
 import com.telecominfraproject.wlan.profile.bonjour.models.BonjourServiceSet;
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalAuthenticationType;
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalConfiguration;
-import com.telecominfraproject.wlan.profile.metrics.ServiceMetricsChannelUtilizationSurveyType;
-import com.telecominfraproject.wlan.profile.metrics.ServiceMetricsStatsReportFormat;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.common.ManagedFileInfo;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
@@ -120,7 +117,6 @@ import com.vmware.ovsdb.protocol.operation.result.OperationResult;
 import com.vmware.ovsdb.protocol.operation.result.SelectResult;
 import com.vmware.ovsdb.protocol.operation.result.UpdateResult;
 import com.vmware.ovsdb.protocol.schema.DatabaseSchema;
-import com.vmware.ovsdb.protocol.schema.TableSchema;
 import com.vmware.ovsdb.service.OvsdbClient;
 
 @Component
@@ -199,7 +195,7 @@ public class OvsdbDao {
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.externalFileStoreURL:https://localhost:9096}")
     private String externalFileStoreURL;
 
-    public static final String FILESTORE = "/filestore";
+    public static final String FILESTORE = "filestore/";
     public static final String HTTP = "http";
 
     public static final String ovsdbName = "Open_vSwitch";
@@ -2695,26 +2691,19 @@ public class OvsdbDao {
             }
 
             updateColumns.put("mode", new Atom<>("ap"));
+            @SuppressWarnings("unchecked")
+            com.vmware.ovsdb.protocol.operation.notation.Map<String, String> captivePortalMap = com.vmware.ovsdb.protocol.operation.notation.Map
+                    .of(captiveMap);
+            updateColumns.put("captive_portal", captivePortalMap);
 
-            // TODO: remove when captive portal support available in AP load
-            DatabaseSchema dbSchema = ovsdbClient.getSchema(ovsdbName).join();
-            TableSchema tableSchema = dbSchema.getTables().get(wifiVifConfigDbTable);
-            if (tableSchema.getColumns().containsKey("captive_portal")) {
-                @SuppressWarnings("unchecked")
-                com.vmware.ovsdb.protocol.operation.notation.Map<String, String> captivePortalMap = com.vmware.ovsdb.protocol.operation.notation.Map
-                        .of(captiveMap);
-                updateColumns.put("captive_portal", captivePortalMap);
-            }
-            if (tableSchema.getColumns().containsKey("captive_allowlist")) {
-                if (walledGardenAllowlist != null && !walledGardenAllowlist.isEmpty()) {
-                    Set<Atom<String>> atomMacList = new HashSet<>();
-                    walledGardenAllowlist.stream().forEach(allow -> atomMacList.add(new Atom<>(allow)));
-                    com.vmware.ovsdb.protocol.operation.notation.Set allowListSet = com.vmware.ovsdb.protocol.operation.notation.Set
-                            .of(atomMacList);
-                    updateColumns.put("captive_allowlist", allowListSet);
-                } else {
-                    updateColumns.put("captive_allowlist", new com.vmware.ovsdb.protocol.operation.notation.Set());
-                }
+            if (walledGardenAllowlist != null && !walledGardenAllowlist.isEmpty()) {
+                Set<Atom<String>> atomMacList = new HashSet<>();
+                walledGardenAllowlist.stream().forEach(allow -> atomMacList.add(new Atom<>(allow)));
+                com.vmware.ovsdb.protocol.operation.notation.Set allowListSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                        .of(atomMacList);
+                updateColumns.put("captive_allowlist", allowListSet);
+            } else {
+                updateColumns.put("captive_allowlist", new com.vmware.ovsdb.protocol.operation.notation.Set());
             }
 
             // TODO: when AP support for Bonjour Gateway set values
@@ -3455,14 +3444,13 @@ public class OvsdbDao {
 
     private void configureGreTunnel(OvsdbClient ovsdbClient, Profile apNetworkConfiguration) {
 
-//        NAT               false
-//        if_name        gre1
-//        if_type          gre
-//        gre_local_inet_addr (Not needed): WAN IP shall be used
-//        gre_remote_inet_addr  <Tunnel end point IP address>
-//        gre_ifname: Not needed
-        
-        
+        // NAT false
+        // if_name gre1
+        // if_type gre
+        // gre_local_inet_addr (Not needed): WAN IP shall be used
+        // gre_remote_inet_addr <Tunnel end point IP address>
+        // gre_ifname: Not needed
+
         try {
             LOG.debug("Configure Gre Tunnel {}", apNetworkConfiguration);
             List<Operation> operations = new ArrayList<>();
@@ -3553,12 +3541,11 @@ public class OvsdbDao {
     private void createVlanInterfaceInGreTunnel(OvsdbClient ovsdbClient, int vlanId, String greTunnel) {
         try {
 
-            
-//            if_name        gre_<vlan id>
-//            if_type          vlan
-//            parent_ifname  gre
-//            vlan_id         <vlan id>
-            
+            // if_name gre_<vlan id>
+            // if_type vlan
+            // parent_ifname gre
+            // vlan_id <vlan id>
+
             List<Operation> operations = new ArrayList<>();
             Map<String, Value> tableColumns = new HashMap<>();
 
@@ -3823,32 +3810,69 @@ public class OvsdbDao {
                         && (profileCaptive.getDetails() != null)) {
                     CaptivePortalConfiguration captiveProfileDetails = ((CaptivePortalConfiguration) profileCaptive
                             .getDetails());
+
+                    // +#define SCHEMA_CONSTS_PAGE_TITLE "page_title"
+                    if (captiveProfileDetails.getBrowserTitle() != null) {
+                        captiveMap.put("session_timeout",
+                                String.valueOf(captiveProfileDetails.getSessionTimeoutInMinutes()));
+                        captiveMap.put("page_title", captiveProfileDetails.getBrowserTitle());
+                    }
+                    if (captiveProfileDetails.getAuthenticationType().equals(CaptivePortalAuthenticationType.radius)) {
+                        Optional<Profile> optional = opensyncApConfig.getRadiusProfiles().stream()
+                                .filter(p -> p.getId() == captiveProfileDetails.getRadiusServiceId()).findFirst();
+                        if (optional != null && optional.isPresent()) {
+                            Profile profile = optional.get();
+                            RadiusProfile radiusProfile = (RadiusProfile) profile.getDetails();
+                            captiveMap.put("radius_server_ip", String.valueOf(
+                                    radiusProfile.getPrimaryRadiusAuthServer().getIpAddress().getHostAddress()));
+
+                            captiveMap.put("radius_server_port",
+                                    String.valueOf(radiusProfile.getPrimaryRadiusAuthServer().getPort()));
+
+                            captiveMap.put("radius_server_secret",
+                                    String.valueOf(radiusProfile.getPrimaryRadiusAuthServer().getSecret()));
+                            if (captiveProfileDetails.getRadiusAuthMethod() != null) {
+
+                                captiveMap.put("radius_auth_type",
+                                        String.valueOf(captiveProfileDetails.getRadiusAuthMethod()));
+                            }
+                        }
+                    }
+
+                    if (captiveProfileDetails.getRedirectURL() != null) {
+                        captiveMap.put("redirect_url", captiveProfileDetails.getRedirectURL());
+                    }
                     captiveMap.put("session_timeout",
                             String.valueOf(captiveProfileDetails.getSessionTimeoutInMinutes()));
-                    captiveMap.put("redirect_url", captiveProfileDetails.getRedirectURL());
+
                     captiveMap.put("browser_title", captiveProfileDetails.getBrowserTitle());
                     captiveMap.put("splash_page_title", captiveProfileDetails.getHeaderContent());
-
                     captiveMap.put("acceptance_policy", captiveProfileDetails.getUserAcceptancePolicy());
                     captiveMap.put("login_success_text", captiveProfileDetails.getSuccessPageMarkdownText());
                     captiveMap.put("authentication",
                             getCaptiveAuthentication(captiveProfileDetails.getAuthenticationType()));
-                    captiveMap.put("username_password_file", getCaptiveManagedFileUrl("usernamePasswordFileURL",
-                            captiveProfileDetails.getUsernamePasswordFile()));
-                    // captiveMap.put("externalCaptivePortalURL",
-                    // captiveProfileDetails.getExternalCaptivePortalURL());
-                    // captiveMap.put("backgroundPosition",
-                    // captiveProfileDetails.getBackgroundPosition().toString());
-                    // captiveMap.put("backgroundRepeat",
-                    // captiveProfileDetails.getBackgroundRepeat().toString());
+                    if (captiveProfileDetails.getUsernamePasswordFile() != null) {
+                        captiveMap
+                                .put("username_password_file",
+                                        ManagedFileInfo
+                                                .resolveWithPopulatedHostname(
+                                                        captiveProfileDetails.getUsernamePasswordFile(), FILESTORE)
+                                                .getApExportUrl());
+                    }
+                    if (captiveProfileDetails.getLogoFile() != null) {
+                        captiveMap.put("splash_page_logo",
+                                ManagedFileInfo
+                                        .resolveWithPopulatedHostname(captiveProfileDetails.getLogoFile(), FILESTORE)
+                                        .getApExportUrl());
+                    }
+                    if (captiveProfileDetails.getBackgroundFile() != null) {
+                        captiveMap.put("splash_page_background_logo", ManagedFileInfo
+                                .resolveWithPopulatedHostname(captiveProfileDetails.getBackgroundFile(), FILESTORE)
+                                .getApExportUrl());
+                    }
+                    LOG.debug("captiveMap {}", captiveMap);
                     walledGardenAllowlist.addAll(captiveProfileDetails.getWalledGardenAllowlist());
 
-                    captiveMap.put("splash_page_logo",
-                            getCaptiveManagedFileUrl("logoFileURL", captiveProfileDetails.getLogoFile()));
-                    captiveMap.put("splash_page_background_logo",
-                            getCaptiveManagedFileUrl("backgroundFileURL", captiveProfileDetails.getBackgroundFile()));
-
-                    LOG.debug("captiveMap {}", captiveMap);
                 }
             }
         }
@@ -3900,28 +3924,6 @@ public class OvsdbDao {
                 }
             }
         }
-    }
-
-    /**
-     * 
-     * @param fileDesc
-     * @param fileInfo
-     * @return Url for captive portal file
-     */
-    String getCaptiveManagedFileUrl(String fileDesc, ManagedFileInfo fileInfo) {
-        if ((fileInfo == null) || (fileInfo.getApExportUrl() == null)) {
-            return "";
-        }
-        if (fileInfo.getApExportUrl().startsWith(HTTP)) {
-            return fileInfo.getApExportUrl();
-        }
-        if (externalFileStoreURL == null) {
-            LOG.error("Missing externalFileStoreURL)");
-            return "";
-        }
-        LOG.debug("Captive file {}: {}", fileDesc, externalFileStoreURL + FILESTORE + "/" + fileInfo.getApExportUrl());
-
-        return externalFileStoreURL + FILESTORE + "/" + fileInfo.getApExportUrl();
     }
 
     /**
@@ -4767,249 +4769,9 @@ public class OvsdbDao {
     }
 
     public void configureStatsFromProfile(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
+        // TODO: this will be refactored when the opensync profile for stats is
+        // re-worked
         configureStats(ovsdbClient);
-
-        // if (opensyncApConfig.getMetricsProfiles() == null ||
-        // opensyncApConfig.getMetricsProfiles().isEmpty()) {
-        // configureStats(ovsdbClient);
-        // } else {
-        //
-        // List<Operation> operations = new ArrayList<>();
-        //
-        // for (Profile metricsProfile : opensyncApConfig.getMetricsProfiles())
-        // {
-        //
-        // ServiceMetricsCollectionConfigProfile details =
-        // ((ServiceMetricsCollectionConfigProfile) metricsProfile
-        // .getDetails());
-        //
-        // for (ServiceMetricDataType dataType :
-        // details.getMetricConfigParameterMap().keySet()) {
-        //
-        // if (dataType.equals(ServiceMetricDataType.ApNode)
-        // || dataType.equals(ServiceMetricDataType.Neighbour)
-        // || dataType.equals(ServiceMetricDataType.Channel)) {
-        //
-        // details.getMetricConfigParameterMap().get(dataType).stream().forEach(c
-        // -> {
-        // ServiceMetricSurveyConfigParameters parameters =
-        // (ServiceMetricSurveyConfigParameters) c;
-        //
-        // Map<String, Integer> thresholdMap = new HashMap<>();
-        // thresholdMap.put("max_delay",
-        // parameters.getDelayMillisecondsThreshold());
-        // thresholdMap.put("util",
-        // parameters.getPercentUtilizationThreshold());
-        //
-        // @SuppressWarnings("unchecked")
-        // com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer>
-        // thresholds = com.vmware.ovsdb.protocol.operation.notation.Map
-        // .of(thresholdMap);
-        //
-        // RadioType radioType = parameters.getRadioType();
-        // ServiceMetricsChannelUtilizationSurveyType channelType =
-        // parameters.getChannelSurveyType();
-        // int scanInterval = parameters.getScanIntervalMillis();
-        // ServiceMetricsStatsReportFormat format =
-        // parameters.getStatsReportFormat();
-        // int reportingInterval = parameters.getReportingIntervalSeconds();
-        // int samplingInterval = parameters.getSamplingInterval();
-        //
-        // if (dataType.equals(ServiceMetricDataType.ApNode)
-        // || dataType.equals(ServiceMetricDataType.Channel)) {
-        // provisionWifiStatsConfigFromProfile("survey",
-        // getAllowedChannels(ovsdbClient),
-        // radioType, channelType, scanInterval, format, reportingInterval,
-        // samplingInterval, operations, thresholds);
-        // if (dataType.equals(ServiceMetricDataType.ApNode)) {
-        // // extra reports that are part of ApNode
-        // // metric
-        // if
-        // (channelType.equals(ServiceMetricsChannelUtilizationSurveyType.ON_CHANNEL))
-        // {
-        // provisionWifiStatsConfigFromProfile("device", reportingInterval,
-        // samplingInterval, operations);
-        // if (((ApNetworkConfiguration)
-        // opensyncApConfig.getApProfile().getDetails())
-        // .getSyntheticClientEnabled()) {
-        // provisionWifiStatsConfigFromProfile("network_probe",
-        // reportingInterval,
-        // samplingInterval, operations);
-        // }
-        // }
-        //
-        // }
-        // } else if (dataType.equals(ServiceMetricDataType.Neighbour)) {
-        // provisionWifiStatsConfigFromProfile("neighbor",
-        // getAllowedChannels(ovsdbClient),
-        // radioType, channelType, scanInterval, format, reportingInterval,
-        // samplingInterval, operations, thresholds);
-        // }
-        //
-        // });
-        //
-        // } else if (dataType.equals(ServiceMetricDataType.ApSsid)
-        // || dataType.equals(ServiceMetricDataType.Client)) {
-        // details.getMetricConfigParameterMap().get(dataType).stream().forEach(c
-        // -> {
-        // ServiceMetricRadioConfigParameters parameters =
-        // (ServiceMetricRadioConfigParameters) c;
-        //
-        // RadioType radioType = parameters.getRadioType();
-        // int reportingInterval = parameters.getReportingIntervalSeconds();
-        // int samplingInterval = parameters.getSamplingInterval();
-        //
-        // provisionWifiStatsConfigFromProfile("client", radioType,
-        // reportingInterval,
-        // samplingInterval, operations);
-        //
-        // provisionWifiStatsConfigFromProfile("video_voice", reportingInterval,
-        // samplingInterval,
-        // operations);
-        // LOG.debug("{}", BaseJsonModel.toPrettyJsonString(parameters));
-        // });
-        // } else {
-        // details.getMetricConfigParameterMap().get(dataType).stream().forEach(c
-        // -> {
-        // ServiceMetricConfigParameters parameters =
-        // (ServiceMetricConfigParameters) c;
-        // int reportingInterval = parameters.getReportingIntervalSeconds();
-        // int samplingInterval = parameters.getSamplingInterval();
-        // provisionWifiStatsConfigFromProfile("video_voice", reportingInterval,
-        // samplingInterval,
-        // operations);
-        // // TODO: add when schema supports
-        // // provisionWifiStatsConfigFromProfile("event",
-        // // reportingInterval,
-        // // samplingInterval, operations);
-        //
-        // LOG.debug("{}", BaseJsonModel.toPrettyJsonString(parameters));
-        // });
-        // }
-        //
-        // }
-        //
-        // }
-        //
-        // if (!operations.isEmpty()) {
-        // LOG.debug("Sending batch of operations : {} ", operations);
-        //
-        // try {
-        // CompletableFuture<OperationResult[]> fResult =
-        // ovsdbClient.transact(ovsdbName, operations);
-        // OperationResult[] result = fResult.get(ovsdbTimeoutSec,
-        // TimeUnit.SECONDS);
-        //
-        // if (LOG.isDebugEnabled()) {
-        // LOG.debug("Updated {}:", wifiStatsConfigDbTable);
-        //
-        // for (OperationResult res : result) {
-        // LOG.debug("Op Result {}", res);
-        // }
-        // }
-        // } catch (OvsdbClientException | TimeoutException | ExecutionException
-        // | InterruptedException e) {
-        // throw new RuntimeException(e);
-        // }
-        // }
-        //
-        // }
-
-    }
-
-    private void provisionWifiStatsConfigFromProfile(String statsType, RadioType radioType, int reportingInterval,
-            int samplingInterval, List<Operation> operations) {
-
-        Map<String, Value> rowColumns = new HashMap<>();
-        rowColumns.put("radio_type",
-                new Atom<>(OvsdbToWlanCloudTypeMappingUtility.getOvsdbRadioFreqBandForRadioType(radioType)));
-        rowColumns.put("reporting_interval", new Atom<>(reportingInterval));
-        rowColumns.put("report_type", new Atom<>("raw"));
-        rowColumns.put("sampling_interval", new Atom<>(samplingInterval));
-        rowColumns.put("stats_type", new Atom<>(statsType));
-
-        Row updateRow = new Row(rowColumns);
-
-        Insert newStatConfig = new Insert(wifiStatsConfigDbTable, updateRow);
-        if (!operations.contains(newStatConfig)) {
-            operations.add(newStatConfig);
-        }
-
-    }
-
-    private void provisionWifiStatsConfigFromProfile(String statsType, int reportingInterval, int samplingInterval,
-            List<Operation> operations) {
-
-        Map<String, Value> rowColumns = new HashMap<>();
-        rowColumns.put("radio_type", new Atom<>(OvsdbStringConstants.OVSDB_FREQ_BAND_2pt4G));
-        rowColumns.put("reporting_interval", new Atom<>(reportingInterval));
-        rowColumns.put("report_type", new Atom<>("raw"));
-        rowColumns.put("sampling_interval", new Atom<>(samplingInterval));
-        rowColumns.put("stats_type", new Atom<>(statsType));
-
-        Row updateRow = new Row(rowColumns);
-
-        Insert newStatConfig = new Insert(wifiStatsConfigDbTable, updateRow);
-        if (!operations.contains(newStatConfig)) {
-            // don't want the same stat 2x
-            operations.add(newStatConfig);
-        }
-
-    }
-
-    private void provisionWifiStatsConfigFromProfile(String statsType, Map<String, Set<Integer>> allowedChannels,
-            RadioType radioType, ServiceMetricsChannelUtilizationSurveyType channelType, int scanInterval,
-            ServiceMetricsStatsReportFormat format, int reportingInterval, int samplingInterval,
-            List<Operation> operations, com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer> thresholds) {
-
-        if (channelType.equals(ServiceMetricsChannelUtilizationSurveyType.ON_CHANNEL)) {
-
-            Map<String, Value> rowColumns = new HashMap<>();
-            rowColumns.put("radio_type",
-                    new Atom<>(OvsdbToWlanCloudTypeMappingUtility.getOvsdbRadioFreqBandForRadioType(radioType)));
-            rowColumns.put("reporting_interval", new Atom<>(reportingInterval));
-            rowColumns.put("report_type", new Atom<>("raw"));
-            rowColumns.put("sampling_interval", new Atom<>(samplingInterval));
-            rowColumns.put("stats_type", new Atom<>(statsType));
-            rowColumns.put("survey_interval_ms", new Atom<>(scanInterval));
-            rowColumns.put("survey_type", new Atom<>(
-                    OvsdbToWlanCloudTypeMappingUtility.getOvsdbStatsSurveyTypeFromProfileSurveyType(channelType)));
-
-            Row updateRow = new Row(rowColumns);
-
-            Insert newStatConfig = new Insert(wifiStatsConfigDbTable, updateRow);
-            if (!operations.contains(newStatConfig)) {
-                operations.add(newStatConfig);
-            }
-
-        } else {
-
-            Map<String, Value> rowColumns = new HashMap<>();
-            com.vmware.ovsdb.protocol.operation.notation.Set channels = com.vmware.ovsdb.protocol.operation.notation.Set
-                    .of(allowedChannels
-                            .get(OvsdbToWlanCloudTypeMappingUtility.getOvsdbRadioFreqBandForRadioType(radioType)));
-            if (channels == null) {
-                channels = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
-            }
-            rowColumns.put("channel_list", channels);
-
-            rowColumns.put("radio_type",
-                    new Atom<>(OvsdbToWlanCloudTypeMappingUtility.getOvsdbRadioFreqBandForRadioType(radioType)));
-            rowColumns.put("reporting_interval", new Atom<>(reportingInterval));
-            rowColumns.put("report_type", new Atom<>("raw"));
-            rowColumns.put("stats_type", new Atom<>(statsType));
-            rowColumns.put("survey_type", new Atom<>(
-                    OvsdbToWlanCloudTypeMappingUtility.getOvsdbStatsSurveyTypeFromProfileSurveyType(channelType)));
-            rowColumns.put("sampling_interval", new Atom<>(samplingInterval));
-            rowColumns.put("survey_interval_ms", new Atom<>(scanInterval));
-            rowColumns.put("threshold", thresholds);
-            Row updateRow = new Row(rowColumns);
-            Insert newStatConfig = new Insert(wifiStatsConfigDbTable, updateRow);
-            if (!operations.contains(newStatConfig)) {
-                operations.add(newStatConfig);
-            }
-
-        }
 
     }
 

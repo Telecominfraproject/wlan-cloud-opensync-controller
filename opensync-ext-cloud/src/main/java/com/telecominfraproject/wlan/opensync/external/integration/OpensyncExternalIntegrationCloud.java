@@ -980,6 +980,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     Long captivePortId = ((SsidConfiguration) ssidProfile.getDetails()).getCaptivePortalId();
                     if (captivePortId != null) {
                         captiveProfileIds.add(captivePortId);
+
                     }
                     Long bonjourGatewayProfileId = ((SsidConfiguration) ssidProfile.getDetails())
                             .getBonjourGatewayProfileId();
@@ -1008,6 +1009,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             ret.setRadiusProfiles(new ArrayList<>(radiusSet));
             ret.setCaptiveProfiles(profileServiceInterface.get(captiveProfileIds));
+            for (Profile captivePortal : ret.getCaptiveProfiles()) {
+                radiusSet.addAll(profileContainer.getChildrenOfType(captivePortal.getId(), ProfileType.radius));
+            }
             ret.setBonjourGatewayProfiles(profileServiceInterface.get(bonjourGatewayProfileIds));
 
             List<Client> blockedClients = clientServiceInterface.getBlockedClients(customerId);
