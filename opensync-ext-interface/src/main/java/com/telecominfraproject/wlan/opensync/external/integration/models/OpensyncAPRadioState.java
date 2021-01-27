@@ -307,4 +307,7 @@ public class OpensyncAPRadioState extends BaseJsonModel {
         this.version = version;
     }
 
+
+    
+
 }

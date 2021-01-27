@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -42,6 +43,7 @@ import com.telecominfraproject.wlan.customer.service.CustomerServiceInterface;
 import com.telecominfraproject.wlan.datastore.exceptions.DsConcurrentModificationException;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
+import com.telecominfraproject.wlan.equipment.models.ChannelPowerLevel;
 import com.telecominfraproject.wlan.equipment.models.ElementRadioConfiguration;
 import com.telecominfraproject.wlan.equipment.models.Equipment;
 import com.telecominfraproject.wlan.equipment.models.RadioConfiguration;
@@ -366,7 +368,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                     // remove radio configs from the DB that are no longer
                     // present in the AP but still exist in DB
-                    
+
                     for (RadioType radio : new ArrayList<>(advancedRadioMap.keySet())) {
                         if (!radiosFromAp.contains(radio)) {
                             advancedRadioMap.remove(radio);
@@ -847,7 +849,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             }
             Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
             if (ce != null) {
-                List<Status> deletedStatuses = statusServiceInterface.deleteOnEquipmentDisconnect(ce.getCustomerId(), ce.getId());
+                List<Status> deletedStatuses = statusServiceInterface.deleteOnEquipmentDisconnect(ce.getCustomerId(),
+                        ce.getId());
                 LOG.info("AP {} disconnected, deleted status records {}", apId, deletedStatuses);
                 updateApDisconnectedStatus(apId, ce);
                 disconnectClients(ce);
@@ -1231,6 +1234,68 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             if (radioState.getAllowedChannels() != null) {
                 if (apElementConfiguration.getRadioMap().containsKey(radioState.getFreqBand())
                         && apElementConfiguration.getRadioMap().get(radioState.getFreqBand()) != null) {
+                    apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
+                            .setAllowedChannels(new ArrayList<>(radioState.getAllowedChannels()));
+
+                    LOG.debug("Updated AllowedChannels from Wifi_Radio_State table change for AP {}", apId);
+                }
+
+            }
+
+            if (radioState.getChannels() != null) {
+
+                if (apElementConfiguration.getRadioMap().containsKey(radioState.getFreqBand())
+                        && apElementConfiguration.getRadioMap().get(radioState.getFreqBand()) != null) {
+
+                    // private Set<ChannelPowerLevel> allowedChannelsPowerLevels
+                    // = new HashSet<>();
+
+                    Set<ChannelPowerLevel> channelPowerLevels = new HashSet<>();
+
+                    radioState.getChannels().entrySet().stream().forEach(k -> {
+                        if (k.getKey().equals("allowed") || k.getKey().equals("radar_detection")) {
+
+                            String[] channelNumbers = k.getValue().split(",");
+                            for (String channel : channelNumbers) {
+                                if (channel != null) {
+                                    ChannelPowerLevel cpl = new ChannelPowerLevel();
+                                    cpl.setChannelNumber(Integer.parseInt(channel));
+                                    cpl.setDfs(k.getKey().equals("radar_detection"));
+                                    if (radioState.getChannelMode() != null && radioState.getChannelMode().equals("auto")) {
+                                        cpl.setChannelWidth(-1);
+                                    } else {
+                                        switch (radioState.getHtMode()) {
+                                        case "HT20":
+                                            cpl.setChannelWidth(20);
+                                            break;
+                                        case "HT40":
+                                        case "HT40-":
+                                        case "HT40+":
+                                            cpl.setChannelWidth(40);
+                                            break;
+                                        case "HT80":
+                                            cpl.setChannelWidth(80);
+                                            break;
+                                        case "HT160":
+                                            cpl.setChannelWidth(160);
+                                            break;
+                                        default:
+                                            LOG.warn("Unrecognized channel HtMode {}", radioState.getHtMode());
+                                        }
+                                    }
+                                    cpl.setPowerLevel(radioState.getTxPower());
+                                    channelPowerLevels.add(cpl);
+                                }
+                            }
+
+                        }
+                    });
+
+                    if (!Objects.deepEquals(apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
+                            .getAllowedChannelsPowerLevels(), channelPowerLevels)) {
+                        apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
+                                .setAllowedChannelsPowerLevels(channelPowerLevels);
+                    }
                     apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
                             .setAllowedChannels(new ArrayList<>(radioState.getAllowedChannels()));
 

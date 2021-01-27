@@ -2174,6 +2174,11 @@ public class OvsdbDao {
                             }
                             tableState.setAllowedChannels(allowed);
                         }
+                        if (map.get("channels") != null) {
+
+                            Map<String, String> channels = row.getMapColumn("channels");
+                            tableState.setChannels(channels);
+                        }
 
                         Set<Uuid> vifStates = row.getSetColumn("vif_states");
                         tableState.setVifStates(vifStates);
