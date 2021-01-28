@@ -1231,17 +1231,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 continue;
             }
 
-            if (radioState.getAllowedChannels() != null) {
-                if (apElementConfiguration.getRadioMap().containsKey(radioState.getFreqBand())
-                        && apElementConfiguration.getRadioMap().get(radioState.getFreqBand()) != null) {
-                    apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                            .setAllowedChannels(new ArrayList<>(radioState.getAllowedChannels()));
-
-                    LOG.debug("Updated AllowedChannels from Wifi_Radio_State table change for AP {}", apId);
-                }
-
-            }
-
             if (radioState.getChannels() != null) {
 
                 if (apElementConfiguration.getRadioMap().containsKey(radioState.getFreqBand())
@@ -1296,8 +1285,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
                                 .setAllowedChannelsPowerLevels(channelPowerLevels);
                     }
-                    apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                            .setAllowedChannels(new ArrayList<>(radioState.getAllowedChannels()));
 
                     LOG.debug("Updated AllowedChannels from Wifi_Radio_State table change for AP {}", apId);
                 }
