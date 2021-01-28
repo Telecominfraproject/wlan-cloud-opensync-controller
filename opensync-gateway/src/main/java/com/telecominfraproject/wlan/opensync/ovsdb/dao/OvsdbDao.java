@@ -195,7 +195,6 @@ public class OvsdbDao {
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.externalFileStoreURL:https://localhost:9096}")
     private String externalFileStoreURL;
 
-    public static final String FILESTORE = "filestore/";
     public static final String HTTP = "http";
 
     public static final String ovsdbName = "Open_vSwitch";
@@ -3861,18 +3860,18 @@ public class OvsdbDao {
                                 .put("username_password_file",
                                         ManagedFileInfo
                                                 .resolveWithPopulatedHostname(
-                                                        captiveProfileDetails.getUsernamePasswordFile(), FILESTORE)
+                                                        captiveProfileDetails.getUsernamePasswordFile(), externalFileStoreURL)
                                                 .getApExportUrl());
                     }
                     if (captiveProfileDetails.getLogoFile() != null) {
                         captiveMap.put("splash_page_logo",
                                 ManagedFileInfo
-                                        .resolveWithPopulatedHostname(captiveProfileDetails.getLogoFile(), FILESTORE)
+                                        .resolveWithPopulatedHostname(captiveProfileDetails.getLogoFile(), externalFileStoreURL)
                                         .getApExportUrl());
                     }
                     if (captiveProfileDetails.getBackgroundFile() != null) {
                         captiveMap.put("splash_page_background_logo", ManagedFileInfo
-                                .resolveWithPopulatedHostname(captiveProfileDetails.getBackgroundFile(), FILESTORE)
+                                .resolveWithPopulatedHostname(captiveProfileDetails.getBackgroundFile(), externalFileStoreURL)
                                 .getApExportUrl());
                     }
                     LOG.debug("captiveMap {}", captiveMap);

@@ -18,7 +18,7 @@
             "model_type": "ManagedFileInfo",
             "md5checksum": null,
             "lastModifiedTimestamp": null,
-            "apExportUrl": "tip-logo-mobile.png",
+            "apExportUrl": "/filestore/tip-logo-mobile",
             "fileCategory": "CaptivePortalLogo",
             "fileType": "PNG",
             "altSlot": false
@@ -27,7 +27,7 @@
             "model_type": "ManagedFileInfo",
             "md5checksum": null,
             "lastModifiedTimestamp": null,
-            "apExportUrl": "tip-logo.png",
+            "apExportUrl": "/filestore/tip-logo",
             "fileCategory": "CaptivePortalBackground",
             "fileType": "PNG",
             "altSlot": false
@@ -46,7 +46,7 @@
         "macAllowList": [],
         "profileType": "captive_portal"
     },
-    "createdTimestamp": 1611779680397,
-    "lastModifiedTimestamp": 1611779680397,
+    "createdTimestamp": 1611857459118,
+    "lastModifiedTimestamp": 1611857459118,
     "childProfileIds": []
 }
