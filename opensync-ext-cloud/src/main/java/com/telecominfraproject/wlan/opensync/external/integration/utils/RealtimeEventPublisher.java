@@ -83,18 +83,20 @@ public class RealtimeEventPublisher {
 
     private static final Logger LOG = LoggerFactory.getLogger(RealtimeEventPublisher.class);
 
-    void publishChannelHopEvents(int customerId, long equipmentId, EventReport e) {
+    void publishChannelHopEvents(int customerId, long equipmentId, long locationId, EventReport e) {
 
         LOG.info("publishChannelHopEvents for customerId {} equipmentId {}");
         List<SystemEvent> events = new ArrayList<>();
 
+        LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", e, customerId, equipmentId);
+
+        Equipment equipment = equipmentServiceInterface.getOrNull(equipmentId);
+        if (equipment == null) {
+            return;
+        }
+
         for (sts.OpensyncStats.EventReport.ChannelSwitchEvent channelSwitchEvent : e.getChannelSwitchList()) {
 
-            LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", e, customerId, equipmentId);
-
-            Equipment equipment = equipmentServiceInterface.getOrNull(equipmentId);
-            if (equipment == null)
-                continue;
             RadioType radioType = null;
             Long timestamp = null;
             ChannelHopReason reason = null;
@@ -119,10 +121,12 @@ public class RealtimeEventPublisher {
             }
 
             if (channelSwitchEvent.hasReason()) {
-                if (channelSwitchEvent.getReason().equals(ChannelSwitchReason.high_interference))
+                if (channelSwitchEvent.getReason().equals(ChannelSwitchReason.high_interference)) {
                     reason = ChannelHopReason.HighInterference;
-                else if (channelSwitchEvent.getReason().equals(ChannelSwitchReason.radar_detected))
+                }
+                else if (channelSwitchEvent.getReason().equals(ChannelSwitchReason.radar_detected)) {
                     reason = ChannelHopReason.RadarDetected;
+                }
             }
             if (ChannelHopReason.isUnsupported(reason)) {
                 LOG.warn("publishChannelHopEvents:reason {} is unsupported, cannot send RealTimeChannelHopEvent for {}",
@@ -139,7 +143,7 @@ public class RealtimeEventPublisher {
             }
 
             RealTimeChannelHopEvent channelHopEvent = new RealTimeChannelHopEvent(RealTimeEventType.Channel_Hop,
-                    customerId, equipmentId, radioType, channel,
+                    customerId, locationId, equipmentId, radioType, channel,
                     ((ApElementConfiguration) equipment.getDetails()).getRadioMap().get(radioType).getChannelNumber(),
                     reason, timestamp);
 
@@ -153,7 +157,7 @@ public class RealtimeEventPublisher {
         }
     }
 
-    void publishClientConnectSuccessEvent(int customerId, long equipmentId, ClientConnectEvent clientConnectEvent) {
+    void publishClientConnectSuccessEvent(int customerId, long equipmentId, long locationId, ClientConnectEvent clientConnectEvent) {
 
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientConnectEvent, customerId,
                 equipmentId);
@@ -235,13 +239,14 @@ public class RealtimeEventPublisher {
 
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
+        clientEvent.setLocationId(locationId);
 
         LOG.info("publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
 
     }
 
-    void publishClientDisconnectEvent(int customerId, long equipmentId, ClientDisconnectEvent clientDisconnectEvent) {
+    void publishClientDisconnectEvent(int customerId, long equipmentId, long locationId, ClientDisconnectEvent clientDisconnectEvent) {
 
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientDisconnectEvent, customerId,
                 equipmentId);
@@ -284,13 +289,14 @@ public class RealtimeEventPublisher {
 
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
+        clientEvent.setLocationId(locationId);
 
         LOG.info("publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
 
     }
 
-    void publishClientAuthSystemEvent(int customerId, long equipmentId, ClientAuthEvent clientAuthEvent) {
+    void publishClientAuthSystemEvent(int customerId, long equipmentId, long locationId, ClientAuthEvent clientAuthEvent) {
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientAuthEvent, customerId, equipmentId);
 
         com.telecominfraproject.wlan.client.models.events.realtime.ClientAuthEvent clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientAuthEvent(
@@ -306,13 +312,14 @@ public class RealtimeEventPublisher {
         }
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
+        clientEvent.setLocationId(locationId);
 
         LOG.info("publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
 
     }
 
-    void publishClientAssocEvent(int customerId, long equipmentId, ClientAssocEvent clientAssocEvent) {
+    void publishClientAssocEvent(int customerId, long equipmentId, long locationId, ClientAssocEvent clientAssocEvent) {
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientAssocEvent, customerId, equipmentId);
 
         com.telecominfraproject.wlan.client.models.events.realtime.ClientAssocEvent clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientAssocEvent(
@@ -354,13 +361,14 @@ public class RealtimeEventPublisher {
 
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
+        clientEvent.setLocationId(locationId);
 
         LOG.info("publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
 
     }
 
-    void publishClientFailureEvent(int customerId, long equipmentId, ClientFailureEvent clientFailureEvent) {
+    void publishClientFailureEvent(int customerId, long equipmentId, long locationId, ClientFailureEvent clientFailureEvent) {
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientFailureEvent, customerId,
                 equipmentId);
 
@@ -381,12 +389,13 @@ public class RealtimeEventPublisher {
 
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
+        clientEvent.setLocationId(locationId);
 
         LOG.info("publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
     }
 
-    void publishClientFirstDataEvent(int customerId, long equipmentId, ClientFirstDataEvent clientFirstDataEvent) {
+    void publishClientFirstDataEvent(int customerId, long equipmentId, long locationId, ClientFirstDataEvent clientFirstDataEvent) {
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientFirstDataEvent, customerId,
                 equipmentId);
 
@@ -406,13 +415,14 @@ public class RealtimeEventPublisher {
 
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
+        clientEvent.setLocationId(locationId);
 
         LOG.info("publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
 
     }
 
-    void publishClientIdEvent(int customerId, long equipmentId, ClientIdEvent clientIdEvent) {
+    void publishClientIdEvent(int customerId, long equipmentId, long locationId, ClientIdEvent clientIdEvent) {
 
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientIdEvent, customerId, equipmentId);
 
@@ -427,12 +437,13 @@ public class RealtimeEventPublisher {
 
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
+        clientEvent.setLocationId(locationId);
 
         LOG.info("publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
     }
 
-    void publishClientIpEvent(int customerId, long equipmentId, ClientIpEvent clientIpEvent) {
+    void publishClientIpEvent(int customerId, long equipmentId, long locationId, ClientIpEvent clientIpEvent) {
 
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientIpEvent, customerId, equipmentId);
 
@@ -447,12 +458,13 @@ public class RealtimeEventPublisher {
 
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
+        clientEvent.setLocationId(locationId);
 
         LOG.info("publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
     }
 
-    void publishClientTimeoutEvent(int customerId, long equipmentId, ClientTimeoutEvent clientTimeoutEvent) {
+    void publishClientTimeoutEvent(int customerId, long equipmentId, long locationId, ClientTimeoutEvent clientTimeoutEvent) {
 
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientTimeoutEvent, customerId,
                 equipmentId);
@@ -476,13 +488,14 @@ public class RealtimeEventPublisher {
 
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
+        clientEvent.setLocationId(locationId);
 
         LOG.info("publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
 
     }
 
-    void publishDhcpTransactionEvents(int customerId, long equipmentId, List<DhcpTransaction> dhcpTransactionList) {
+    void publishDhcpTransactionEvents(int customerId, long equipmentId, long locationId, List<DhcpTransaction> dhcpTransactionList) {
         LOG.info("Publish Dhcp Transaction Events for customer {} equipmentId {}", customerId, equipmentId);
         List<SystemEvent> dhcpEventsList = new ArrayList<>();
         for (DhcpTransaction dhcpTransaction : dhcpTransactionList) {
@@ -494,6 +507,7 @@ public class RealtimeEventPublisher {
 
                 cloudDhcpAck.setCustomerId(customerId);
                 cloudDhcpAck.setEquipmentId(equipmentId);
+                cloudDhcpAck.setLocationId(locationId);
 
                 if (ackEvent.hasDhcpCommonData()) {
                     cloudDhcpAck = (com.telecominfraproject.wlan.systemevent.equipment.DhcpAckEvent) getDhcpCommonDataForEvent(
@@ -563,6 +577,7 @@ public class RealtimeEventPublisher {
 
                 cloudDhcpNak.setCustomerId(customerId);
                 cloudDhcpNak.setEquipmentId(equipmentId);
+                cloudDhcpNak.setLocationId(locationId);
 
                 if (nakEvent.hasDhcpCommonData()) {
                     cloudDhcpNak = (com.telecominfraproject.wlan.systemevent.equipment.DhcpNakEvent) getDhcpCommonDataForEvent(
@@ -589,6 +604,7 @@ public class RealtimeEventPublisher {
 
                 cloudDhcpOffer.setCustomerId(customerId);
                 cloudDhcpOffer.setEquipmentId(equipmentId);
+                cloudDhcpOffer.setLocationId(locationId);
 
                 if (offerEvent.hasDhcpCommonData()) {
                     cloudDhcpOffer = (com.telecominfraproject.wlan.systemevent.equipment.DhcpOfferEvent) getDhcpCommonDataForEvent(
@@ -613,6 +629,7 @@ public class RealtimeEventPublisher {
 
                 cloudDhcpInform.setCustomerId(customerId);
                 cloudDhcpInform.setEquipmentId(equipmentId);
+                cloudDhcpInform.setLocationId(locationId);
 
                 if (informEvent.hasDhcpCommonData()) {
                     cloudDhcpInform = (com.telecominfraproject.wlan.systemevent.equipment.DhcpInformEvent) getDhcpCommonDataForEvent(
@@ -633,6 +650,7 @@ public class RealtimeEventPublisher {
 
                 cloudDhcpDecline.setCustomerId(customerId);
                 cloudDhcpDecline.setEquipmentId(equipmentId);
+                cloudDhcpDecline.setLocationId(locationId);
 
                 if (declineEvent.hasDhcpCommonData()) {
                     cloudDhcpDecline = (com.telecominfraproject.wlan.systemevent.equipment.DhcpDeclineEvent) getDhcpCommonDataForEvent(
@@ -655,6 +673,7 @@ public class RealtimeEventPublisher {
 
                 cloudDhcpRequest.setCustomerId(customerId);
                 cloudDhcpRequest.setEquipmentId(equipmentId);
+                cloudDhcpRequest.setLocationId(locationId);
 
                 if (requestEvent.hasDhcpCommonData()) {
                     cloudDhcpRequest = (com.telecominfraproject.wlan.systemevent.equipment.DhcpRequestEvent) getDhcpCommonDataForEvent(
@@ -681,6 +700,7 @@ public class RealtimeEventPublisher {
 
                 cloudDhcpDiscover.setCustomerId(customerId);
                 cloudDhcpDiscover.setEquipmentId(equipmentId);
+                cloudDhcpDiscover.setLocationId(locationId);
 
                 if (discoverEvent.hasDhcpCommonData()) {
                     cloudDhcpDiscover = (com.telecominfraproject.wlan.systemevent.equipment.DhcpDiscoverEvent) getDhcpCommonDataForEvent(
@@ -755,7 +775,7 @@ public class RealtimeEventPublisher {
         return cloudDhcpEvent;
     }
 
-    void publishSipCallEvents(int customerId, long equipmentId, List<VideoVoiceReport> sipCallReportList) {
+    void publishSipCallEvents(int customerId, long equipmentId, long locationId, List<VideoVoiceReport> sipCallReportList) {
         // only in case it is not there, we will just use the time when we
         // received the report/event
         long eventTimestamp = System.currentTimeMillis();
@@ -769,17 +789,17 @@ public class RealtimeEventPublisher {
 
             LOG.debug("Received VideoVoiceReport {} for SIP call", videoVoiceReport);
 
-            processRealTimeSipCallReportEvent(customerId, equipmentId, eventTimestamp, eventsList, videoVoiceReport);
+            processRealTimeSipCallReportEvent(customerId, equipmentId, locationId, eventTimestamp, eventsList, videoVoiceReport);
 
-            processRealTimeSipCallStartEvent(customerId, equipmentId, eventTimestamp, eventsList, videoVoiceReport);
+            processRealTimeSipCallStartEvent(customerId, equipmentId, locationId, eventTimestamp, eventsList, videoVoiceReport);
 
-            processRealTimeSipCallStopEvent(customerId, equipmentId, eventTimestamp, eventsList, videoVoiceReport);
+            processRealTimeSipCallStopEvent(customerId, equipmentId, locationId, eventTimestamp, eventsList, videoVoiceReport);
 
-            processRtsStartEvent(customerId, equipmentId, eventTimestamp, eventsList, videoVoiceReport);
+            processRtsStartEvent(customerId, equipmentId, locationId, eventTimestamp, eventsList, videoVoiceReport);
 
-            processRtsStartSessionEvent(customerId, equipmentId, eventTimestamp, eventsList, videoVoiceReport);
+            processRtsStartSessionEvent(customerId, equipmentId, locationId, eventTimestamp, eventsList, videoVoiceReport);
 
-            processRtsStopEvent(customerId, equipmentId, eventTimestamp, eventsList, videoVoiceReport);
+            processRtsStopEvent(customerId, equipmentId, locationId, eventTimestamp, eventsList, videoVoiceReport);
 
         }
 
@@ -789,13 +809,13 @@ public class RealtimeEventPublisher {
 
     }
 
-    protected void processRealTimeSipCallReportEvent(int customerId, long equipmentId, long eventTimestamp,
+    protected void processRealTimeSipCallReportEvent(int customerId, long equipmentId, long locationId, long eventTimestamp,
             List<SystemEvent> eventsList, VideoVoiceReport videoVoiceReport) {
         if (videoVoiceReport.hasCallReport()) {
 
             CallReport callReport = videoVoiceReport.getCallReport();
 
-            RealTimeSipCallReportEvent cloudSipCallReportEvent = new RealTimeSipCallReportEvent(customerId, equipmentId,
+            RealTimeSipCallReportEvent cloudSipCallReportEvent = new RealTimeSipCallReportEvent(customerId, locationId, equipmentId,
                     eventTimestamp);
 
             if (callReport.hasClientMac() && callReport.getClientMac().isValidUtf8()) {
@@ -849,13 +869,13 @@ public class RealtimeEventPublisher {
         return SIPCallReportReason.UNSUPPORTED;
     }
 
-    protected void processRealTimeSipCallStartEvent(int customerId, long equipmentId, long eventTimestamp,
+    protected void processRealTimeSipCallStartEvent(int customerId, long equipmentId, long locationId, long eventTimestamp,
             List<SystemEvent> eventsList, VideoVoiceReport videoVoiceReport) {
         if (videoVoiceReport.hasCallStart()) {
 
             CallStart apCallStart = videoVoiceReport.getCallStart();
 
-            RealTimeSipCallStartEvent cloudSipCallStartEvent = new RealTimeSipCallStartEvent(customerId, equipmentId,
+            RealTimeSipCallStartEvent cloudSipCallStartEvent = new RealTimeSipCallStartEvent(customerId, locationId, equipmentId,
                     eventTimestamp);
 
             if (apCallStart.hasClientMac() && apCallStart.getClientMac().isValidUtf8()) {
@@ -897,13 +917,13 @@ public class RealtimeEventPublisher {
         }
     }
 
-    protected void processRealTimeSipCallStopEvent(int customerId, long equipmentId, long eventTimestamp,
+    protected void processRealTimeSipCallStopEvent(int customerId, long equipmentId, long locationId, long eventTimestamp,
             List<SystemEvent> eventsList, VideoVoiceReport videoVoiceReport) {
         if (videoVoiceReport.hasCallStop()) {
 
             CallStop apCallStop = videoVoiceReport.getCallStop();
 
-            RealTimeSipCallStopEvent cloudSipCallStopEvent = new RealTimeSipCallStopEvent(customerId, equipmentId,
+            RealTimeSipCallStopEvent cloudSipCallStopEvent = new RealTimeSipCallStopEvent(customerId, locationId, equipmentId,
                     eventTimestamp);
 
             if (apCallStop.hasCallDuration()) {
@@ -971,11 +991,11 @@ public class RealtimeEventPublisher {
         }
     }
 
-    protected void processRtsStartEvent(int customerId, long equipmentId, long eventTimestamp,
+    protected void processRtsStartEvent(int customerId, long equipmentId, long locationId, long eventTimestamp,
             List<SystemEvent> eventsList, VideoVoiceReport videoVoiceReport) {
         if (videoVoiceReport.hasStreamVideoServer()) {
             StreamingVideoServerDetected apStreamVideoServer = videoVoiceReport.getStreamVideoServer();
-            RealTimeStreamingStartEvent rtsStartEvent = new RealTimeStreamingStartEvent(customerId, equipmentId,
+            RealTimeStreamingStartEvent rtsStartEvent = new RealTimeStreamingStartEvent(customerId, locationId, equipmentId,
                     eventTimestamp);
             if (apStreamVideoServer.hasServerIp()) {
                 try {
@@ -1102,12 +1122,12 @@ public class RealtimeEventPublisher {
         return cloudRtpFlowStatsList;
     }
 
-    protected void processRtsStartSessionEvent(int customerId, long equipmentId, long eventTimestamp,
+    protected void processRtsStartSessionEvent(int customerId, long equipmentId, long locationId, long eventTimestamp,
             List<SystemEvent> eventsList, VideoVoiceReport videoVoiceReport) {
         if (videoVoiceReport.hasStreamVideoSessionStart()) {
             StreamingVideoSessionStart apStreamVideoSessionStart = videoVoiceReport.getStreamVideoSessionStart();
             RealTimeStreamingStartSessionEvent rtsStartSessionEvent = new RealTimeStreamingStartSessionEvent(customerId,
-                    equipmentId, eventTimestamp);
+                    locationId, equipmentId, eventTimestamp);
             if (apStreamVideoSessionStart.hasClientMac() && apStreamVideoSessionStart.getClientMac().isValidUtf8()) {
                 rtsStartSessionEvent.setClientMacAddress(
                         MacAddress.valueOf(apStreamVideoSessionStart.getClientMac().toStringUtf8()));
@@ -1141,11 +1161,11 @@ public class RealtimeEventPublisher {
         }
     }
 
-    protected void processRtsStopEvent(int customerId, long equipmentId, long eventTimestamp,
+    protected void processRtsStopEvent(int customerId, long equipmentId, long locationId, long eventTimestamp,
             List<SystemEvent> eventsList, VideoVoiceReport videoVoiceReport) {
         if (videoVoiceReport.hasStreamVideoStop()) {
             StreamingVideoStop apStreamVideoStop = videoVoiceReport.getStreamVideoStop();
-            RealTimeStreamingStopEvent rtsStopEvent = new RealTimeStreamingStopEvent(customerId, equipmentId,
+            RealTimeStreamingStopEvent rtsStopEvent = new RealTimeStreamingStopEvent(customerId, locationId, equipmentId,
                     eventTimestamp);
             if (apStreamVideoStop.hasClientMac() && apStreamVideoStop.getClientMac().isValidUtf8()) {
                 rtsStopEvent.setClientMacAddress(MacAddress.valueOf(apStreamVideoStop.getClientMac().toStringUtf8()));

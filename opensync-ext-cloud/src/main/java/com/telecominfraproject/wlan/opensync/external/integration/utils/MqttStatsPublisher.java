@@ -271,7 +271,7 @@ public class MqttStatsPublisher {
 
     void publishEvents(Report report, int customerId, long equipmentId, String apId, long locationId) {
 
-        realtimeEventPublisher.publishSipCallEvents(customerId, equipmentId, report.getVideoVoiceReportList());
+        realtimeEventPublisher.publishSipCallEvents(customerId, equipmentId, locationId, report.getVideoVoiceReportList());
 
         for (EventReport eventReport : report.getEventReportList()) {
 
@@ -282,69 +282,69 @@ public class MqttStatsPublisher {
 
                 if (apEventClientSession.hasClientAuthEvent()) {
                     processClientAuthEvent(customerId, equipmentId, locationId, apEventClientSession);
-                    realtimeEventPublisher.publishClientAuthSystemEvent(customerId, equipmentId,
+                    realtimeEventPublisher.publishClientAuthSystemEvent(customerId, equipmentId, locationId,
                             apEventClientSession.getClientAuthEvent());
                 }
 
                 if (apEventClientSession.hasClientAssocEvent()) {
                     processClientAssocEvent(customerId, equipmentId, locationId, apEventClientSession);
-                    realtimeEventPublisher.publishClientAssocEvent(customerId, equipmentId,
+                    realtimeEventPublisher.publishClientAssocEvent(customerId, equipmentId, locationId,
                             apEventClientSession.getClientAssocEvent());
                 }
 
                 if (apEventClientSession.hasClientFirstDataEvent()) {
                     processClientFirstDataEvent(customerId, equipmentId, locationId, apEventClientSession);
-                    realtimeEventPublisher.publishClientFirstDataEvent(customerId, equipmentId,
+                    realtimeEventPublisher.publishClientFirstDataEvent(customerId, equipmentId, locationId,
                             apEventClientSession.getClientFirstDataEvent());
 
                 }
 
                 if (apEventClientSession.hasClientIdEvent()) {
                     processClientIdEvent(customerId, equipmentId, locationId, apEventClientSession);
-                    realtimeEventPublisher.publishClientIdEvent(customerId, equipmentId,
+                    realtimeEventPublisher.publishClientIdEvent(customerId, equipmentId, locationId,
                             apEventClientSession.getClientIdEvent());
 
                 }
 
                 if (apEventClientSession.hasClientIpEvent()) {
                     processClientIpEvent(customerId, equipmentId, locationId, apEventClientSession);
-                    realtimeEventPublisher.publishClientIpEvent(customerId, equipmentId,
+                    realtimeEventPublisher.publishClientIpEvent(customerId, equipmentId, locationId,
                             apEventClientSession.getClientIpEvent());
 
                 }
 
                 if (apEventClientSession.hasClientConnectEvent()) {
                     processClientConnectEvent(customerId, equipmentId, locationId, eventReport, apEventClientSession);
-                    realtimeEventPublisher.publishClientConnectSuccessEvent(customerId, equipmentId,
+                    realtimeEventPublisher.publishClientConnectSuccessEvent(customerId, equipmentId, locationId,
                             apEventClientSession.getClientConnectEvent());
 
                 }
 
                 if (apEventClientSession.hasClientDisconnectEvent()) {
                     processClientDisconnectEvent(customerId, equipmentId, locationId, apEventClientSession);
-                    realtimeEventPublisher.publishClientDisconnectEvent(customerId, equipmentId,
+                    realtimeEventPublisher.publishClientDisconnectEvent(customerId, equipmentId, locationId,
                             apEventClientSession.getClientDisconnectEvent());
                 }
 
                 if (apEventClientSession.hasClientTimeoutEvent()) {
                     processClientTimeoutEvent(customerId, equipmentId, locationId, apEventClientSession);
-                    realtimeEventPublisher.publishClientTimeoutEvent(customerId, equipmentId,
+                    realtimeEventPublisher.publishClientTimeoutEvent(customerId, equipmentId, locationId,
                             apEventClientSession.getClientTimeoutEvent());
 
                 }
 
                 if (apEventClientSession.hasClientFailureEvent()) {
                     processClientFailureEvent(customerId, equipmentId, locationId, apEventClientSession);
-                    realtimeEventPublisher.publishClientFailureEvent(customerId, equipmentId,
+                    realtimeEventPublisher.publishClientFailureEvent(customerId, equipmentId, locationId,
                             apEventClientSession.getClientFailureEvent());
 
                 }
 
             }
 
-            realtimeEventPublisher.publishChannelHopEvents(customerId, equipmentId, eventReport);
+            realtimeEventPublisher.publishChannelHopEvents(customerId, equipmentId, locationId, eventReport);
 
-            realtimeEventPublisher.publishDhcpTransactionEvents(customerId, equipmentId,
+            realtimeEventPublisher.publishDhcpTransactionEvents(customerId, equipmentId, locationId,
                     eventReport.getDhcpTransactionList());
 
         }
