@@ -1767,7 +1767,7 @@ public class OvsdbDao {
             for (WifiInetConfigInfo wifiInetConfigInfo : provisionedWifiInetConfigs) {
 
                 if (wifiInetConfigInfo.vlanId > 1 || wifiInetConfigInfo.ifType.equals("vif")
-                        || wifiInetConfigInfo.ifType.equals("gre")) {
+                        || wifiInetConfigInfo.ifName.startsWith("gre") || wifiInetConfigInfo.ifType.equals("gre") ) {
                     conditions = new ArrayList<>();
                     conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(wifiInetConfigInfo.ifName)));
                     operations.add(new Delete(wifiInetConfigDbTable, conditions));
@@ -2674,7 +2674,7 @@ public class OvsdbDao {
             int ssidUlLimit, int clientDlLimit, int clientUlLimit, int rtsCtsThreshold, int fragThresholdBytes,
             int dtimPeriod, Map<String, String> captiveMap, List<String> walledGardenAllowlist,
             Map<Short, Set<String>> bonjourServiceMap, String radiusNasId, String radiusNasIp,
-            String radiusOperatorName) {
+            String radiusOperatorName, String greTunnelName) {
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
@@ -2683,7 +2683,9 @@ public class OvsdbDao {
 
             // If we are doing a NAT SSID, no bridge, else yes
             String bridgeInterfaceName = defaultWanInterfaceName;
-            if (networkForwardMode == NetworkForwardMode.NAT) {
+            if (greTunnelName != null) {
+                bridgeInterfaceName = greTunnelName;
+            } else if (networkForwardMode == NetworkForwardMode.NAT) {
                 bridgeInterfaceName = defaultLanInterfaceName;
             }
 
@@ -3278,18 +3280,32 @@ public class OvsdbDao {
                 getBonjourGatewayConfiguration(opensyncApConfig, ssidConfig, bonjourServiceMap);
 
                 boolean enabled = ssidConfig.getSsidAdminState().equals(StateSetting.enabled);
+                int vlanId = ssidConfig.getVlanId() != null ? ssidConfig.getVlanId() : 1;
+                Optional<GreTunnelConfiguration> tunnelConfiguration = ((ApNetworkConfiguration) opensyncApConfig
+                        .getApProfile().getDetails()).getGreTunnelConfigurations().stream()
+                                .filter(new Predicate<GreTunnelConfiguration>() {
+
+                                    @Override
+                                    public boolean test(GreTunnelConfiguration t) {
+
+                                        return t.getVlanIdsInGreTunnel().contains(vlanId);
+                                    }
+
+                                }).findFirst();
 
                 try {
 
                     ifName = getInterfaceNameForVifConfig(ovsdbClient, opensyncApConfig, ssidConfig, freqBand, ifName);
-
+                    String greTunnelName = null;
+                    if (tunnelConfiguration.isPresent()) greTunnelName = tunnelConfiguration.get().getGreTunnelName();
+                    
                     Uuid vifConfigUuid = configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(), ssidBroadcast,
-                            security, freqBand, ssidConfig.getVlanId() != null ? ssidConfig.getVlanId() : 1, rrmEnabled,
+                            security, freqBand, vlanId, rrmEnabled,
                             enable80211r, mobilityDomain, enable80211v, enable80211k, minHwMode, enabled, keyRefresh,
                             uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet, dns, ipAssignScheme,
                             macBlockList, rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit,
                             rtsCtsThreshold, fragThresholdBytes, dtimPeriod, captiveMap, walledGardenAllowlist,
-                            bonjourServiceMap, radiusNasId, radiusNasIp, radiusOperName);
+                            bonjourServiceMap, radiusNasId, radiusNasIp, radiusOperName, greTunnelName);
 
                     updateVifConfigsSetForRadio(ovsdbClient, ssidConfig.getSsid(), freqBand, vifConfigUuid);
 
@@ -3561,23 +3577,18 @@ public class OvsdbDao {
 
             tableColumns = new HashMap<>();
 
-            tableColumns.put("if_type", new Atom<>("vlan"));
+            tableColumns.put("if_type", new Atom<>("bridge"));
             tableColumns.put("vlan_id", new Atom<>(vlanId));
             tableColumns.put("if_name", new Atom<>("gre_" + Integer.toString(vlanId)));
-            tableColumns.put("parent_ifname", new Atom<>("gre"));
+            tableColumns.put("parent_ifname", new Atom<>(parentTunnel.ifName));
             tableColumns.put("enabled", new Atom<>(true));
             tableColumns.put("network", new Atom<>(true));
             tableColumns.put("dhcp_sniff", new Atom<>(true));
 
             Row row = new Row(tableColumns);
 
-            if (inetConfigMap.containsKey("gre_" + Integer.toString(vlanId))) {
-                List<Condition> conditions = new ArrayList<>();
-                conditions.add(new Condition("vlan_id", Function.EQUALS, new Atom<>(vlanId)));
-                conditions.add(new Condition("parent_ifname", Function.EQUALS, new Atom<>("gre")));
-            } else {
-                operations.add(new Insert(wifiInetConfigDbTable, row));
-            }
+            operations.add(new Insert(wifiInetConfigDbTable, row));
+            
 
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
