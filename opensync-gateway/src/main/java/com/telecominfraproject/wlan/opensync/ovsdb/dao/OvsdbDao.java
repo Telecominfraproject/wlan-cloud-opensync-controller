@@ -2008,51 +2008,18 @@ public class OvsdbDao {
 
     }
 
+    /*
+     * Use this to do any post configuration interface adjustment (i.e. turn on dhcp_sniff, etc.)
+     */
     public void configureInterfaces(OvsdbClient ovsdbClient) {
-
         configureWanInterfacesForDhcpSniffing(ovsdbClient);
-        configureLanInterfacesforDhcpSniffing(ovsdbClient);
-
-    }
-
-    private void configureLanInterfacesforDhcpSniffing(OvsdbClient ovsdbClient) {
-        List<Operation> operations = new ArrayList<>();
-        Map<String, Value> updateColumns = new HashMap<>();
-        List<Condition> conditions = new ArrayList<>();
-        conditions.add(new Condition("if_name", Function.NOT_EQUALS, new Atom<>(defaultWanInterfaceName)));
-        conditions.add(new Condition("parent_ifname", Function.NOT_EQUALS, new Atom<>(defaultWanInterfaceName)));
-        updateColumns.put("dhcp_sniff", new Atom<>(true));
-
-        Row row = new Row(updateColumns);
-        operations.add(new Update(wifiInetConfigDbTable, conditions, row));
-
-        try {
-            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
-            for (OperationResult res : result) {
-                if (res instanceof UpdateResult) {
-                    LOG.info("configureLanInterfacesForDhcpSniffing {}", ((UpdateResult) res).toString());
-                } else if (res instanceof ErrorResult) {
-                    LOG.error("configureLanInterfacesForDhcpSniffing error {}", ((ErrorResult) res));
-                    throw new RuntimeException("configureLanInterfacesForDhcpSniffing " + ((ErrorResult) res).getError()
-                            + " " + ((ErrorResult) res).getDetails());
-                }
-            }
-        } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
-            LOG.error("OvsdbDao::configureLanInterfaces failed.", e);
-            throw new RuntimeException(e);
-
-        }
-
     }
 
     private void configureWanInterfacesForDhcpSniffing(OvsdbClient ovsdbClient) {
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
         List<Condition> conditions = new ArrayList<>();
-        conditions.add(new Condition("if_name", Function.NOT_EQUALS, new Atom<>(defaultLanInterfaceName)));
-        conditions.add(new Condition("parent_ifname", Function.NOT_EQUALS, new Atom<>(defaultLanInterfaceName)));
+        conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(defaultWanInterfaceName)));
 
         updateColumns.put("dhcp_sniff", new Atom<>(true));
 
@@ -2674,7 +2641,7 @@ public class OvsdbDao {
             int ssidUlLimit, int clientDlLimit, int clientUlLimit, int rtsCtsThreshold, int fragThresholdBytes,
             int dtimPeriod, Map<String, String> captiveMap, List<String> walledGardenAllowlist,
             Map<Short, Set<String>> bonjourServiceMap, String radiusNasId, String radiusNasIp,
-            String radiusOperatorName, String greTunnelName) {
+            String radiusOperatorName, String grePrefix) {
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
@@ -2682,15 +2649,15 @@ public class OvsdbDao {
         try {
 
             // If we are doing a NAT SSID, no bridge, else yes
+            // If gre tunnel and vlanId > 1 use vlan if name for bridge
             String bridgeInterfaceName = defaultWanInterfaceName;
-            if (greTunnelName != null) {
-                bridgeInterfaceName = greTunnelName;
+            if (grePrefix != null && vlanId > 1) {
+                bridgeInterfaceName = grePrefix + String.valueOf(vlanId);
             } else if (networkForwardMode == NetworkForwardMode.NAT) {
                 bridgeInterfaceName = defaultLanInterfaceName;
             }
 
             if (vlanId > 1) {
-                // createVlanNetworkInterfaces(ovsdbClient, vlanId);
                 updateColumns.put("vlan_id", new Atom<>(vlanId));
             } else {
                 updateColumns.put("vlan_id", new Atom<>(1));
@@ -3296,8 +3263,8 @@ public class OvsdbDao {
                 try {
 
                     ifName = getInterfaceNameForVifConfig(ovsdbClient, opensyncApConfig, ssidConfig, freqBand, ifName);
-                    String greTunnelName = null;
-                    if (tunnelConfiguration.isPresent()) greTunnelName = tunnelConfiguration.get().getGreTunnelName();
+                    String grePrefix = null;
+                    if (tunnelConfiguration.isPresent()) grePrefix = "gre_";
                     
                     Uuid vifConfigUuid = configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(), ssidBroadcast,
                             security, freqBand, vlanId, rrmEnabled,
@@ -3305,7 +3272,7 @@ public class OvsdbDao {
                             uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet, dns, ipAssignScheme,
                             macBlockList, rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit,
                             rtsCtsThreshold, fragThresholdBytes, dtimPeriod, captiveMap, walledGardenAllowlist,
-                            bonjourServiceMap, radiusNasId, radiusNasIp, radiusOperName, greTunnelName);
+                            bonjourServiceMap, radiusNasId, radiusNasIp, radiusOperName, grePrefix);
 
                     updateVifConfigsSetForRadio(ovsdbClient, ssidConfig.getSsid(), freqBand, vifConfigUuid);
 
@@ -3496,8 +3463,6 @@ public class OvsdbDao {
                 tableColumns.put("if_type", new Atom<>("gre"));
                 tableColumns.put("enabled", new Atom<>(true));
                 tableColumns.put("network", new Atom<>(true));
-                tableColumns.put("dhcp_sniff", new Atom<>(true));
-                tableColumns.put("NAT", new Atom<>(false));
 
                 operations.add(new Insert(wifiInetConfigDbTable, new Row(tableColumns)));
 
@@ -3583,7 +3548,6 @@ public class OvsdbDao {
             tableColumns.put("parent_ifname", new Atom<>(parentTunnel.ifName));
             tableColumns.put("enabled", new Atom<>(true));
             tableColumns.put("network", new Atom<>(true));
-            tableColumns.put("dhcp_sniff", new Atom<>(true));
 
             Row row = new Row(tableColumns);
 
@@ -3638,8 +3602,6 @@ public class OvsdbDao {
             tableColumns.put("parent_ifname", new Atom<>(parentLanInterface.ifName));
             tableColumns.put("enabled", new Atom<>(true));
             tableColumns.put("network", new Atom<>(true));
-            tableColumns.put("dhcp_sniff", new Atom<>(true));
-
             tableColumns.put("ip_assign_scheme", new Atom<>(parentLanInterface.ipAssignScheme));
             tableColumns.put("NAT", new Atom<>(parentLanInterface.nat));
             tableColumns.put("mtu", new Atom<>(1500));
@@ -3675,7 +3637,6 @@ public class OvsdbDao {
             tableColumns.put("parent_ifname", new Atom<>(parentWanInterface.ifName));
             tableColumns.put("enabled", new Atom<>(true));
             tableColumns.put("network", new Atom<>(true));
-            tableColumns.put("dhcp_sniff", new Atom<>(true));
             tableColumns.put("ip_assign_scheme", new Atom<>(parentWanInterface.ipAssignScheme));
             tableColumns.put("NAT", new Atom<>(parentWanInterface.nat));
 
@@ -3964,7 +3925,6 @@ public class OvsdbDao {
             tableColumns.put("network", new Atom<>(true));
             tableColumns.put("if_name", new Atom<>(ifName));
             tableColumns.put("NAT", new Atom<>(isNat));
-            tableColumns.put("dhcp_sniff", new Atom<>(true));
 
             Row row = new Row(tableColumns);
             if (isUpdate) {
