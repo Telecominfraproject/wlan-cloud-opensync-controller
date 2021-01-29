@@ -3544,7 +3544,7 @@ public class OvsdbDao {
 
             tableColumns.put("if_type", new Atom<>("bridge"));
             tableColumns.put("vlan_id", new Atom<>(vlanId));
-            tableColumns.put("if_name", new Atom<>("gre_" + Integer.toString(vlanId)));
+            tableColumns.put("if_name", new Atom<>(parentTunnel.ifName + "_" + Integer.toString(vlanId)));
             tableColumns.put("parent_ifname", new Atom<>(parentTunnel.ifName));
             tableColumns.put("enabled", new Atom<>(true));
             tableColumns.put("network", new Atom<>(true));
