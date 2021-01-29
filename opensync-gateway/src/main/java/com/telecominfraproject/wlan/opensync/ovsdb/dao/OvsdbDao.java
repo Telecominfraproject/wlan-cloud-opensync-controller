@@ -2641,7 +2641,7 @@ public class OvsdbDao {
             int ssidUlLimit, int clientDlLimit, int clientUlLimit, int rtsCtsThreshold, int fragThresholdBytes,
             int dtimPeriod, Map<String, String> captiveMap, List<String> walledGardenAllowlist,
             Map<Short, Set<String>> bonjourServiceMap, String radiusNasId, String radiusNasIp,
-            String radiusOperatorName, String grePrefix) {
+            String radiusOperatorName, String greTunnelName) {
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
@@ -2651,8 +2651,8 @@ public class OvsdbDao {
             // If we are doing a NAT SSID, no bridge, else yes
             // If gre tunnel and vlanId > 1 use vlan if name for bridge
             String bridgeInterfaceName = defaultWanInterfaceName;
-            if (grePrefix != null && vlanId > 1) {
-                bridgeInterfaceName = grePrefix + String.valueOf(vlanId);
+            if (greTunnelName != null && vlanId > 1) {
+                bridgeInterfaceName = greTunnelName + "_" + String.valueOf(vlanId);
             } else if (networkForwardMode == NetworkForwardMode.NAT) {
                 bridgeInterfaceName = defaultLanInterfaceName;
             }
@@ -3263,8 +3263,8 @@ public class OvsdbDao {
                 try {
 
                     ifName = getInterfaceNameForVifConfig(ovsdbClient, opensyncApConfig, ssidConfig, freqBand, ifName);
-                    String grePrefix = null;
-                    if (tunnelConfiguration.isPresent()) grePrefix = "gre_";
+                    String greTunnelName = null;
+                    if (tunnelConfiguration.isPresent()) greTunnelName = tunnelConfiguration.get().getGreTunnelName();
                     
                     Uuid vifConfigUuid = configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(), ssidBroadcast,
                             security, freqBand, vlanId, rrmEnabled,
@@ -3272,7 +3272,7 @@ public class OvsdbDao {
                             uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet, dns, ipAssignScheme,
                             macBlockList, rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit,
                             rtsCtsThreshold, fragThresholdBytes, dtimPeriod, captiveMap, walledGardenAllowlist,
-                            bonjourServiceMap, radiusNasId, radiusNasIp, radiusOperName, grePrefix);
+                            bonjourServiceMap, radiusNasId, radiusNasIp, radiusOperName, greTunnelName);
 
                     updateVifConfigsSetForRadio(ovsdbClient, ssidConfig.getSsid(), freqBand, vifConfigUuid);
 
