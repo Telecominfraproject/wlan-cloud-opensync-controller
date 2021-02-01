@@ -62,14 +62,11 @@ import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiVifConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpDbStatus;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpDeviceType;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpManufId;
-import com.telecominfraproject.wlan.opensync.util.OvsdbStringConstants;
 import com.telecominfraproject.wlan.opensync.util.OvsdbToWlanCloudTypeMappingUtility;
 import com.telecominfraproject.wlan.profile.bonjour.models.BonjourGatewayProfile;
 import com.telecominfraproject.wlan.profile.bonjour.models.BonjourServiceSet;
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalAuthenticationType;
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalConfiguration;
-import com.telecominfraproject.wlan.profile.metrics.ServiceMetricsChannelUtilizationSurveyType;
-import com.telecominfraproject.wlan.profile.metrics.ServiceMetricsStatsReportFormat;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.common.ManagedFileInfo;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
@@ -120,7 +117,6 @@ import com.vmware.ovsdb.protocol.operation.result.OperationResult;
 import com.vmware.ovsdb.protocol.operation.result.SelectResult;
 import com.vmware.ovsdb.protocol.operation.result.UpdateResult;
 import com.vmware.ovsdb.protocol.schema.DatabaseSchema;
-import com.vmware.ovsdb.protocol.schema.TableSchema;
 import com.vmware.ovsdb.service.OvsdbClient;
 
 @Component
@@ -199,7 +195,6 @@ public class OvsdbDao {
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.externalFileStoreURL:https://localhost:9096}")
     private String externalFileStoreURL;
 
-    public static final String FILESTORE = "/filestore";
     public static final String HTTP = "http";
 
     public static final String ovsdbName = "Open_vSwitch";
@@ -1772,7 +1767,7 @@ public class OvsdbDao {
             for (WifiInetConfigInfo wifiInetConfigInfo : provisionedWifiInetConfigs) {
 
                 if (wifiInetConfigInfo.vlanId > 1 || wifiInetConfigInfo.ifType.equals("vif")
-                        || wifiInetConfigInfo.ifType.equals("gre")) {
+                        || wifiInetConfigInfo.ifName.startsWith("gre") || wifiInetConfigInfo.ifType.equals("gre") ) {
                     conditions = new ArrayList<>();
                     conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(wifiInetConfigInfo.ifName)));
                     operations.add(new Delete(wifiInetConfigDbTable, conditions));
@@ -1876,7 +1871,10 @@ public class OvsdbDao {
 
             ElementRadioConfiguration elementRadioConfig = apElementConfiguration.getRadioMap().get(radioType);
             RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(radioType);
-            int channel = elementRadioConfig.getChannelNumber();
+            boolean autoChannelSelection = rfElementConfig.getAutoChannelSelection();
+            int channel = elementRadioConfig.getActiveChannel(autoChannelSelection);
+            LOG.debug("configureWifiRadios autoChannelSelection {} activeChannel {} getChannelNumber {} ",
+            		autoChannelSelection, channel, elementRadioConfig.getChannelNumber());
             ChannelBandwidth bandwidth = rfElementConfig.getChannelBandwidth();
             String ht_mode = null;
             switch (bandwidth) {
@@ -1898,7 +1896,6 @@ public class OvsdbDao {
             default:
                 ht_mode = null;
             }
-            rfElementConfig.getAutoChannelSelection();
 
             RadioConfiguration radioConfig = apElementConfiguration.getAdvancedRadioMap().get(radioType);
             int beaconInterval = rfElementConfig.getBeaconInterval();
@@ -2013,51 +2010,18 @@ public class OvsdbDao {
 
     }
 
+    /*
+     * Use this to do any post configuration interface adjustment (i.e. turn on dhcp_sniff, etc.)
+     */
     public void configureInterfaces(OvsdbClient ovsdbClient) {
-
         configureWanInterfacesForDhcpSniffing(ovsdbClient);
-        configureLanInterfacesforDhcpSniffing(ovsdbClient);
-
-    }
-
-    private void configureLanInterfacesforDhcpSniffing(OvsdbClient ovsdbClient) {
-        List<Operation> operations = new ArrayList<>();
-        Map<String, Value> updateColumns = new HashMap<>();
-        List<Condition> conditions = new ArrayList<>();
-        conditions.add(new Condition("if_name", Function.NOT_EQUALS, new Atom<>(defaultWanInterfaceName)));
-        conditions.add(new Condition("parent_ifname", Function.NOT_EQUALS, new Atom<>(defaultWanInterfaceName)));
-        updateColumns.put("dhcp_sniff", new Atom<>(true));
-
-        Row row = new Row(updateColumns);
-        operations.add(new Update(wifiInetConfigDbTable, conditions, row));
-
-        try {
-            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
-            for (OperationResult res : result) {
-                if (res instanceof UpdateResult) {
-                    LOG.info("configureLanInterfacesForDhcpSniffing {}", ((UpdateResult) res).toString());
-                } else if (res instanceof ErrorResult) {
-                    LOG.error("configureLanInterfacesForDhcpSniffing error {}", ((ErrorResult) res));
-                    throw new RuntimeException("configureLanInterfacesForDhcpSniffing " + ((ErrorResult) res).getError()
-                            + " " + ((ErrorResult) res).getDetails());
-                }
-            }
-        } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
-            LOG.error("OvsdbDao::configureLanInterfaces failed.", e);
-            throw new RuntimeException(e);
-
-        }
-
     }
 
     private void configureWanInterfacesForDhcpSniffing(OvsdbClient ovsdbClient) {
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
         List<Condition> conditions = new ArrayList<>();
-        conditions.add(new Condition("if_name", Function.NOT_EQUALS, new Atom<>(defaultLanInterfaceName)));
-        conditions.add(new Condition("parent_ifname", Function.NOT_EQUALS, new Atom<>(defaultLanInterfaceName)));
+        conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(defaultWanInterfaceName)));
 
         updateColumns.put("dhcp_sniff", new Atom<>(true));
 
@@ -2177,6 +2141,11 @@ public class OvsdbDao {
                                 allowed.add(channel.intValue());
                             }
                             tableState.setAllowedChannels(allowed);
+                        }
+                        if (map.get("channels") != null) {
+
+                            Map<String, String> channels = row.getMapColumn("channels");
+                            tableState.setChannels(channels);
                         }
 
                         Set<Uuid> vifStates = row.getSetColumn("vif_states");
@@ -2674,7 +2643,7 @@ public class OvsdbDao {
             int ssidUlLimit, int clientDlLimit, int clientUlLimit, int rtsCtsThreshold, int fragThresholdBytes,
             int dtimPeriod, Map<String, String> captiveMap, List<String> walledGardenAllowlist,
             Map<Short, Set<String>> bonjourServiceMap, String radiusNasId, String radiusNasIp,
-            String radiusOperatorName) {
+            String radiusOperatorName, String greTunnelName) {
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
@@ -2682,39 +2651,34 @@ public class OvsdbDao {
         try {
 
             // If we are doing a NAT SSID, no bridge, else yes
+            // If gre tunnel and vlanId > 1 use vlan if name for bridge
             String bridgeInterfaceName = defaultWanInterfaceName;
-            if (networkForwardMode == NetworkForwardMode.NAT) {
+            if (greTunnelName != null && vlanId > 1) {
+                bridgeInterfaceName = greTunnelName + "_" + String.valueOf(vlanId);
+            } else if (networkForwardMode == NetworkForwardMode.NAT) {
                 bridgeInterfaceName = defaultLanInterfaceName;
             }
 
             if (vlanId > 1) {
-                // createVlanNetworkInterfaces(ovsdbClient, vlanId);
                 updateColumns.put("vlan_id", new Atom<>(vlanId));
             } else {
                 updateColumns.put("vlan_id", new Atom<>(1));
             }
 
             updateColumns.put("mode", new Atom<>("ap"));
+            @SuppressWarnings("unchecked")
+            com.vmware.ovsdb.protocol.operation.notation.Map<String, String> captivePortalMap = com.vmware.ovsdb.protocol.operation.notation.Map
+                    .of(captiveMap);
+            updateColumns.put("captive_portal", captivePortalMap);
 
-            // TODO: remove when captive portal support available in AP load
-            DatabaseSchema dbSchema = ovsdbClient.getSchema(ovsdbName).join();
-            TableSchema tableSchema = dbSchema.getTables().get(wifiVifConfigDbTable);
-            if (tableSchema.getColumns().containsKey("captive_portal")) {
-                @SuppressWarnings("unchecked")
-                com.vmware.ovsdb.protocol.operation.notation.Map<String, String> captivePortalMap = com.vmware.ovsdb.protocol.operation.notation.Map
-                        .of(captiveMap);
-                updateColumns.put("captive_portal", captivePortalMap);
-            }
-            if (tableSchema.getColumns().containsKey("captive_allowlist")) {
-                if (walledGardenAllowlist != null && !walledGardenAllowlist.isEmpty()) {
-                    Set<Atom<String>> atomMacList = new HashSet<>();
-                    walledGardenAllowlist.stream().forEach(allow -> atomMacList.add(new Atom<>(allow)));
-                    com.vmware.ovsdb.protocol.operation.notation.Set allowListSet = com.vmware.ovsdb.protocol.operation.notation.Set
-                            .of(atomMacList);
-                    updateColumns.put("captive_allowlist", allowListSet);
-                } else {
-                    updateColumns.put("captive_allowlist", new com.vmware.ovsdb.protocol.operation.notation.Set());
-                }
+            if (walledGardenAllowlist != null && !walledGardenAllowlist.isEmpty()) {
+                Set<Atom<String>> atomMacList = new HashSet<>();
+                walledGardenAllowlist.stream().forEach(allow -> atomMacList.add(new Atom<>(allow)));
+                com.vmware.ovsdb.protocol.operation.notation.Set allowListSet = com.vmware.ovsdb.protocol.operation.notation.Set
+                        .of(atomMacList);
+                updateColumns.put("captive_allowlist", allowListSet);
+            } else {
+                updateColumns.put("captive_allowlist", new com.vmware.ovsdb.protocol.operation.notation.Set());
             }
 
             // TODO: when AP support for Bonjour Gateway set values
@@ -3285,18 +3249,32 @@ public class OvsdbDao {
                 getBonjourGatewayConfiguration(opensyncApConfig, ssidConfig, bonjourServiceMap);
 
                 boolean enabled = ssidConfig.getSsidAdminState().equals(StateSetting.enabled);
+                int vlanId = ssidConfig.getVlanId() != null ? ssidConfig.getVlanId() : 1;
+                Optional<GreTunnelConfiguration> tunnelConfiguration = ((ApNetworkConfiguration) opensyncApConfig
+                        .getApProfile().getDetails()).getGreTunnelConfigurations().stream()
+                                .filter(new Predicate<GreTunnelConfiguration>() {
+
+                                    @Override
+                                    public boolean test(GreTunnelConfiguration t) {
+
+                                        return t.getVlanIdsInGreTunnel().contains(vlanId);
+                                    }
+
+                                }).findFirst();
 
                 try {
 
                     ifName = getInterfaceNameForVifConfig(ovsdbClient, opensyncApConfig, ssidConfig, freqBand, ifName);
-
+                    String greTunnelName = null;
+                    if (tunnelConfiguration.isPresent()) greTunnelName = tunnelConfiguration.get().getGreTunnelName();
+                    
                     Uuid vifConfigUuid = configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(), ssidBroadcast,
-                            security, freqBand, ssidConfig.getVlanId() != null ? ssidConfig.getVlanId() : 1, rrmEnabled,
+                            security, freqBand, vlanId, rrmEnabled,
                             enable80211r, mobilityDomain, enable80211v, enable80211k, minHwMode, enabled, keyRefresh,
                             uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet, dns, ipAssignScheme,
                             macBlockList, rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit,
                             rtsCtsThreshold, fragThresholdBytes, dtimPeriod, captiveMap, walledGardenAllowlist,
-                            bonjourServiceMap, radiusNasId, radiusNasIp, radiusOperName);
+                            bonjourServiceMap, radiusNasId, radiusNasIp, radiusOperName, greTunnelName);
 
                     updateVifConfigsSetForRadio(ovsdbClient, ssidConfig.getSsid(), freqBand, vifConfigUuid);
 
@@ -3455,6 +3433,13 @@ public class OvsdbDao {
 
     private void configureGreTunnel(OvsdbClient ovsdbClient, Profile apNetworkConfiguration) {
 
+        // NAT false
+        // if_name gre1
+        // if_type gre
+        // gre_local_inet_addr (Not needed): WAN IP shall be used
+        // gre_remote_inet_addr <Tunnel end point IP address>
+        // gre_ifname: Not needed
+
         try {
             LOG.debug("Configure Gre Tunnel {}", apNetworkConfiguration);
             List<Operation> operations = new ArrayList<>();
@@ -3462,10 +3447,6 @@ public class OvsdbDao {
             ApNetworkConfiguration details = (ApNetworkConfiguration) apNetworkConfiguration.getDetails();
 
             for (GreTunnelConfiguration greTunnelConfiguration : details.getGreTunnelConfigurations()) {
-                if (greTunnelConfiguration.getGreParentIfName() == null) {
-                    LOG.info("Cannot configure GRE profile without gre_ifname");
-                    continue;
-                }
 
                 if (greTunnelConfiguration.getGreRemoteInetAddr() == null) {
                     LOG.info("Cannot configure GRE profile without gre_remote_inet_addr");
@@ -3478,27 +3459,12 @@ public class OvsdbDao {
                 }
 
                 Map<String, Value> tableColumns = new HashMap<>();
-                tableColumns.put("gre_ifname", new Atom<>(greTunnelConfiguration.getGreParentIfName()));
                 tableColumns.put("gre_remote_inet_addr",
                         new Atom<>(greTunnelConfiguration.getGreRemoteInetAddr().getHostAddress()));
                 tableColumns.put("if_name", new Atom<>(greTunnelConfiguration.getGreTunnelName()));
-
-                // optional
-                if (greTunnelConfiguration.getGreLocalInetAddr() != null) {
-                    tableColumns.put("gre_local_inet_addr",
-                            new Atom<>(greTunnelConfiguration.getGreLocalInetAddr().getHostAddress()));
-                }
-
-                // optional
-                if (greTunnelConfiguration.getGreRemoteMacAddr() != null) {
-                    tableColumns.put("gre_remote_mac_addr",
-                            new Atom<>(greTunnelConfiguration.getGreRemoteMacAddr().getAddressAsString()));
-                }
-
                 tableColumns.put("if_type", new Atom<>("gre"));
-                tableColumns.put("network", new Atom<>(true));
-                tableColumns.put("NAT", new Atom<>(false));
                 tableColumns.put("enabled", new Atom<>(true));
+                tableColumns.put("network", new Atom<>(true));
 
                 operations.add(new Insert(wifiInetConfigDbTable, new Row(tableColumns)));
 
@@ -3562,6 +3528,11 @@ public class OvsdbDao {
     private void createVlanInterfaceInGreTunnel(OvsdbClient ovsdbClient, int vlanId, String greTunnel) {
         try {
 
+            // if_name gre_<vlan id>
+            // if_type vlan
+            // parent_ifname gre
+            // vlan_id <vlan id>
+
             List<Operation> operations = new ArrayList<>();
             Map<String, Value> tableColumns = new HashMap<>();
 
@@ -3573,27 +3544,17 @@ public class OvsdbDao {
 
             tableColumns = new HashMap<>();
 
-            tableColumns.put("if_type", new Atom<>("vlan"));
+            tableColumns.put("if_type", new Atom<>("bridge"));
             tableColumns.put("vlan_id", new Atom<>(vlanId));
             tableColumns.put("if_name", new Atom<>(parentTunnel.ifName + "_" + Integer.toString(vlanId)));
             tableColumns.put("parent_ifname", new Atom<>(parentTunnel.ifName));
             tableColumns.put("enabled", new Atom<>(true));
             tableColumns.put("network", new Atom<>(true));
-            tableColumns.put("dhcp_sniff", new Atom<>(true));
-            tableColumns.put("ip_assign_scheme", new Atom<>(parentTunnel.ipAssignScheme));
-            tableColumns.put("NAT", new Atom<>(parentTunnel.nat));
-
-            tableColumns.put("mtu", new Atom<>(1500));
 
             Row row = new Row(tableColumns);
 
-            if (inetConfigMap.containsKey(parentTunnel.ifName + "_" + Integer.toString(vlanId))) {
-                List<Condition> conditions = new ArrayList<>();
-                conditions.add(new Condition("vlan_id", Function.EQUALS, new Atom<>(vlanId)));
-                conditions.add(new Condition("parent_ifname", Function.EQUALS, new Atom<>(parentTunnel.ifName)));
-            } else {
-                operations.add(new Insert(wifiInetConfigDbTable, row));
-            }
+            operations.add(new Insert(wifiInetConfigDbTable, row));
+            
 
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
@@ -3643,8 +3604,6 @@ public class OvsdbDao {
             tableColumns.put("parent_ifname", new Atom<>(parentLanInterface.ifName));
             tableColumns.put("enabled", new Atom<>(true));
             tableColumns.put("network", new Atom<>(true));
-            tableColumns.put("dhcp_sniff", new Atom<>(true));
-
             tableColumns.put("ip_assign_scheme", new Atom<>(parentLanInterface.ipAssignScheme));
             tableColumns.put("NAT", new Atom<>(parentLanInterface.nat));
             tableColumns.put("mtu", new Atom<>(1500));
@@ -3680,7 +3639,6 @@ public class OvsdbDao {
             tableColumns.put("parent_ifname", new Atom<>(parentWanInterface.ifName));
             tableColumns.put("enabled", new Atom<>(true));
             tableColumns.put("network", new Atom<>(true));
-            tableColumns.put("dhcp_sniff", new Atom<>(true));
             tableColumns.put("ip_assign_scheme", new Atom<>(parentWanInterface.ipAssignScheme));
             tableColumns.put("NAT", new Atom<>(parentWanInterface.nat));
 
@@ -3830,32 +3788,69 @@ public class OvsdbDao {
                         && (profileCaptive.getDetails() != null)) {
                     CaptivePortalConfiguration captiveProfileDetails = ((CaptivePortalConfiguration) profileCaptive
                             .getDetails());
+
+                    // +#define SCHEMA_CONSTS_PAGE_TITLE "page_title"
+                    if (captiveProfileDetails.getBrowserTitle() != null) {
+                        captiveMap.put("session_timeout",
+                                String.valueOf(captiveProfileDetails.getSessionTimeoutInMinutes()));
+                        captiveMap.put("page_title", captiveProfileDetails.getBrowserTitle());
+                    }
+                    if (captiveProfileDetails.getAuthenticationType().equals(CaptivePortalAuthenticationType.radius)) {
+                        Optional<Profile> optional = opensyncApConfig.getRadiusProfiles().stream()
+                                .filter(p -> p.getId() == captiveProfileDetails.getRadiusServiceId()).findFirst();
+                        if (optional != null && optional.isPresent()) {
+                            Profile profile = optional.get();
+                            RadiusProfile radiusProfile = (RadiusProfile) profile.getDetails();
+                            captiveMap.put("radius_server_ip", String.valueOf(
+                                    radiusProfile.getPrimaryRadiusAuthServer().getIpAddress().getHostAddress()));
+
+                            captiveMap.put("radius_server_port",
+                                    String.valueOf(radiusProfile.getPrimaryRadiusAuthServer().getPort()));
+
+                            captiveMap.put("radius_server_secret",
+                                    String.valueOf(radiusProfile.getPrimaryRadiusAuthServer().getSecret()));
+                            if (captiveProfileDetails.getRadiusAuthMethod() != null) {
+
+                                captiveMap.put("radius_auth_type",
+                                        String.valueOf(captiveProfileDetails.getRadiusAuthMethod()));
+                            }
+                        }
+                    }
+
+                    if (captiveProfileDetails.getRedirectURL() != null) {
+                        captiveMap.put("redirect_url", captiveProfileDetails.getRedirectURL());
+                    }
                     captiveMap.put("session_timeout",
                             String.valueOf(captiveProfileDetails.getSessionTimeoutInMinutes()));
-                    captiveMap.put("redirect_url", captiveProfileDetails.getRedirectURL());
+
                     captiveMap.put("browser_title", captiveProfileDetails.getBrowserTitle());
                     captiveMap.put("splash_page_title", captiveProfileDetails.getHeaderContent());
-
                     captiveMap.put("acceptance_policy", captiveProfileDetails.getUserAcceptancePolicy());
                     captiveMap.put("login_success_text", captiveProfileDetails.getSuccessPageMarkdownText());
                     captiveMap.put("authentication",
                             getCaptiveAuthentication(captiveProfileDetails.getAuthenticationType()));
-                    captiveMap.put("username_password_file", getCaptiveManagedFileUrl("usernamePasswordFileURL",
-                            captiveProfileDetails.getUsernamePasswordFile()));
-                    // captiveMap.put("externalCaptivePortalURL",
-                    // captiveProfileDetails.getExternalCaptivePortalURL());
-                    // captiveMap.put("backgroundPosition",
-                    // captiveProfileDetails.getBackgroundPosition().toString());
-                    // captiveMap.put("backgroundRepeat",
-                    // captiveProfileDetails.getBackgroundRepeat().toString());
+                    if (captiveProfileDetails.getUsernamePasswordFile() != null) {
+                        captiveMap
+                                .put("username_password_file",
+                                        ManagedFileInfo
+                                                .resolveWithPopulatedHostname(
+                                                        captiveProfileDetails.getUsernamePasswordFile(), externalFileStoreURL)
+                                                .getApExportUrl());
+                    }
+                    if (captiveProfileDetails.getLogoFile() != null) {
+                        captiveMap.put("splash_page_logo",
+                                ManagedFileInfo
+                                        .resolveWithPopulatedHostname(captiveProfileDetails.getLogoFile(), externalFileStoreURL)
+                                        .getApExportUrl());
+                    }
+                    if (captiveProfileDetails.getBackgroundFile() != null) {
+                        captiveMap.put("splash_page_background_logo", ManagedFileInfo
+                                .resolveWithPopulatedHostname(captiveProfileDetails.getBackgroundFile(), externalFileStoreURL)
+                                .getApExportUrl());
+                    }
+                    LOG.debug("captiveMap {}", captiveMap);
                     walledGardenAllowlist.addAll(captiveProfileDetails.getWalledGardenAllowlist());
 
-                    captiveMap.put("splash_page_logo",
-                            getCaptiveManagedFileUrl("logoFileURL", captiveProfileDetails.getLogoFile()));
-                    captiveMap.put("splash_page_background_logo",
-                            getCaptiveManagedFileUrl("backgroundFileURL", captiveProfileDetails.getBackgroundFile()));
-
-                    LOG.debug("captiveMap {}", captiveMap);
                 }
             }
         }
@@ -3910,28 +3905,6 @@ public class OvsdbDao {
     }
 
     /**
-     * 
-     * @param fileDesc
-     * @param fileInfo
-     * @return Url for captive portal file
-     */
-    String getCaptiveManagedFileUrl(String fileDesc, ManagedFileInfo fileInfo) {
-        if ((fileInfo == null) || (fileInfo.getApExportUrl() == null)) {
-            return "";
-        }
-        if (fileInfo.getApExportUrl().startsWith(HTTP)) {
-            return fileInfo.getApExportUrl();
-        }
-        if (externalFileStoreURL == null) {
-            LOG.error("Missing externalFileStoreURL)");
-            return "";
-        }
-        LOG.debug("Captive file {}: {}", fileDesc, externalFileStoreURL + FILESTORE + "/" + fileInfo.getApExportUrl());
-
-        return externalFileStoreURL + FILESTORE + "/" + fileInfo.getApExportUrl();
-    }
-
-    /**
      * Insert or update Wifi_Inet_Interface for Wifi_VIF_Config table entry
      * 
      * @param ovsdbClient
@@ -3954,7 +3927,6 @@ public class OvsdbDao {
             tableColumns.put("network", new Atom<>(true));
             tableColumns.put("if_name", new Atom<>(ifName));
             tableColumns.put("NAT", new Atom<>(isNat));
-            tableColumns.put("dhcp_sniff", new Atom<>(true));
 
             Row row = new Row(tableColumns);
             if (isUpdate) {
@@ -4774,249 +4746,9 @@ public class OvsdbDao {
     }
 
     public void configureStatsFromProfile(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
+        // TODO: this will be refactored when the opensync profile for stats is
+        // re-worked
         configureStats(ovsdbClient);
-
-        // if (opensyncApConfig.getMetricsProfiles() == null ||
-        // opensyncApConfig.getMetricsProfiles().isEmpty()) {
-        // configureStats(ovsdbClient);
-        // } else {
-        //
-        // List<Operation> operations = new ArrayList<>();
-        //
-        // for (Profile metricsProfile : opensyncApConfig.getMetricsProfiles())
-        // {
-        //
-        // ServiceMetricsCollectionConfigProfile details =
-        // ((ServiceMetricsCollectionConfigProfile) metricsProfile
-        // .getDetails());
-        //
-        // for (ServiceMetricDataType dataType :
-        // details.getMetricConfigParameterMap().keySet()) {
-        //
-        // if (dataType.equals(ServiceMetricDataType.ApNode)
-        // || dataType.equals(ServiceMetricDataType.Neighbour)
-        // || dataType.equals(ServiceMetricDataType.Channel)) {
-        //
-        // details.getMetricConfigParameterMap().get(dataType).stream().forEach(c
-        // -> {
-        // ServiceMetricSurveyConfigParameters parameters =
-        // (ServiceMetricSurveyConfigParameters) c;
-        //
-        // Map<String, Integer> thresholdMap = new HashMap<>();
-        // thresholdMap.put("max_delay",
-        // parameters.getDelayMillisecondsThreshold());
-        // thresholdMap.put("util",
-        // parameters.getPercentUtilizationThreshold());
-        //
-        // @SuppressWarnings("unchecked")
-        // com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer>
-        // thresholds = com.vmware.ovsdb.protocol.operation.notation.Map
-        // .of(thresholdMap);
-        //
-        // RadioType radioType = parameters.getRadioType();
-        // ServiceMetricsChannelUtilizationSurveyType channelType =
-        // parameters.getChannelSurveyType();
-        // int scanInterval = parameters.getScanIntervalMillis();
-        // ServiceMetricsStatsReportFormat format =
-        // parameters.getStatsReportFormat();
-        // int reportingInterval = parameters.getReportingIntervalSeconds();
-        // int samplingInterval = parameters.getSamplingInterval();
-        //
-        // if (dataType.equals(ServiceMetricDataType.ApNode)
-        // || dataType.equals(ServiceMetricDataType.Channel)) {
-        // provisionWifiStatsConfigFromProfile("survey",
-        // getAllowedChannels(ovsdbClient),
-        // radioType, channelType, scanInterval, format, reportingInterval,
-        // samplingInterval, operations, thresholds);
-        // if (dataType.equals(ServiceMetricDataType.ApNode)) {
-        // // extra reports that are part of ApNode
-        // // metric
-        // if
-        // (channelType.equals(ServiceMetricsChannelUtilizationSurveyType.ON_CHANNEL))
-        // {
-        // provisionWifiStatsConfigFromProfile("device", reportingInterval,
-        // samplingInterval, operations);
-        // if (((ApNetworkConfiguration)
-        // opensyncApConfig.getApProfile().getDetails())
-        // .getSyntheticClientEnabled()) {
-        // provisionWifiStatsConfigFromProfile("network_probe",
-        // reportingInterval,
-        // samplingInterval, operations);
-        // }
-        // }
-        //
-        // }
-        // } else if (dataType.equals(ServiceMetricDataType.Neighbour)) {
-        // provisionWifiStatsConfigFromProfile("neighbor",
-        // getAllowedChannels(ovsdbClient),
-        // radioType, channelType, scanInterval, format, reportingInterval,
-        // samplingInterval, operations, thresholds);
-        // }
-        //
-        // });
-        //
-        // } else if (dataType.equals(ServiceMetricDataType.ApSsid)
-        // || dataType.equals(ServiceMetricDataType.Client)) {
-        // details.getMetricConfigParameterMap().get(dataType).stream().forEach(c
-        // -> {
-        // ServiceMetricRadioConfigParameters parameters =
-        // (ServiceMetricRadioConfigParameters) c;
-        //
-        // RadioType radioType = parameters.getRadioType();
-        // int reportingInterval = parameters.getReportingIntervalSeconds();
-        // int samplingInterval = parameters.getSamplingInterval();
-        //
-        // provisionWifiStatsConfigFromProfile("client", radioType,
-        // reportingInterval,
-        // samplingInterval, operations);
-        //
-        // provisionWifiStatsConfigFromProfile("video_voice", reportingInterval,
-        // samplingInterval,
-        // operations);
-        // LOG.debug("{}", BaseJsonModel.toPrettyJsonString(parameters));
-        // });
-        // } else {
-        // details.getMetricConfigParameterMap().get(dataType).stream().forEach(c
-        // -> {
-        // ServiceMetricConfigParameters parameters =
-        // (ServiceMetricConfigParameters) c;
-        // int reportingInterval = parameters.getReportingIntervalSeconds();
-        // int samplingInterval = parameters.getSamplingInterval();
-        // provisionWifiStatsConfigFromProfile("video_voice", reportingInterval,
-        // samplingInterval,
-        // operations);
-        // // TODO: add when schema supports
-        // // provisionWifiStatsConfigFromProfile("event",
-        // // reportingInterval,
-        // // samplingInterval, operations);
-        //
-        // LOG.debug("{}", BaseJsonModel.toPrettyJsonString(parameters));
-        // });
-        // }
-        //
-        // }
-        //
-        // }
-        //
-        // if (!operations.isEmpty()) {
-        // LOG.debug("Sending batch of operations : {} ", operations);
-        //
-        // try {
-        // CompletableFuture<OperationResult[]> fResult =
-        // ovsdbClient.transact(ovsdbName, operations);
-        // OperationResult[] result = fResult.get(ovsdbTimeoutSec,
-        // TimeUnit.SECONDS);
-        //
-        // if (LOG.isDebugEnabled()) {
-        // LOG.debug("Updated {}:", wifiStatsConfigDbTable);
-        //
-        // for (OperationResult res : result) {
-        // LOG.debug("Op Result {}", res);
-        // }
-        // }
-        // } catch (OvsdbClientException | TimeoutException | ExecutionException
-        // | InterruptedException e) {
-        // throw new RuntimeException(e);
-        // }
-        // }
-        //
-        // }
-
-    }
-
-    private void provisionWifiStatsConfigFromProfile(String statsType, RadioType radioType, int reportingInterval,
-            int samplingInterval, List<Operation> operations) {
-
-        Map<String, Value> rowColumns = new HashMap<>();
-        rowColumns.put("radio_type",
-                new Atom<>(OvsdbToWlanCloudTypeMappingUtility.getOvsdbRadioFreqBandForRadioType(radioType)));
-        rowColumns.put("reporting_interval", new Atom<>(reportingInterval));
-        rowColumns.put("report_type", new Atom<>("raw"));
-        rowColumns.put("sampling_interval", new Atom<>(samplingInterval));
-        rowColumns.put("stats_type", new Atom<>(statsType));
-
-        Row updateRow = new Row(rowColumns);
-
-        Insert newStatConfig = new Insert(wifiStatsConfigDbTable, updateRow);
-        if (!operations.contains(newStatConfig)) {
-            operations.add(newStatConfig);
-        }
-
-    }
-
-    private void provisionWifiStatsConfigFromProfile(String statsType, int reportingInterval, int samplingInterval,
-            List<Operation> operations) {
-
-        Map<String, Value> rowColumns = new HashMap<>();
-        rowColumns.put("radio_type", new Atom<>(OvsdbStringConstants.OVSDB_FREQ_BAND_2pt4G));
-        rowColumns.put("reporting_interval", new Atom<>(reportingInterval));
-        rowColumns.put("report_type", new Atom<>("raw"));
-        rowColumns.put("sampling_interval", new Atom<>(samplingInterval));
-        rowColumns.put("stats_type", new Atom<>(statsType));
-
-        Row updateRow = new Row(rowColumns);
-
-        Insert newStatConfig = new Insert(wifiStatsConfigDbTable, updateRow);
-        if (!operations.contains(newStatConfig)) {
-            // don't want the same stat 2x
-            operations.add(newStatConfig);
-        }
-
-    }
-
-    private void provisionWifiStatsConfigFromProfile(String statsType, Map<String, Set<Integer>> allowedChannels,
-            RadioType radioType, ServiceMetricsChannelUtilizationSurveyType channelType, int scanInterval,
-            ServiceMetricsStatsReportFormat format, int reportingInterval, int samplingInterval,
-            List<Operation> operations, com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer> thresholds) {
-
-        if (channelType.equals(ServiceMetricsChannelUtilizationSurveyType.ON_CHANNEL)) {
-
-            Map<String, Value> rowColumns = new HashMap<>();
-            rowColumns.put("radio_type",
-                    new Atom<>(OvsdbToWlanCloudTypeMappingUtility.getOvsdbRadioFreqBandForRadioType(radioType)));
-            rowColumns.put("reporting_interval", new Atom<>(reportingInterval));
-            rowColumns.put("report_type", new Atom<>("raw"));
-            rowColumns.put("sampling_interval", new Atom<>(samplingInterval));
-            rowColumns.put("stats_type", new Atom<>(statsType));
-            rowColumns.put("survey_interval_ms", new Atom<>(scanInterval));
-            rowColumns.put("survey_type", new Atom<>(
-                    OvsdbToWlanCloudTypeMappingUtility.getOvsdbStatsSurveyTypeFromProfileSurveyType(channelType)));
-
-            Row updateRow = new Row(rowColumns);
-
-            Insert newStatConfig = new Insert(wifiStatsConfigDbTable, updateRow);
-            if (!operations.contains(newStatConfig)) {
-                operations.add(newStatConfig);
-            }
-
-        } else {
-
-            Map<String, Value> rowColumns = new HashMap<>();
-            com.vmware.ovsdb.protocol.operation.notation.Set channels = com.vmware.ovsdb.protocol.operation.notation.Set
-                    .of(allowedChannels
-                            .get(OvsdbToWlanCloudTypeMappingUtility.getOvsdbRadioFreqBandForRadioType(radioType)));
-            if (channels == null) {
-                channels = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
-            }
-            rowColumns.put("channel_list", channels);
-
-            rowColumns.put("radio_type",
-                    new Atom<>(OvsdbToWlanCloudTypeMappingUtility.getOvsdbRadioFreqBandForRadioType(radioType)));
-            rowColumns.put("reporting_interval", new Atom<>(reportingInterval));
-            rowColumns.put("report_type", new Atom<>("raw"));
-            rowColumns.put("stats_type", new Atom<>(statsType));
-            rowColumns.put("survey_type", new Atom<>(
-                    OvsdbToWlanCloudTypeMappingUtility.getOvsdbStatsSurveyTypeFromProfileSurveyType(channelType)));
-            rowColumns.put("sampling_interval", new Atom<>(samplingInterval));
-            rowColumns.put("survey_interval_ms", new Atom<>(scanInterval));
-            rowColumns.put("threshold", thresholds);
-            Row updateRow = new Row(rowColumns);
-            Insert newStatConfig = new Insert(wifiStatsConfigDbTable, updateRow);
-            if (!operations.contains(newStatConfig)) {
-                operations.add(newStatConfig);
-            }
-
-        }
 
     }
 

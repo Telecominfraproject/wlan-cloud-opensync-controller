@@ -159,9 +159,9 @@ public class OvsdbDaoTest {
         apProfile.setName("ApProfile");
         apProfile.setProfileType(ProfileType.equipment_ap);
         ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
-        Set<GreTunnelConfiguration> greTunnels = Set.of(new GreTunnelConfiguration("gre1", "wan",
-                InetAddress.getByName("10.0.10.10"), InetAddress.getByName("192.168.0.10"),
-                MacAddress.valueOf("3c:22:fb:18:43:16"), Set.of(Integer.valueOf(100))));
+        Set<GreTunnelConfiguration> greTunnels = Set.of(new GreTunnelConfiguration("gre", "wan",
+                null, InetAddress.getByName("192.168.0.10"),
+                null, Set.of(Integer.valueOf(100))));
         tunnelProfileDetails.setGreTunnelConfigurations(greTunnels);
         apProfile.setDetails(tunnelProfileDetails);
 
@@ -331,17 +331,15 @@ public class OvsdbDaoTest {
         apProfile.setName("ApProfile");
         apProfile.setProfileType(ProfileType.equipment_ap);
         ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
-        Set<GreTunnelConfiguration> greTunnels = Set.of(new GreTunnelConfiguration("gre1", "wan",
+        Set<GreTunnelConfiguration> greTunnels = Set.of(new GreTunnelConfiguration("gre", "wan",
                 null, InetAddress.getByName("192.168.0.10"),
-                MacAddress.valueOf("3c:22:fb:18:43:16"), Set.of(Integer.valueOf(100))));
+                null, Set.of(Integer.valueOf(100))));
         tunnelProfileDetails.setGreTunnelConfigurations(greTunnels);
         apProfile.setDetails(tunnelProfileDetails);
 
         OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
         Mockito.when(apConfig.getApProfile()).thenReturn(apProfile);
         ovsdbDao.configureGreTunnels(ovsdbClient, apConfig);
-        // 2 calls to check existence, 2 calls to insert tunnel (1 each per
-        // Profile)
         Mockito.verify(ovsdbClient, Mockito.times(1)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
         Mockito.verify(apConfig, Mockito.times(3)).getApProfile();
 
@@ -356,32 +354,8 @@ public class OvsdbDaoTest {
         apProfile.setProfileType(ProfileType.equipment_ap);
         ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
 
-        Set<GreTunnelConfiguration> greTunnels = Set.of(new GreTunnelConfiguration("gre1", "wan",
+        Set<GreTunnelConfiguration> greTunnels = Set.of(new GreTunnelConfiguration("gre", "wan",
                 InetAddress.getByName("10.0.10.10"), null,
-                MacAddress.valueOf("3c:22:fb:18:43:16"), Set.of(Integer.valueOf(100))));
-        tunnelProfileDetails.setGreTunnelConfigurations(greTunnels);
-        apProfile.setDetails(tunnelProfileDetails);
-
-        OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
-        Mockito.when(apConfig.getApProfile()).thenReturn(apProfile);
-        ovsdbDao.configureGreTunnels(ovsdbClient, apConfig);
-        // Should not create
-        Mockito.verify(ovsdbClient, Mockito.times(0)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
-        Mockito.verify(apConfig, Mockito.times(3)).getApProfile();
-
-    }
-
-    @Test
-    public void testConfigureGreTunnelsWithNoParentInterface() throws Exception {
-        Profile apProfile = new Profile();
-        apProfile.setCustomerId(2);
-        apProfile.setId(1L);
-        apProfile.setName("ApProfile");
-        apProfile.setProfileType(ProfileType.equipment_ap);
-        ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
-
-        Set<GreTunnelConfiguration> greTunnels = Set.of(new GreTunnelConfiguration("gre1", null,
-                InetAddress.getByName("10.0.10.10"), InetAddress.getByName("192.168.0.10"),
                 MacAddress.valueOf("3c:22:fb:18:43:16"), Set.of(Integer.valueOf(100))));
         tunnelProfileDetails.setGreTunnelConfigurations(greTunnels);
         apProfile.setDetails(tunnelProfileDetails);
@@ -405,8 +379,8 @@ public class OvsdbDaoTest {
         ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
 
         Set<GreTunnelConfiguration> greTunnels = Set.of(new GreTunnelConfiguration(null, "wan",
-                InetAddress.getByName("10.0.10.10"), InetAddress.getByName("192.168.0.10"),
-                MacAddress.valueOf("3c:22:fb:18:43:16"), Set.of(Integer.valueOf(100))));
+                null, InetAddress.getByName("192.168.0.10"),
+                null, Set.of(Integer.valueOf(100))));
         tunnelProfileDetails.setGreTunnelConfigurations(greTunnels);
 
         apProfile.setDetails(tunnelProfileDetails);

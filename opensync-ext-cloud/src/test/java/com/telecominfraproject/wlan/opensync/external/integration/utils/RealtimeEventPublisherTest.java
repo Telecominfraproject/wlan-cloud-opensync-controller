@@ -30,6 +30,8 @@ import com.telecominfraproject.wlan.client.models.events.utils.WlanStatusCode;
 import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherInterface;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExternalIntegrationCloud;
+import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
+
 import sts.OpensyncStats.EventReport.DhcpNakEvent;
 import sts.OpensyncStats.EventReport.DhcpOfferEvent;
 import sts.OpensyncStats.EventReport.DhcpRequestEvent;
@@ -57,6 +59,9 @@ public class RealtimeEventPublisherTest {
 
     @MockBean
     private EquipmentServiceInterface equipmentServiceInterface;
+    
+    @MockBean
+    private ProfileServiceInterface  profileServiceInterface;
 
     @Autowired
     RealtimeEventPublisher realtimeEventPublisher;
@@ -108,7 +113,7 @@ public class RealtimeEventPublisherTest {
                 .setStaMac("c0:9a:d0:76:a9:69").setSessionId(Long.parseUnsignedLong("12377998144488079334"))
                 .setAuthStatus(WlanStatusCode.WLAN_STATUS_SUCCESS.getId()).setTimestampMs(1610050309).build();
 
-        realtimeEventPublisher.publishClientAuthSystemEvent(2, 1L, clientAuthEvent);
+        realtimeEventPublisher.publishClientAuthSystemEvent(2, 1L, 0L, clientAuthEvent);
 
         Mockito.verify(cloudEventDispatcherInterface, Mockito.times(1))
                 .publishEvent(Mockito.any(ClientAuthEvent.class));
@@ -123,7 +128,7 @@ public class RealtimeEventPublisherTest {
                 .setUsing11K(true).setUsing11V(true).setStatus(WlanStatusCode.WLAN_STATUS_SUCCESS.getId())
                 .setTimestampMs(1610050309).build();
 
-        realtimeEventPublisher.publishClientAssocEvent(2, 1L, clientAssocEvent);
+        realtimeEventPublisher.publishClientAssocEvent(2, 1L, 0L, clientAssocEvent);
 
         Mockito.verify(cloudEventDispatcherInterface, Mockito.times(1))
                 .publishEvent(Mockito.any(ClientAssocEvent.class));
@@ -272,7 +277,7 @@ public class RealtimeEventPublisherTest {
 
         dhcpTransactionList.add(dhcpTransaction);
         
-        realtimeEventPublisher.publishDhcpTransactionEvents(2, 1L, dhcpTransactionList);
+        realtimeEventPublisher.publishDhcpTransactionEvents(2, 1L, 0L, dhcpTransactionList);
 
         Mockito.verify(cloudEventDispatcherInterface,Mockito.times(1)).publishEventsBulk(Mockito.anyList());
 
@@ -301,7 +306,7 @@ public class RealtimeEventPublisherTest {
                 .addVideoVoiceReport(callReportRoamedToVoiceReportBuilder)
                 .addVideoVoiceReport(callStopVoiceReportBuilder).setNodeID("1").build();
 
-        realtimeEventPublisher.publishSipCallEvents(1, 2L, multipleVoiceReportsInOneReport.getVideoVoiceReportList());
+        realtimeEventPublisher.publishSipCallEvents(1, 2L, 0L, multipleVoiceReportsInOneReport.getVideoVoiceReportList());
 
         Mockito.verify(cloudEventDispatcherInterface, Mockito.times(1)).publishEventsBulk(Mockito.anyList());
     }

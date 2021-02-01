@@ -32,63 +32,12 @@
         "costSavingEventsEnabled": true,
         "forwardMode": "BRIDGE",
         "radioMap": {
-            "is2dot4GHz": {
-                "model_type": "ElementRadioConfiguration",
-                "radioType": "is2dot4GHz",
-                "channelNumber": 6,
-                "manualChannelNumber": 6,
-                "backupChannelNumber": 11,
-                "allowedChannels": [
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11
-                ],
-                "rxCellSizeDb": {
-                    "model_type": "SourceSelectionValue",
-                    "source": "profile",
-                    "value": -90
-                },
-                "probeResponseThresholdDb": {
-                    "model_type": "SourceSelectionValue",
-                    "source": "profile",
-                    "value": -90
-                },
-                "clientDisconnectThresholdDb": {
-                    "model_type": "SourceSelectionValue",
-                    "source": "profile",
-                    "value": -90
-                },
-                "eirpTxPower": {
-                    "model_type": "SourceSelectionValue",
-                    "source": "profile",
-                    "value": 18
-                },
-                "perimeterDetectionEnabled": true,
-                "bestAPSteerType": "both",
-                "deauthAttackDetection": null,
-                "allowedChannelsPowerLevels": []
-            },
             "is5GHzU": {
                 "model_type": "ElementRadioConfiguration",
                 "radioType": "is5GHzU",
                 "channelNumber": 149,
                 "manualChannelNumber": 149,
                 "backupChannelNumber": 154,
-                "allowedChannels": [
-                    161,
-                    149,
-                    165,
-                    153,
-                    157
-                ],
                 "rxCellSizeDb": {
                     "model_type": "SourceSelectionValue",
                     "source": "profile",
@@ -112,7 +61,215 @@
                 "perimeterDetectionEnabled": true,
                 "bestAPSteerType": "both",
                 "deauthAttackDetection": null,
-                "allowedChannelsPowerLevels": []
+                "allowedChannelsPowerLevels": [
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 161,
+                        "powerLevel": 18,
+                        "dfs": false,
+                        "channelWidth": 80
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 100,
+                        "powerLevel": 18,
+                        "dfs": true,
+                        "channelWidth": 80
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 132,
+                        "powerLevel": 18,
+                        "dfs": true,
+                        "channelWidth": 80
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 165,
+                        "powerLevel": 18,
+                        "dfs": false,
+                        "channelWidth": 80
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 104,
+                        "powerLevel": 18,
+                        "dfs": true,
+                        "channelWidth": 80
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 136,
+                        "powerLevel": 18,
+                        "dfs": true,
+                        "channelWidth": 80
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 108,
+                        "powerLevel": 18,
+                        "dfs": true,
+                        "channelWidth": 80
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 140,
+                        "powerLevel": 18,
+                        "dfs": true,
+                        "channelWidth": 80
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 112,
+                        "powerLevel": 18,
+                        "dfs": true,
+                        "channelWidth": 80
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 144,
+                        "powerLevel": 18,
+                        "dfs": true,
+                        "channelWidth": 80
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 116,
+                        "powerLevel": 18,
+                        "dfs": true,
+                        "channelWidth": 80
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 149,
+                        "powerLevel": 18,
+                        "dfs": false,
+                        "channelWidth": 80
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 153,
+                        "powerLevel": 18,
+                        "dfs": false,
+                        "channelWidth": 80
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 157,
+                        "powerLevel": 18,
+                        "dfs": false,
+                        "channelWidth": 80
+                    }
+                ]
+            },
+            "is2dot4GHz": {
+                "model_type": "ElementRadioConfiguration",
+                "radioType": "is2dot4GHz",
+                "channelNumber": 6,
+                "manualChannelNumber": 6,
+                "backupChannelNumber": 11,
+                "rxCellSizeDb": {
+                    "model_type": "SourceSelectionValue",
+                    "source": "profile",
+                    "value": -90
+                },
+                "probeResponseThresholdDb": {
+                    "model_type": "SourceSelectionValue",
+                    "source": "profile",
+                    "value": -90
+                },
+                "clientDisconnectThresholdDb": {
+                    "model_type": "SourceSelectionValue",
+                    "source": "profile",
+                    "value": -90
+                },
+                "eirpTxPower": {
+                    "model_type": "SourceSelectionValue",
+                    "source": "profile",
+                    "value": 18
+                },
+                "perimeterDetectionEnabled": true,
+                "bestAPSteerType": "both",
+                "deauthAttackDetection": null,
+                "allowedChannelsPowerLevels": [
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 1,
+                        "powerLevel": 18,
+                        "dfs": false,
+                        "channelWidth": 20
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 2,
+                        "powerLevel": 18,
+                        "dfs": false,
+                        "channelWidth": 20
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 3,
+                        "powerLevel": 18,
+                        "dfs": false,
+                        "channelWidth": 20
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 4,
+                        "powerLevel": 18,
+                        "dfs": false,
+                        "channelWidth": 20
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 5,
+                        "powerLevel": 18,
+                        "dfs": false,
+                        "channelWidth": 20
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 6,
+                        "powerLevel": 18,
+                        "dfs": false,
+                        "channelWidth": 20
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 7,
+                        "powerLevel": 18,
+                        "dfs": false,
+                        "channelWidth": 20
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 8,
+                        "powerLevel": 18,
+                        "dfs": false,
+                        "channelWidth": 20
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 9,
+                        "powerLevel": 18,
+                        "dfs": false,
+                        "channelWidth": 20
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 10,
+                        "powerLevel": 18,
+                        "dfs": false,
+                        "channelWidth": 20
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 11,
+                        "powerLevel": 18,
+                        "dfs": false,
+                        "channelWidth": 20
+                    }
+                ]
             },
             "is5GHzL": {
                 "model_type": "ElementRadioConfiguration",
@@ -120,12 +277,6 @@
                 "channelNumber": 36,
                 "manualChannelNumber": 36,
                 "backupChannelNumber": 44,
-                "allowedChannels": [
-                    48,
-                    36,
-                    40,
-                    44
-                ],
                 "rxCellSizeDb": {
                     "model_type": "SourceSelectionValue",
                     "source": "profile",
@@ -149,7 +300,64 @@
                 "perimeterDetectionEnabled": true,
                 "bestAPSteerType": "both",
                 "deauthAttackDetection": null,
-                "allowedChannelsPowerLevels": []
+                "allowedChannelsPowerLevels": [
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 52,
+                        "powerLevel": 18,
+                        "dfs": true,
+                        "channelWidth": 80
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 36,
+                        "powerLevel": 18,
+                        "dfs": false,
+                        "channelWidth": 80
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 56,
+                        "powerLevel": 18,
+                        "dfs": true,
+                        "channelWidth": 80
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 40,
+                        "powerLevel": 18,
+                        "dfs": false,
+                        "channelWidth": 80
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 60,
+                        "powerLevel": 18,
+                        "dfs": true,
+                        "channelWidth": 80
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 44,
+                        "powerLevel": 18,
+                        "dfs": false,
+                        "channelWidth": 80
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 64,
+                        "powerLevel": 18,
+                        "dfs": true,
+                        "channelWidth": 80
+                    },
+                    {
+                        "model_type": "ChannelPowerLevel",
+                        "channelNumber": 48,
+                        "powerLevel": 18,
+                        "dfs": false,
+                        "channelWidth": 80
+                    }
+                ]
             }
         },
         "advancedRadioMap": {
@@ -256,6 +464,6 @@
         "addressAsString": "24:f5:a2:ef:2e:53"
     },
     "serial": "21P10C68818122",
-    "createdTimestamp": 0,
-    "lastModifiedTimestamp": 1611264546193
+    "createdTimestamp": 1611857503082,
+    "lastModifiedTimestamp": 1611857505529
 }
