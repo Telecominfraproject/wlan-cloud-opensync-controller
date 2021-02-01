@@ -24,6 +24,10 @@ import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.Equipment;
 import com.telecominfraproject.wlan.opensync.util.OvsdbToWlanCloudTypeMappingUtility;
+import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
+import com.telecominfraproject.wlan.profile.models.ProfileContainer;
+import com.telecominfraproject.wlan.profile.models.ProfileType;
+import com.telecominfraproject.wlan.profile.rf.models.RfConfiguration;
 import com.telecominfraproject.wlan.systemevent.equipment.BaseDhcpEvent;
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeChannelHopEvent;
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeEventType;
@@ -80,6 +84,9 @@ public class RealtimeEventPublisher {
 
     @Autowired
     private EquipmentServiceInterface equipmentServiceInterface;
+    
+    @Autowired
+    private ProfileServiceInterface  profileServiceInterface;
 
     private static final Logger LOG = LoggerFactory.getLogger(RealtimeEventPublisher.class);
 
@@ -93,6 +100,16 @@ public class RealtimeEventPublisher {
         Equipment equipment = equipmentServiceInterface.getOrNull(equipmentId);
         if (equipment == null) {
             return;
+        }
+        ProfileContainer profileContainer = new ProfileContainer(
+        		profileServiceInterface.getProfileWithChildren(equipment.getProfileId()));
+        RfConfiguration rfConfig = null;
+        if (profileContainer != null) {
+        	rfConfig = (RfConfiguration) profileContainer.getChildOfTypeOrNull(equipment.getProfileId(), ProfileType.rf).getDetails();
+        }
+        if (profileContainer == null || rfConfig == null) {
+        	LOG.warn("publishChannelHopEvents:profileContainer {} or RfConfiguration {} is null for customerId {} equipmentId {}",
+					profileContainer, rfConfig, customerId, equipmentId);
         }
 
         for (sts.OpensyncStats.EventReport.ChannelSwitchEvent channelSwitchEvent : e.getChannelSwitchList()) {
@@ -141,10 +158,14 @@ public class RealtimeEventPublisher {
                         channelSwitchEvent);
                 continue;
             }
+            boolean autoChannelSelection = false;
+            if (rfConfig != null && rfConfig.getRfConfigMap() != null && rfConfig.getRfConfigMap().get(radioType) != null) {
+               autoChannelSelection = rfConfig.getRfConfigMap().get(radioType).getAutoChannelSelection();
+            }
 
             RealTimeChannelHopEvent channelHopEvent = new RealTimeChannelHopEvent(RealTimeEventType.Channel_Hop,
                     customerId, locationId, equipmentId, radioType, channel,
-                    ((ApElementConfiguration) equipment.getDetails()).getRadioMap().get(radioType).getChannelNumber(),
+                    ((ApElementConfiguration) equipment.getDetails()).getRadioMap().get(radioType).getActiveChannel(autoChannelSelection),
                     reason, timestamp);
 
             events.add(channelHopEvent);

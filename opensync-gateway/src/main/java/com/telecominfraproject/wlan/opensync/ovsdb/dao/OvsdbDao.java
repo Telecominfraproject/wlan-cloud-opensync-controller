@@ -1871,7 +1871,10 @@ public class OvsdbDao {
 
             ElementRadioConfiguration elementRadioConfig = apElementConfiguration.getRadioMap().get(radioType);
             RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(radioType);
-            int channel = elementRadioConfig.getChannelNumber();
+            boolean autoChannelSelection = rfElementConfig.getAutoChannelSelection();
+            int channel = elementRadioConfig.getActiveChannel(autoChannelSelection);
+            LOG.debug("configureWifiRadios autoChannelSelection {} activeChannel {} getChannelNumber {} ",
+            		autoChannelSelection, channel, elementRadioConfig.getChannelNumber());
             ChannelBandwidth bandwidth = rfElementConfig.getChannelBandwidth();
             String ht_mode = null;
             switch (bandwidth) {
@@ -1893,7 +1896,6 @@ public class OvsdbDao {
             default:
                 ht_mode = null;
             }
-            rfElementConfig.getAutoChannelSelection();
 
             RadioConfiguration radioConfig = apElementConfiguration.getAdvancedRadioMap().get(radioType);
             int beaconInterval = rfElementConfig.getBeaconInterval();
