@@ -30,6 +30,8 @@ import com.telecominfraproject.wlan.client.models.events.utils.WlanStatusCode;
 import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherInterface;
 import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExternalIntegrationCloud;
+import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
+
 import sts.OpensyncStats.EventReport.DhcpNakEvent;
 import sts.OpensyncStats.EventReport.DhcpOfferEvent;
 import sts.OpensyncStats.EventReport.DhcpRequestEvent;
@@ -57,6 +59,9 @@ public class RealtimeEventPublisherTest {
 
     @MockBean
     private EquipmentServiceInterface equipmentServiceInterface;
+    
+    @MockBean
+    private ProfileServiceInterface  profileServiceInterface;
 
     @Autowired
     RealtimeEventPublisher realtimeEventPublisher;
