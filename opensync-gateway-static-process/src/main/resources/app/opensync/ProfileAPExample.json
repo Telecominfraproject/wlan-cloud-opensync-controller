@@ -42,14 +42,11 @@
         "bestAPSteerType": "both"
       }
     },
-    "greTunnelConfigurations": [
+     "greTunnelConfigurations": [
       {
         "model_type": "GreTunnelConfiguration",
         "greTunnelName": null,
-        "greParentIfName": null,
-        "greLocalInetAddr": null,
         "greRemoteInetAddr": null,
-        "greRemoteMacAddr": null,
         "vlanIdsInGreTunnel": [
         ]
       }
