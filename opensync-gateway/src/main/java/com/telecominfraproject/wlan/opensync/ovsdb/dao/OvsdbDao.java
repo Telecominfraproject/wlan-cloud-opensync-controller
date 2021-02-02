@@ -92,6 +92,7 @@ import com.telecominfraproject.wlan.profile.rf.models.RfConfiguration;
 import com.telecominfraproject.wlan.profile.rf.models.RfElementConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.NasIdType;
 import com.telecominfraproject.wlan.profile.ssid.models.NasIpType;
+import com.telecominfraproject.wlan.profile.ssid.models.RadioBasedSsidConfiguration2g;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.vmware.ovsdb.exception.OvsdbClientException;
 import com.vmware.ovsdb.protocol.methods.RowUpdate;
@@ -2643,7 +2644,7 @@ public class OvsdbDao {
             int ssidUlLimit, int clientDlLimit, int clientUlLimit, int rtsCtsThreshold, int fragThresholdBytes,
             int dtimPeriod, Map<String, String> captiveMap, List<String> walledGardenAllowlist,
             Map<Short, Set<String>> bonjourServiceMap, String radiusNasId, String radiusNasIp,
-            String radiusOperatorName, String greTunnelName) {
+            String radiusOperatorName, String greTunnelName, Boolean enable80211b) {
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
@@ -2720,7 +2721,7 @@ public class OvsdbDao {
 
             configureCustomOptionsForSsid(ovsdbClient, enable80211k, rateLimitEnable, ssidDlLimit, ssidUlLimit,
                     clientDlLimit, clientUlLimit, rtsCtsThreshold, fragThresholdBytes, dtimPeriod, radiusNasId,
-                    radiusNasIp, radiusOperatorName, updateColumns);
+                    radiusNasIp, radiusOperatorName, updateColumns, enable80211b);
 
             updateBlockList(updateColumns, macBlockList);
             Row row = new Row(updateColumns);
@@ -2780,11 +2781,12 @@ public class OvsdbDao {
      * @param radiusNasIp
      * @param radiusOperatorName
      * @param updateColumns
+     * @param enable80211b TODO
      */
     void configureCustomOptionsForSsid(OvsdbClient ovsdbClient, boolean enable80211k, boolean rateLimitEnable,
             int ssidDlLimit, int ssidUlLimit, int clientDlLimit, int clientUlLimit, int rtsCtsThreshold,
             int fragThresholdBytes, int dtimPeriod, String radiusNasId, String radiusNasIp, String radiusOperatorName,
-            Map<String, Value> updateColumns) {
+            Map<String, Value> updateColumns, Boolean enable80211b) {
         Map<String, String> customOptions = new HashMap<>();
         configureCustomOptionsForRatesAndLimits(rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit,
                 rtsCtsThreshold, customOptions);
@@ -2792,11 +2794,19 @@ public class OvsdbDao {
         configureCustomOptionsForRadiusNas(ovsdbClient, radiusNasId, radiusNasIp, radiusOperatorName, customOptions);
 
         configureCustomOptionsForDtimFragAnd80211k(enable80211k, dtimPeriod, fragThresholdBytes, customOptions);
-
+        
+        toggle80211bModulationRates(enable80211b, customOptions);
+        
         @SuppressWarnings("unchecked")
         com.vmware.ovsdb.protocol.operation.notation.Map<String, String> customMap = com.vmware.ovsdb.protocol.operation.notation.Map
                 .of(customOptions);
         updateColumns.put("custom_options", customMap);
+    }
+
+    protected void toggle80211bModulationRates(Boolean enable80211b, Map<String, String> customOptions) {
+        if (enable80211b != null) {
+            customOptions.put("disable_b_rates", enable80211b ? "0" : "1");
+        }
     }
 
     /**
@@ -3187,7 +3197,8 @@ public class OvsdbDao {
                 boolean enable80211v = true;
                 // on by default
                 boolean enable80211k = true;
-
+                // off by default, only applicable for is2do4GHz
+                Boolean enable80211b = null;
                 if (ssidConfig.getRadioBasedConfigs() != null) {
                     if (ssidConfig.getRadioBasedConfigs().containsKey(radioType)
                             && (ssidConfig.getRadioBasedConfigs().get(radioType) != null)) {
@@ -3208,6 +3219,9 @@ public class OvsdbDao {
                         }
                         if (ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211k() != null) {
                             enable80211k = ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211k();
+                        }
+                        if (radioType.equals(RadioType.is2dot4GHz)) {
+                            enable80211b = ((RadioBasedSsidConfiguration2g)ssidConfig.getRadioBasedConfigs().get(radioType)).getEnable80211b();
                         }
                     }
                 }
@@ -3274,7 +3288,7 @@ public class OvsdbDao {
                             uapsdEnabled, apBridge, ssidConfig.getForwardMode(), gateway, inet, dns, ipAssignScheme,
                             macBlockList, rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit,
                             rtsCtsThreshold, fragThresholdBytes, dtimPeriod, captiveMap, walledGardenAllowlist,
-                            bonjourServiceMap, radiusNasId, radiusNasIp, radiusOperName, greTunnelName);
+                            bonjourServiceMap, radiusNasId, radiusNasIp, radiusOperName, greTunnelName, enable80211b);
 
                     updateVifConfigsSetForRadio(ovsdbClient, ssidConfig.getSsid(), freqBand, vifConfigUuid);
 

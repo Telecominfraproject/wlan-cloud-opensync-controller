@@ -2,7 +2,6 @@ package com.telecominfraproject.wlan.opensync.external.integration;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -18,7 +17,6 @@ import com.telecominfraproject.wlan.equipment.models.Equipment;
 import com.telecominfraproject.wlan.location.models.Location;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
-import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPHotspot20Config;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPInetState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
@@ -46,30 +44,9 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 
     @Value("${tip.wlan.ovsdb.ssidProfileFileName:/app/config/ProfileSsid.json}")
     private String ssidProfileFileName;
-
-    @Value("${tip.wlan.ovsdb.metricsProfileFileName:/app/config/ProfileMetrics.json}")
-    private String metricsProfileFileName;
-
-    @Value("${tip.wlan.ovsdb.venueProfileFileName:/app/config/ProfileVenue.json}")
-    private String venueProfileFileName;
-
-    @Value("${tip.wlan.ovsdb.operatorProfileFileName:/app/config/ProfileOperator.json}")
-    private String operatorProfileFileName;
-
-    @Value("${tip.wlan.ovsdb.hotspot20ProfileFileName:/app/config/ProfileHotspot20.json}")
-    private String hotspot20ProfileFileName;
-
-    @Value("${tip.wlan.ovsdb.idProviderProfileFileName:/app/config/ProfileIdProvider.json}")
-    private String idProviderProfileFileName;
-
+    
     @Value("${tip.wlan.ovsdb.radiusProfileFileName:/app/config/ProfileRadius.json}")
     private String radiusProfileFileName;
-
-    @Value("${tip.wlan.ovsdb.captiveProfileFileName:/app/config/ProfileCaptive.json}")
-    private String captiveProfileFileName;
-
-    @Value("${tip.wlan.ovsdb.bonjourProfileFileName:/app/config/ProfileBonjour.json}")
-    private String bonjourProfileFileName;
 
     @Value("${tip.wlan.ovsdb.locationFileName:/app/config/LocationBuildingExample.json}")
     private String locationFileName;
@@ -85,7 +62,6 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
         serialNumber = connectNodeInfo.serialNumber;
         LOG.info("AP {} got connected to the gateway", apId);
         LOG.info("ConnectNodeInfo {}", connectNodeInfo);
-
     }
 
     public void apDisconnected(String apId) {
@@ -95,97 +71,42 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
     public OpensyncAPConfig getApConfig(String apId) {
         LOG.info("Retrieving config for AP {}", apId);
         OpensyncAPConfig ret = null;
-
         try {
-
             Equipment equipment = Equipment.fromFile(customerEquipmentFileName, Equipment.class);
             equipment.setInventoryId(apId);
             equipment.setName(apId);
             equipment.setSerial(serialNumber);
-
             com.telecominfraproject.wlan.profile.models.Profile apProfile = com.telecominfraproject.wlan.profile.models.Profile
                     .fromFile(apProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
-
             com.telecominfraproject.wlan.profile.models.Profile rfProfile = com.telecominfraproject.wlan.profile.models.Profile
                     .fromFile(rfProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
-
             apProfile.getChildProfileIds().add(rfProfile.getId());
-
             List<com.telecominfraproject.wlan.profile.models.Profile> ssidProfiles = com.telecominfraproject.wlan.profile.models.Profile
                     .listFromFile(ssidProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
-
-            List<com.telecominfraproject.wlan.profile.models.Profile> hotspot20Profiles = com.telecominfraproject.wlan.profile.models.Profile
-                    .listFromFile(hotspot20ProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
-            List<com.telecominfraproject.wlan.profile.models.Profile> operatorProfiles = com.telecominfraproject.wlan.profile.models.Profile
-                    .listFromFile(operatorProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
-            List<com.telecominfraproject.wlan.profile.models.Profile> venueProfiles = com.telecominfraproject.wlan.profile.models.Profile
-                    .listFromFile(venueProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
-            List<com.telecominfraproject.wlan.profile.models.Profile> providerProfiles = com.telecominfraproject.wlan.profile.models.Profile
-                    .listFromFile(idProviderProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
-
-
             ssidProfiles.stream().forEach(p -> apProfile.getChildProfileIds().add(p.getId()));
-
-            List<com.telecominfraproject.wlan.profile.models.Profile> metricsProfiles = com.telecominfraproject.wlan.profile.models.Profile
-                    .listFromFile(metricsProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
-
-            List<com.telecominfraproject.wlan.profile.models.Profile> radiusProfiles = com.telecominfraproject.wlan.profile.models.Profile
-                    .listFromFile(radiusProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
-
-
-            List<com.telecominfraproject.wlan.profile.models.Profile> captiveProfiles = null;
-            File captiveFile = new File(captiveProfileFileName);
-            if (captiveFile.exists()) {
-                captiveProfiles = com.telecominfraproject.wlan.profile.models.Profile.listFromFile(
-                        captiveProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
-            } else {
-                LOG.info("Captive file is not provided");
-            }
-
-            List<com.telecominfraproject.wlan.profile.models.Profile> bonjourProfiles = null;
-            File bonjourFile = new File(bonjourProfileFileName);
-            if (bonjourFile.exists()) {
-                bonjourProfiles = com.telecominfraproject.wlan.profile.models.Profile.listFromFile(
-                        bonjourProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
-            } else {
-                LOG.info("Bonjour file is not provided");
-            }
+            
 
             equipment.setProfileId(apProfile.getId());
-
             Location location = Location.fromFile(locationFileName, Location.class);
-
             equipment.setLocationId(location.getId());
-
-            OpensyncAPHotspot20Config hotspotConfig = new OpensyncAPHotspot20Config();
-
-            hotspotConfig.setHotspot20ProfileSet(
-                    new HashSet<com.telecominfraproject.wlan.profile.models.Profile>(hotspot20Profiles));
-            hotspotConfig.setHotspot20OperatorSet(
-                    new HashSet<com.telecominfraproject.wlan.profile.models.Profile>(operatorProfiles));
-            hotspotConfig.setHotspot20VenueSet(
-                    new HashSet<com.telecominfraproject.wlan.profile.models.Profile>(venueProfiles));
-            hotspotConfig.setHotspot20ProviderSet(
-                    new HashSet<com.telecominfraproject.wlan.profile.models.Profile>(providerProfiles));
-
             ret = new OpensyncAPConfig();
             ret.setCustomerEquipment(equipment);
             ret.setApProfile(apProfile);
             ret.setRfProfile(rfProfile);
-            ret.setMetricsProfiles(metricsProfiles);
             ret.setSsidProfile(ssidProfiles);
-            ret.setRadiusProfiles(radiusProfiles);
+            File radiusFile = new File(radiusProfileFileName);
+            if (radiusFile.exists()) {
+                List<com.telecominfraproject.wlan.profile.models.Profile> radiusProfiles = com.telecominfraproject.wlan.profile.models.Profile
+                        .listFromFile(radiusProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
+                ret.setRadiusProfiles(radiusProfiles);
+            } else {
+                LOG.debug("No radius file present at {}", radiusFile.getAbsolutePath());
+            }
             ret.setEquipmentLocation(location);
-            ret.setCaptiveProfiles(captiveProfiles);
-            ret.setBonjourGatewayProfiles(bonjourProfiles);
-            ret.setHotspotConfig(hotspotConfig);
-
         } catch (IOException e) {
             LOG.error("Cannot read config file", e);
         }
-
         LOG.debug("Config content : {}", ret);
-
         return ret;
     }
 

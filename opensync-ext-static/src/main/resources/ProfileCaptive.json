@@ -1,52 +1,58 @@
-{
+[
+  {
     "model_type": "Profile",
     "id": 5,
     "customerId": 2,
     "profileType": "captive_portal",
     "name": "Captive-portal",
     "details": {
-        "model_type": "CaptivePortalConfiguration",
-        "name": "Default",
-        "browserTitle": "Captive-portal",
-        "headerContent": "Captive Portal",
-        "userAcceptancePolicy": "Please agree to the following terms for using this network:",
-        "successPageMarkdownText": "You are now authorized and connected to the network.",
-        "redirectURL": "https://www.google.com",
-        "externalCaptivePortalURL": null,
-        "sessionTimeoutInMinutes": 10,
-        "logoFile": {
-            "model_type": "ManagedFileInfo",
-            "md5checksum": null,
-            "lastModifiedTimestamp": null,
-            "apExportUrl": "/filestore/tip-logo-mobile",
-            "fileCategory": "CaptivePortalLogo",
-            "fileType": "PNG",
-            "altSlot": false
-        },
-        "backgroundFile": {
-            "model_type": "ManagedFileInfo",
-            "md5checksum": null,
-            "lastModifiedTimestamp": null,
-            "apExportUrl": "/filestore/tip-logo",
-            "fileCategory": "CaptivePortalBackground",
-            "fileType": "PNG",
-            "altSlot": false
-        },
-        "walledGardenAllowlist": [],
-        "usernamePasswordFile": null,
-        "authenticationType": "guest",
-        "radiusAuthMethod": "CHAP",
-        "maxUsersWithSameCredentials": 3,
-        "externalPolicyFile": null,
-        "backgroundPosition": "left_top",
-        "backgroundRepeat": "no_repeat",
-        "radiusServiceId": 0,
-        "expiryType": "time_limited",
-        "userList": [],
-        "macAllowList": [],
-        "profileType": "captive_portal"
+      "model_type": "CaptivePortalConfiguration",
+      "name": "Default",
+      "browserTitle": "Captive-portal",
+      "headerContent": "Captive Portal",
+      "userAcceptancePolicy": "Please agree to the following terms for using this network:",
+      "successPageMarkdownText": "You are now authorized and connected to the network.",
+      "redirectURL": "https://www.google.com",
+      "externalCaptivePortalURL": null,
+      "sessionTimeoutInMinutes": 10,
+      "logoFile": {
+        "model_type": "ManagedFileInfo",
+        "md5checksum": null,
+        "lastModifiedTimestamp": null,
+        "apExportUrl": "/filestore/tip-logo-mobile",
+        "fileCategory": "CaptivePortalLogo",
+        "fileType": "PNG",
+        "altSlot": false
+      },
+      "backgroundFile": {
+        "model_type": "ManagedFileInfo",
+        "md5checksum": null,
+        "lastModifiedTimestamp": null,
+        "apExportUrl": "/filestore/tip-logo",
+        "fileCategory": "CaptivePortalBackground",
+        "fileType": "PNG",
+        "altSlot": false
+      },
+      "walledGardenAllowlist": [
+      ],
+      "usernamePasswordFile": null,
+      "authenticationType": "guest",
+      "radiusAuthMethod": "CHAP",
+      "maxUsersWithSameCredentials": 3,
+      "externalPolicyFile": null,
+      "backgroundPosition": "left_top",
+      "backgroundRepeat": "no_repeat",
+      "radiusServiceId": 0,
+      "expiryType": "time_limited",
+      "userList": [
+      ],
+      "macAllowList": [
+      ],
+      "profileType": "captive_portal"
     },
     "createdTimestamp": 1611857459118,
     "lastModifiedTimestamp": 1611857459118,
-    "childProfileIds": []
-}
+    "childProfileIds": [
+    ]
+  }
+]

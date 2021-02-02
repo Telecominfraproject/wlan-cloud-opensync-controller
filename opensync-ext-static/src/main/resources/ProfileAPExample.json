@@ -1,64 +1,58 @@
 {
-  "model_type": "Profile",
-  "id": 38,
-  "customerId": 2,
-  "profileType": "equipment_ap",
-  "name": "ap-profile-2021-01-21T21:28:59.371Z",
-  "details": {
-    "model_type": "ApNetworkConfiguration",
-    "networkConfigVersion": "AP-1",
-    "equipmentType": "AP",
-    "vlanNative": true,
-    "vlan": 0,
-    "ntpServer": {
-      "model_type": "AutoOrManualString",
-      "auto": true,
-      "value": "pool.ntp.org"
+    "model_type": "Profile",
+    "id": 8,
+    "customerId": 2,
+    "profileType": "equipment_ap",
+    "name": "ApProfile-3-radios",
+    "details": {
+        "model_type": "ApNetworkConfiguration",
+        "networkConfigVersion": "AP-1",
+        "equipmentType": "AP",
+        "vlanNative": true,
+        "vlan": 0,
+        "ntpServer": {
+            "model_type": "AutoOrManualString",
+            "auto": true,
+            "value": "pool.ntp.org"
+        },
+        "syslogRelay": null,
+        "rtlsSettings": null,
+        "syntheticClientEnabled": true,
+        "ledControlEnabled": true,
+        "equipmentDiscovery": false,
+        "radioMap": {
+            "is2dot4GHz": {
+                "model_type": "RadioProfileConfiguration",
+                "bestApEnabled": true,
+                "bestAPSteerType": "both"
+            },
+            "is5GHzU": {
+                "model_type": "RadioProfileConfiguration",
+                "bestApEnabled": true,
+                "bestAPSteerType": "both"
+            },
+            "is5GHzL": {
+                "model_type": "RadioProfileConfiguration",
+                "bestApEnabled": true,
+                "bestAPSteerType": "both"
+            }
+        },
+        "greTunnelConfigurations": [
+            {
+                "model_type": "GreTunnelConfiguration",
+                "greTunnelName": "gre1",
+                "greRemoteInetAddr": "192.168.1.101",
+                "vlanIdsInGreTunnel": [
+                    100
+                ]
+            }
+        ],
+        "profileType": "equipment_ap"
     },
-    "syslogRelay": null,
-    "rtlsSettings": null,
-    "syntheticClientEnabled": true,
-    "ledControlEnabled": true,
-    "equipmentDiscovery": false,
-    "radioMap": {
-      "is5GHz": {
-        "model_type": "RadioProfileConfiguration",
-        "bestApEnabled": true,
-        "bestAPSteerType": "both"
-      },
-      "is2dot4GHz": {
-        "model_type": "RadioProfileConfiguration",
-        "bestApEnabled": true,
-        "bestAPSteerType": "both"
-      },
-      "is5GHzU": {
-        "model_type": "RadioProfileConfiguration",
-        "bestApEnabled": true,
-        "bestAPSteerType": "both"
-      },
-      "is5GHzL": {
-        "model_type": "RadioProfileConfiguration",
-        "bestApEnabled": true,
-        "bestAPSteerType": "both"
-      }
-    },
-    "greTunnelConfigurations": [
-      {
-        "model_type": "GreTunnelConfiguration",
-        "greTunnelName": null,
-        "greRemoteInetAddr": null,
-        "vlanIdsInGreTunnel": [
-        ]
-      }
-    ],
-    "profileType": "equipment_ap"
-  },
-  "createdTimestamp": 1611264539383,
-  "lastModifiedTimestamp": 1611264539383,
-  "childProfileIds": [
-    4,
-    5,
-    31,
-    32
-  ]
+    "createdTimestamp": 1612285248925,
+    "lastModifiedTimestamp": 1612285628377,
+    "childProfileIds": [
+        2,
+        4
+    ]
 }

@@ -2,7 +2,7 @@
     "model_type": "Equipment",
     "id": 1,
     "customerId": 2,
-    "profileId": 38,
+    "profileId": 8,
     "locationId": 8,
     "equipmentType": "AP",
     "inventoryId": "Open_AP_21P10C68818122",
@@ -464,6 +464,6 @@
         "addressAsString": "24:f5:a2:ef:2e:53"
     },
     "serial": "21P10C68818122",
-    "createdTimestamp": 1611857503082,
-    "lastModifiedTimestamp": 1611857505529
+    "createdTimestamp": 1612285288821,
+    "lastModifiedTimestamp": 1612285293922
 }
