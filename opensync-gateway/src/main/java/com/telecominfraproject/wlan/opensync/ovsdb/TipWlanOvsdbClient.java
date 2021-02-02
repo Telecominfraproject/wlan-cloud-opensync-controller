@@ -822,7 +822,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             Map<String, String> payload = new HashMap<>();
             payload.put("gateway_hostname", gatewayHostname);
             payload.put("gateway_port", gatewayPort.toString());
-            ovsdbDao.configureCommands(ovsdbClient, OvsdbDao.StartDebugEngineApCommand, payload, defaultCommandDelaySec,
+            ovsdbDao.configureCommands(ovsdbClient, OvsdbDao.StartDebugEngineApCommand, payload, 0L,
                     defaultCommandDurationSec);
 
             LOG.debug("Started debug engine on AP {} with gateway {} port {}", apId, gatewayHostname, gatewayPort);
