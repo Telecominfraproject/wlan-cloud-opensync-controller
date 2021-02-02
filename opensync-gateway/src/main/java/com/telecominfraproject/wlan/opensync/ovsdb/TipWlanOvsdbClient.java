@@ -62,10 +62,10 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.preventClientCnAlteration:false}")
     private boolean preventClientCnAlteration;
     
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.defaultCommandDuration:3600}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.defaultCommandDurationSec:3600}")
     private long defaultCommandDurationSec;
     
-    @org.springframework.beans.factory.annotation.Value("${tip.wlan.defaultCommandDelay:60}")
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.defaultCommandDelaySec:60}")
     private long defaultCommandDelaySec;
 
     @Autowired
