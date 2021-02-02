@@ -61,6 +61,12 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.preventClientCnAlteration:false}")
     private boolean preventClientCnAlteration;
+    
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.defaultCommandDuration:3600}")
+    private long defaultCommandDurationSec;
+    
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.defaultCommandDelay:60}")
+    private long defaultCommandDelaySec;
 
     @Autowired
     private SslContext sslContext;
@@ -813,17 +819,11 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         try {
             OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
             OvsdbClient ovsdbClient = session.getOvsdbClient();
-
-            // TODO: need to establish what the command will be to start debug
-            // logging, on the AP side
-            // For now, use start_debug_engine
-            // Map will have gateway_host and gateway_port for now
-            // Delay/Duration TBD, just use 0s for now
             Map<String, String> payload = new HashMap<>();
             payload.put("gateway_hostname", gatewayHostname);
             payload.put("gateway_port", gatewayPort.toString());
-            ovsdbDao.configureCommands(ovsdbClient, OvsdbDao.StartDebugEngineApCommand, payload, Long.valueOf(0L),
-                    Long.valueOf(0L));
+            ovsdbDao.configureCommands(ovsdbClient, OvsdbDao.StartDebugEngineApCommand, payload, defaultCommandDelaySec,
+                    defaultCommandDurationSec);
 
             LOG.debug("Started debug engine on AP {} with gateway {} port {}", apId, gatewayHostname, gatewayPort);
             return "Started debug engine on AP " + apId + " with gateway " + gatewayHostname + " port " + gatewayPort;

@@ -2562,8 +2562,8 @@ public class OvsdbDao {
         commandConfigColumns.put("payload", com.vmware.ovsdb.protocol.operation.notation.Map.of(payload));
 
         commandConfigColumns.put("delay", new Atom<>(delay));
-        commandConfigColumns.put("duration", new Atom<>(delay));
-
+        commandConfigColumns.put("duration", new Atom<>(duration));
+        commandConfigColumns.put("timestamp", new Atom<>(System.currentTimeMillis()));
         Row row = new Row(commandConfigColumns);
         if (getProvisionedCommandConfigs(ovsdbClient).containsKey(command)) {
             operations.add(new Update(commandConfigDbTable, conditions, row));
