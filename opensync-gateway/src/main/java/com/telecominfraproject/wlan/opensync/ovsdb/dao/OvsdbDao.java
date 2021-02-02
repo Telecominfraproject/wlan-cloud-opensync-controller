@@ -35,6 +35,7 @@ import com.telecominfraproject.wlan.core.model.equipment.SourceType;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.ElementRadioConfiguration;
 import com.telecominfraproject.wlan.equipment.models.ManagementRate;
+import com.telecominfraproject.wlan.equipment.models.MimoMode;
 import com.telecominfraproject.wlan.equipment.models.MulticastRate;
 import com.telecominfraproject.wlan.equipment.models.NetworkForwardMode;
 import com.telecominfraproject.wlan.equipment.models.RadioConfiguration;
@@ -1982,11 +1983,16 @@ public class OvsdbDao {
                 continue;
 
             }
+            
+            int mimoMode = MimoMode.none.getId();
+            if (rfElementConfig.getMimoMode() != null) {
+                mimoMode = rfElementConfig.getMimoMode().getId();
+            }
 
             if (freqBand != null) {
                 try {
                     configureWifiRadios(ovsdbClient, freqBand, channel, hwConfig, country.toUpperCase(), beaconInterval,
-                            enabled, hwMode, ht_mode, txPower);
+                            enabled, hwMode, ht_mode, txPower, mimoMode);
                 } catch (OvsdbClientException e) {
                     LOG.error("ConfigureWifiRadios failed with OvsdbClient exception.", e);
                     throw new RuntimeException(e);
@@ -2592,7 +2598,7 @@ public class OvsdbDao {
 
     private void configureWifiRadios(OvsdbClient ovsdbClient, String freqBand, int channel,
             Map<String, String> hwConfig, String country, int beaconInterval, boolean enabled, String hwMode,
-            String ht_mode, int txPower)
+            String ht_mode, int txPower, int mimoMode)
             throws OvsdbClientException, TimeoutException, ExecutionException, InterruptedException {
 
         List<Operation> operations = new ArrayList<>();
@@ -2620,6 +2626,10 @@ public class OvsdbDao {
         }
         if (hwMode != null) {
             updateColumns.put("hw_mode", new Atom<>(hwMode));
+        }       
+        updateColumns.put("tx_chainmask", new Atom<>(mimoMode));
+        if (ovsdbClient.getSchema(ovsdbName).get().getTables().get(wifiRadioConfigDbTable).getColumns().containsKey("rx_chainmask")) {
+            updateColumns.put("rx_chainmask", new Atom<>(mimoMode));
         }
 
         Row row = new Row(updateColumns);
