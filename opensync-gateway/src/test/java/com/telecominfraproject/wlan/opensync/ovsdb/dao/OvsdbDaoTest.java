@@ -26,6 +26,7 @@ import org.mockito.quality.Strictness;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -43,7 +44,6 @@ import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.telecominfraproject.wlan.profile.network.models.GreTunnelConfiguration;
-import com.telecominfraproject.wlan.profile.radius.models.RadiusProfile;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.vmware.ovsdb.exception.OvsdbClientException;
 import com.vmware.ovsdb.protocol.operation.notation.Atom;
@@ -64,7 +64,9 @@ import com.vmware.ovsdb.service.OvsdbClient;
 // be ADDED to the list of
 // active profiles
 @SpringBootTest(webEnvironment = WebEnvironment.NONE, classes = OvsdbDaoTest.class)
-@Import(value = { OvsdbDao.class, OvsdbDaoTest.Config.class,
+@Import(value = { OvsdbDao.class, OvsdbDaoTest.Config.class, OvsdbNode.class, OvsdbRadioConfig.class,
+        OvsdbHotspotConfig.class, OvsdbCommandConfig.class, OvsdbMonitor.class, OvsdbFirmwareConfig.class,
+        OvsdbStatsConfig.class, OvsdbSsidConfig.class, OvsdbRrmConfig.class, OvsdbNetworkConfig.class,
 
 })
 public class OvsdbDaoTest {
@@ -123,6 +125,29 @@ public class OvsdbDaoTest {
     @Autowired
     OvsdbDao ovsdbDao;
 
+    @Autowired
+    OvsdbNode ovsdbNode;
+    @Autowired
+    OvsdbHotspotConfig ovsdbHotspot;
+    @Autowired
+    OvsdbSsidConfig ovsdbSsid;
+    @Autowired
+    OvsdbNetworkConfig ovsdbNetwork;
+    @Autowired
+    OvsdbRrmConfig ovsdbRrm;
+    @Autowired
+    OvsdbStatsConfig ovsdbStats;
+    @Autowired
+    OvsdbRadioConfig ovsdbRadio;
+    @Autowired
+    OvsdbMonitor ovsdbMonitor;
+    @Autowired
+    OvsdbFirmwareConfig ovsdbFirmware;
+    @Autowired
+    OvsdbCommandConfig ovsdbCommand;
+    @MockBean(answer = Answers.RETURNS_MOCKS)
+    OvsdbGet ovsdbGet;
+
     MockitoSession mockito;
 
     @Configuration
@@ -175,55 +200,6 @@ public class OvsdbDaoTest {
     }
 
     @Test
-    public void testGetRadiusConfiguration() throws Exception {
-        OpensyncAPConfig apConfig = new OpensyncAPConfig();
-        Profile profileRadius = OvsdbDaoTestUtilities.createRadiusProfile(DEFAULT_CUSTOMER_ID);
-        apConfig.setRadiusProfiles(List.of(profileRadius));
-        Profile ssidProfile = new Profile();
-        SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
-        ssidConfig.setRadiusServiceId(profileRadius.getId());
-        ssidConfig.setRadiusServiceId(profileRadius.getId());
-        ssidConfig.setRadiusAcountingServiceInterval(60);
-        ssidProfile.setDetails(ssidConfig);
-        apConfig.setSsidProfile(List.of(ssidProfile));
-        Map<String, String> security = new HashMap<>();
-        Location location = new Location();
-        location.setName("Ottawa");
-        apConfig.setEquipmentLocation(location);
-        ovsdbDao.getRadiusConfiguration(apConfig, ssidConfig, security);
-        assert (security.get("radius_server_ip").equals("192.168.0.1"));
-        assert (security.get("radius_server_port").equals(String.valueOf(RadiusProfile.DEFAULT_RADIUS_AUTH_PORT)));
-        assert (security.get("radius_server_secret").equals(RadiusProfile.DEFAULT_RADIUS_SECRET));
-    }
-
-    @Test
-    public void testGetRadiusAccountingConfiguration() throws Exception {
-        OpensyncAPConfig apConfig = new OpensyncAPConfig();
-        Profile profileRadius = OvsdbDaoTestUtilities.createRadiusProfile(DEFAULT_CUSTOMER_ID);
-        apConfig.setRadiusProfiles(List.of(profileRadius));
-        Profile ssidProfile = new Profile();
-        ssidProfile.setCustomerId(DEFAULT_CUSTOMER_ID);
-        ssidProfile.setName("SsidProfile");
-        ssidProfile.setProfileType(ProfileType.ssid);
-        SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
-        
-        ssidConfig.setRadiusServiceId(OvsdbDaoTestUtilities.RADIUS_PROFILE_ID);
-        ssidConfig.setRadiusAcountingServiceInterval(60);
-        ssidProfile.setDetails(ssidConfig);
-        apConfig.setSsidProfile(List.of(ssidProfile));
-        Map<String, String> security = new HashMap<>();
-        Location location = new Location();
-        location.setName("Ottawa");
-        apConfig.setEquipmentLocation(location);
-        ovsdbDao.getRadiusAccountingConfiguration(apConfig, ssidConfig, security);
-        assert (Integer.valueOf(security.get("radius_acct_interval"))
-                .equals(ssidConfig.getRadiusAcountingServiceInterval()));
-        assert (security.get("radius_acct_ip").equals("192.168.0.1"));
-        assert (security.get("radius_acct_port").equals("1813"));
-        assert (security.get("radius_acct_secret").equals("secret"));
-    }
-
-    @Test
     public void testGetRadiusAccountingConfigurationNoAcctInterval() throws Exception {
         OpensyncAPConfig apConfig = new OpensyncAPConfig();
         Profile profileRadius = OvsdbDaoTestUtilities.createRadiusProfile(DEFAULT_CUSTOMER_ID);
@@ -245,8 +221,8 @@ public class OvsdbDaoTest {
     @Ignore
     public void testConfigureHotspots() throws Exception {
 
-        //TODO: needs refactoring.
-        
+        // TODO: needs refactoring.
+
         DatabaseSchema schemaMock = Mockito.mock(DatabaseSchema.class);
         CompletableFuture<DatabaseSchema> schemaFuture = Mockito.mock(CompletableFuture.class);
         Mockito.when(schemaFuture.get(Mockito.anyLong(), Mockito.any())).thenReturn(schemaMock);
@@ -667,12 +643,13 @@ public class OvsdbDaoTest {
         Mockito.verify(futureResult).get(30L, TimeUnit.SECONDS);
 
     }
-    
+
     @Test
     public void testProcessNewChannelsRequest() throws Exception {
-        
-        
-        OperationResult[] testProcessNewChannelsRequestResult = new OperationResult[] { new UpdateResult(1), new UpdateResult(1), new UpdateResult(1), new UpdateResult(1), new UpdateResult(1), new UpdateResult(1) };
+
+        OperationResult[] testProcessNewChannelsRequestResult = new OperationResult[] { new UpdateResult(1),
+                new UpdateResult(1), new UpdateResult(1), new UpdateResult(1), new UpdateResult(1),
+                new UpdateResult(1) };
 
         Mockito.when(futureResult.get(30L, TimeUnit.SECONDS)).thenReturn(testProcessNewChannelsRequestResult);
 
@@ -683,11 +660,9 @@ public class OvsdbDaoTest {
                         RadioType.is5GHzU, Integer.valueOf(153)),
                 Map.of(RadioType.is2dot4GHz, Integer.valueOf(6), RadioType.is5GHzL, Integer.valueOf(36),
                         RadioType.is5GHzU, Integer.valueOf(149)));
-        
+
         Mockito.verify(futureResult).get(30L, TimeUnit.SECONDS);
 
-        
-        
     }
 
     @Test(expected = RuntimeException.class)
