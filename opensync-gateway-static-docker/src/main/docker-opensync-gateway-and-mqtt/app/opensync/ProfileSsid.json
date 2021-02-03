@@ -36,11 +36,10 @@
                 "enable80211v": null
             },
             "is2dot4GHz": {
-                "model_type": "RadioBasedSsidConfiguration2g",
+                "model_type": "RadioBasedSsidConfiguration",
                 "enable80211r": null,
                 "enable80211k": null,
-                "enable80211v": null,
-                "enable80211b": false
+                "enable80211v": null
             },
             "is5GHz": {
                 "model_type": "RadioBasedSsidConfiguration",
