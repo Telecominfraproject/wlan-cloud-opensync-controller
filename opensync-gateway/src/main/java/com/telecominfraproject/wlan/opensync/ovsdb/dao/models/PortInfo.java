@@ -4,7 +4,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import com.vmware.ovsdb.protocol.operation.notation.Uuid;
-
+@Deprecated
 public class PortInfo implements Cloneable{
     
     public Set<Uuid> interfaceUuids;

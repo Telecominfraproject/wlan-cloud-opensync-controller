@@ -708,8 +708,6 @@ public class OvsdbHotspotConfig extends OvsdbDaoBase {
                         PasspointOsuProviderProfile providerProfile = (PasspointOsuProviderProfile) provider
                                 .getDetails();
                         for (PasspointOsuIcon passpointOsuIcon : providerProfile.getOsuIconList()) {
-                            // ovsdbColumns = { "name", "path", "url",
-                            // "lang_code", "height", "img_type", "width" };
                             Map<String, Value> rowColumns = new HashMap<>();
                             rowColumns.put("name", new Atom<>(passpointOsuIcon.getIconName()));
                             if (schema.getTables().get(hotspot20IconConfigDbTable).getColumns().containsKey("path")) {
@@ -721,7 +719,6 @@ public class OvsdbHotspotConfig extends OvsdbDaoBase {
                             rowColumns.put("img_type", new Atom<>(PasspointOsuIcon.ICON_TYPE));
                             rowColumns.put("width", new Atom<>(passpointOsuIcon.getIconWidth()));
                             if (passpointOsuIcon.getImageUrl() != null) {
-
                                 String md5Hex = DigestUtils.md5Hex(passpointOsuIcon.getImageUrl()).toUpperCase();
                                 if (schema.getTables().get(hotspot20IconConfigDbTable).getColumns()
                                         .containsKey("icon_config_name")) {
@@ -740,10 +737,8 @@ public class OvsdbHotspotConfig extends OvsdbDaoBase {
                                 Update newHs20Config = new Update(hotspot20IconConfigDbTable, conditions, row);
                                 operations.add(newHs20Config);
                             }
-
                         }
                     }
-
                 }
                 if (operations.size() > 0) {
                     CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName,
@@ -754,16 +749,11 @@ public class OvsdbHotspotConfig extends OvsdbDaoBase {
                         LOG.debug("provisionHotspot20Config Op Result {}", res);
                         if (res instanceof InsertResult) {
                             LOG.info("provisionHotspot20Config insert new row result {}", (res));
-                            // for insert, make sure it is actually in the table
-                            confirmRowExistsInTable(ovsdbClient, ((InsertResult) res).getUuid(),
-                                    hotspot20IconConfigDbTable);
                         } else if (res instanceof UpdateResult) {
                             LOG.info("provisionHotspot20Config update row result {}", (res));
-
                         }
                     }
                 }
-
             } else {
                 LOG.info("Table {} not present in {}. Cannot provision Hotspot20_Icon_Config",
                         hotspot20IconConfigDbTable, ovsdbName);
@@ -772,34 +762,28 @@ public class OvsdbHotspotConfig extends OvsdbDaoBase {
             LOG.error("Error in provisionHotspot2IconConfig", e);
             throw new RuntimeException(e);
         }
-
     }
 
     void removeAllHotspot20Config(OvsdbClient ovsdbClient) {
         try {
-            DatabaseSchema schema = ovsdbClient.getSchema(ovsdbName).get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-            if (schema.getTables().containsKey(hotspot20ConfigDbTable)
-                    && schema.getTables().get(hotspot20ConfigDbTable) != null) {
+//            DatabaseSchema schema = ovsdbClient.getSchema(ovsdbName).get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+//            if (schema.getTables().containsKey(hotspot20ConfigDbTable)
+//                    && schema.getTables().get(hotspot20ConfigDbTable) != null) {
                 List<Operation> operations = new ArrayList<>();
-
                 operations.add(new Delete(hotspot20ConfigDbTable));
-
                 CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
                 OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Removed all existing hotspot configs from {}:", hotspot20ConfigDbTable);
-
                     for (OperationResult res : result) {
                         LOG.debug("Op Result {}", res);
                     }
                 }
-            }
+//            }
         } catch (InterruptedException | ExecutionException | TimeoutException | OvsdbClientException e) {
             LOG.error("Error in removeAllHotspot20Config", e);
             throw new RuntimeException(e);
         }
-
     }
 
     void removeAllHotspot20IconConfig(OvsdbClient ovsdbClient) {

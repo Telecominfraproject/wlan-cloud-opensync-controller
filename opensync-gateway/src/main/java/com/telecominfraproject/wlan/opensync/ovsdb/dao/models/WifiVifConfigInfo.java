@@ -6,6 +6,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.OvsdbDaoBase;
+import com.vmware.ovsdb.protocol.operation.notation.Row;
 import com.vmware.ovsdb.protocol.operation.notation.Uuid;
 
 public class WifiVifConfigInfo implements Cloneable {
@@ -49,6 +51,131 @@ public class WifiVifConfigInfo implements Cloneable {
     public String parent;
     public String multiAp;
 
+    public WifiVifConfigInfo() {}
+    
+    public WifiVifConfigInfo(Row row) {
+        String bridge = OvsdbDaoBase.getSingleValueFromSet(row, "bridge");
+        if (bridge != null) {
+            this.bridge = bridge;
+        }
+        Boolean apBridge = OvsdbDaoBase.getSingleValueFromSet(row, "ap_bridge");
+        if (apBridge != null) {
+            this.apBridge = apBridge;
+        }
+        this.uuid = row.getUuidColumn("_uuid");
+        Long btm = OvsdbDaoBase.getSingleValueFromSet(row, "btm");
+        if (btm != null) {
+            this.btm = btm.intValue();
+        }
+        Boolean enabled = OvsdbDaoBase.getSingleValueFromSet(row, "enabled");
+        if (enabled != null) {
+            this.enabled = enabled;
+        }
+        Long ftPsk = OvsdbDaoBase.getSingleValueFromSet(row, "ft_psk");
+        if (ftPsk != null) {
+            this.ftPsk = ftPsk.intValue();
+        }
+        Long ftMobilityDomain = OvsdbDaoBase.getSingleValueFromSet(row, "ft_mobility_domain");
+        if (ftMobilityDomain != null) {
+            this.ftMobilityDomain = ftMobilityDomain.intValue();
+        }
+        Long groupRekey = OvsdbDaoBase.getSingleValueFromSet(row, "group_rekey");
+        if (groupRekey != null) {
+            this.groupRekey = groupRekey.intValue();
+        }
+        String minHwMode = OvsdbDaoBase.getSingleValueFromSet(row, "min_hw_mode");
+        if (minHwMode != null) {
+            this.bridge = minHwMode;
+        }
+        this.ifName = row.getStringColumn("if_name");
+        String mode = OvsdbDaoBase.getSingleValueFromSet(row, "mode");
+        if (mode != null) {
+            this.mode = mode;
+        }
+        Long rrm = OvsdbDaoBase.getSingleValueFromSet(row, "rrm");
+        if (rrm != null) {
+            this.rrm = rrm.intValue();
+        }
+        String ssid = OvsdbDaoBase.getSingleValueFromSet(row, "ssid");
+        if (ssid != null) {
+            this.ssid = ssid;
+        }
+        String ssidBroadcast = OvsdbDaoBase.getSingleValueFromSet(row, "ssid_broadcast");
+        if (ssid != null) {
+            this.ssidBroadcast = ssidBroadcast;
+        }
+        Boolean uapsdEnable = OvsdbDaoBase.getSingleValueFromSet(row, "uapsd_enable");
+        if (uapsdEnable != null) {
+            this.uapsdEnable = uapsdEnable;
+        }
+        Long vifRadioIdx = OvsdbDaoBase.getSingleValueFromSet(row, "vif_radio_idx");
+        if (vifRadioIdx != null) {
+            this.vifRadioIdx = vifRadioIdx.intValue();
+        }
+        this.security = row.getMapColumn("security");
+        Long vlanId = OvsdbDaoBase.getSingleValueFromSet(row, "vlan_id");
+        if (vlanId != null) {
+            this.vlanId = vlanId.intValue();
+        }
+        this.macList = row.getSetColumn("mac_list");
+        if ((row.getColumns().get("mac_list_type") != null) && row.getColumns().get("mac_list_type").getClass()
+                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+            this.macListType = row.getStringColumn("mac_list_type");
+        }
+        this.customOptions = row.getMapColumn("custom_options");
+        this.captiveAllowlist = row.getSetColumn("captive_allowlist");
+        this.captivePortal = row.getMapColumn("captive_portal");
+        Boolean wpsPbc = OvsdbDaoBase.getSingleValueFromSet(row, "wps_pbc");
+        if (wpsPbc != null) {
+            this.wpsPbc = wpsPbc;
+        } else {
+            this.wpsPbc = false;
+        }
+        Boolean wps = OvsdbDaoBase.getSingleValueFromSet(row, "wps");
+        if (wps != null) {
+            this.wps = wps;
+        } else {
+            this.wps = false;
+        }
+        Boolean wds = OvsdbDaoBase.getSingleValueFromSet(row, "wds");
+        if (wds != null) {
+            this.wds = wds;
+        } else {
+            this.wds = false;
+        }
+        this.wpsPbcKeyId = row.getStringColumn("wps_pbc_key_id");
+        Boolean mcast2ucast = OvsdbDaoBase.getSingleValueFromSet(row, "mcast2ucast");
+        if (mcast2ucast != null) {
+            this.mcast2ucast = mcast2ucast;
+        } else {
+            this.mcast2ucast = false;
+        }
+        Boolean dynamicBeacon = OvsdbDaoBase.getSingleValueFromSet(row, "dynamic_beacon");
+        if (dynamicBeacon != null) {
+            this.dynamicBeacon = dynamicBeacon;
+        } else {
+            this.dynamicBeacon = false;
+        }
+        Long vifDbgLvl = OvsdbDaoBase.getSingleValueFromSet(row, "vif_dbg_lvl");
+        if (vifDbgLvl != null) {
+            this.vifDbgLvl = vifDbgLvl.intValue();
+        } else {
+            this.vifDbgLvl = 0;
+        }
+        if (row.getColumns().containsKey("mesh_options")) {
+            this.meshOptions = row.getMapColumn("mesh_options");
+        }
+        this.credentialConfigs = row.getSetColumn("credential_configs");
+        String parent = OvsdbDaoBase.getSingleValueFromSet(row, "parent");
+        if (parent != null) {
+            this.parent = parent;
+        }
+        String multiAp = OvsdbDaoBase.getSingleValueFromSet(row, "multi_ap");
+        if (multiAp != null) {
+            this.multiAp = multiAp;
+        }
+    }
+    
     @Override
     public WifiVifConfigInfo clone() {
         try {

@@ -6,6 +6,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.OvsdbDaoBase;
+import com.vmware.ovsdb.protocol.operation.notation.Row;
 import com.vmware.ovsdb.protocol.operation.notation.Uuid;
 
 public class WifiRadioConfigInfo implements Cloneable {
@@ -27,6 +29,36 @@ public class WifiRadioConfigInfo implements Cloneable {
 
 	public String hwType;
 
+	
+	public WifiRadioConfigInfo() {
+	    
+	}
+	
+	public WifiRadioConfigInfo(Row row) {
+        this.uuid = row.getUuidColumn("_uuid");
+        this.ifName = row.getStringColumn("if_name");
+        Long beaconTmp = OvsdbDaoBase.getSingleValueFromSet(row, "bcn_int");
+        if (beaconTmp == null) {
+            beaconTmp = 0L;
+        }
+        this.beaconInterval = beaconTmp.intValue();
+        Long channelTmp = OvsdbDaoBase.getSingleValueFromSet(row, "channel");
+        if (channelTmp == null) {
+            channelTmp = -1L;
+        }
+        this.channel = channelTmp.intValue();
+        this.channelMode = OvsdbDaoBase.getSingleValueFromSet(row, "channel_mode");
+        this.country = OvsdbDaoBase.getSingleValueFromSet(row, "country");
+        Boolean tmp = OvsdbDaoBase.getSingleValueFromSet(row, "enabled");
+        this.enabled = tmp != null ? tmp : false;
+        this.htMode = OvsdbDaoBase.getSingleValueFromSet(row, "ht_mode");
+        this.txPower = OvsdbDaoBase.getSingleValueFromSet(row, "txPower");
+        this.vifConfigUuids = row.getSetColumn("vif_configs");
+        this.freqBand = row.getStringColumn("freq_band");
+        this.hwConfig = row.getMapColumn("hw_config");
+        this.hwType = row.getStringColumn("hw_type");    
+	}
+	
 	@Override
 	public WifiRadioConfigInfo clone() {
 		try {
@@ -34,7 +66,6 @@ public class WifiRadioConfigInfo implements Cloneable {
 			if (vifConfigUuids != null) {
 				ret.vifConfigUuids = new HashSet<>(this.vifConfigUuids);
 			}
-
 			if (hwConfig != null) {
 				ret.hwConfig = new HashMap<>(this.hwConfig);
 			}
