@@ -48,14 +48,6 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
     OvsdbGet ovsdbGet;
 
     void configureGreTunnel(OvsdbClient ovsdbClient, Profile apNetworkConfiguration) {
-
-        // NAT false
-        // if_name gre1
-        // if_type gre
-        // gre_local_inet_addr (Not needed): WAN IP shall be used
-        // gre_remote_inet_addr <Tunnel end point IP address>
-        // gre_ifname: Not needed
-
         try {
             LOG.debug("Configure Gre Tunnel {}", apNetworkConfiguration);
             List<Operation> operations = new ArrayList<>();
@@ -189,7 +181,6 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
     void configureInetVifInterface(OvsdbClient ovsdbClient, String vifInterfaceName, boolean enabled,
             NetworkForwardMode networkForwardMode) {
         Map<String, WifiInetConfigInfo> inetConfigs = ovsdbGet.getProvisionedWifiInetConfigs(ovsdbClient);
-
         if (inetConfigs.containsKey(vifInterfaceName)) {
             configureInetInterface(ovsdbClient, vifInterfaceName, enabled, "vif", true,
                     (networkForwardMode == NetworkForwardMode.NAT));
@@ -209,44 +200,28 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
 
     void createVlanInterfaceInGreTunnel(OvsdbClient ovsdbClient, int vlanId, String greTunnel) {
         try {
-
-            // if_name gre_<vlan id>
-            // if_type vlan
-            // parent_ifname gre
-            // vlan_id <vlan id>
-
             List<Operation> operations = new ArrayList<>();
             Map<String, Value> tableColumns = new HashMap<>();
-
             Map<String, WifiInetConfigInfo> inetConfigMap = ovsdbGet.getProvisionedWifiInetConfigs(ovsdbClient);
-
             WifiInetConfigInfo parentTunnel = inetConfigMap.get(greTunnel);
             if (parentTunnel == null) {
                 throw new RuntimeException("Cannot get tunnel interface " + parentTunnel + " for vlan " + vlanId);
             }
-
             tableColumns = new HashMap<>();
-
             tableColumns.put("if_type", new Atom<>("bridge"));
             tableColumns.put("vlan_id", new Atom<>(vlanId));
             tableColumns.put("if_name", new Atom<>(parentTunnel.ifName + "_" + Integer.toString(vlanId)));
             tableColumns.put("parent_ifname", new Atom<>(parentTunnel.ifName));
             tableColumns.put("enabled", new Atom<>(true));
             tableColumns.put("network", new Atom<>(true));
-
             Row row = new Row(tableColumns);
-
             operations.add(new Insert(wifiInetConfigDbTable, row));
-
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
             for (OperationResult res : result) {
-
                 if (res instanceof InsertResult) {
                     LOG.info("createVlanNetworkInterfaces {}", ((InsertResult) res).toString());
                 } else if (res instanceof UpdateResult) {
-
                     LOG.info("createVlanNetworkInterfaces {}", ((UpdateResult) res).toString());
                 } else if (res instanceof ErrorResult) {
                     LOG.error("createVlanNetworkInterfaces error {}", (res));
@@ -254,12 +229,9 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
                             + ((ErrorResult) res).getDetails());
                 }
             }
-
             inetConfigMap = ovsdbGet.getProvisionedWifiInetConfigs(ovsdbClient);
-
             LOG.debug("Provisioned vlan on greTunnel {}",
                     inetConfigMap.get(parentTunnel.ifName + "_" + Integer.toString(vlanId)));
-
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             LOG.error("Error in provisioning Vlan", e);
             throw new RuntimeException(e);
@@ -269,18 +241,14 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
 
     void createVlanNetworkInterfaces(OvsdbClient ovsdbClient, int vlanId) {
         try {
-
             List<Operation> operations = new ArrayList<>();
             Map<String, Value> tableColumns = new HashMap<>();
-
             Map<String, WifiInetConfigInfo> inetConfigMap = ovsdbGet.getProvisionedWifiInetConfigs(ovsdbClient);
-
             WifiInetConfigInfo parentLanInterface = inetConfigMap.get(defaultLanInterfaceName);
             if (parentLanInterface == null) {
                 throw new RuntimeException(
                         "Cannot get lan interface " + defaultLanInterfaceName + " for vlan " + vlanId);
             }
-
             tableColumns.put("if_type", new Atom<>("vlan"));
             tableColumns.put("vlan_id", new Atom<>(vlanId));
             tableColumns.put("if_name", new Atom<>(parentLanInterface.ifName + "_" + Integer.toString(vlanId)));
@@ -290,33 +258,26 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
             tableColumns.put("ip_assign_scheme", new Atom<>(parentLanInterface.ipAssignScheme));
             tableColumns.put("NAT", new Atom<>(parentLanInterface.nat));
             tableColumns.put("mtu", new Atom<>(1500));
-
             String[] inetAddress = parentLanInterface.inetAddr.split("\\.");
             String vlanAddress = inetAddress[0] + "." + inetAddress[1] + "." + vlanId + "." + inetAddress[3];
             tableColumns.put("inet_addr", new Atom<>(vlanAddress));
             tableColumns.put("netmask", new Atom<>(parentLanInterface.netmask));
             tableColumns.put("dhcpd", com.vmware.ovsdb.protocol.operation.notation.Map.of(parentLanInterface.dhcpd));
-
             Row row = new Row(tableColumns);
-
             if (inetConfigMap.containsKey(parentLanInterface.ifName + "_" + Integer.toString(vlanId))) {
                 List<Condition> conditions = new ArrayList<>();
                 conditions.add(new Condition("vlan_id", Function.EQUALS, new Atom<>(vlanId)));
                 conditions.add(new Condition("parent_ifname", Function.EQUALS, new Atom<>(parentLanInterface.ifName)));
-
                 operations.add(new Update(wifiInetConfigDbTable, conditions, row));
             } else {
                 operations.add(new Insert(wifiInetConfigDbTable, row));
             }
-
             WifiInetConfigInfo parentWanInterface = inetConfigMap.get(defaultWanInterfaceName);
             if (parentWanInterface == null) {
                 throw new RuntimeException(
                         "Cannot get wan interface " + defaultWanInterfaceName + " for vlan " + vlanId);
             }
-
             tableColumns = new HashMap<>();
-
             tableColumns.put("if_type", new Atom<>("vlan"));
             tableColumns.put("vlan_id", new Atom<>(vlanId));
             tableColumns.put("if_name", new Atom<>(parentWanInterface.ifName + "_" + Integer.toString(vlanId)));
@@ -325,11 +286,8 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
             tableColumns.put("network", new Atom<>(true));
             tableColumns.put("ip_assign_scheme", new Atom<>(parentWanInterface.ipAssignScheme));
             tableColumns.put("NAT", new Atom<>(parentWanInterface.nat));
-
             tableColumns.put("mtu", new Atom<>(1500));
-
             row = new Row(tableColumns);
-
             if (inetConfigMap.containsKey(parentWanInterface.ifName + "_" + Integer.toString(vlanId))) {
                 List<Condition> conditions = new ArrayList<>();
                 conditions.add(new Condition("vlan_id", Function.EQUALS, new Atom<>(vlanId)));
@@ -337,16 +295,12 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
             } else {
                 operations.add(new Insert(wifiInetConfigDbTable, row));
             }
-
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
             for (OperationResult res : result) {
-
                 if (res instanceof InsertResult) {
                     LOG.info("createVlanNetworkInterfaces {}", ((InsertResult) res).toString());
                 } else if (res instanceof UpdateResult) {
-
                     LOG.info("createVlanNetworkInterfaces {}", ((UpdateResult) res).toString());
                 } else if (res instanceof ErrorResult) {
                     LOG.error("createVlanNetworkInterfaces error {}", (res));
@@ -354,18 +308,14 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
                             + ((ErrorResult) res).getDetails());
                 }
             }
-
             inetConfigMap = ovsdbGet.getProvisionedWifiInetConfigs(ovsdbClient);
-
             LOG.debug("Provisioned vlan on wan {} and lan {}",
                     inetConfigMap.get(parentWanInterface.ifName + "_" + Integer.toString(vlanId)),
                     inetConfigMap.get(parentLanInterface.ifName + "_" + Integer.toString(vlanId)));
-
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             LOG.error("Error in provisioning Vlan", e);
             throw new RuntimeException(e);
         }
-
     }
 
     void createVlanNetworkInterfaces(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
@@ -377,25 +327,19 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
             }
         }
         for (Integer vlanId : vlans) {
-
             Optional<GreTunnelConfiguration> tunnelConfiguration = ((ApNetworkConfiguration) opensyncApConfig
                     .getApProfile().getDetails()).getGreTunnelConfigurations().stream()
                             .filter(new Predicate<GreTunnelConfiguration>() {
-
                                 @Override
                                 public boolean test(GreTunnelConfiguration t) {
-
                                     return t.getVlanIdsInGreTunnel().contains(vlanId);
                                 }
-
                             }).findFirst();
-
             if (tunnelConfiguration.isPresent()) {
                 createVlanInterfaceInGreTunnel(ovsdbClient, vlanId, tunnelConfiguration.get().getGreTunnelName());
             } else {
                 createVlanNetworkInterfaces(ovsdbClient, vlanId);
             }
-
         }
     }
 
@@ -405,9 +349,7 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
                     .getProvisionedWifiInetConfigs(ovsdbClient).values();
             List<Operation> operations = new ArrayList<>();
             List<Condition> conditions = new ArrayList<>();
-
             for (WifiInetConfigInfo wifiInetConfigInfo : provisionedWifiInetConfigs) {
-
                 if (wifiInetConfigInfo.vlanId > 1 || wifiInetConfigInfo.ifType.equals("vif")
                         || wifiInetConfigInfo.ifName.startsWith("gre") || wifiInetConfigInfo.ifType.equals("gre")) {
                     conditions = new ArrayList<>();
@@ -417,21 +359,16 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
             }
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
             LOG.info("Removed all existing vif, vlan, and gre interface configs from {}:", wifiInetConfigDbTable);
-
             for (OperationResult res : result) {
                 LOG.info("Op Result {}", res);
             }
-
             provisionedWifiInetConfigs = ovsdbGet.getProvisionedWifiInetConfigs(ovsdbClient).values();
-
             for (WifiInetConfigInfo inetConfigInfo : provisionedWifiInetConfigs) {
                 if (inetConfigInfo.ifType.equals("vif") || inetConfigInfo.ifType.equals("gre")) {
                     throw new RuntimeException(
                             "Failed to remove all vif and gre interface configurations from Wifi_Inet_Config dbTable, still has "
                                     + provisionedWifiInetConfigs.stream().filter(new Predicate<WifiInetConfigInfo>() {
-
                                         @Override
                                         public boolean test(WifiInetConfigInfo t) {
                                             if ((t.ifType.equals("vif")) || (t.ifType.equals("gre"))) {
@@ -439,17 +376,13 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
                                             }
                                             return false;
                                         }
-
                                     }).collect(Collectors.toList()));
 
                 }
             }
-
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             LOG.error("Error in removeAllInetConfigs", e);
             throw new RuntimeException(e);
         }
-
     }
-
 }

@@ -17,7 +17,6 @@ import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.CommandConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.Hotspot20Config;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.Hotspot20IconConfig;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.Hotspot20OsuProviders;
-import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.InterfaceInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiInetConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiRadioConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiStatsConfigInfo;
@@ -107,16 +106,6 @@ public class OvsdbGet extends OvsdbDaoBase {
             Hotspot20OsuProviders hotspot20OsuProviders = new Hotspot20OsuProviders(row);
             ret.put(hotspot20OsuProviders.osuProviderName, hotspot20OsuProviders);
         }
-        return ret;
-    }
-
-    @Deprecated
-    Map<String, InterfaceInfo> getProvisionedInterfaces(OvsdbClient ovsdbClient) {
-        Map<String, InterfaceInfo> ret = new HashMap<>();
-        for (Row row : getOvsdbTableRowsForCondition(ovsdbClient, interfaceDbTable, null)) {
-            InterfaceInfo interfaceInfo = new InterfaceInfo(row);
-            ret.put(interfaceInfo.name, interfaceInfo);
-        }     
         return ret;
     }
 
