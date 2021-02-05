@@ -2,6 +2,8 @@ package com.telecominfraproject.wlan.opensync.ovsdb.dao.models;
 
 import java.util.Map;
 
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.OvsdbDaoBase;
+import com.vmware.ovsdb.protocol.operation.notation.Row;
 import com.vmware.ovsdb.protocol.operation.notation.Uuid;
 
 public class WifiInetConfigInfo implements Cloneable{
@@ -23,7 +25,48 @@ public class WifiInetConfigInfo implements Cloneable{
 	public Map<String,String> dns;
 	public Map<String,String> dhcpd;
 
-    
+    public WifiInetConfigInfo() {
+        
+    }
+	public WifiInetConfigInfo(Row row) {
+        Boolean natTmp = OvsdbDaoBase.getSingleValueFromSet(row, "NAT");
+        this.nat = natTmp != null ? natTmp : false;
+        this.uuid = row.getUuidColumn("_uuid");
+        if ((row.getColumns().get("broadcast") != null) && row.getColumns().get("broadcast").getClass()
+                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+            this.broadcast = row.getStringColumn("broadcast");
+        }
+        this.enabled = row.getBooleanColumn("enabled");
+        this.ifName = row.getStringColumn("if_name");
+        this.ifType = row.getStringColumn("if_type");
+        String ipAssignSchemeTemp = OvsdbDaoBase.getSingleValueFromSet(row, "ip_assign_scheme");
+        if (ipAssignSchemeTemp != null) {
+            this.ipAssignScheme = ipAssignSchemeTemp;
+        } else {
+            this.ipAssignScheme = "none";
+        }
+        this.network = row.getBooleanColumn("network");
+        if ((row.getColumns().get("inet_addr") != null) && row.getColumns().get("inet_addr").getClass()
+                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+            this.inetAddr = row.getStringColumn("inet_addr");
+        }
+        if ((row.getColumns().get("mtu") != null) && row.getColumns().get("mtu").getClass()
+                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+            this.mtu = row.getIntegerColumn("mtu").intValue();
+        }
+        if ((row.getColumns().get("netmask") != null) && row.getColumns().get("netmask").getClass()
+                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+            this.netmask = row.getStringColumn("netmask");
+        }
+        if ((row.getColumns().get("vlan_id") != null) && row.getColumns().get("vlan_id").getClass()
+                .equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
+            this.vlanId = row.getIntegerColumn("vlan_id").intValue();
+        }
+        this.dns = row.getMapColumn("dns");
+        this.dhcpd = row.getMapColumn("dhcpd");
+        this.gateway = OvsdbDaoBase.getSingleValueFromSet(row, "gateway");    
+    }
+	
     @Override
     public WifiInetConfigInfo clone() {
         try {

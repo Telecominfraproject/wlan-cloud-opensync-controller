@@ -47,13 +47,6 @@ public class ConnectNodeInfo implements Cloneable {
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(country, firmwareVersion, ifName, ifType, ipV4Address, lanIfName, lanIfType, lanIpV4Address,
-                lanMacAddress, macAddress, managerAddr, model, mqttSettings, platformVersion, redirectorAddr, revision,
-                serialNumber, skuNumber, versionMatrix, wifiRadioStates);
-    }
-
-    @Override
     public boolean equals(Object obj) {
         if (this == obj) {
             return true;
@@ -77,6 +70,13 @@ public class ConnectNodeInfo implements Cloneable {
     }
 
     @Override
+    public int hashCode() {
+        return Objects.hash(country, firmwareVersion, ifName, ifType, ipV4Address, lanIfName, lanIfType, lanIpV4Address,
+                lanMacAddress, macAddress, managerAddr, model, mqttSettings, platformVersion, redirectorAddr, revision,
+                serialNumber, skuNumber, versionMatrix, wifiRadioStates);
+    }
+
+    @Override
     public String toString() {
         return "ConnectNodeInfo [mqttSettings=" + mqttSettings + ", versionMatrix=" + versionMatrix
                 + ", wifiRadioStates=" + wifiRadioStates + ", redirectorAddr=" + redirectorAddr + ", managerAddr="
@@ -86,6 +86,5 @@ public class ConnectNodeInfo implements Cloneable {
                 + ifName + ", ifType=" + ifType + ", country=" + country + ", lanIpV4Address=" + lanIpV4Address
                 + ", lanIfName=" + lanIfName + ", lanIfType=" + lanIfType + ", lanMacAddress=" + lanMacAddress + "]";
     }
-
 
 }

@@ -1,0 +1,379 @@
+package com.telecominfraproject.wlan.opensync.ovsdb.dao;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+import org.springframework.stereotype.Component;
+
+import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
+import com.telecominfraproject.wlan.opensync.util.OvsdbToWlanCloudTypeMappingUtility;
+import com.vmware.ovsdb.exception.OvsdbClientException;
+import com.vmware.ovsdb.protocol.operation.Operation;
+import com.vmware.ovsdb.protocol.operation.Select;
+import com.vmware.ovsdb.protocol.operation.Update;
+import com.vmware.ovsdb.protocol.operation.notation.Atom;
+import com.vmware.ovsdb.protocol.operation.notation.Condition;
+import com.vmware.ovsdb.protocol.operation.notation.Function;
+import com.vmware.ovsdb.protocol.operation.notation.Row;
+import com.vmware.ovsdb.protocol.operation.notation.Value;
+import com.vmware.ovsdb.protocol.operation.result.ErrorResult;
+import com.vmware.ovsdb.protocol.operation.result.OperationResult;
+import com.vmware.ovsdb.protocol.operation.result.SelectResult;
+import com.vmware.ovsdb.service.OvsdbClient;
+
+@Component
+public class OvsdbNode extends OvsdbDaoBase {
+    String changeRedirectorAddress(OvsdbClient ovsdbClient, String apId, String newRedirectorAddress) {
+        try {
+            List<Operation> operations = new ArrayList<>();
+            Map<String, Value> updateColumns = new HashMap<>();
+
+            updateColumns.put("redirector_addr", new Atom<>(newRedirectorAddress));
+
+            Row row = new Row(updateColumns);
+            operations.add(new Update(awlanNodeDbTable, row));
+
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Updated {} redirector_addr = {}", awlanNodeDbTable, newRedirectorAddress);
+
+                for (OperationResult res : result) {
+                    LOG.debug("Op Result {}", res);
+                }
+            }
+
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        return newRedirectorAddress;
+    }
+
+    void fillInLanIpAddressAndMac(OvsdbClient ovsdbClient, ConnectNodeInfo connectNodeInfo, String ifType) {
+        try {
+            List<Operation> operations = new ArrayList<>();
+            List<Condition> conditions = new ArrayList<>();
+            List<String> columns = new ArrayList<>();
+            // populate macAddress, ipV4Address from Wifi_Inet_State
+
+            columns.add("inet_addr");
+            columns.add("hwaddr");
+            columns.add("if_type");
+            columns.add("if_name");
+
+            conditions.add(new Condition("if_type", Function.EQUALS, new Atom<>(ifType)));
+            conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(defaultLanInterfaceName)));
+
+            operations.add(new Select(wifiInetStateDbTable, conditions, columns));
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Select from {}:", wifiInetStateDbTable);
+
+                for (OperationResult res : result) {
+                    LOG.debug("Op Result {}", res);
+                }
+            }
+
+            Row row = null;
+            if ((result != null) && (result.length > 0) && (result[0] instanceof SelectResult)
+                    && !((SelectResult) result[0]).getRows().isEmpty()) {
+                row = ((SelectResult) result[0]).getRows().iterator().next();
+                connectNodeInfo.lanIpV4Address = getSingleValueFromSet(row, "inet_addr");
+                connectNodeInfo.lanIfName = row.getStringColumn("if_name");
+                connectNodeInfo.lanIfType = getSingleValueFromSet(row, "if_type");
+                connectNodeInfo.lanMacAddress = getSingleValueFromSet(row, "hwaddr");
+
+            } else if ((result != null) && (result.length > 0) && (result[0] instanceof ErrorResult)) {
+                LOG.warn("Error reading from {} table: {}", wifiInetStateDbTable, result[0]);
+            }
+
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    void fillInWanIpAddressAndMac(OvsdbClient ovsdbClient, ConnectNodeInfo connectNodeInfo, String ifType,
+            String ifName) {
+        try {
+            List<Operation> operations = new ArrayList<>();
+            List<Condition> conditions = new ArrayList<>();
+            List<String> columns = new ArrayList<>();
+            // populate macAddress, ipV4Address from Wifi_Inet_State
+
+            columns.add("inet_addr");
+            columns.add("hwaddr");
+            columns.add("if_name");
+            columns.add("if_type");
+
+            conditions.add(new Condition("if_type", Function.EQUALS, new Atom<>(ifType)));
+            conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(ifName)));
+
+            operations.add(new Select(wifiInetStateDbTable, conditions, columns));
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Select from {}:", wifiInetStateDbTable);
+
+                for (OperationResult res : result) {
+                    LOG.debug("Op Result {}", res);
+                }
+            }
+
+            Row row = null;
+            if ((result != null) && (result.length > 0) && (result[0] instanceof SelectResult)
+                    && !((SelectResult) result[0]).getRows().isEmpty()) {
+                row = ((SelectResult) result[0]).getRows().iterator().next();
+                connectNodeInfo.ipV4Address = getSingleValueFromSet(row, "inet_addr");
+                connectNodeInfo.ifName = row.getStringColumn("if_name");
+                connectNodeInfo.ifType = getSingleValueFromSet(row, "if_type");
+                connectNodeInfo.macAddress = getSingleValueFromSet(row, "hwaddr");
+
+            }
+
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    ConnectNodeInfo getConnectNodeInfo(OvsdbClient ovsdbClient) {
+
+        ConnectNodeInfo ret = new ConnectNodeInfo();
+
+        try {
+            List<Operation> operations = new ArrayList<>();
+            List<Condition> conditions = new ArrayList<>();
+            List<String> columns = new ArrayList<>();
+            columns.add("mqtt_settings");
+            columns.add("redirector_addr");
+            columns.add("manager_addr");
+            columns.add("sku_number");
+            columns.add("serial_number");
+            columns.add("model");
+            columns.add("firmware_version");
+            columns.add("platform_version");
+            columns.add("revision");
+            columns.add("version_matrix");
+
+            operations.add(new Select(awlanNodeDbTable, conditions, columns));
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Select from {}:", awlanNodeDbTable);
+
+                for (OperationResult res : result) {
+                    LOG.debug("Op Result {}", res);
+                }
+            }
+
+            Row row = null;
+            if ((result != null) && (result.length > 0) && (result[0] instanceof SelectResult)
+                    && !((SelectResult) result[0]).getRows().isEmpty()) {
+                row = ((SelectResult) result[0]).getRows().iterator().next();
+            }
+
+            ret.mqttSettings = row != null ? row.getMapColumn("mqtt_settings") : null;
+            ret.versionMatrix = row != null ? row.getMapColumn("version_matrix") : null;
+            ret.redirectorAddr = row != null ? row.getStringColumn("redirector_addr") : null;
+            ret.managerAddr = row != null ? row.getStringColumn("manager_addr") : null;
+
+            ret.platformVersion = row != null ? row.getStringColumn("platform_version") : null;
+            ret.firmwareVersion = row != null ? row.getStringColumn("firmware_version") : null;
+
+            ret.revision = row != null ? row.getStringColumn("revision") : null;
+
+            ret.skuNumber = getSingleValueFromSet(row, "sku_number");
+            ret.serialNumber = getSingleValueFromSet(row, "serial_number");
+            ret.model = getSingleValueFromSet(row, "model");
+
+            // now populate macAddress, ipV4Address from Wifi_Inet_State
+            // first look them up for if_name = br-wan
+            fillInWanIpAddressAndMac(ovsdbClient, ret, defaultWanInterfaceType, defaultWanInterfaceName);
+            if ((ret.ipV4Address == null) || (ret.macAddress == null)) {
+                // when not found - look them up for if_name = br-lan
+                fillInWanIpAddressAndMac(ovsdbClient, ret, defaultLanInterfaceType, defaultLanInterfaceName);
+
+                if (ret.ipV4Address == null) {
+                    throw new RuntimeException(
+                            "Could not get inet address for Lan and Wan network interfaces. Node is not ready to connect.");
+                }
+            }
+            fillInLanIpAddressAndMac(ovsdbClient, ret, defaultLanInterfaceType);
+
+            fillInRadioInterfaceNames(ovsdbClient, ret);
+
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        LOG.debug("ConnectNodeInfo created {}", ret);
+
+        return ret;
+    }
+
+    void performRedirect(OvsdbClient ovsdbClient, String clientCn) {
+
+        List<Operation> operations = new ArrayList<>();
+        List<Condition> conditions = new ArrayList<>();
+        List<String> columns = new ArrayList<>();
+        columns.add("manager_addr");
+        columns.add("sku_number");
+        columns.add("serial_number");
+        columns.add("model");
+        columns.add("firmware_version");
+
+        try {
+            LOG.debug("Starting Redirect");
+
+            operations.add(new Select(awlanNodeDbTable, conditions, columns));
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            LOG.debug("Select from AWLAN_Node:");
+
+            String skuNumber = null;
+            String serialNumber = null;
+            String model = null;
+            String firmwareVersion = null;
+
+            Row row = null;
+            if ((result != null) && (result.length > 0) && !((SelectResult) result[0]).getRows().isEmpty()) {
+                row = ((SelectResult) result[0]).getRows().iterator().next();
+                for (OperationResult res : result) {
+                    LOG.debug("Op Result {}", res);
+                }
+            }
+
+            firmwareVersion = row != null ? row.getStringColumn("firmware_version") : null;
+
+            skuNumber = getSingleValueFromSet(row, "sku_number");
+            serialNumber = getSingleValueFromSet(row, "serial_number");
+            model = getSingleValueFromSet(row, "model");
+
+            LOG.info("Redirecting AP Node: clientCn {} serialNumber {} model {} firmwareVersion {} skuNumber {}",
+                    clientCn, serialNumber, model, firmwareVersion, skuNumber);
+
+            // Update table AWLAN_Node - set manager_addr
+            operations.clear();
+            Map<String, Value> updateColumns = new HashMap<>();
+
+            updateColumns.put("manager_addr", new Atom<>("ssl:" + managerIpAddr + ":" + ovsdbExternalPort));
+
+            row = new Row(updateColumns);
+            operations.add(new Update(awlanNodeDbTable, row));
+
+            fResult = ovsdbClient.transact(ovsdbName, operations);
+            result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            LOG.debug("Updated AWLAN_Node:");
+
+            for (OperationResult res : result) {
+                LOG.debug("Op Result {}", res);
+            }
+
+            LOG.debug("Redirect Done");
+        } catch (ExecutionException | InterruptedException | OvsdbClientException | TimeoutException e) {
+            LOG.error("Error when redirecting AP Node", e);
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    void rebootOrResetAp(OvsdbClient ovsdbClient, String desiredApAction) {
+        try {
+            LOG.debug("rebootOrResetAp on AP perform {}, setting timer for {} seconds.", desiredApAction,
+                    rebootOrResetTimerSeconds);
+            List<Operation> operations = new ArrayList<>();
+            Map<String, Value> updateColumns = new HashMap<>();
+            updateColumns.put("firmware_url", new Atom<>(desiredApAction));
+            updateColumns.put("upgrade_timer", new Atom<>(rebootOrResetTimerSeconds));
+            Row row = new Row(updateColumns);
+            operations.add(new Update(awlanNodeDbTable, row));
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+
+            OperationResult[] result = fResult.join();
+            for (OperationResult r : result) {
+                LOG.debug("Op Result {}", r);
+            }
+        } catch (OvsdbClientException e) {
+            LOG.error("Could not trigger {}", desiredApAction, e);
+            throw new RuntimeException(e);
+
+        }
+
+    }
+
+    ConnectNodeInfo updateConnectNodeInfoOnConnect(OvsdbClient ovsdbClient, String clientCn,
+            ConnectNodeInfo incomingConnectNodeInfo, boolean preventCnAlteration) {
+        ConnectNodeInfo ret = incomingConnectNodeInfo.clone();
+
+        try {
+            List<Operation> operations = new ArrayList<>();
+            Map<String, Value> updateColumns = new HashMap<>();
+
+            // set device_mode = cloud - plume's APs do not use it
+            // updateColumns.put("device_mode", new Atom<String>("cloud") );
+
+            // update sku_number if it was empty
+            if ((ret.skuNumber == null) || ret.skuNumber.isEmpty()) {
+                ret.skuNumber = "tip.wlan_" + ret.serialNumber;
+                updateColumns.put("sku_number", new Atom<>(ret.skuNumber));
+            }
+
+            // Configure the MQTT connection
+            // ovsh u AWLAN_Node
+            // mqtt_settings:ins:'["map",[["broker","testportal.123wlan.com"],["topics","/ap/dev-ap-0300/opensync"],["qos","0"],["port","1883"],["remote_log","1"]]]'
+            Map<String, String> newMqttSettings = new HashMap<>();
+            newMqttSettings.put("broker", mqttBrokerAddress);
+            String mqttClientName = OvsdbToWlanCloudTypeMappingUtility.getAlteredClientCnIfRequired(clientCn,
+                    incomingConnectNodeInfo, preventCnAlteration);
+            newMqttSettings.put("topics", "/ap/" + mqttClientName + "/opensync");
+            newMqttSettings.put("port", "" + mqttBrokerExternalPort);
+            newMqttSettings.put("compress", "zlib");
+            newMqttSettings.put("qos", "0");
+            newMqttSettings.put("remote_log", "1");
+
+            if ((ret.mqttSettings == null) || !ret.mqttSettings.equals(newMqttSettings)) {
+                @SuppressWarnings("unchecked")
+                com.vmware.ovsdb.protocol.operation.notation.Map<String, String> mgttSettings = com.vmware.ovsdb.protocol.operation.notation.Map
+                        .of(newMqttSettings);
+                ret.mqttSettings = newMqttSettings;
+                updateColumns.put("mqtt_settings", mgttSettings);
+            }
+
+            if (!updateColumns.isEmpty()) {
+                Row row = new Row(updateColumns);
+                operations.add(new Update(awlanNodeDbTable, row));
+
+                CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+                OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Updated {}:", awlanNodeDbTable);
+
+                    for (OperationResult res : result) {
+                        LOG.debug("Op Result {}", res);
+                    }
+                }
+            }
+
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        return ret;
+    }
+
+}

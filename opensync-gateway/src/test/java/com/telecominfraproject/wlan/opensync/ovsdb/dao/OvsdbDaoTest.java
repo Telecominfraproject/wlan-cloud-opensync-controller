@@ -26,6 +26,7 @@ import org.mockito.quality.Strictness;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -34,7 +35,6 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.location.models.Location;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
@@ -44,7 +44,6 @@ import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.telecominfraproject.wlan.profile.network.models.GreTunnelConfiguration;
-import com.telecominfraproject.wlan.profile.radius.models.RadiusProfile;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.vmware.ovsdb.exception.OvsdbClientException;
 import com.vmware.ovsdb.protocol.operation.notation.Atom;
@@ -65,7 +64,9 @@ import com.vmware.ovsdb.service.OvsdbClient;
 // be ADDED to the list of
 // active profiles
 @SpringBootTest(webEnvironment = WebEnvironment.NONE, classes = OvsdbDaoTest.class)
-@Import(value = { OvsdbDao.class, OvsdbDaoTest.Config.class,
+@Import(value = { OvsdbDao.class, OvsdbDaoTest.Config.class, OvsdbNode.class, OvsdbRadioConfig.class,
+        OvsdbHotspotConfig.class, OvsdbCommandConfig.class, OvsdbMonitor.class, OvsdbFirmwareConfig.class,
+        OvsdbStatsConfig.class, OvsdbSsidConfig.class, OvsdbRrmConfig.class, OvsdbNetworkConfig.class,
 
 })
 public class OvsdbDaoTest {
@@ -124,6 +125,29 @@ public class OvsdbDaoTest {
     @Autowired
     OvsdbDao ovsdbDao;
 
+    @Autowired
+    OvsdbNode ovsdbNode;
+    @Autowired
+    OvsdbHotspotConfig ovsdbHotspot;
+    @Autowired
+    OvsdbSsidConfig ovsdbSsid;
+    @Autowired
+    OvsdbNetworkConfig ovsdbNetwork;
+    @Autowired
+    OvsdbRrmConfig ovsdbRrm;
+    @Autowired
+    OvsdbStatsConfig ovsdbStats;
+    @Autowired
+    OvsdbRadioConfig ovsdbRadio;
+    @Autowired
+    OvsdbMonitor ovsdbMonitor;
+    @Autowired
+    OvsdbFirmwareConfig ovsdbFirmware;
+    @Autowired
+    OvsdbCommandConfig ovsdbCommand;
+    @MockBean(answer = Answers.RETURNS_MOCKS)
+    OvsdbGet ovsdbGet;
+
     MockitoSession mockito;
 
     @Configuration
@@ -159,9 +183,11 @@ public class OvsdbDaoTest {
         apProfile.setName("ApProfile");
         apProfile.setProfileType(ProfileType.equipment_ap);
         ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
-        Set<GreTunnelConfiguration> greTunnels = Set.of(new GreTunnelConfiguration("gre", "wan",
-                null, InetAddress.getByName("192.168.0.10"),
-                null, Set.of(Integer.valueOf(100))));
+        GreTunnelConfiguration greTunnelConfiguration = GreTunnelConfiguration.createWithDefaults();
+        greTunnelConfiguration.setGreRemoteInetAddr(InetAddress.getByName("192.168.0.10"));
+        greTunnelConfiguration.setGreTunnelName("gre");
+        greTunnelConfiguration.setVlanIdsInGreTunnel(Set.of(Integer.valueOf(100)));
+        Set<GreTunnelConfiguration> greTunnels = Set.of(greTunnelConfiguration);
         tunnelProfileDetails.setGreTunnelConfigurations(greTunnels);
         apProfile.setDetails(tunnelProfileDetails);
 
@@ -171,55 +197,6 @@ public class OvsdbDaoTest {
         Mockito.verify(ovsdbClient, Mockito.times(1)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
         Mockito.verify(apConfig, Mockito.times(3)).getApProfile();
 
-    }
-
-    @Test
-    public void testGetRadiusConfiguration() throws Exception {
-        OpensyncAPConfig apConfig = new OpensyncAPConfig();
-        Profile profileRadius = OvsdbDaoTestUtilities.createRadiusProfile(DEFAULT_CUSTOMER_ID);
-        apConfig.setRadiusProfiles(List.of(profileRadius));
-        Profile ssidProfile = new Profile();
-        SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
-        ssidConfig.setRadiusServiceId(profileRadius.getId());
-        ssidConfig.setRadiusServiceId(profileRadius.getId());
-        ssidConfig.setRadiusAcountingServiceInterval(60);
-        ssidProfile.setDetails(ssidConfig);
-        apConfig.setSsidProfile(List.of(ssidProfile));
-        Map<String, String> security = new HashMap<>();
-        Location location = new Location();
-        location.setName("Ottawa");
-        apConfig.setEquipmentLocation(location);
-        ovsdbDao.getRadiusConfiguration(apConfig, ssidConfig, security);
-        assert (security.get("radius_server_ip").equals("192.168.0.1"));
-        assert (security.get("radius_server_port").equals(String.valueOf(RadiusProfile.DEFAULT_RADIUS_AUTH_PORT)));
-        assert (security.get("radius_server_secret").equals(RadiusProfile.DEFAULT_RADIUS_SECRET));
-    }
-
-    @Test
-    public void testGetRadiusAccountingConfiguration() throws Exception {
-        OpensyncAPConfig apConfig = new OpensyncAPConfig();
-        Profile profileRadius = OvsdbDaoTestUtilities.createRadiusProfile(DEFAULT_CUSTOMER_ID);
-        apConfig.setRadiusProfiles(List.of(profileRadius));
-        Profile ssidProfile = new Profile();
-        ssidProfile.setCustomerId(DEFAULT_CUSTOMER_ID);
-        ssidProfile.setName("SsidProfile");
-        ssidProfile.setProfileType(ProfileType.ssid);
-        SsidConfiguration ssidConfig = SsidConfiguration.createWithDefaults();
-        
-        ssidConfig.setRadiusServiceId(OvsdbDaoTestUtilities.RADIUS_PROFILE_ID);
-        ssidConfig.setRadiusAcountingServiceInterval(60);
-        ssidProfile.setDetails(ssidConfig);
-        apConfig.setSsidProfile(List.of(ssidProfile));
-        Map<String, String> security = new HashMap<>();
-        Location location = new Location();
-        location.setName("Ottawa");
-        apConfig.setEquipmentLocation(location);
-        ovsdbDao.getRadiusAccountingConfiguration(apConfig, ssidConfig, security);
-        assert (Integer.valueOf(security.get("radius_acct_interval"))
-                .equals(ssidConfig.getRadiusAcountingServiceInterval()));
-        assert (security.get("radius_acct_ip").equals("192.168.0.1"));
-        assert (security.get("radius_acct_port").equals("1813"));
-        assert (security.get("radius_acct_secret").equals("secret"));
     }
 
     @Test
@@ -244,8 +221,8 @@ public class OvsdbDaoTest {
     @Ignore
     public void testConfigureHotspots() throws Exception {
 
-        //TODO: needs refactoring.
-        
+        // TODO: needs refactoring.
+
         DatabaseSchema schemaMock = Mockito.mock(DatabaseSchema.class);
         CompletableFuture<DatabaseSchema> schemaFuture = Mockito.mock(CompletableFuture.class);
         Mockito.when(schemaFuture.get(Mockito.anyLong(), Mockito.any())).thenReturn(schemaMock);
@@ -319,33 +296,6 @@ public class OvsdbDaoTest {
     }
 
     @Test
-    public void testConfigureGreTunnelsWithNoLocalAddress() throws Exception {
-        List<Row> rows = new ArrayList<>();
-        OperationResult[] operationResult = new OperationResult[] { new SelectResult(rows) };
-        Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList()))
-                .thenReturn(selectionFutureResult);
-        Mockito.when(selectionFutureResult.get(30, TimeUnit.SECONDS)).thenReturn(operationResult);
-        Profile apProfile = new Profile();
-        apProfile.setCustomerId(2);
-        apProfile.setId(1L);
-        apProfile.setName("ApProfile");
-        apProfile.setProfileType(ProfileType.equipment_ap);
-        ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
-        Set<GreTunnelConfiguration> greTunnels = Set.of(new GreTunnelConfiguration("gre", "wan",
-                null, InetAddress.getByName("192.168.0.10"),
-                null, Set.of(Integer.valueOf(100))));
-        tunnelProfileDetails.setGreTunnelConfigurations(greTunnels);
-        apProfile.setDetails(tunnelProfileDetails);
-
-        OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
-        Mockito.when(apConfig.getApProfile()).thenReturn(apProfile);
-        ovsdbDao.configureGreTunnels(ovsdbClient, apConfig);
-        Mockito.verify(ovsdbClient, Mockito.times(1)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
-        Mockito.verify(apConfig, Mockito.times(3)).getApProfile();
-
-    }
-
-    @Test
     public void testConfigureGreTunnelsWithNoRemoteAddress() throws Exception {
         Profile apProfile = new Profile();
         apProfile.setCustomerId(2);
@@ -354,9 +304,11 @@ public class OvsdbDaoTest {
         apProfile.setProfileType(ProfileType.equipment_ap);
         ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
 
-        Set<GreTunnelConfiguration> greTunnels = Set.of(new GreTunnelConfiguration("gre", "wan",
-                InetAddress.getByName("10.0.10.10"), null,
-                MacAddress.valueOf("3c:22:fb:18:43:16"), Set.of(Integer.valueOf(100))));
+        GreTunnelConfiguration greTunnelConfiguration = GreTunnelConfiguration.createWithDefaults();
+        greTunnelConfiguration.setGreRemoteInetAddr(null);
+        greTunnelConfiguration.setGreTunnelName("gre");
+        greTunnelConfiguration.setVlanIdsInGreTunnel(Set.of(Integer.valueOf(100)));
+        Set<GreTunnelConfiguration> greTunnels = Set.of(greTunnelConfiguration);
         tunnelProfileDetails.setGreTunnelConfigurations(greTunnels);
         apProfile.setDetails(tunnelProfileDetails);
 
@@ -378,11 +330,12 @@ public class OvsdbDaoTest {
         apProfile.setProfileType(ProfileType.equipment_ap);
         ApNetworkConfiguration tunnelProfileDetails = ApNetworkConfiguration.createWithDefaults();
 
-        Set<GreTunnelConfiguration> greTunnels = Set.of(new GreTunnelConfiguration(null, "wan",
-                null, InetAddress.getByName("192.168.0.10"),
-                null, Set.of(Integer.valueOf(100))));
+        GreTunnelConfiguration greTunnelConfiguration = GreTunnelConfiguration.createWithDefaults();
+        greTunnelConfiguration.setGreRemoteInetAddr(InetAddress.getByName("192.168.0.10"));
+        greTunnelConfiguration.setGreTunnelName(null);
+        greTunnelConfiguration.setVlanIdsInGreTunnel(Set.of(Integer.valueOf(100)));
+        Set<GreTunnelConfiguration> greTunnels = Set.of(greTunnelConfiguration);
         tunnelProfileDetails.setGreTunnelConfigurations(greTunnels);
-
         apProfile.setDetails(tunnelProfileDetails);
 
         OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class);
@@ -690,12 +643,13 @@ public class OvsdbDaoTest {
         Mockito.verify(futureResult).get(30L, TimeUnit.SECONDS);
 
     }
-    
+
     @Test
     public void testProcessNewChannelsRequest() throws Exception {
-        
-        
-        OperationResult[] testProcessNewChannelsRequestResult = new OperationResult[] { new UpdateResult(1), new UpdateResult(1), new UpdateResult(1), new UpdateResult(1), new UpdateResult(1), new UpdateResult(1) };
+
+        OperationResult[] testProcessNewChannelsRequestResult = new OperationResult[] { new UpdateResult(1),
+                new UpdateResult(1), new UpdateResult(1), new UpdateResult(1), new UpdateResult(1),
+                new UpdateResult(1) };
 
         Mockito.when(futureResult.get(30L, TimeUnit.SECONDS)).thenReturn(testProcessNewChannelsRequestResult);
 
@@ -706,11 +660,9 @@ public class OvsdbDaoTest {
                         RadioType.is5GHzU, Integer.valueOf(153)),
                 Map.of(RadioType.is2dot4GHz, Integer.valueOf(6), RadioType.is5GHzL, Integer.valueOf(36),
                         RadioType.is5GHzU, Integer.valueOf(149)));
-        
+
         Mockito.verify(futureResult).get(30L, TimeUnit.SECONDS);
 
-        
-        
     }
 
     @Test(expected = RuntimeException.class)

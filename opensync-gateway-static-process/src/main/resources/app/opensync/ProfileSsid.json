@@ -1,226 +1,75 @@
 [
-  {
+{
     "model_type": "Profile",
-    "id": 5,
+    "id": 2,
     "customerId": 2,
     "profileType": "ssid",
     "name": "TipWlan-cloud-3-radios",
     "details": {
-      "model_type": "SsidConfiguration",
-      "ssid": "TipWlan-cloud-3-radios",
-      "appliedRadios": [
-        "is5GHzL",
-        "is2dot4GHz",
-        "is5GHzU"
-      ],
-      "ssidAdminState": "enabled",
-      "secureMode": "wpa2OnlyPSK",
-      "vlanId": 1,
-      "keyStr": "openwifi",
-      "broadcastSsid": "enabled",
-      "keyRefresh": 0,
-      "noLocalSubnets": false,
-      "radiusServiceId": 0,
-      "radiusAcountingServiceInterval": 60,
-      "captivePortalId": null,
-      "bandwidthLimitDown": 0,
-      "bandwidthLimitUp": 0,
-      "clientBandwidthLimitDown": 0,
-      "clientBandwidthLimitUp": 0,
-      "videoTrafficOnly": false,
-      "radioBasedConfigs": {
-        "is5GHzL": {
-          "model_type": "RadioBasedSsidConfiguration",
-          "enable80211r": null,
-          "enable80211k": null,
-          "enable80211v": null
+        "model_type": "SsidConfiguration",
+        "ssid": "TipWlan-cloud-3-radios",
+        "appliedRadios": [
+            "is5GHzU",
+            "is2dot4GHz",
+            "is5GHzL"
+        ],
+        "ssidAdminState": "enabled",
+        "secureMode": "wpa2OnlyPSK",
+        "vlanId": 1,
+        "keyStr": "openwifi",
+        "broadcastSsid": "enabled",
+        "keyRefresh": 0,
+        "noLocalSubnets": false,
+        "radiusServiceId": 0,
+        "radiusAcountingServiceInterval": 60,
+        "captivePortalId": null,
+        "bandwidthLimitDown": 0,
+        "bandwidthLimitUp": 0,
+        "clientBandwidthLimitDown": 0,
+        "clientBandwidthLimitUp": 0,
+        "videoTrafficOnly": false,
+        "radioBasedConfigs": {
+            "is5GHzU": {
+                "model_type": "RadioBasedSsidConfiguration",
+                "enable80211r": null,
+                "enable80211k": null,
+                "enable80211v": null
+            },
+            "is2dot4GHz": {
+                "model_type": "RadioBasedSsidConfiguration",
+                "enable80211r": null,
+                "enable80211k": null,
+                "enable80211v": null
+            },
+            "is5GHz": {
+                "model_type": "RadioBasedSsidConfiguration",
+                "enable80211r": null,
+                "enable80211k": null,
+                "enable80211v": null
+            },
+            "is5GHzL": {
+                "model_type": "RadioBasedSsidConfiguration",
+                "enable80211r": null,
+                "enable80211k": null,
+                "enable80211v": null
+            }
         },
-        "is2dot4GHz": {
-          "model_type": "RadioBasedSsidConfiguration",
-          "enable80211r": null,
-          "enable80211k": null,
-          "enable80211v": null
-        },
-        "is5GHz": {
-          "model_type": "RadioBasedSsidConfiguration",
-          "enable80211r": null,
-          "enable80211k": null,
-          "enable80211v": null
-        },
-        "is5GHzU": {
-          "model_type": "RadioBasedSsidConfiguration",
-          "enable80211r": null,
-          "enable80211k": null,
-          "enable80211v": null
+        "bonjourGatewayProfileId": null,
+        "enable80211w": null,
+        "wepConfig": null,
+        "forwardMode": "BRIDGE",
+        "profileType": "ssid",
+        "radiusClientConfiguration": {
+            "model_type": "RadiusNasConfiguration",
+            "nasClientId": "DEFAULT",
+            "nasClientIp": "WAN_IP",
+            "userDefinedNasId": null,
+            "userDefinedNasIp": null,
+            "operatorId": null
         }
-      },
-      "bonjourGatewayProfileId": null,
-      "enable80211w": null,
-      "wepConfig": null,
-      "forwardMode": "BRIDGE",
-      "profileType": "ssid",
-      "radiusClientConfiguration": {
-        "model_type": "RadiusNasConfiguration",
-        "nasClientId": "DEFAULT",
-        "nasClientIp": "WAN_IP",
-        "userDefinedNasId": null,
-        "userDefinedNasIp": null,
-        "operatorId": null
-      }
     },
-    "createdTimestamp": 1606778369598,
-    "lastModifiedTimestamp": 1606778369598,
-    "childProfileIds": [
-    ]
-  },
-  {
-    "model_type": "Profile",
-    "id": 32,
-    "customerId": 2,
-    "profileType": "ssid",
-    "name": "access-ssid-profile-2021-01-21T21:28:58.871Z",
-    "details": {
-      "model_type": "SsidConfiguration",
-      "ssid": "ssid-access-passpoint",
-      "appliedRadios": [
-        "is5GHzU",
-        "is5GHzL"
-      ],
-      "ssidAdminState": "enabled",
-      "secureMode": "wpa2EAP",
-      "vlanId": 1,
-      "keyStr": "testing123",
-      "broadcastSsid": "enabled",
-      "keyRefresh": 0,
-      "noLocalSubnets": false,
-      "radiusServiceId": 1,
-      "radiusAccountingServiceId": 1,
-      "radiusAcountingServiceInterval": 60,
-      "captivePortalId": null,
-      "bandwidthLimitDown": 0,
-      "bandwidthLimitUp": 0,
-      "clientBandwidthLimitDown": 0,
-      "clientBandwidthLimitUp": 0,
-      "videoTrafficOnly": false,
-      "radioBasedConfigs": {
-        "is5GHz": {
-          "model_type": "RadioBasedSsidConfiguration",
-          "enable80211r": null,
-          "enable80211k": null,
-          "enable80211v": null
-        },
-        "is5GHzU": {
-          "model_type": "RadioBasedSsidConfiguration",
-          "enable80211r": null,
-          "enable80211k": null,
-          "enable80211v": null
-        },
-        "is2dot4GHz": {
-          "model_type": "RadioBasedSsidConfiguration",
-          "enable80211r": null,
-          "enable80211k": null,
-          "enable80211v": null
-        },
-        "is5GHzL": {
-          "model_type": "RadioBasedSsidConfiguration",
-          "enable80211r": null,
-          "enable80211k": null,
-          "enable80211v": null
-        }
-      },
-      "bonjourGatewayProfileId": null,
-      "enable80211w": null,
-      "wepConfig": null,
-      "forwardMode": null,
-      "radiusClientConfiguration": {
-        "model_type": "RadiusNasConfiguration",
-        "nasClientId": "DEFAULT",
-        "nasClientIp": "WAN_IP",
-        "userDefinedNasId": null,
-        "userDefinedNasIp": null,
-        "operatorId": null
-      },
-      "profileType": "ssid"
-    },
-    "createdTimestamp": 0,
-    "lastModifiedTimestamp": 1611264539281,
-    "childProfileIds": [
-      37,
-      1
-    ]
-  },
-  {
-    "model_type": "Profile",
-    "id": 31,
-    "customerId": 2,
-    "profileType": "ssid",
-    "name": "osu-ssid-profile-2021-01-21T21:28:58.798Z",
-    "details": {
-      "model_type": "SsidConfiguration",
-      "ssid": "ssid-open-passpoint",
-      "appliedRadios": [
-        "is2dot4GHz"
-      ],
-      "ssidAdminState": "enabled",
-      "secureMode": "open",
-      "vlanId": 1,
-      "keyStr": null,
-      "broadcastSsid": "enabled",
-      "keyRefresh": 0,
-      "noLocalSubnets": false,
-      "radiusServiceId": 0,
-      "radiusAccountingServiceId": 0,
-      "radiusAcountingServiceInterval": 60,
-      "captivePortalId": null,
-      "bandwidthLimitDown": 0,
-      "bandwidthLimitUp": 0,
-      "clientBandwidthLimitDown": 0,
-      "clientBandwidthLimitUp": 0,
-      "videoTrafficOnly": false,
-      "radioBasedConfigs": {
-        "is5GHz": {
-          "model_type": "RadioBasedSsidConfiguration",
-          "enable80211r": null,
-          "enable80211k": null,
-          "enable80211v": null
-        },
-        "is5GHzU": {
-          "model_type": "RadioBasedSsidConfiguration",
-          "enable80211r": null,
-          "enable80211k": null,
-          "enable80211v": null
-        },
-        "is2dot4GHz": {
-          "model_type": "RadioBasedSsidConfiguration",
-          "enable80211r": null,
-          "enable80211k": null,
-          "enable80211v": null
-        },
-        "is5GHzL": {
-          "model_type": "RadioBasedSsidConfiguration",
-          "enable80211r": null,
-          "enable80211k": null,
-          "enable80211v": null
-        }
-      },
-      "bonjourGatewayProfileId": null,
-      "enable80211w": null,
-      "wepConfig": null,
-      "forwardMode": null,
-      "radiusClientConfiguration": {
-        "model_type": "RadiusNasConfiguration",
-        "nasClientId": "DEFAULT",
-        "nasClientIp": "WAN_IP",
-        "userDefinedNasId": null,
-        "userDefinedNasIp": null,
-        "operatorId": null
-      },
-      "profileType": "ssid"
-    },
-    "createdTimestamp": 0,
-    "lastModifiedTimestamp": 1611264539231,
-    "childProfileIds": [
-      37
-    ]
-  }
+    "createdTimestamp": 1612285248638,
+    "lastModifiedTimestamp": 1612285248638,
+    "childProfileIds": []
+}
 ]
