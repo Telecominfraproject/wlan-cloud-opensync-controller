@@ -61,10 +61,10 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.preventClientCnAlteration:false}")
     private boolean preventClientCnAlteration;
-    
+
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.defaultCommandDurationSec:3600}")
     private long defaultCommandDurationSec;
-    
+
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.defaultCommandDelaySec:60}")
     private long defaultCommandDelaySec;
 
@@ -223,7 +223,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
 
         if (opensyncAPConfig != null) {
-
+            ovsdbDao.configureNtpServer(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureGreTunnels(ovsdbClient, opensyncAPConfig);
@@ -241,7 +241,6 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                 ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
             }
             ovsdbDao.updateEventReportingInterval(ovsdbClient, collectionIntervalSecEvent);
-
 
         } else {
             LOG.info("No Configuration available for {}", apId);
@@ -297,7 +296,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
 
         extIntegrationInterface.clearEquipmentStatus(apId);
-
+        ovsdbDao.configureNtpServer(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureGreTunnels(ovsdbClient, opensyncAPConfig);
@@ -312,7 +311,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
         ovsdbDao.configureStatsFromProfile(ovsdbClient, opensyncAPConfig);
         if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
-            ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);        
+            ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
         }
         ovsdbDao.updateEventReportingInterval(ovsdbClient, collectionIntervalSecEvent);
         LOG.debug("Finished processConfigChanged for {}", apId);
@@ -350,17 +349,20 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         } catch (OvsdbClientException e) {
             LOG.debug("Could not enable monitor for Wifi_Radio_State table. {}", e.getMessage());
         }
+        
         try {
             monitorWifiInetStateDbTable(ovsdbClient, key);
         } catch (OvsdbClientException e) {
             LOG.debug("Could not enable monitor for Wifi_Inet_State table. {}", e.getMessage());
         }
+        
         try {
             monitorWifiVifStateDbTable(ovsdbClient, key);
         } catch (OvsdbClientException e) {
             LOG.debug("Could not enable monitor for Wifi_VIF_State table. {}", e.getMessage());
 
         }
+        
         try {
             monitorWifiAssociatedClientsDbTable(ovsdbClient, key);
         } catch (OvsdbClientException e) {
@@ -373,6 +375,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             LOG.debug("Could not enable monitor for AWLAN_Node table. {}", e.getMessage());
 
         }
+        
         try {
             monitorDhcpLeasedIpDbTable(ovsdbClient, key);
         } catch (OvsdbClientException e) {
@@ -386,8 +389,13 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             LOG.debug("Could not enable monitor for Command_State table. {}", e.getMessage());
 
         }
+        
+        try {
+            monitorNodeStateTable(ovsdbClient,key);
+        } catch (OvsdbClientException e) {
+            LOG.debug("Could not enable monitor for Node_State table. {}", e.getMessage());
+        }
         LOG.debug("Finished (re)setting monitors for AP {}", key);
-
     }
 
     private void monitorDhcpLeasedIpDbTable(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
@@ -762,6 +770,32 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                         });
         vsCf.join();
 
+    }
+
+    private void monitorNodeStateTable(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
+        CompletableFuture<TableUpdates> nsCf = ovsdbClient.monitor(
+                OvsdbDao.ovsdbName, OvsdbDao.nodeStateTable + "_" + key, new MonitorRequests(ImmutableMap
+                        .of(OvsdbDao.nodeStateTable, new MonitorRequest(new MonitorSelect(true, true, true, true)))),
+                new MonitorCallback() {
+                    @Override
+                    public void update(TableUpdates tableUpdates) {
+                        LOG.info(OvsdbDao.nodeStateTable + "_" + key + " monitor callback received {}");
+                        tableUpdates.getTableUpdates().entrySet().stream().forEach(t -> {
+                            LOG.info("TableUpdate for {}", t.getKey());
+                            t.getValue().getRowUpdates().values().stream().forEach(r -> {
+                                if (r.getOld() != null) {
+                                    LOG.info("Node_State old row {}", r.getOld().getColumns());
+                                }
+                                if (r.getNew() != null) {
+                                    LOG.info("Node_State new row {}", r.getNew().getColumns());
+                                }
+                            });
+
+                        });
+                    }
+
+                });
+        nsCf.join();
     }
 
     @Override

@@ -57,6 +57,8 @@ public class OvsdbDaoBase {
     public static final String wifiInetStateDbTable = "Wifi_Inet_State";
     public static final String wifiAssociatedClientsDbTable = "Wifi_Associated_Clients";
     public static final String wifiRrmConfigDbTable = "Wifi_RRM_Config";
+    public static final String nodeConfigTable = "Node_Config";
+    public static final String nodeStateTable = "Node_State";
     public static final String dhcpLeasedIpDbTable = "DHCP_leased_IP";
     public static final String commandConfigDbTable = "Command_Config";
     public static final String commandStateDbTable = "Command_State";

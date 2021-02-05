@@ -17,6 +17,7 @@ import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.CommandConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.Hotspot20Config;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.Hotspot20IconConfig;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.Hotspot20OsuProviders;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.NodeConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiInetConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiRadioConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiStatsConfigInfo;
@@ -71,6 +72,11 @@ public class OvsdbGet extends OvsdbDaoBase {
             throw new RuntimeException(e);
         }
         return ret;
+    }
+
+    NodeConfigInfo getNodeConfigInfo(OvsdbClient ovsdbClient) {
+        return new NodeConfigInfo(getOvsdbTableRowsForCondition(ovsdbClient, nodeConfigTable,
+                List.of(new Condition("module", Function.EQUALS, new Atom<>("ntp")))).iterator().next());
     }
 
     Map<String, CommandConfigInfo> getProvisionedCommandConfigs(OvsdbClient ovsdbClient) {

@@ -36,6 +36,7 @@ import com.vmware.ovsdb.service.OvsdbClient;
 @Import(value = { OvsdbDao.class, OvsdbNodeTest.Config.class, OvsdbNode.class, OvsdbRadioConfig.class,
         OvsdbHotspotConfig.class, OvsdbCommandConfig.class, OvsdbMonitor.class, OvsdbFirmwareConfig.class,
         OvsdbStatsConfig.class, OvsdbSsidConfig.class, OvsdbRrmConfig.class, OvsdbNetworkConfig.class,
+        OvsdbNodeConfig.class
 
 })
 public class OvsdbNodeTest {
@@ -74,6 +75,8 @@ public class OvsdbNodeTest {
     OvsdbFirmwareConfig ovsdbFirmware;
     @Autowired
     OvsdbCommandConfig ovsdbCommand;
+    @Autowired
+    OvsdbNodeConfig ovsdbNodeConfig;
     @MockBean(answer = Answers.RETURNS_MOCKS)
     OvsdbGet ovsdbGet;
 
@@ -110,14 +113,14 @@ public class OvsdbNodeTest {
 
         Map<String, String> newMqttSettings = new HashMap<>();
         newMqttSettings.put("broker", ovsdbNode.mqttBrokerAddress);
-        String mqttClientName = OvsdbToWlanCloudTypeMappingUtility.getAlteredClientCnIfRequired("AP-1",
-                connectNodeInfo, false);
+        String mqttClientName = OvsdbToWlanCloudTypeMappingUtility.getAlteredClientCnIfRequired("AP-1", connectNodeInfo,
+                false);
         newMqttSettings.put("topics", "/ap/" + mqttClientName + "/opensync");
         newMqttSettings.put("port", "" + ovsdbNode.mqttBrokerExternalPort);
         newMqttSettings.put("compress", "zlib");
         newMqttSettings.put("qos", "0");
         newMqttSettings.put("remote_log", "1");
-        assert(!connectNodeInfo.mqttSettings.equals(newMqttSettings));
+        assert (!connectNodeInfo.mqttSettings.equals(newMqttSettings));
         ConnectNodeInfo newConnectNodeInfo = ovsdbNode.updateConnectNodeInfoOnConnect(ovsdbClient, "AP-1",
                 connectNodeInfo, false);
         assert (connectNodeInfo.ifName.equals(newConnectNodeInfo.ifName));

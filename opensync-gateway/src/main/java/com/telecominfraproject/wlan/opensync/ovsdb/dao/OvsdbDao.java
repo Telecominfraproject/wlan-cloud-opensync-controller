@@ -44,6 +44,8 @@ public class OvsdbDao extends OvsdbDaoBase {
     OvsdbFirmwareConfig ovsdbFirmware;
     @Autowired
     OvsdbCommandConfig ovsdbCommand;
+    @Autowired
+    OvsdbNodeConfig ovsdbNodeConfig;
 
     public String changeRedirectorAddress(OvsdbClient ovsdbClient, String apId, String newRedirectorAddress) {
         return ovsdbNode.changeRedirectorAddress(ovsdbClient, apId, newRedirectorAddress);
@@ -79,6 +81,10 @@ public class OvsdbDao extends OvsdbDaoBase {
 
     public void configureInterfaces(OvsdbClient ovsdbClient) {
         ovsdbNetwork.configureInterfaces(ovsdbClient);
+    }
+    
+    public void configureNtpServer(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
+        ovsdbNodeConfig.configureNtpServer(ovsdbClient, opensyncAPConfig);
     }
 
     public void configureSsids(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
