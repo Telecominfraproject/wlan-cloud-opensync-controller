@@ -35,6 +35,10 @@ public class OvsdbNodeConfig extends OvsdbDaoBase {
         try {
             ApNetworkConfiguration apNetworkConfig = (ApNetworkConfiguration) opensyncAPConfig.getApProfile()
                     .getDetails();
+            if (apNetworkConfig.getNtpServer() == null || apNetworkConfig.getNtpServer().getValue() == null) {
+                LOG.info("Cannot configure NTP server to null value. {}", apNetworkConfig);
+                return;
+            }
             LOG.debug("configureNtpServer update Node_Config to {}", apNetworkConfig.getNtpServer().getValue());
             Map<String, Value> updateColumns = new HashMap<>();
             updateColumns.put("value", new Atom<>(apNetworkConfig.getNtpServer().getValue()));
