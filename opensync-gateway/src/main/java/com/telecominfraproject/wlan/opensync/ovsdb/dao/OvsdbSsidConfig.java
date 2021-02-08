@@ -162,12 +162,16 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
         }
     }
 
+    void configureCustomOptionsForDynamicVlan(int dynamicVlan,
+            Map<String, String> customOptions) {
+        customOptions.put("dynamic_vlan", String.valueOf(dynamicVlan));
+    }
+
     /**
      *
      * @param enable80211k
      * @param dtimPeriod
      * @param fragThresholdBytes
-     *            TODO
      * @param customOptions
      */
     void configureCustomOptionsForDtimFragAnd80211k(boolean enable80211k, int dtimPeriod, int fragThresholdBytes,
@@ -252,18 +256,17 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
      * @param clientUlLimit
      * @param rtsCtsThreshold
      * @param fragThresholdBytes
-     *            TODO
      * @param dtimPeriod
      * @param radiusNasId
      * @param radiusNasIp
      * @param radiusOperatorName
      * @param updateColumns
-     *            TODO
+     * @param dynamicVlan 
      */
     void configureCustomOptionsForSsid(OvsdbClient ovsdbClient, boolean enable80211k, boolean rateLimitEnable,
             int ssidDlLimit, int ssidUlLimit, int clientDlLimit, int clientUlLimit, int rtsCtsThreshold,
             int fragThresholdBytes, int dtimPeriod, String radiusNasId, String radiusNasIp, String radiusOperatorName,
-            Map<String, Value> updateColumns) {
+            Map<String, Value> updateColumns, int dynamicVlan) {
         Map<String, String> customOptions = new HashMap<>();
         configureCustomOptionsForRatesAndLimits(rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit,
                 rtsCtsThreshold, customOptions);
@@ -272,6 +275,8 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
 
         configureCustomOptionsForDtimFragAnd80211k(enable80211k, dtimPeriod, fragThresholdBytes, customOptions);
 
+        configureCustomOptionsForDynamicVlan(dynamicVlan, customOptions);
+        
         @SuppressWarnings("unchecked")
         com.vmware.ovsdb.protocol.operation.notation.Map<String, String> customMap = com.vmware.ovsdb.protocol.operation.notation.Map
                 .of(customOptions);
@@ -286,7 +291,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
             boolean rateLimitEnable, int ssidDlLimit, int ssidUlLimit, int clientDlLimit, int clientUlLimit,
             int rtsCtsThreshold, int fragThresholdBytes, int dtimPeriod, Map<String, String> captiveMap,
             List<String> walledGardenAllowlist, Map<Short, Set<String>> bonjourServiceMap, String radiusNasId,
-            String radiusNasIp, String radiusOperatorName, String greTunnelName) {
+            String radiusNasIp, String radiusOperatorName, String greTunnelName, int dynamicVlan) {
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
@@ -363,7 +368,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
 
             configureCustomOptionsForSsid(ovsdbClient, enable80211k, rateLimitEnable, ssidDlLimit, ssidUlLimit,
                     clientDlLimit, clientUlLimit, rtsCtsThreshold, fragThresholdBytes, dtimPeriod, radiusNasId,
-                    radiusNasIp, radiusOperatorName, updateColumns);
+                    radiusNasIp, radiusOperatorName, updateColumns, dynamicVlan);
 
             updateBlockList(updateColumns, macBlockList);
             Row row = new Row(updateColumns);
@@ -589,6 +594,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                 opensyncSecurityMode = getOpensyncSecurityMode(ssidSecurityMode, opensyncSecurityMode);
                 populateSecurityMap(opensyncApConfig, ssidConfig, security, ssidSecurityMode, opensyncSecurityMode);
 
+                int dynamicVlan = 0;
                 if (opensyncSecurityMode.endsWith("EAP")) {
                     if (ssidConfig.getRadiusClientConfiguration() != null) {
                         radiusNasId = ssidConfig.getRadiusClientConfiguration().getNasClientId()
@@ -603,6 +609,11 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                     } else {
                         radiusNasId = NasIdType.DEFAULT.toString();
                         radiusNasIp = NasIpType.WAN_IP.toString();
+                    }
+                    if (ssidConfig.getForwardMode() == null || ssidConfig.getForwardMode().equals(NetworkForwardMode.BRIDGE)) {
+                        // get the dynamicVlan value for this ssid, when in bridge forward mode
+                        // null implies bridge
+                        dynamicVlan = ssidConfig.getDynamicVlan().getId();
                     }
                 }
 
@@ -642,7 +653,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                             ssidConfig.getForwardMode(), gateway, inet, dns, ipAssignScheme, macBlockList,
                             rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit, rtsCtsThreshold,
                             fragThresholdBytes, dtimPeriod, captiveMap, walledGardenAllowlist, bonjourServiceMap,
-                            radiusNasId, radiusNasIp, radiusOperName, greTunnelName);
+                            radiusNasId, radiusNasIp, radiusOperName, greTunnelName, dynamicVlan);
 
                     radioConfig.updateVifConfigsSetForRadio(ovsdbClient, ssidConfig.getSsid(), freqBand, vifConfigUuid);
 
