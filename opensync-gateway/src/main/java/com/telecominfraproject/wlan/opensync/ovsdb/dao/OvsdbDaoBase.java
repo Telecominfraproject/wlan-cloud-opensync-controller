@@ -191,7 +191,8 @@ public class OvsdbDaoBase {
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
         List<Condition> conditions = new ArrayList<>();
-        conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(defaultWanInterfaceName)));
+        // Going forward this will be only for WAN, and children will inherit
+        // conditions.add(new Condition("if_name", Function.EQUALS, new Atom<>(defaultWanInterfaceName)));
 
         updateColumns.put("dhcp_sniff", new Atom<>(true));
 
