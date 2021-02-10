@@ -233,11 +233,8 @@ public class OvsdbRadioConfig extends OvsdbDaoBase {
         if (hwMode != null) {
             updateColumns.put("hw_mode", new Atom<>(hwMode));
         }
-        updateColumns.put("tx_chainmask", new Atom<>(mimoMode));
-        if (ovsdbClient.getSchema(ovsdbName).get().getTables().get(wifiRadioConfigDbTable).getColumns()
-                .containsKey("rx_chainmask")) {
-            updateColumns.put("rx_chainmask", new Atom<>(mimoMode));
-        }
+        
+        setTxAndRxChainmask(ovsdbClient, mimoMode, updateColumns);
 
         Row row = new Row(updateColumns);
         operations.add(new Update(wifiRadioConfigDbTable, conditions, row));
@@ -250,6 +247,27 @@ public class OvsdbRadioConfig extends OvsdbDaoBase {
         for (OperationResult res : result) {
             LOG.debug("Op Result {}", res);
         }
+    }
+
+    void setTxAndRxChainmask(OvsdbClient ovsdbClient, int mimoMode, Map<String, Value> updateColumns)
+            throws InterruptedException, ExecutionException, OvsdbClientException {
+        /*
+         * Chainmask is a bitmask, so map mimo mode values accordingly
+         * Note values 0, 1 remain unchanged 
+         * 
+         * mimoMode  bitmask 
+         *    0         0 
+         *    1         1 
+         *    2         3 
+         *    3         7 
+         *    4        15
+         */
+        if (mimoMode == 2) {mimoMode = 3;}
+        else if (mimoMode == 3) {mimoMode = 7;}
+        else if (mimoMode == 4) {mimoMode = 15;}
+        updateColumns.put("tx_chainmask", new Atom<>(mimoMode));
+        updateColumns.put("rx_chainmask", new Atom<>(mimoMode));
+        
     }
 
     /**
