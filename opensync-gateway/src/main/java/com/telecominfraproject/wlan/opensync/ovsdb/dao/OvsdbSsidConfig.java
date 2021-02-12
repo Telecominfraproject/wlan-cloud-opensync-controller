@@ -710,9 +710,9 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
         case guest:
             return "None";
         case username:
-            return "Captive Portal User List";
+            return "username";
         case radius:
-            return "RADIUS";
+            return "radius";
         default:
             LOG.error("Unsupported captive portal authentication {}", authentication);
             return "None";
