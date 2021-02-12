@@ -68,6 +68,11 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
             if (elementRadioConfig == null || rfElementConfig == null) {
                 continue; // don't have a radio of this kind in the map
             }
+            boolean autoChannelSelection = rfElementConfig.getAutoChannelSelection();
+            int backupChannel = elementRadioConfig.getActiveBackupChannel(autoChannelSelection);
+            LOG.debug("configureWifiRadios autoChannelSelection {} activeBackupChannel {}",
+                    autoChannelSelection, backupChannel);
+            
             AutoOrManualValue probeResponseThresholdDb = null;
             AutoOrManualValue clientDisconnectThresholdDb = null;
             if (elementRadioConfig != null && rfElementConfig != null) {
@@ -134,9 +139,8 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
 
             if (freqBand != null) {
                 try {
-                    configureWifiRrm(ovsdbClient, freqBand, elementRadioConfig.getBackupChannelNumber(),
-                            probeResponseThresholdDb, clientDisconnectThresholdDb, managementRate, bestApSettings,
-                            multicastRateMbps);
+                    configureWifiRrm(ovsdbClient, freqBand, backupChannel, probeResponseThresholdDb, 
+                    		clientDisconnectThresholdDb, managementRate, bestApSettings, multicastRateMbps);
                 } catch (OvsdbClientException e) {
                     LOG.error("configureRrm failed with OvsdbClient exception.", e);
                     throw new RuntimeException(e);
