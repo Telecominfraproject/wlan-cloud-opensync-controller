@@ -65,9 +65,7 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
 
             ElementRadioConfiguration elementRadioConfig = apElementConfig.getRadioMap().get(radioType);
             RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(radioType);
-            if (elementRadioConfig == null || rfElementConfig == null) {
-                continue; // don't have a radio of this kind in the map
-            }
+            
             boolean autoChannelSelection = rfElementConfig.getAutoChannelSelection();
             int backupChannel = elementRadioConfig.getActiveBackupChannel(autoChannelSelection);
             LOG.debug("configureWifiRadios autoChannelSelection {} activeBackupChannel {}",
