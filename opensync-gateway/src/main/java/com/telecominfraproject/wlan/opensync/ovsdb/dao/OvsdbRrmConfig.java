@@ -65,6 +65,9 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
 
             ElementRadioConfiguration elementRadioConfig = apElementConfig.getRadioMap().get(radioType);
             RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(radioType);
+            if (elementRadioConfig == null || rfElementConfig == null) {
+            	continue; // don't have a radio of this kind in the map
+            }
             
             boolean autoChannelSelection = rfElementConfig.getAutoChannelSelection();
             int backupChannel = elementRadioConfig.getActiveBackupChannel(autoChannelSelection);
@@ -73,16 +76,15 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
             
             AutoOrManualValue probeResponseThresholdDb = null;
             AutoOrManualValue clientDisconnectThresholdDb = null;
-            if (elementRadioConfig != null && rfElementConfig != null) {
-                probeResponseThresholdDb = getSourcedValue(elementRadioConfig.getProbeResponseThresholdDb().getSource(),
-                        rfElementConfig.getProbeResponseThresholdDb(),
-                        elementRadioConfig.getProbeResponseThresholdDb().getValue());
+            
+            probeResponseThresholdDb = getSourcedValue(elementRadioConfig.getProbeResponseThresholdDb().getSource(),
+                    rfElementConfig.getProbeResponseThresholdDb(),
+                    elementRadioConfig.getProbeResponseThresholdDb().getValue());
 
-                clientDisconnectThresholdDb = getSourcedValue(
-                        elementRadioConfig.getClientDisconnectThresholdDb().getSource(),
-                        rfElementConfig.getClientDisconnectThresholdDb(),
-                        elementRadioConfig.getClientDisconnectThresholdDb().getValue());
-            }
+            clientDisconnectThresholdDb = getSourcedValue(
+                    elementRadioConfig.getClientDisconnectThresholdDb().getSource(),
+                    rfElementConfig.getClientDisconnectThresholdDb(),
+                    elementRadioConfig.getClientDisconnectThresholdDb().getValue());
 
             RadioConfiguration radioConfig = apElementConfig.getAdvancedRadioMap().get(radioType);
             MulticastRate multicastRate = null;
