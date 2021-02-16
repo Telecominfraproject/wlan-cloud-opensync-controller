@@ -152,13 +152,11 @@ public class OpensyncGatewayTipWlanOvsdbClientTest {
 
         assert (tipwlanOvsdbClient.processFirmwareDownload("Test_Client_21P10C68818122",
                 "http://127.0.0.1/~username/ea8300-2020-07-08-6632239/openwrt-ipq40xx-generic-linksys_ea8300-squashfs-sysupgrade.bin",
-                "openwrt-ipq40xx-generic-linksys_ea8300-squashfs-sysupgrade", "username",
-                "b0d03d8fba6b2261786ac97d49a629f2").equals(expectedResult));
+                "openwrt-ipq40xx-generic-linksys_ea8300-squashfs-sysupgrade", "username").equals(expectedResult));
 
         Mockito.verify(ovsdbDao).configureFirmwareDownload(ovsdbClient, "Test_Client_21P10C68818122",
                 "http://127.0.0.1/~username/ea8300-2020-07-08-6632239/openwrt-ipq40xx-generic-linksys_ea8300-squashfs-sysupgrade.bin",
-                "openwrt-ipq40xx-generic-linksys_ea8300-squashfs-sysupgrade", "username",
-                "b0d03d8fba6b2261786ac97d49a629f2");
+                "openwrt-ipq40xx-generic-linksys_ea8300-squashfs-sysupgrade", "username");
 
     }
 

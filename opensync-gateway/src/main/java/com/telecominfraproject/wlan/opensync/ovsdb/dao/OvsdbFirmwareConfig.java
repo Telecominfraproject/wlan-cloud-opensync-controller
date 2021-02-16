@@ -21,14 +21,13 @@ import com.vmware.ovsdb.service.OvsdbClient;
 public class OvsdbFirmwareConfig extends OvsdbDaoBase {
 
     void configureFirmwareDownload(OvsdbClient ovsdbClient, String apId, String firmwareUrl, String firmwareVersion,
-            String username, String validationCode) throws Exception {
+            String username) throws Exception {
         try {
-            LOG.debug("configureFirmwareDownload for {} to version {} url {} validationCode {} username {}", apId,
-                    firmwareVersion, firmwareUrl, validationCode, username);
+            LOG.debug("configureFirmwareDownload for {} to version {} url {} username {}", apId,
+                    firmwareVersion, firmwareUrl, username);
             List<Operation> operations = new ArrayList<>();
             Map<String, Value> updateColumns = new HashMap<>();
             updateColumns.put("upgrade_dl_timer", new Atom<>(upgradeDlTimerSeconds));
-            updateColumns.put("firmware_pass", new Atom<>(validationCode));
             updateColumns.put("firmware_url", new Atom<>(firmwareUrl));
             updateColumns.put("upgrade_timer", new Atom<>(upgradeTimerSeconds));
             Row row = new Row(updateColumns);

@@ -62,9 +62,8 @@ public class OvsdbDao extends OvsdbDaoBase {
     }
 
     public void configureFirmwareDownload(OvsdbClient ovsdbClient, String apId, String firmwareUrl,
-            String firmwareVersion, String username, String validationCode) throws Exception {
-        ovsdbFirmware.configureFirmwareDownload(ovsdbClient, apId, firmwareUrl, firmwareVersion, username,
-                validationCode);
+            String firmwareVersion, String username) throws Exception {
+        ovsdbFirmware.configureFirmwareDownload(ovsdbClient, apId, firmwareUrl, firmwareVersion, username);
     }
 
     public void configureFirmwareFlash(OvsdbClient ovsdbClient, String apId, String firmwareVersion, String username) {
