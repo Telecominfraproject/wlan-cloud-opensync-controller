@@ -162,8 +162,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
         }
     }
 
-    void configureCustomOptionsForDynamicVlan(int dynamicVlan,
-            Map<String, String> customOptions) {
+    void configureCustomOptionsForDynamicVlan(int dynamicVlan, Map<String, String> customOptions) {
         customOptions.put("dynamic_vlan", String.valueOf(dynamicVlan));
     }
 
@@ -261,7 +260,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
      * @param radiusNasIp
      * @param radiusOperatorName
      * @param updateColumns
-     * @param dynamicVlan 
+     * @param dynamicVlan
      */
     void configureCustomOptionsForSsid(OvsdbClient ovsdbClient, boolean enable80211k, boolean rateLimitEnable,
             int ssidDlLimit, int ssidUlLimit, int clientDlLimit, int clientUlLimit, int rtsCtsThreshold,
@@ -276,7 +275,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
         configureCustomOptionsForDtimFragAnd80211k(enable80211k, dtimPeriod, fragThresholdBytes, customOptions);
 
         configureCustomOptionsForDynamicVlan(dynamicVlan, customOptions);
-        
+
         @SuppressWarnings("unchecked")
         com.vmware.ovsdb.protocol.operation.notation.Map<String, String> customMap = com.vmware.ovsdb.protocol.operation.notation.Map
                 .of(customOptions);
@@ -542,14 +541,18 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                     apBridge = radioConfiguration.getStationIsolation() == StateSetting.disabled; // stationIsolation
                     fragThresholdBytes = radioConfiguration.getFragmentationThresholdBytes();
                 }
-                String minHwMode = "11n"; // min_hw_mode is 11ac, wifi 5, we can
-                // also take ++ (11ax) but 2.4GHz only
-                // Wifi4 --
-                if (!radioType.equals(RadioType.is2dot4GHz)) {
+                
+                String minHwMode = "11n"; // min_hw_mode is 11n
+                if (radioMode.equals(RadioMode.modeAC) && !radioType.equals(RadioType.is2dot4GHz)) {
                     minHwMode = "11ac";
-                }
-                if (!radioType.equals(RadioType.is2dot4GHz) && radioMode.equals(RadioMode.modeX)) {
-                    minHwMode = "11x";
+                } else if (radioMode.equals(RadioMode.modeA) && !radioType.equals(RadioType.is2dot4GHz)) {
+                    minHwMode = "11a";
+                } else if (radioMode.equals(RadioMode.modeB) && radioType.equals(RadioType.is2dot4GHz)) {
+                    minHwMode = "11b";
+                } else if (radioMode.equals(RadioMode.modeG) && !radioType.equals(RadioType.is2dot4GHz)) {
+                    minHwMode = "11g";
+                } else if (radioMode.equals(RadioMode.modeAX)) {
+                    minHwMode = "11ax";
                 }
 
                 // off by default
@@ -610,8 +613,10 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                         radiusNasId = NasIdType.DEFAULT.toString();
                         radiusNasIp = NasIpType.WAN_IP.toString();
                     }
-                    if (ssidConfig.getForwardMode() == null || ssidConfig.getForwardMode().equals(NetworkForwardMode.BRIDGE)) {
-                        // get the dynamicVlan value for this ssid, when in bridge forward mode
+                    if (ssidConfig.getForwardMode() == null
+                            || ssidConfig.getForwardMode().equals(NetworkForwardMode.BRIDGE)) {
+                        // get the dynamicVlan value for this ssid, when in
+                        // bridge forward mode
                         // null implies bridge
                         dynamicVlan = ssidConfig.getDynamicVlan().getId();
                     }

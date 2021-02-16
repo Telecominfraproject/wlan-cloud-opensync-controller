@@ -113,7 +113,7 @@ public class OvsdbRadioConfig extends OvsdbDaoBase {
             case modeG:
                 hwMode = "11g";
                 break;
-            case modeX:
+            case modeAX:
                 hwMode = "11ax";
                 break;
             case modeN:
