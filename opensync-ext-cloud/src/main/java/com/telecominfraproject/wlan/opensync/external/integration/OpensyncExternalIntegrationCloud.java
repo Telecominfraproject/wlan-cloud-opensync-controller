@@ -813,8 +813,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 }
 
                 CEGWFirmwareDownloadRequest fwDownloadRequest = new CEGWFirmwareDownloadRequest(ce.getInventoryId(),
-                        ce.getId(), fwVersion.getVersionName(), fwVersion.getFilename(),
-                        fwVersion.getValidationMethod(), fwVersion.getValidationCode());
+                        ce.getId(), fwVersion.getVersionName(), fwVersion.getFilename());
                 List<CEGWBaseCommand> commands = new ArrayList<>();
                 commands.add(fwDownloadRequest);
 

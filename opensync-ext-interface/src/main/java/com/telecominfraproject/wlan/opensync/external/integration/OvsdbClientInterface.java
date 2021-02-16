@@ -21,8 +21,7 @@ public interface OvsdbClientInterface {
 
     void processClientBlocklistChange(String apId, List<MacAddress> blockList);
 
-    String processFirmwareDownload(String apId, String firmwareUrl, String firmwareVersion, String username,
-            String validationCode);
+    String processFirmwareDownload(String apId, String firmwareUrl, String firmwareVersion, String username);
 
     String closeSession(String apId);
 

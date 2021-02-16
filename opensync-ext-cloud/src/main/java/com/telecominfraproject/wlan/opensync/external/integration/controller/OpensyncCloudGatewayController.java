@@ -341,10 +341,9 @@ public class OpensyncCloudGatewayController {
             String filepath = dlRequest.getFilePath();
             String firmwareVersion = dlRequest.getFirmwareVersion();
             String username = dlRequest.getUsername();
-            String validationCode = dlRequest.getValidationCode();
 
             String resultDetails = tipwlanOvsdbClient.processFirmwareDownload(inventoryId, filepath, firmwareVersion,
-                    username, validationCode);
+                    username);
 
             response.setResultDetail(resultDetails);
 

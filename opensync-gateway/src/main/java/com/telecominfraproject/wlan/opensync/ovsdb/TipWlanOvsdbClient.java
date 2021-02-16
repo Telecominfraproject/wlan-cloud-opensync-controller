@@ -815,13 +815,11 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
     }
 
     @Override
-    public String processFirmwareDownload(String apId, String firmwareUrl, String firmwareVersion, String username,
-            String validationCode) {
+    public String processFirmwareDownload(String apId, String firmwareUrl, String firmwareVersion, String username) {
         try {
             OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
 
-            ovsdbDao.configureFirmwareDownload(session.getOvsdbClient(), apId, firmwareUrl, firmwareVersion, username,
-                    validationCode);
+            ovsdbDao.configureFirmwareDownload(session.getOvsdbClient(), apId, firmwareUrl, firmwareVersion, username);
         } catch (Exception e) {
             LOG.error("Failed to initialize firmware download to " + apId + " " + e.getLocalizedMessage());
             return "Failed to initialize firmware download to " + apId + " " + e.getLocalizedMessage();
