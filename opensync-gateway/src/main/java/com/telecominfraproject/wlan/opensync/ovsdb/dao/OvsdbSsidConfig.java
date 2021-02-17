@@ -449,7 +449,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                 int clientDlLimit = 0;
                 int clientUlLimit = 0;
 
-                if (((ssidConfig.getBandwidthLimitDown() != null) && (ssidConfig.getBandwidthLimitUp() > 0))
+                if (((ssidConfig.getBandwidthLimitDown() != null) && (ssidConfig.getBandwidthLimitDown() > 0))
                         || ((ssidConfig.getBandwidthLimitUp() != null) && (ssidConfig.getBandwidthLimitUp() > 0))) {
                     rateLimitEnable = true;
                     ssidUlLimit = ssidConfig.getBandwidthLimitUp();
