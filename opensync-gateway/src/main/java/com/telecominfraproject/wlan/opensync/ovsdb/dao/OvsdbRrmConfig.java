@@ -66,37 +66,52 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
             ElementRadioConfiguration elementRadioConfig = apElementConfig.getRadioMap().get(radioType);
             RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(radioType);
             if (elementRadioConfig == null || rfElementConfig == null) {
-                continue; // don't have a radio of this kind in the map
+            	continue; // don't have a radio of this kind in the map
             }
+            
+            boolean autoChannelSelection = rfElementConfig.getAutoChannelSelection();
+            int backupChannel = elementRadioConfig.getActiveBackupChannel(autoChannelSelection);
+            LOG.debug("configureWifiRadios autoChannelSelection {} activeBackupChannel {}",
+                    autoChannelSelection, backupChannel);
+            
             AutoOrManualValue probeResponseThresholdDb = null;
             AutoOrManualValue clientDisconnectThresholdDb = null;
-            if (elementRadioConfig != null && rfElementConfig != null) {
-                probeResponseThresholdDb = getSourcedValue(elementRadioConfig.getProbeResponseThresholdDb().getSource(),
-                        rfElementConfig.getProbeResponseThresholdDb(),
-                        elementRadioConfig.getProbeResponseThresholdDb().getValue());
-
-                clientDisconnectThresholdDb = getSourcedValue(
-                        elementRadioConfig.getClientDisconnectThresholdDb().getSource(),
-                        rfElementConfig.getClientDisconnectThresholdDb(),
-                        elementRadioConfig.getClientDisconnectThresholdDb().getValue());
+            
+            if (elementRadioConfig.getProbeResponseThresholdDb() != null) {
+	            probeResponseThresholdDb = getSourcedValue(elementRadioConfig.getProbeResponseThresholdDb().getSource(),
+	                    rfElementConfig.getProbeResponseThresholdDb(),
+	                    elementRadioConfig.getProbeResponseThresholdDb().getValue());
+            }
+            
+            if (elementRadioConfig.getClientDisconnectThresholdDb() != null) {
+	            clientDisconnectThresholdDb = getSourcedValue(
+	                    elementRadioConfig.getClientDisconnectThresholdDb().getSource(),
+	                    rfElementConfig.getClientDisconnectThresholdDb(),
+	                    elementRadioConfig.getClientDisconnectThresholdDb().getValue());
             }
 
             RadioConfiguration radioConfig = apElementConfig.getAdvancedRadioMap().get(radioType);
             MulticastRate multicastRate = null;
             ManagementRate managementRate = null;
             RadioBestApSettings bestApSettings = null;
-            if (radioConfig != null && rfElementConfig != null) {
-                multicastRate = radioConfig.getMulticastRate().getSource() == SourceType.profile
+            if (radioConfig != null) {
+            	if (radioConfig.getMulticastRate() != null) {
+            		multicastRate = radioConfig.getMulticastRate().getSource() == SourceType.profile
                         ? rfElementConfig.getMulticastRate()
                         : radioConfig.getMulticastRate().getValue();
-
-                managementRate = radioConfig.getManagementRate().getSource() == SourceType.profile
+            	}
+            	
+            	if (radioConfig.getManagementRate() != null) {
+                	managementRate = radioConfig.getManagementRate().getSource() == SourceType.profile
                         ? rfElementConfig.getManagementRate()
                         : radioConfig.getManagementRate().getValue();
-
-                bestApSettings = radioConfig.getBestApSettings().getSource() == SourceType.profile
+            	}
+            	
+            	if (radioConfig.getBestApSettings() != null) {
+                	bestApSettings = radioConfig.getBestApSettings().getSource() == SourceType.profile
                         ? rfElementConfig.getBestApSettings()
                         : radioConfig.getBestApSettings().getValue();
+            	}
             }
 
             int multicastRateMbps = 0;
@@ -134,9 +149,8 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
 
             if (freqBand != null) {
                 try {
-                    configureWifiRrm(ovsdbClient, freqBand, elementRadioConfig.getBackupChannelNumber(),
-                            probeResponseThresholdDb, clientDisconnectThresholdDb, managementRate, bestApSettings,
-                            multicastRateMbps);
+                    configureWifiRrm(ovsdbClient, freqBand, backupChannel, probeResponseThresholdDb, 
+                    		clientDisconnectThresholdDb, managementRate, bestApSettings, multicastRateMbps);
                 } catch (OvsdbClientException e) {
                     LOG.error("configureRrm failed with OvsdbClient exception.", e);
                     throw new RuntimeException(e);
