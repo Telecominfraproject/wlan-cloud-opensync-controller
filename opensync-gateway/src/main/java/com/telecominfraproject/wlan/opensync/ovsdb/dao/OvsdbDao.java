@@ -53,7 +53,7 @@ public class OvsdbDao extends OvsdbDaoBase {
 
     public void configureBlockList(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig,
             List<MacAddress> blockList) {
-        ovsdbSsid.configureBlockList(ovsdbClient, opensyncAPConfig, blockList);
+        ovsdbSsid.configureBlockList(ovsdbClient, blockList);
     }
 
     public void configureCommands(OvsdbClient ovsdbClient, String startdebugengineapcommand,

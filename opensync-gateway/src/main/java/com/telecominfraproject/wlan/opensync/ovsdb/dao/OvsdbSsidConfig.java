@@ -1,31 +1,8 @@
 package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
-import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
-import com.telecominfraproject.wlan.equipment.models.NetworkForwardMode;
-import com.telecominfraproject.wlan.equipment.models.RadioConfiguration;
-import com.telecominfraproject.wlan.equipment.models.RadioMode;
-import com.telecominfraproject.wlan.equipment.models.StateSetting;
+import com.telecominfraproject.wlan.equipment.models.*;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiRadioConfigInfo;
@@ -46,31 +23,28 @@ import com.telecominfraproject.wlan.profile.ssid.models.NasIdType;
 import com.telecominfraproject.wlan.profile.ssid.models.NasIpType;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.vmware.ovsdb.exception.OvsdbClientException;
-import com.vmware.ovsdb.protocol.operation.Delete;
-import com.vmware.ovsdb.protocol.operation.Insert;
-import com.vmware.ovsdb.protocol.operation.Operation;
-import com.vmware.ovsdb.protocol.operation.Select;
-import com.vmware.ovsdb.protocol.operation.Update;
-import com.vmware.ovsdb.protocol.operation.notation.Atom;
-import com.vmware.ovsdb.protocol.operation.notation.Condition;
-import com.vmware.ovsdb.protocol.operation.notation.Function;
-import com.vmware.ovsdb.protocol.operation.notation.Row;
-import com.vmware.ovsdb.protocol.operation.notation.Uuid;
-import com.vmware.ovsdb.protocol.operation.notation.Value;
-import com.vmware.ovsdb.protocol.operation.result.ErrorResult;
-import com.vmware.ovsdb.protocol.operation.result.InsertResult;
-import com.vmware.ovsdb.protocol.operation.result.OperationResult;
-import com.vmware.ovsdb.protocol.operation.result.SelectResult;
-import com.vmware.ovsdb.protocol.operation.result.UpdateResult;
+import com.vmware.ovsdb.protocol.operation.*;
+import com.vmware.ovsdb.protocol.operation.notation.*;
+import com.vmware.ovsdb.protocol.operation.result.*;
 import com.vmware.ovsdb.service.OvsdbClient;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+import java.util.Map;
+import java.util.*;
+import java.util.Set;
+import java.util.Map.Entry;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 @Component
 public class OvsdbSsidConfig extends OvsdbDaoBase {
 
     @Autowired
     OvsdbGet getProvisionedData;
-    @Autowired
-    OvsdbRadioConfig radioConfig;
     @Autowired
     OvsdbNetworkConfig networkConfig;
     @Autowired
@@ -132,7 +106,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
 
     }
 
-    void configureBlockList(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig, List<MacAddress> macBlockList) {
+    void configureBlockList(OvsdbClient ovsdbClient, List<MacAddress> macBlockList) {
 
         LOG.debug("Starting configureBlockList {}", macBlockList);
 
@@ -170,18 +144,11 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
      *
      * @param enable80211k
      * @param dtimPeriod
-     * @param fragThresholdBytes
      * @param customOptions
      */
-    void configureCustomOptionsForDtimFragAnd80211k(boolean enable80211k, int dtimPeriod, int fragThresholdBytes,
-            Map<String, String> customOptions) {
-
-        // TODO: the frag_threshold is not supported on the AP
-        // customOptions.put("frag_threshold",
-        // String.valueOf(fragThresholdBytes));
-
+    void configureCustomOptionsForDtimFragAnd80211k(boolean enable80211k, int dtimPeriod,
+                                                    Map<String, String> customOptions) {
         customOptions.put("dtim_period", String.valueOf(dtimPeriod));
-
         if (enable80211k) {
             customOptions.put("ieee80211k", String.valueOf(1));
         } else {
@@ -254,7 +221,6 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
      * @param clientDlLimit
      * @param clientUlLimit
      * @param rtsCtsThreshold
-     * @param fragThresholdBytes
      * @param dtimPeriod
      * @param radiusNasId
      * @param radiusNasIp
@@ -263,16 +229,16 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
      * @param dynamicVlan
      */
     void configureCustomOptionsForSsid(OvsdbClient ovsdbClient, boolean enable80211k, boolean rateLimitEnable,
-            int ssidDlLimit, int ssidUlLimit, int clientDlLimit, int clientUlLimit, int rtsCtsThreshold,
-            int fragThresholdBytes, int dtimPeriod, String radiusNasId, String radiusNasIp, String radiusOperatorName,
-            Map<String, Value> updateColumns, int dynamicVlan) {
+                                       int ssidDlLimit, int ssidUlLimit, int clientDlLimit, int clientUlLimit, int rtsCtsThreshold,
+                                       int dtimPeriod, String radiusNasId, String radiusNasIp, String radiusOperatorName,
+                                       Map<String, Value> updateColumns, int dynamicVlan) {
         Map<String, String> customOptions = new HashMap<>();
         configureCustomOptionsForRatesAndLimits(rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit,
                 rtsCtsThreshold, customOptions);
 
         configureCustomOptionsForRadiusNas(ovsdbClient, radiusNasId, radiusNasIp, radiusOperatorName, customOptions);
 
-        configureCustomOptionsForDtimFragAnd80211k(enable80211k, dtimPeriod, fragThresholdBytes, customOptions);
+        configureCustomOptionsForDtimFragAnd80211k(enable80211k, dtimPeriod, customOptions);
 
         configureCustomOptionsForDynamicVlan(dynamicVlan, customOptions);
 
@@ -282,26 +248,22 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
         updateColumns.put("custom_options", customMap);
     }
 
-    Uuid configureSingleSsid(OvsdbClient ovsdbClient, String vifInterfaceName, String ssid, boolean ssidBroadcast,
-            Map<String, String> security, String radioFreqBand, int vlanId, boolean rrmEnabled, boolean enable80211r,
-            int mobilityDomain, boolean enable80211v, boolean enable80211k, String minHwMode, boolean enabled,
-            int keyRefresh, boolean uapsdEnabled, boolean apBridge, NetworkForwardMode networkForwardMode,
-            String gateway, String inet, Map<String, String> dns, String ipAssignScheme, List<MacAddress> macBlockList,
-            boolean rateLimitEnable, int ssidDlLimit, int ssidUlLimit, int clientDlLimit, int clientUlLimit,
-            int rtsCtsThreshold, int fragThresholdBytes, int dtimPeriod, Map<String, String> captiveMap,
-            List<String> walledGardenAllowlist, Map<Short, Set<String>> bonjourServiceMap, String radiusNasId,
-            String radiusNasIp, String radiusOperatorName, String greTunnelName, int dynamicVlan) {
+    void configureSingleSsid(OvsdbClient ovsdbClient, String vifInterfaceName, String ssid, boolean ssidBroadcast,
+                             Map<String, String> security, int vlanId, boolean rrmEnabled, boolean enable80211r,
+                             int mobilityDomain, boolean enable80211v, boolean enable80211k, String minHwMode, boolean enabled,
+                             int keyRefresh, boolean uapsdEnabled, boolean apBridge, NetworkForwardMode networkForwardMode,
+                             List<MacAddress> macBlockList,
+                             boolean rateLimitEnable, int ssidDlLimit, int ssidUlLimit, int clientDlLimit, int clientUlLimit,
+                             int rtsCtsThreshold, int dtimPeriod, Map<String, String> captiveMap,
+                             List<String> walledGardenAllowlist, String radiusNasId,
+                             String radiusNasIp, String radiusOperatorName, String greTunnelName, int dynamicVlan, List<Operation> operations) {
 
-        List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
-
-        try {
-
             // If we are doing a NAT SSID, no bridge, else yes
             // If gre tunnel and vlanId > 1 use vlan if name for bridge
             String bridgeInterfaceName = defaultWanInterfaceName;
             if (greTunnelName != null && vlanId > 1) {
-                bridgeInterfaceName = greTunnelName + "_" + String.valueOf(vlanId);
+                bridgeInterfaceName = greTunnelName + "_" + vlanId;
             } else if (networkForwardMode == NetworkForwardMode.NAT) {
                 bridgeInterfaceName = defaultLanInterfaceName;
             }
@@ -320,21 +282,14 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
 
             if (walledGardenAllowlist != null && !walledGardenAllowlist.isEmpty()) {
                 Set<Atom<String>> atomMacList = new HashSet<>();
-                walledGardenAllowlist.stream().forEach(allow -> atomMacList.add(new Atom<>(allow)));
+                walledGardenAllowlist.forEach(allow -> atomMacList.add(new Atom<>(allow)));
                 com.vmware.ovsdb.protocol.operation.notation.Set allowListSet = com.vmware.ovsdb.protocol.operation.notation.Set
                         .of(atomMacList);
                 updateColumns.put("captive_allowlist", allowListSet);
             } else {
                 updateColumns.put("captive_allowlist", new com.vmware.ovsdb.protocol.operation.notation.Set());
             }
-
-            // TODO: when AP support for Bonjour Gateway set values
-            if (bonjourServiceMap != null && bonjourServiceMap.size() > 0) {
-                LOG.info("SSID {} Bonjour Services per vlan {}", ssid, bonjourServiceMap);
-            }
-
             updateColumns.put("bridge", new Atom<>(bridgeInterfaceName));
-
             if (enable80211v) {
                 updateColumns.put("btm", new Atom<>(1));
             } else {
@@ -353,59 +308,19 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
             updateColumns.put("ssid", new Atom<>(ssid));
             updateColumns.put("ssid_broadcast", new Atom<>(ssidBroadcast ? "enabled" : "disabled"));
             updateColumns.put("uapsd_enable", new Atom<>(uapsdEnabled));
-
             updateColumns.put("min_hw_mode", new Atom<>(minHwMode));
-
             updateColumns.put("group_rekey", new Atom<>(keyRefresh));
-            updateColumns.put("uapsd_enable", new Atom<>(uapsdEnabled));
             updateColumns.put("ap_bridge", new Atom<>(apBridge));
-
             @SuppressWarnings("unchecked")
             com.vmware.ovsdb.protocol.operation.notation.Map<String, String> securityMap = com.vmware.ovsdb.protocol.operation.notation.Map
                     .of(security);
             updateColumns.put("security", securityMap);
-
             configureCustomOptionsForSsid(ovsdbClient, enable80211k, rateLimitEnable, ssidDlLimit, ssidUlLimit,
-                    clientDlLimit, clientUlLimit, rtsCtsThreshold, fragThresholdBytes, dtimPeriod, radiusNasId,
+                    clientDlLimit, clientUlLimit, rtsCtsThreshold, dtimPeriod, radiusNasId,
                     radiusNasIp, radiusOperatorName, updateColumns, dynamicVlan);
-
             updateBlockList(updateColumns, macBlockList);
             Row row = new Row(updateColumns);
-
             operations.add(new Insert(wifiVifConfigDbTable, row));
-
-            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
-            Uuid vifConfigUuid = null;
-            for (OperationResult res : result) {
-                InsertResult insertResult = null;
-                if (res instanceof InsertResult) {
-                    insertResult = (InsertResult) res;
-                    LOG.info("configureSingleSsid:InsertResult {}", insertResult);
-                    vifConfigUuid = ((InsertResult) res).getUuid();
-                } else if (res instanceof ErrorResult) {
-                    LOG.error("configureSingleSsid: error {}", (res));
-                    throw new RuntimeException("configureSingleSsid " + ((ErrorResult) res).getError() + " "
-                            + ((ErrorResult) res).getDetails());
-                }
-            }
-            if (vifConfigUuid == null) {
-                throw new IllegalStateException("Wifi_VIF_Config entry was not created successfully");
-            }
-
-            confirmRowExistsInTable(ovsdbClient, vifConfigUuid, wifiVifConfigDbTable);
-
-            LOG.info("configureSingleSsid:Provisioned SSID {} on interface {} / {}", ssid, vifInterfaceName,
-                    radioFreqBand);
-
-            return vifConfigUuid;
-
-        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
-            LOG.error("Error in configureSingleSsid", e);
-            throw new RuntimeException(e);
-        }
-
     }
 
     void configureSsids(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
@@ -420,7 +335,8 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
 
         List<RadioType> enabledRadiosFromAp = new ArrayList<>();
         getEnabledRadios(ovsdbClient, enabledRadiosFromAp);
-
+        Map<String, Integer> interfacesPerFreqBand = new HashMap<>();
+        List<Operation> operations = new ArrayList<>();
         for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
 
             SsidConfiguration ssidConfig = (SsidConfiguration) ssidProfile.getDetails();
@@ -482,8 +398,8 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                         break;
                     }
                 }
-                if ((radioName == null) || (freqBand == null)) {
-                    LOG.debug("Cannot provision SSID with radio if_name {} and freqBand {}", radioName, freqBand);
+                if (radioName == null) {
+                    LOG.debug("Cannot provision SSID with radio if_name null and freqBand {}", freqBand);
                     continue;
                 }
                 if (radioName.equals(radio0)) {
@@ -494,8 +410,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                     ifName = defaultRadio2;
                 }
                 if (ifName == null) {
-                    LOG.debug("Cannot provision SSID for radio {} freqBand {} with VIF if_name {}", radioName, freqBand,
-                            ifName);
+                    LOG.debug("Cannot provision SSID for radio {} freqBand {} with VIF if_name null", radioName, freqBand);
                     continue;
                 }
 
@@ -503,43 +418,18 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
 
                 boolean ssidBroadcast = ssidConfig.getBroadcastSsid() == StateSetting.enabled;
 
-                String ipAssignScheme = apElementConfig.getGettingIP().toString();
-                // the following 5 attributes only applicable to static
-                // ipAssignScheme,
-                // else they are
-                // ignored
-                String gateway = null;
-                String inet = null;
-                Map<String, String> dns = null;
-                if (ipAssignScheme.equals("manual")) {
-                    if (apElementConfig.getStaticIP() != null) {
-                        ipAssignScheme = "static";
-                        inet = apElementConfig.getStaticIP().getHostAddress();
-                        gateway = apElementConfig.getStaticIpGw().getHostAddress();
-                        dns = new HashMap<>();
-                        dns.put(apElementConfig.getStaticDnsIp1().getHostName(),
-                                apElementConfig.getStaticDnsIp1().getHostAddress());
-                        dns.put(apElementConfig.getStaticDnsIp2().getHostName(),
-                                apElementConfig.getStaticDnsIp2().getHostAddress());
-                    } else {
-                        ipAssignScheme = "none";
-                    }
-                }
-
                 RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(radioType);
                 int rtsCtsThreshold = rfElementConfig.getRtsCtsThreshold();
                 RadioMode radioMode = rfElementConfig.getRadioMode();
 
-                int dtimPeriod = 2;
-                int fragThresholdBytes = 2346;
                 boolean uapsdEnabled = true;
                 boolean apBridge = true;
                 RadioConfiguration radioConfiguration = apElementConfig.getAdvancedRadioMap().get(radioType);
+                int dtimPeriod = 2;
                 if (radioConfiguration != null) {
                     dtimPeriod = radioConfiguration.getDtimPeriod();
                     uapsdEnabled = radioConfiguration.getUapsdState() == StateSetting.enabled;
                     apBridge = radioConfiguration.getStationIsolation() == StateSetting.disabled; // stationIsolation
-                    fragThresholdBytes = radioConfiguration.getFragmentationThresholdBytes();
                 }
                 
                 String minHwMode = "11n"; // min_hw_mode is 11n
@@ -634,46 +524,44 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                 int vlanId = ssidConfig.getVlanId() != null ? ssidConfig.getVlanId() : 1;
                 Optional<GreTunnelConfiguration> tunnelConfiguration = ((ApNetworkConfiguration) opensyncApConfig
                         .getApProfile().getDetails()).getGreTunnelConfigurations().stream()
-                                .filter(new Predicate<GreTunnelConfiguration>() {
-
-                                    @Override
-                                    public boolean test(GreTunnelConfiguration t) {
-
-                                        return t.getVlanIdsInGreTunnel().contains(vlanId);
-                                    }
-
-                                }).findFirst();
+                                .filter(t -> t.getVlanIdsInGreTunnel().contains(vlanId)).findFirst();
+                String greTunnelName = null;
+                if (tunnelConfiguration.isPresent()) {
+                    greTunnelName = tunnelConfiguration.get().getGreTunnelName();
+                }
+                if (interfacesPerFreqBand.containsKey(freqBand)) {
+                    Integer numIf = interfacesPerFreqBand.get(freqBand);
+                    ifName = ifName + "_" + numIf.toString();
+                    interfacesPerFreqBand.put(freqBand, ++numIf);
+                } else {
+                    interfacesPerFreqBand.put(freqBand, 1);
+                }
 
                 try {
-
-                    ifName = getInterfaceNameForVifConfig(ovsdbClient, opensyncApConfig, ssidConfig, freqBand, ifName);
-                    String greTunnelName = null;
-                    if (tunnelConfiguration.isPresent()) {
-                        greTunnelName = tunnelConfiguration.get().getGreTunnelName();
-                    }
-
-                    Uuid vifConfigUuid = configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(), ssidBroadcast,
-                            security, freqBand, vlanId, rrmEnabled, enable80211r, mobilityDomain, enable80211v,
+                    configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(), ssidBroadcast,
+                            security, vlanId, rrmEnabled, enable80211r, mobilityDomain, enable80211v,
                             enable80211k, minHwMode, enabled, keyRefresh, uapsdEnabled, apBridge,
-                            ssidConfig.getForwardMode(), gateway, inet, dns, ipAssignScheme, macBlockList,
+                            ssidConfig.getForwardMode(), macBlockList,
                             rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit, rtsCtsThreshold,
-                            fragThresholdBytes, dtimPeriod, captiveMap, walledGardenAllowlist, bonjourServiceMap,
-                            radiusNasId, radiusNasIp, radiusOperName, greTunnelName, dynamicVlan);
+                            dtimPeriod, captiveMap, walledGardenAllowlist,
+                            radiusNasId, radiusNasIp, radiusOperName, greTunnelName, dynamicVlan,operations);
 
-                    radioConfig.updateVifConfigsSetForRadio(ovsdbClient, ssidConfig.getSsid(), freqBand, vifConfigUuid);
-
-                    networkConfig.configureInetVifInterface(ovsdbClient, ifName, enabled, ssidConfig.getForwardMode());
-
-                } catch (IllegalStateException | OvsdbClientException | InterruptedException | ExecutionException
-                        | TimeoutException e) {
+                    networkConfig.configureInetVifInterface(ovsdbClient, ifName, enabled, ssidConfig.getForwardMode(),operations );
+                } catch (IllegalStateException e) {
                     // could not provision this SSID, but still can go on
                     LOG.warn("could not provision SSID {} on {}", ssidConfig.getSsid(), freqBand);
                 }
-
             }
-
         }
 
+        try {
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+            LOG.debug("configureSsids result {}", Arrays.toString(result));
+        } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
+            LOG.error("Unable to configureSsids on AP.", e);
+            throw new RuntimeException(e);
+        }
     }
 
     void getBonjourGatewayConfiguration(OpensyncAPConfig opensyncApConfig, SsidConfiguration ssidConfig,
@@ -689,7 +577,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
 
                     Collection<BonjourServiceSet> bonjourServicesCollection = bonjourGatewayConfiguration
                             .getBonjourServices();
-                    bonjourServicesCollection.stream().forEach(b -> {
+                    bonjourServicesCollection.forEach(b -> {
                         Set<String> serviceSet = new HashSet<>();
                         if (bonjourServiceMap.containsKey(b.getVlanId())) {
                             serviceSet.addAll(bonjourServiceMap.get(b.getVlanId()));
@@ -749,7 +637,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                     if (captiveProfileDetails.getAuthenticationType().equals(CaptivePortalAuthenticationType.radius)) {
                         Optional<Profile> optional = opensyncApConfig.getRadiusProfiles().stream()
                                 .filter(p -> p.getId() == captiveProfileDetails.getRadiusServiceId()).findFirst();
-                        if (optional != null && optional.isPresent()) {
+                        if (optional.isPresent()) {
                             Profile profile = optional.get();
                             RadiusProfile radiusProfile = (RadiusProfile) profile.getDetails();
                             captiveMap.put("radius_server_ip", String.valueOf(
@@ -806,46 +694,6 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
     }
 
     /**
-     * Get the interface name for the new Wifi_VIF_Config. Maximum of 8
-     * interface names per frequencyBand
-     *
-     * @param ovsdbClient
-     * @param opensyncApConfig
-     * @param ssidConfig
-     * @param freqBand
-     * @param ifName
-     * @return the interface name, i.e. wlan0, wlan0_1, etc
-     */
-    String getInterfaceNameForVifConfig(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig,
-            SsidConfiguration ssidConfig, String freqBand, String ifName) {
-        Map<String, WifiVifConfigInfo> provisionedVifs = getProvisionedData.getProvisionedWifiVifConfigs(ovsdbClient);
-
-        List<String> interfaces = new ArrayList<>();
-        interfaces.add(ifName);
-        for (int i = 1; i < MAX_VIF_PER_FREQ; i++) {
-            interfaces.add(ifName + "_" + Integer.toString(i));
-        }
-        for (String key : provisionedVifs.keySet()) {
-            if (key.contains(ifName)) {
-                String provisionedIfName = provisionedVifs.get(key).ifName;
-                if (interfaces.remove(provisionedIfName)) {
-                    LOG.info("Interface {} already in use on Radio {}, cannot be used for new Wifi_VIF_Config.",
-                            provisionedIfName, freqBand);
-                }
-            }
-        }
-        if (interfaces.isEmpty()) {
-            throw new RuntimeException("No more available interfaces on AP "
-                    + opensyncApConfig.getCustomerEquipment().getName() + " for frequency band " + freqBand);
-        } else {
-            // take the first available interface for this band
-            ifName = interfaces.get(0);
-            LOG.info("Configuring new Wifi_VIF_Config for ssid {} with if_name {}", ssidConfig.getSsid(), ifName);
-        }
-        return ifName;
-    }
-
-    /**
      * Maps between the osvdb security definitions and the cloud's security mode
      * for the give SSID being configured.
      *
@@ -854,21 +702,31 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
      * @return
      */
     String getOpensyncSecurityMode(String ssidSecurityMode, String opensyncSecurityMode) {
-        if (ssidSecurityMode.equals("wpaPSK") || ssidSecurityMode.equals("wpa2PSK")
-                || ssidSecurityMode.equals("wpa2OnlyPSK")) {
-            opensyncSecurityMode = "WPA-PSK";
-        } else if (ssidSecurityMode.equals("wep")) {
-            opensyncSecurityMode = "WEP";
-        } else if (ssidSecurityMode.equals("wpaEAP") || ssidSecurityMode.equals("wpa2EAP")
-                || ssidSecurityMode.equals("wpa2OnlyEAP")) {
-            opensyncSecurityMode = "WPA-EAP";
-        } else if (ssidSecurityMode.equals("wpaRadius") || ssidSecurityMode.equals("wpa2OnlyRadius")
-                || ssidSecurityMode.equals("wpa2Radius")) {
-            opensyncSecurityMode = "WPA-EAP";
-        } else if (ssidSecurityMode.equals("wpa3OnlySAE") || ssidSecurityMode.equals("wpa3MixedSAE")) {
-            opensyncSecurityMode = "WPA-SAE";
-        } else if (ssidSecurityMode.equals("wpa3OnlyEAP") || ssidSecurityMode.equals("wpa3MixedEAP")) {
-            opensyncSecurityMode = "WPA3-EAP";
+        switch (ssidSecurityMode) {
+            case "wpaPSK":
+            case "wpa2PSK":
+            case "wpa2OnlyPSK":
+                opensyncSecurityMode = "WPA-PSK";
+                break;
+            case "wep":
+                opensyncSecurityMode = "WEP";
+                break;
+            case "wpaEAP":
+            case "wpa2EAP":
+            case "wpa2OnlyEAP":
+            case "wpaRadius":
+            case "wpa2OnlyRadius":
+            case "wpa2Radius":
+                opensyncSecurityMode = "WPA-EAP";
+                break;
+            case "wpa3OnlySAE":
+            case "wpa3MixedSAE":
+                opensyncSecurityMode = "WPA-SAE";
+                break;
+            case "wpa3OnlyEAP":
+            case "wpa3MixedEAP":
+                opensyncSecurityMode = "WPA3-EAP";
+                break;
         }
         return opensyncSecurityMode;
     }
@@ -882,16 +740,9 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
         LOG.debug("Radius Accounting Profiles {}", opensyncApConfig.getRadiusProfiles());
 
         List<Profile> radiusProfileList = opensyncApConfig.getRadiusProfiles().stream()
-                .filter(new Predicate<Profile>() {
+                .filter(t -> t.getId() == ssidConfig.getRadiusServiceId()).collect(Collectors.toList());
 
-                    @Override
-                    public boolean test(Profile t) {
-                        return t.getId() == ssidConfig.getRadiusServiceId();
-                    }
-
-                }).collect(Collectors.toList());
-
-        if (radiusProfileList != null && radiusProfileList.size() > 0) {
+        if (radiusProfileList.size() > 0) {
             Profile profileRadius = radiusProfileList.get(0);
             RadiusProfile profileDetails = ((RadiusProfile) profileRadius.getDetails());
             RadiusServer rServer = profileDetails.getPrimaryRadiusAccountingServer();
@@ -907,7 +758,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
 
                 } else {
                     LOG.info("No radius_acct_interval defined for ssid {}, Setting radius_acct_interval to 0",
-                            ssidConfig.getSsid(), rServer);
+                            ssidConfig.getSsid());
                     security.put("radius_acct_interval", "0");
                 }
                 LOG.info(
@@ -934,16 +785,9 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
         LOG.debug("Radius Profiles {}", opensyncApConfig.getRadiusProfiles());
 
         List<Profile> radiusProfileList = opensyncApConfig.getRadiusProfiles().stream()
-                .filter(new Predicate<Profile>() {
+                .filter(t -> t.getId() == ssidConfig.getRadiusServiceId()).collect(Collectors.toList());
 
-                    @Override
-                    public boolean test(Profile t) {
-                        return t.getId() == ssidConfig.getRadiusServiceId();
-                    }
-
-                }).collect(Collectors.toList());
-
-        if (radiusProfileList != null && radiusProfileList.size() > 0) {
+        if (radiusProfileList.size() > 0) {
             Profile profileRadius = radiusProfileList.get(0);
             RadiusProfile profileDetails = ((RadiusProfile) profileRadius.getDetails());
             RadiusServer radiusServer = profileDetails.getPrimaryRadiusAuthServer();
@@ -977,41 +821,51 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
         security.put("encryption", opensyncSecurityMode);
         // key and mode is N/A for OPEN security
         if (!opensyncSecurityMode.equals("OPEN")) {
-            if (ssidSecurityMode.equals("wpa2PSK") || ssidSecurityMode.equals("wpa3MixedSAE")) {
-                security.put("key", ssidConfig.getKeyStr());
-                security.put("mode", "mixed");
-            } else if (ssidSecurityMode.equals("wpa2OnlyPSK")) {
-                security.put("key", ssidConfig.getKeyStr());
-                security.put("mode", "2");
-            } else if (ssidSecurityMode.equals("wpa3OnlySAE")) {
-                security.put("key", ssidConfig.getKeyStr());
-                security.put("mode", "3");
-            } else if (ssidSecurityMode.equals("wpaPSK")) {
-                security.put("key", ssidConfig.getKeyStr());
-                security.put("mode", "1");
-            } else if (ssidSecurityMode.equals("wpa2OnlyEAP") || ssidSecurityMode.equals("wpa2OnlyRadius")) {
-                security.put("mode", "2");
-                getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
-                getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
-            } else if (ssidSecurityMode.equals("wpa3OnlyEAP")) {
-                security.put("mode", "3");
-                getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
-                getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
+            switch (ssidSecurityMode) {
+                case "wpa2PSK":
+                case "wpa3MixedSAE":
+                    security.put("key", ssidConfig.getKeyStr());
+                    security.put("mode", "mixed");
+                    break;
+                case "wpa2OnlyPSK":
+                    security.put("key", ssidConfig.getKeyStr());
+                    security.put("mode", "2");
+                    break;
+                case "wpa3OnlySAE":
+                    security.put("key", ssidConfig.getKeyStr());
+                    security.put("mode", "3");
+                    break;
+                case "wpaPSK":
+                case "wep":
+                    security.put("key", ssidConfig.getKeyStr());
+                    security.put("mode", "1");
+                    break;
+                case "wpa2OnlyEAP":
+                case "wpa2OnlyRadius":
+                    security.put("mode", "2");
+                    getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
+                    getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
+                    break;
+                case "wpa3OnlyEAP":
+                    security.put("mode", "3");
+                    getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
+                    getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
 
-            } else if (ssidSecurityMode.equals("wpa2EAP") || ssidSecurityMode.equals("wpa2Radius")
-                    || ssidSecurityMode.equals("wpa3MixedEAP")) {
-                security.put("mode", "mixed");
-                getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
-                getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
+                    break;
+                case "wpa2EAP":
+                case "wpa2Radius":
+                case "wpa3MixedEAP":
+                    security.put("mode", "mixed");
+                    getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
+                    getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
 
-            } else if (ssidSecurityMode.equals("wpaEAP") || ssidSecurityMode.equals("wpaRadius")) {
-                security.put("mode", "1");
-                getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
-                getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
-
-            } else if (ssidSecurityMode.equals("wep")) {
-                security.put("key", ssidConfig.getKeyStr());
-                security.put("mode", "1");
+                    break;
+                case "wpaEAP":
+                case "wpaRadius":
+                    security.put("mode", "1");
+                    getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
+                    getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
+                    break;
             }
         }
     }
@@ -1030,7 +884,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
             for (OperationResult res : result) {
                 LOG.info("Op Result {}", res);
                 if (res instanceof UpdateResult) {
-                    LOG.info("removeAllSsids:result {}", ((UpdateResult) res).toString());
+                    LOG.info("removeAllSsids:result {}", res.toString());
                 } else if (res instanceof ErrorResult) {
                     LOG.error("removeAllSsids:result error {}", (res));
                     throw new RuntimeException("removeAllSsids " + ((ErrorResult) res).getError() + " "
