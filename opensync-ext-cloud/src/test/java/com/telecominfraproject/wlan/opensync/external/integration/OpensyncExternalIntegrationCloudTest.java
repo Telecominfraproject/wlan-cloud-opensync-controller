@@ -717,7 +717,7 @@ public class OpensyncExternalIntegrationCloudTest {
         Mockito.verify(session).getEquipmentId();
 
         Mockito.verify(ovsdbSessionMapInterface).getSession(apId);
-        Mockito.verify(equipmentServiceInterface, Mockito.times(2)).getByInventoryIdOrNull(apId);
+        Mockito.verify(equipmentServiceInterface, Mockito.times(1)).getByInventoryIdOrNull(apId);
 
         Mockito.verify(statusServiceInterface, Mockito.times(3)).getOrNull(2, 1L, StatusDataType.PROTOCOL);
         Mockito.verify(statusServiceInterface, Mockito.never()).update(bssidStatus);

@@ -510,7 +510,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
     private void monitorAwlanNodeDbTable(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
         CompletableFuture<TableUpdates> awCf = ovsdbClient.monitor(
                 OvsdbDao.ovsdbName, OvsdbDao.awlanNodeDbTable + "_" + key, new MonitorRequests(ImmutableMap
-                        .of(OvsdbDao.awlanNodeDbTable, new MonitorRequest(new MonitorSelect(true, true, true, true)))),
+                        .of(OvsdbDao.awlanNodeDbTable, new MonitorRequest(new MonitorSelect(true, false, false, true)))),
                 tableUpdates -> {
                     try {
                         LOG.info(OvsdbDao.awlanNodeDbTable + "_" + key + " monitor callback received {}",
@@ -622,7 +622,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         CompletableFuture<TableUpdates> rsCf = ovsdbClient.monitor(OvsdbDao.ovsdbName,
                 OvsdbDao.wifiRadioStateDbTable + "_" + key,
                 new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiRadioStateDbTable,
-                        new MonitorRequest(new MonitorSelect(true, true, true, true)))),
+                        new MonitorRequest(new MonitorSelect(true, false, false, true)))),
                 tableUpdates -> {
                     try {
                         LOG.info(OvsdbDao.wifiRadioStateDbTable + "_" + key + " monitor callback received {}",
