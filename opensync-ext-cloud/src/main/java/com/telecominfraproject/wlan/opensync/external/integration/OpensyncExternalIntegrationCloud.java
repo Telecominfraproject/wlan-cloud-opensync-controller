@@ -33,8 +33,6 @@ import com.telecominfraproject.wlan.core.model.entity.CountryCode;
 import com.telecominfraproject.wlan.core.model.equipment.EquipmentType;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
-import com.telecominfraproject.wlan.core.model.equipment.SourceSelectionValue;
-import com.telecominfraproject.wlan.core.model.equipment.SourceType;
 import com.telecominfraproject.wlan.core.model.pagination.PaginationContext;
 import com.telecominfraproject.wlan.core.model.pagination.PaginationResponse;
 import com.telecominfraproject.wlan.customer.models.Customer;
@@ -1217,7 +1215,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 LOG.debug("Could not get radio configuration for AP {}", apId);
                 continue;
             }
-            configStateMismatch = updateEquipmentConfigFromState(apId, apElementConfiguration, configStateMismatch,
+            configStateMismatch = updateEquipmentConfigFromState(apId, apElementConfiguration,
                     radioState);
 
             protocolStatus = updateProtocolStatus(customerId, equipmentId, radioState);
@@ -1230,12 +1228,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         if (configStateMismatch) {
             try {
-                    ((ApElementConfiguration) ce.getDetails()).setRadioMap(apElementConfiguration.getRadioMap());
-                    ((ApElementConfiguration) ce.getDetails())
-                            .setAdvancedRadioMap(apElementConfiguration.getAdvancedRadioMap());
-
-                    apElementConfiguration = (ApElementConfiguration) ce.getDetails();
-                    ce = equipmentServiceInterface.update(ce);
+                ((ApElementConfiguration) ce.getDetails()).getRadioMap().putAll(apElementConfiguration.getRadioMap());
+                ce = equipmentServiceInterface.update(ce);
             } catch (DsConcurrentModificationException e) {
                 LOG.error("Caught DsConcurrentModificationException.", e);
                 throw new RuntimeException(e);
@@ -1245,22 +1239,17 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     }
 
-    private boolean updateEquipmentConfigFromState(String apId, ApElementConfiguration apElementConfiguration,
-            boolean configStateMismatch, OpensyncAPRadioState radioState) {
+    private boolean updateEquipmentConfigFromState(String apId, ApElementConfiguration apElementConfiguration,OpensyncAPRadioState radioState) {
         if (apElementConfiguration.getRadioMap().containsKey(radioState.getFreqBand())
                 && apElementConfiguration.getRadioMap().get(radioState.getFreqBand()) != null) {
             if (radioState.getChannels() != null) {
-
-                configStateMismatch = updateChannelPowerLevels(apId, apElementConfiguration, configStateMismatch,
+                return updateChannelPowerLevels(apId, apElementConfiguration,
                         radioState);
             }
 
-            configStateMismatch = updateTxPower(apId, apElementConfiguration, configStateMismatch, radioState);
-
-            configStateMismatch = updateRadioState(apId, apElementConfiguration, configStateMismatch, radioState);
-
         }
-        return configStateMismatch;
+        
+        return false;
     }
 
     private Status updateProtocolStatus(int customerId, long equipmentId, OpensyncAPRadioState radioState) {
@@ -1288,65 +1277,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         return protocolStatus;
     }
 
-    private boolean updateRadioState(String apId, ApElementConfiguration apElementConfiguration,
-            boolean configStateMismatch, OpensyncAPRadioState radioState) {
-        StateSetting state = StateSetting.disabled;
-        if (radioState.isEnabled()) {
-            state = StateSetting.enabled;
-        }
-        
-        if (!apElementConfiguration.getAdvancedRadioMap().get(radioState.getFreqBand()).getRadioAdminState()
-                .equals(state)) {
-            // only update if changed
-            configStateMismatch = true;
-            apElementConfiguration.getAdvancedRadioMap().get(radioState.getFreqBand())
-                    .setRadioAdminState(state);
-
-            LOG.debug("Updated RadioAdminState from Wifi_Radio_State table change for AP {}", apId);
-
-        }
-        return configStateMismatch;
-    }
-
-    private boolean updateTxPower(String apId, ApElementConfiguration apElementConfiguration,
-            boolean configStateMismatch, OpensyncAPRadioState radioState) {
-        if (radioState.getTxPower() > 0) {
-
-            SourceType txPowerSource = apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                    .getEirpTxPower().getSource();
-            
-            int currentTxPower = apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                    .getEirpTxPower().getValue().intValue();
-            // Preserve the source while updating the value
-            if (radioState.getTxPower() != currentTxPower) {
-                configStateMismatch = true;
-                if (txPowerSource == SourceType.auto) {
-                    apElementConfiguration.getRadioMap().get(radioState.getFreqBand()).setEirpTxPower(
-                            SourceSelectionValue.createAutomaticInstance(radioState.getTxPower()));
-                } else if (txPowerSource == SourceType.profile) {
-                    apElementConfiguration.getRadioMap().get(radioState.getFreqBand()).setEirpTxPower(
-                            SourceSelectionValue.createProfileInstance(radioState.getTxPower()));
-                } else {
-                    apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                            .setEirpTxPower(SourceSelectionValue.createManualInstance(radioState.getTxPower()));
-                }
-                LOG.debug("Updated TxPower from Wifi_Radio_State table change for AP {} from current {} to {}",
-                        apId, currentTxPower,
-                        radioState.getTxPower());
-
-            } else {
-                LOG.debug(
-                        "TxPower unchanged current {} reported {}", apElementConfiguration.getRadioMap()
-                                .get(radioState.getFreqBand()).getEirpTxPower().getValue(),
-                        radioState.getTxPower());
-            }
-        
-        }
-        return configStateMismatch;
-    }
+ 
 
     private boolean updateChannelPowerLevels(String apId, ApElementConfiguration apElementConfiguration,
-            boolean configStateMismatch, OpensyncAPRadioState radioState) {
+            OpensyncAPRadioState radioState) {
+        
+        boolean configStateMismatch=false;
         Set<ChannelPowerLevel> channelPowerLevels = new HashSet<>();
 
         radioState.getChannels().entrySet().stream().forEach(k -> {
