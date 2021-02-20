@@ -16,126 +16,126 @@
 <!-- 		<dependency> -->
 <!-- 			<groupId>com.telecominfraproject.wlan</groupId> -->
 <!-- 			<artifactId>opensync-ext-interface</artifactId> -->
-<!-- 			<version>${tip-wlan-cloud.release.version}</version> -->
+<!-- 			<version>0.0.1-SNAPSHOT</version> -->
 <!-- 		</dependency> -->
 		<dependency>
 			<groupId>com.telecominfraproject.wlan</groupId>
 			<artifactId>opensync-gateway</artifactId>
-			<version>${tip-wlan-cloud.release.version}</version>
+			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
  	 
         <dependency>
             <artifactId>base-client</artifactId>
             <groupId>com.telecominfraproject.wlan</groupId>
-            <version>${tip-wlan-cloud.release.version}</version>
+            <version>0.0.1-SNAPSHOT</version>
         </dependency>
 
       <dependency>
         <artifactId>equipment-gateway-models</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>
-        <version>${tip-wlan-cloud.release.version}</version>
+        <version>0.0.1-SNAPSHOT</version>
       </dependency>
      
       <dependency>
         <artifactId>customer-service-interface</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>
-        <version>${tip-wlan-cloud.release.version}</version>
+        <version>0.0.1-SNAPSHOT</version>
       </dependency>
 
       <dependency>
         <artifactId>location-service-interface</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>
-        <version>${tip-wlan-cloud.release.version}</version>
+        <version>0.0.1-SNAPSHOT</version>
       </dependency>      
 
       <dependency>
         <artifactId>equipment-service-interface</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>
-        <version>${tip-wlan-cloud.release.version}</version>
+        <version>0.0.1-SNAPSHOT</version>
       </dependency>      
 
       <dependency>
         <artifactId>profile-service-interface</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>
-        <version>${tip-wlan-cloud.release.version}</version>
+        <version>0.0.1-SNAPSHOT</version>
       </dependency>      
       
       <dependency>
         <artifactId>portal-user-service-interface</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>
-        <version>${tip-wlan-cloud.release.version}</version>
+        <version>0.0.1-SNAPSHOT</version>
       </dependency>      
 
       <dependency>
         <artifactId>service-metric-service-interface</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>
-        <version>${tip-wlan-cloud.release.version}</version>
+        <version>0.0.1-SNAPSHOT</version>
       </dependency>      
       
       <dependency>
         <artifactId>service-metric-models</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>
-        <version>${tip-wlan-cloud.release.version}</version>
+        <version>0.0.1-SNAPSHOT</version>
       </dependency>      
 
       <dependency>
         <artifactId>system-event-service-interface</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>
-        <version>${tip-wlan-cloud.release.version}</version>
+        <version>0.0.1-SNAPSHOT</version>
       </dependency>      
 
       <dependency>
         <artifactId>system-event-models</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>
-        <version>${tip-wlan-cloud.release.version}</version>
+        <version>0.0.1-SNAPSHOT</version>
       </dependency>      
       
       <dependency>
         <artifactId>alarm-service-interface</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>
-        <version>${tip-wlan-cloud.release.version}</version>
+        <version>0.0.1-SNAPSHOT</version>
       </dependency>      
 
       <dependency>
         <artifactId>status-service-interface</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>
-        <version>${tip-wlan-cloud.release.version}</version>
+        <version>0.0.1-SNAPSHOT</version>
       </dependency>      
 
       <dependency>
         <artifactId>client-service-interface</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>
-        <version>${tip-wlan-cloud.release.version}</version>
+        <version>0.0.1-SNAPSHOT</version>
       </dependency>      
 
       <dependency>
         <artifactId>client-models</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>
-        <version>${tip-wlan-cloud.release.version}</version>
+        <version>0.0.1-SNAPSHOT</version>
       </dependency>      
 
       <dependency>
         <artifactId>routing-service-interface</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>
-        <version>${tip-wlan-cloud.release.version}</version>
+        <version>0.0.1-SNAPSHOT</version>
       </dependency>      
  
        <dependency>
         <artifactId>firmware-service-interface</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>
-        <version>${tip-wlan-cloud.release.version}</version>
+        <version>0.0.1-SNAPSHOT</version>
       </dependency>      
 
       <dependency>
         <artifactId>manufacturer-service-interface</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>
-        <version>${tip-wlan-cloud.release.version}</version>
+        <version>0.0.1-SNAPSHOT</version>
       </dependency>      
  
       <dependency>
         <artifactId>cloud-event-dispatcher-interface</artifactId>
         <groupId>com.telecominfraproject.wlan</groupId>
-        <version>${tip-wlan-cloud.release.version}</version>
+        <version>0.0.1-SNAPSHOT</version>
       </dependency>     
 
 	</dependencies>

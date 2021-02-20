@@ -18,7 +18,7 @@
 		<dependency>
 			<groupId>com.telecominfraproject.wlan</groupId>
 			<artifactId>opensync-ext-static</artifactId>
-			<version>${tip-wlan-cloud.release.version}</version>
+			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 
 	</dependencies>

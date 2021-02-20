@@ -16,22 +16,22 @@
 		<dependency>
 			<artifactId>base-container</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
+			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>com.telecominfraproject.wlan</groupId>
 			<artifactId>opensync-ext-interface</artifactId>
-			<version>${tip-wlan-cloud.release.version}</version>
+			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<artifactId>client-models</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
+			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<artifactId>customer-models</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
+			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>com.vmware.ovsdb</groupId>
@@ -49,13 +49,13 @@
 		<dependency>
 			<artifactId>service-metric-service-interface</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
+			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
 			<artifactId>status-service-interface</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
+			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 
 		<!-- https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java-util -->
