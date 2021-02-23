@@ -2206,15 +2206,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             try {
                 clientDhcpDetails.setGatewayIp(InetAddress.getByName(dhcpLeasedIps.get("gateway")));
             } catch (UnknownHostException e) {
-                LOG.error("Invalid Gateway IP", e);
-
                 try {
                     clientDhcpDetails.setGatewayIp(InetAddress.getByAddress(dhcpLeasedIps.get("gateway").getBytes()));
                 } catch (UnknownHostException e1) {
-                    // TODO Auto-generated catch block
-                    LOG.error("Invalid Gateway Address", e);
+                    LOG.warn("Invalid Gateway IP {}", e.getMessage());
                 }
-
             }
         }
 
@@ -2222,13 +2218,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             try {
                 clientDhcpDetails.setSubnetMask(InetAddress.getByName(dhcpLeasedIps.get("subnet_mask")));
             } catch (UnknownHostException e) {
-                LOG.error("Invalid Subnet Mask", e);
                 try {
                     clientDhcpDetails
-                            .setGatewayIp(InetAddress.getByAddress(dhcpLeasedIps.get("subnet_mask").getBytes()));
+                            .setSubnetMask(InetAddress.getByAddress(dhcpLeasedIps.get("subnet_mask").getBytes()));
                 } catch (UnknownHostException e1) {
-                    // TODO Auto-generated catch block
-                    LOG.error("Invalid Subnet Mask Address", e);
+                    LOG.warn("Invalid Subnet Mask {}", e.getMessage());
                 }
             }
         }
@@ -2237,15 +2231,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             try {
                 clientDhcpDetails.setPrimaryDns(InetAddress.getByName(dhcpLeasedIps.get("primary_dns")));
             } catch (UnknownHostException e) {
-                LOG.error("Invalid Primary DNS", e);
                 try {
                     clientDhcpDetails
-                            .setGatewayIp(InetAddress.getByAddress(dhcpLeasedIps.get("primary_dns").getBytes()));
+                            .setPrimaryDns(InetAddress.getByAddress(dhcpLeasedIps.get("primary_dns").getBytes()));
                 } catch (UnknownHostException e1) {
-                    // TODO Auto-generated catch block
-                    LOG.error("Invalid Primary DNS Address", e);
+                    LOG.warn("Invalid Primary DNS {}", e.getMessage());
                 }
-
             }
         }
 
@@ -2253,25 +2244,19 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             try {
                 clientDhcpDetails.setSecondaryDns(InetAddress.getByName(dhcpLeasedIps.get("secondary_dns")));
             } catch (UnknownHostException e) {
-                LOG.error("Invalid Secondary DNS", e);
                 try {
                     clientDhcpDetails
-                            .setGatewayIp(InetAddress.getByAddress(dhcpLeasedIps.get("secondary_dns").getBytes()));
+                            .setSecondaryDns(InetAddress.getByAddress(dhcpLeasedIps.get("secondary_dns").getBytes()));
                 } catch (UnknownHostException e1) {
-                    // TODO Auto-generated catch block
-                    LOG.error("Invalid Seconary DNS Address", e);
+                    LOG.warn("Invalid Secondary DNS {}", e.getMessage());
                 }
             }
         }
-
         if (dhcpLeasedIps.containsKey("device_name")) {
             clientSessionDetails.setClassificationName(dhcpLeasedIps.get("device_name"));
         }
-
         clientSessionDetails.setDhcpDetails(clientDhcpDetails);
-
         session.getDetails().mergeSession(clientSessionDetails);
-
         return session;
     }
 
