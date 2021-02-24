@@ -10,6 +10,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import com.netflix.servo.DefaultMonitorRegistry;
+import com.netflix.servo.monitor.BasicCounter;
+import com.netflix.servo.monitor.Counter;
+import com.netflix.servo.monitor.MonitorConfig;
+import com.netflix.servo.monitor.Monitors;
+import com.netflix.servo.tag.TagList;
+import com.telecominfraproject.wlan.cloudmetrics.CloudMetricsTags;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.OvsdbDao;
 import com.telecominfraproject.wlan.opensync.util.SslUtil;
 import com.vmware.ovsdb.callback.ConnectionCallback;
@@ -24,6 +31,20 @@ public class TipWlanOvsdbRedirector {
 
     private static final Logger LOG = LoggerFactory.getLogger(TipWlanOvsdbRedirector.class);
     
+    private final TagList tags = CloudMetricsTags.commonTags;
+
+    private final Counter connectionsAttempted = new BasicCounter(
+            MonitorConfig.builder("osgw-redirector-connectionsAttempted").withTags(tags).build());
+
+    private final Counter connectionsFailed = new BasicCounter(
+            MonitorConfig.builder("osgw-redirector-connectionsFailed").withTags(tags).build());
+
+    private final Counter connectionsCreated = new BasicCounter(
+            MonitorConfig.builder("osgw-redirector-connectionsCreated").withTags(tags).build());
+
+    private final Counter connectionsDropped = new BasicCounter(
+            MonitorConfig.builder("osgw-redirector-connectionsDropped").withTags(tags).build());
+
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.redirector.listenPort:6643}")
     private int ovsdbRedirectorListenPort;
 
@@ -41,10 +62,21 @@ public class TipWlanOvsdbRedirector {
         listenForConnections();
     }
     
+    // dtop: use anonymous constructor to ensure that the following code always
+    // get executed,
+    // even when somebody adds another constructor in here
+    {
+        DefaultMonitorRegistry.getInstance().register(connectionsAttempted);
+        DefaultMonitorRegistry.getInstance().register(connectionsCreated);
+        DefaultMonitorRegistry.getInstance().register(connectionsDropped);
+        DefaultMonitorRegistry.getInstance().register(connectionsFailed);
+    }
+
     public void listenForConnections() {
 
         ConnectionCallback connectionCallback = new ConnectionCallback() {
             public void connected(OvsdbClient ovsdbClient) {
+                connectionsAttempted.increment();
                 String remoteHost = ovsdbClient.getConnectionInfo().getRemoteAddress().getHostAddress();
                 int localPort = ovsdbClient.getConnectionInfo().getLocalPort();
                 String subjectDn = null;
@@ -54,8 +86,9 @@ public class TipWlanOvsdbRedirector {
                     String clientCn = SslUtil.extractCN(subjectDn);
                     LOG.info("ovsdbClient redirector connected from {} on port {} clientCn {}", remoteHost, localPort, clientCn);                
                     ovsdbDao.performRedirect(ovsdbClient, clientCn);
-
+                    connectionsCreated.increment();
                 } catch (Exception e) {
+                    connectionsFailed.increment();
                     //something is wrong with the SSL or with the redirect
                     ovsdbClient.shutdown();
                     return;
@@ -63,6 +96,7 @@ public class TipWlanOvsdbRedirector {
             }
             
             public void disconnected(OvsdbClient ovsdbClient) {
+                connectionsDropped.increment();
                 String remoteHost = ovsdbClient.getConnectionInfo().getRemoteAddress().getHostAddress();
                 int localPort = ovsdbClient.getConnectionInfo().getLocalPort();
                 String subjectDn = null;

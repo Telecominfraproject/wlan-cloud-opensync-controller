@@ -30,6 +30,7 @@ import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSession;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSessionMapInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.OvsdbDao;
+import com.telecominfraproject.wlan.opensync.ovsdb.metrics.OvsdbMetrics;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.vmware.ovsdb.callback.MonitorCallback;
 import com.vmware.ovsdb.exception.OvsdbClientException;
@@ -47,7 +48,7 @@ import io.netty.handler.ssl.SslContext;
 @SpringBootTest(webEnvironment = WebEnvironment.NONE, classes = OpensyncGatewayTipWlanOvsdbClientTest.class)
 @Import(value = { OpensyncGatewayTipWlanOvsdbClientTest.Config.class, TipWlanOvsdbClient.class,
         TipWlanOvsdbRedirector.class, OvsdbListenerConfig.class, OvsdbSessionMapInterface.class, OvsdbDao.class,
-        OpensyncExternalIntegrationInterface.class, OvsdbSession.class, SslContext.class })
+        OpensyncExternalIntegrationInterface.class, OvsdbSession.class, OvsdbMetrics.class, SslContext.class })
 public class OpensyncGatewayTipWlanOvsdbClientTest {
 
     @MockBean

@@ -23,6 +23,15 @@ import com.google.protobuf.Descriptors;
 import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.util.JsonFormat;
 import com.google.protobuf.util.JsonFormat.TypeRegistry;
+import com.netflix.servo.DefaultMonitorRegistry;
+import com.netflix.servo.monitor.BasicCounter;
+import com.netflix.servo.monitor.BasicTimer;
+import com.netflix.servo.monitor.Counter;
+import com.netflix.servo.monitor.MonitorConfig;
+import com.netflix.servo.monitor.Stopwatch;
+import com.netflix.servo.monitor.Timer;
+import com.netflix.servo.tag.TagList;
+import com.telecominfraproject.wlan.cloudmetrics.CloudMetricsTags;
 import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExternalIntegrationInterface;
 import com.telecominfraproject.wlan.opensync.util.ZlibUtil;
 
@@ -43,8 +52,29 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
 
     public static Charset utf8 = Charset.forName("UTF-8");
 
+    private final TagList tags = CloudMetricsTags.commonTags;
+
+    private final Counter messagesReceived = new BasicCounter(
+            MonitorConfig.builder("osgw-mqtt-messagesReceived").withTags(tags).build());
+
+    private final Counter messageBytesReceived = new BasicCounter(
+            MonitorConfig.builder("osgw-mqtt-messageBytesReceived").withTags(tags).build());
+    
+    private final Timer timerMessageProcess = new BasicTimer(
+            MonitorConfig.builder("osgw-mqtt-messageProcessTimer").withTags(tags).build());
+
+
     @Autowired
     private OpensyncExternalIntegrationInterface extIntegrationInterface;
+
+    // dtop: use anonymous constructor to ensure that the following code always
+    // get executed,
+    // even when somebody adds another constructor in here
+    {
+        DefaultMonitorRegistry.getInstance().register(messagesReceived);
+        DefaultMonitorRegistry.getInstance().register(messageBytesReceived);
+        DefaultMonitorRegistry.getInstance().register(timerMessageProcess);
+    }
 
     //
     // See https://github.com/fusesource/mqtt-client for the docs
@@ -180,6 +210,10 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                             // queue
                             mqttMsg.ack();
 
+                            messagesReceived.increment();
+                            messageBytesReceived.increment(payload.length);
+                            Stopwatch stopwatchTimerMessageProcess = timerMessageProcess.start();
+                            
                             LOG.trace("received message on topic {} size {}", mqttMsg.getTopic(), payload.length);
 
                             if (payload[0] == 0x78) {
@@ -189,6 +223,7 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                                 payload = ZlibUtil.decompress(payload);
                             }
 
+
                             // attempt to parse the message as protobuf
                             MessageOrBuilder encodedMsg = null;
                             try {
@@ -197,7 +232,6 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
 
                                 MQTT_LOG.info("topic = {} Report = {}", mqttMsg.getTopic(),
                                         jsonPrinter.print(encodedMsg));
-
 
                                 extIntegrationInterface.processMqttMessage(mqttMsg.getTopic(), (Report) encodedMsg);
 
@@ -231,6 +265,8 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                                         MQTT_LOG.info("topic = {} message = {}", mqttMsg.getTopic(), msgStr);
                                     }
                                 }
+                            } finally {
+                                stopwatchTimerMessageProcess.stop();
                             }
 
                         }
