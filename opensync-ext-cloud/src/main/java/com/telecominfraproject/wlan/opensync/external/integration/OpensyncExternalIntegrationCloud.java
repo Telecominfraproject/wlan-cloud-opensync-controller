@@ -647,19 +647,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             networkAdminStatusRec = statusServiceInterface.update(networkAdminStatusRec);
             
-            Status channelStatusRec = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(),
-                    StatusDataType.RADIO_CHANNEL);
-            if (channelStatusRec == null) {
-            	channelStatusRec = new Status();
-            	channelStatusRec.setCustomerId(ce.getCustomerId());
-            	channelStatusRec.setEquipmentId(ce.getId());
-            	channelStatusRec.setStatusDataType(StatusDataType.RADIO_CHANNEL);
-                EquipmentChannelStatusData channelStatusData = new EquipmentChannelStatusData();
-                channelStatusRec.setDetails(channelStatusData);
-                
-                channelStatusRec = statusServiceInterface.update(channelStatusRec);
-            }
-
         } catch (Exception e) {
             LOG.error("Exception in updateApStatus", e);
             throw e;
@@ -1223,7 +1210,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         Status protocolStatus = null;
         
         Status channelStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.RADIO_CHANNEL);
-        Status channelStatusClone = channelStatus.clone();
+        Status channelStatusClone = null;
+        if (channelStatus != null) {
+        	channelStatusClone = channelStatus.clone();
+        }
 
         for (OpensyncAPRadioState radioState : radioStateTables) {
             LOG.debug("Processing Wifi_Radio_State table update for AP {} Radio {}", apId, radioState.freqBand);
@@ -1237,15 +1227,16 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             protocolStatus = updateProtocolStatus(customerId, equipmentId, radioState);
             
-            updateChannelStatus(channelStatus, radioState);
+            channelStatus = updateChannelStatus(customerId, equipmentId, channelStatus, radioState);
         }
 
         if (protocolStatus != null) {
             statusServiceInterface.update(protocolStatus);
         }
         
-        if (!Objects.equals(channelStatus, channelStatusClone)) {
-        	LOG.debug("update Channel Status before {} after {}", channelStatusClone, channelStatus);
+        if (channelStatus != null && !Objects.equals(channelStatus, channelStatusClone)) {
+        	LOG.debug("wifiRadioStatusDbTableUpdate update Channel Status before {} after {}",
+        			channelStatusClone, channelStatus);
         	statusServiceInterface.update(channelStatus);
         }
 
@@ -1300,11 +1291,18 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         return protocolStatus;
     }
     
-    private void updateChannelStatus(Status channelStatus, OpensyncAPRadioState radioState) {
-        if (channelStatus != null && channelStatus.getDetails() != null) {
-        	((EquipmentChannelStatusData) channelStatus.getDetails()).getChannelNumberStatusDataMap().put(
-        			radioState.getFreqBand(), radioState.getChannel());
-		}
+    private Status updateChannelStatus(int customerId, long equipmentId, Status channelStatus, OpensyncAPRadioState radioState) {
+    	if (channelStatus == null) {
+    		channelStatus = new Status();
+        	channelStatus.setCustomerId(customerId);
+        	channelStatus.setEquipmentId(equipmentId);
+        	channelStatus.setStatusDataType(StatusDataType.RADIO_CHANNEL);
+        	EquipmentChannelStatusData channelStatusData = new EquipmentChannelStatusData();
+        	channelStatus.setDetails(channelStatusData);
+        }
+    	((EquipmentChannelStatusData) channelStatus.getDetails()).getChannelNumberStatusDataMap().put(
+    			radioState.getFreqBand(), radioState.getChannel());
+    	return channelStatus;
     }
 
     private boolean updateChannelPowerLevels(String apId, ApElementConfiguration apElementConfiguration,
