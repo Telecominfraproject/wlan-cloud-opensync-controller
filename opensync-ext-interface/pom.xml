@@ -15,33 +15,33 @@
 		<dependency>
 			<groupId>com.telecominfraproject.wlan</groupId>
 			<artifactId>base-models</artifactId>
-			<version>${tip-wlan-cloud.release.version}</version>
+			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>com.telecominfraproject.wlan</groupId>
 			<artifactId>tip-wlan-opensync-protobuf</artifactId>
-			<version>${tip-wlan-cloud.release.version}</version>
+			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		
 		<dependency>
 			<artifactId>equipment-models</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
+			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<artifactId>profile-models</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
+			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<artifactId>location-models</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
+			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<artifactId>routing-models</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>${tip-wlan-cloud.release.version}</version>
+			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		
 

@@ -33,8 +33,6 @@ import com.telecominfraproject.wlan.core.model.entity.CountryCode;
 import com.telecominfraproject.wlan.core.model.equipment.EquipmentType;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
-import com.telecominfraproject.wlan.core.model.equipment.SourceSelectionValue;
-import com.telecominfraproject.wlan.core.model.equipment.SourceType;
 import com.telecominfraproject.wlan.core.model.pagination.PaginationContext;
 import com.telecominfraproject.wlan.core.model.pagination.PaginationResponse;
 import com.telecominfraproject.wlan.customer.models.Customer;
@@ -87,6 +85,7 @@ import com.telecominfraproject.wlan.routing.RoutingServiceInterface;
 import com.telecominfraproject.wlan.routing.models.EquipmentRoutingRecord;
 import com.telecominfraproject.wlan.status.StatusServiceInterface;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentAdminStatusData;
+import com.telecominfraproject.wlan.status.equipment.models.EquipmentChannelStatusData;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentLANStatusData;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentProtocolState;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentProtocolStatusData;
@@ -283,12 +282,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 }
 
                 ce.setProfileId(profileId);
-
                 ce = equipmentServiceInterface.update(ce);
-
             } else {
                 // equipment already exists
-
+                boolean needToUpdateEquipment = false;
                 MacAddress reportedMacAddress = null;
                 try {
                     reportedMacAddress = MacAddress.valueOf(connectNodeInfo.macAddress);
@@ -302,10 +299,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     if (!reportedMacAddress.equals(ce.getBaseMacAddress())) {
                         // need to update base mac address on equipment in
                         // DB
-                        ce = equipmentServiceInterface.get(ce.getId());
                         ce.setBaseMacAddress(reportedMacAddress);
-                        ce = equipmentServiceInterface.update(ce);
-
+                        needToUpdateEquipment = true;
                     }
                 }
 
@@ -313,13 +308,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                     // sync up available radios reported by AP with the
                     // ApElementConfiguration, update equipment in DB if needed
-                    boolean needToUpdateEquipment = false;
                     ApElementConfiguration apElementConfig = (ApElementConfiguration) ce.getDetails();
                     if (apElementConfig == null) {
                         apElementConfig = ApElementConfiguration.createWithDefaults();
-                        ce.setDetails(apElementConfig);
-                        ce = equipmentServiceInterface.update(ce);
-                        apElementConfig = (ApElementConfiguration) ce.getDetails();
+                        needToUpdateEquipment = true;
                     }
 
                     if (apElementConfig.getDeviceName() == null
@@ -381,19 +373,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                             needToUpdateEquipment = true;
                         }
                     }
-
-                    if (needToUpdateEquipment) {
-
-                        apElementConfig.setAdvancedRadioMap(advancedRadioMap);
-                        apElementConfig.setRadioMap(radioMap);
-                        ce.setDetails(apElementConfig);
-
-                        ce = equipmentServiceInterface.update(ce);
-                        apElementConfig = (ApElementConfiguration) ce.getDetails();
-                        LOG.info("Equipment {} values for RadioMap {} AdvancedRadioMap {}", ce.getName(),
-                                apElementConfig.getRadioMap(), apElementConfig.getAdvancedRadioMap());
-                    }
-
+                    apElementConfig.setAdvancedRadioMap(advancedRadioMap);
+                    apElementConfig.setRadioMap(radioMap);
+                    ce.setDetails(apElementConfig);
+                }
+                if (needToUpdateEquipment) {
+                    ce = equipmentServiceInterface.update(ce);
+                    LOG.info("Updated Equipment {}", ce);
                 }
 
             }
@@ -660,7 +646,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             networkAdminStatusRec.setDetails(netAdminStatusData);
 
             networkAdminStatusRec = statusServiceInterface.update(networkAdminStatusRec);
-
+            
         } catch (Exception e) {
             LOG.error("Exception in updateApStatus", e);
             throw e;
@@ -813,8 +799,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 }
 
                 CEGWFirmwareDownloadRequest fwDownloadRequest = new CEGWFirmwareDownloadRequest(ce.getInventoryId(),
-                        ce.getId(), fwVersion.getVersionName(), fwVersion.getFilename(),
-                        fwVersion.getValidationMethod(), fwVersion.getValidationCode());
+                        ce.getId(), fwVersion.getVersionName(), fwVersion.getFilename());
                 List<CEGWBaseCommand> commands = new ArrayList<>();
                 commands.add(fwDownloadRequest);
 
@@ -1220,167 +1205,161 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
 
+        boolean configStateMismatch = false;
+
         Status protocolStatus = null;
-        EquipmentProtocolStatusData protocolStatusData = null;
+        
+        Status channelStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.RADIO_CHANNEL);
+        Status channelStatusClone = null;
+        if (channelStatus != null) {
+        	channelStatusClone = channelStatus.clone();
+        }
 
         for (OpensyncAPRadioState radioState : radioStateTables) {
-            LOG.debug("Processing Wifi_Radio_State table update for AP {} {}", apId, radioState);
+            LOG.debug("Processing Wifi_Radio_State table update for AP {} Radio {}", apId, radioState.freqBand);
 
             if (radioState.getFreqBand().equals(RadioType.UNSUPPORTED)) {
                 LOG.debug("Could not get radio configuration for AP {}", apId);
                 continue;
             }
+            configStateMismatch = updateEquipmentConfigFromState(apId, apElementConfiguration,
+                    radioState);
 
-            if (radioState.getChannels() != null) {
-
-                if (apElementConfiguration.getRadioMap().containsKey(radioState.getFreqBand())
-                        && apElementConfiguration.getRadioMap().get(radioState.getFreqBand()) != null) {
-
-                    // private Set<ChannelPowerLevel> allowedChannelsPowerLevels
-                    // = new HashSet<>();
-
-                    Set<ChannelPowerLevel> channelPowerLevels = new HashSet<>();
-
-                    radioState.getChannels().entrySet().stream().forEach(k -> {
-                        if (k.getKey().equals("allowed") || k.getKey().equals("radar_detection")) {
-
-                            String[] channelNumbers = k.getValue().split(",");
-                            for (String channel : channelNumbers) {
-                                if (channel != null) {
-                                    ChannelPowerLevel cpl = new ChannelPowerLevel();
-                                    cpl.setChannelNumber(Integer.parseInt(channel));
-                                    cpl.setDfs(k.getKey().equals("radar_detection"));
-                                    if (radioState.getChannelMode() != null && radioState.getChannelMode().equals("auto")) {
-                                        cpl.setChannelWidth(-1);
-                                    } else {
-                                        switch (radioState.getHtMode()) {
-                                        case "HT20":
-                                            cpl.setChannelWidth(20);
-                                            break;
-                                        case "HT40":
-                                        case "HT40-":
-                                        case "HT40+":
-                                            cpl.setChannelWidth(40);
-                                            break;
-                                        case "HT80":
-                                            cpl.setChannelWidth(80);
-                                            break;
-                                        case "HT160":
-                                            cpl.setChannelWidth(160);
-                                            break;
-                                        default:
-                                            LOG.warn("Unrecognized channel HtMode {}", radioState.getHtMode());
-                                        }
-                                    }
-                                    cpl.setPowerLevel(radioState.getTxPower());
-                                    channelPowerLevels.add(cpl);
-                                }
-                            }
-
-                        }
-                    });
-
-                    if (!Objects.deepEquals(apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                            .getAllowedChannelsPowerLevels(), channelPowerLevels)) {
-                        apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                                .setAllowedChannelsPowerLevels(channelPowerLevels);
-                    }
-
-                    LOG.debug("Updated AllowedChannels from Wifi_Radio_State table change for AP {}", apId);
-                }
-
-            }
-
-            if (radioState.getTxPower() > 0) {
-                if (apElementConfiguration.getRadioMap().containsKey(radioState.getFreqBand())
-                        && apElementConfiguration.getRadioMap().get(radioState.getFreqBand()) != null) {
-                    SourceType txPowerSource = apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                            .getEirpTxPower().getSource();
-                    // Preserve the source while updating the value
-                    if (txPowerSource == SourceType.auto) {
-                        apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                                .setEirpTxPower(SourceSelectionValue.createAutomaticInstance(radioState.getTxPower()));
-                    } else if (txPowerSource == SourceType.profile) {
-                        apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                                .setEirpTxPower(SourceSelectionValue.createProfileInstance(radioState.getTxPower()));
-                    } else {
-                        apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                                .setEirpTxPower(SourceSelectionValue.createManualInstance(radioState.getTxPower()));
-                    }
-
-                    LOG.debug("Updated TxPower from Wifi_Radio_State table change for AP {}", apId);
-                }
-            }
-
-            StateSetting state = StateSetting.disabled;
-            if (radioState.isEnabled()) {
-                state = StateSetting.enabled;
-            }
-
-            if (apElementConfiguration.getAdvancedRadioMap().containsKey(radioState.getFreqBand())
-                    && apElementConfiguration.getAdvancedRadioMap().get(radioState.getFreqBand()) != null) {
-                if (!apElementConfiguration.getAdvancedRadioMap().get(radioState.getFreqBand()).getRadioAdminState()
-                        .equals(state)) {
-                    // only update if changed
-                    apElementConfiguration.getAdvancedRadioMap().get(radioState.getFreqBand())
-                            .setRadioAdminState(state);
-
-                    LOG.debug("Updated RadioAdminState from Wifi_Radio_State table change for AP {}", apId);
-
-                }
-            }
-
-            protocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.PROTOCOL);
-
-            if (protocolStatus != null) {
-
-                protocolStatusData = (EquipmentProtocolStatusData) protocolStatus.getDetails();
-                if (!protocolStatusData.getReportedCC().equals(CountryCode.getByName((radioState.getCountry())))) {
-
-                    LOG.debug(
-                            "Protocol Status reportedCC {} radioStatus.getCountry {} radioStatus CountryCode fromName {}",
-                            protocolStatusData.getReportedCC(), radioState.getCountry(),
-                            CountryCode.getByName((radioState.getCountry())));
-                    protocolStatusData.setReportedCC(CountryCode.getByName((radioState.getCountry())));
-                    protocolStatus.setDetails(protocolStatusData);
-
-                } else {
-                    protocolStatus = null;
-                }
-
-            }
-
+            protocolStatus = updateProtocolStatus(customerId, equipmentId, radioState);
+            
+            channelStatus = updateChannelStatus(customerId, equipmentId, channelStatus, radioState);
         }
 
         if (protocolStatus != null) {
             statusServiceInterface.update(protocolStatus);
         }
-
-        ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
-        if (ce == null) {
-            LOG.debug("wifiRadioStatusDbTableUpdate::Cannot get Equipment for AP {}", apId);
-            return;
+        
+        if (channelStatus != null && !Objects.equals(channelStatus, channelStatusClone)) {
+        	LOG.debug("wifiRadioStatusDbTableUpdate update Channel Status before {} after {}",
+        			channelStatusClone, channelStatus);
+        	statusServiceInterface.update(channelStatus);
         }
 
-        try {
-
-            if (!apElementConfiguration.equals((ce.getDetails()))) {
-
-                ((ApElementConfiguration) ce.getDetails()).setRadioMap(apElementConfiguration.getRadioMap());
-                ((ApElementConfiguration) ce.getDetails())
-                        .setAdvancedRadioMap(apElementConfiguration.getAdvancedRadioMap());
-
-                apElementConfiguration = (ApElementConfiguration) ce.getDetails();
+        if (configStateMismatch) {
+            try {
+                ((ApElementConfiguration) ce.getDetails()).getRadioMap().putAll(apElementConfiguration.getRadioMap());
                 ce = equipmentServiceInterface.update(ce);
+            } catch (DsConcurrentModificationException e) {
+                LOG.error("Caught DsConcurrentModificationException.", e);
+                throw new RuntimeException(e);
             }
-        } catch (DsConcurrentModificationException e) {
-            LOG.debug("Equipment reference changed, update instance and retry.", e.getMessage());
-            ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
-            ce.setDetails(apElementConfiguration);
-            ce = equipmentServiceInterface.update(ce);
         }
         LOG.info("Finished wifiRadioStateDbTableUpdate");
 
+    }
+
+    private boolean updateEquipmentConfigFromState(String apId, ApElementConfiguration apElementConfiguration,OpensyncAPRadioState radioState) {
+        if (apElementConfiguration.getRadioMap().containsKey(radioState.getFreqBand())
+                && apElementConfiguration.getRadioMap().get(radioState.getFreqBand()) != null) {
+            if (radioState.getChannels() != null) {
+                return updateChannelPowerLevels(apId, apElementConfiguration,
+                        radioState);
+            }
+
+        }
+        
+        return false;
+    }
+
+    private Status updateProtocolStatus(int customerId, long equipmentId, OpensyncAPRadioState radioState) {
+        Status protocolStatus;
+        EquipmentProtocolStatusData protocolStatusData;
+        protocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.PROTOCOL);
+
+        if (protocolStatus != null) {
+
+            protocolStatusData = (EquipmentProtocolStatusData) protocolStatus.getDetails();
+            if (!protocolStatusData.getReportedCC().equals(CountryCode.getByName((radioState.getCountry())))) {
+
+                LOG.debug(
+                        "Protocol Status reportedCC {} radioStatus.getCountry {} radioStatus CountryCode fromName {}",
+                        protocolStatusData.getReportedCC(), radioState.getCountry(),
+                        CountryCode.getByName((radioState.getCountry())));
+                protocolStatusData.setReportedCC(CountryCode.getByName((radioState.getCountry())));
+                protocolStatus.setDetails(protocolStatusData);
+
+            } else {
+                protocolStatus = null;
+            }
+
+        }
+        return protocolStatus;
+    }
+    
+    private Status updateChannelStatus(int customerId, long equipmentId, Status channelStatus, OpensyncAPRadioState radioState) {
+    	if (channelStatus == null) {
+    		channelStatus = new Status();
+        	channelStatus.setCustomerId(customerId);
+        	channelStatus.setEquipmentId(equipmentId);
+        	channelStatus.setStatusDataType(StatusDataType.RADIO_CHANNEL);
+        	EquipmentChannelStatusData channelStatusData = new EquipmentChannelStatusData();
+        	channelStatus.setDetails(channelStatusData);
+        }
+    	((EquipmentChannelStatusData) channelStatus.getDetails()).getChannelNumberStatusDataMap().put(
+    			radioState.getFreqBand(), radioState.getChannel());
+    	return channelStatus;
+    }
+
+    private boolean updateChannelPowerLevels(String apId, ApElementConfiguration apElementConfiguration,
+            OpensyncAPRadioState radioState) {
+        
+        boolean configStateMismatch=false;
+        Set<ChannelPowerLevel> channelPowerLevels = new HashSet<>();
+
+        radioState.getChannels().entrySet().stream().forEach(k -> {
+            if (k.getKey().equals("allowed") || k.getKey().equals("radar_detection")) {
+
+                String[] channelNumbers = k.getValue().split(",");
+                for (String channel : channelNumbers) {
+                    if (channel != null) {
+                        ChannelPowerLevel cpl = new ChannelPowerLevel();
+                        cpl.setChannelNumber(Integer.parseInt(channel));
+                        cpl.setDfs(k.getKey().equals("radar_detection"));
+                        if (radioState.getChannelMode() != null
+                                && radioState.getChannelMode().equals("auto")) {
+                            cpl.setChannelWidth(-1);
+                        } else {
+                            switch (radioState.getHtMode()) {
+                            case "HT20":
+                                cpl.setChannelWidth(20);
+                                break;
+                            case "HT40":
+                            case "HT40-":
+                            case "HT40+":
+                                cpl.setChannelWidth(40);
+                                break;
+                            case "HT80":
+                                cpl.setChannelWidth(80);
+                                break;
+                            case "HT160":
+                                cpl.setChannelWidth(160);
+                                break;
+                            default:
+                                LOG.warn("Unrecognized channel HtMode {}", radioState.getHtMode());
+                            }
+                        }
+                        cpl.setPowerLevel(radioState.getTxPower());
+                        channelPowerLevels.add(cpl);
+                    }
+                }
+
+            }
+        });
+
+        if (!Objects.deepEquals(apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
+                .getAllowedChannelsPowerLevels(), channelPowerLevels)) {
+            configStateMismatch = true;
+            apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
+                    .setAllowedChannelsPowerLevels(channelPowerLevels);
+        }
+
+        LOG.debug("Updated AllowedChannels from Wifi_Radio_State table change for AP {}", apId);
+        return configStateMismatch;
     }
 
     private void updateActiveBssids(int customerId, long equipmentId, Object apId, String ssid, RadioType freqBand,
@@ -2253,15 +2232,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             try {
                 clientDhcpDetails.setGatewayIp(InetAddress.getByName(dhcpLeasedIps.get("gateway")));
             } catch (UnknownHostException e) {
-                LOG.error("Invalid Gateway IP", e);
-
                 try {
                     clientDhcpDetails.setGatewayIp(InetAddress.getByAddress(dhcpLeasedIps.get("gateway").getBytes()));
                 } catch (UnknownHostException e1) {
-                    // TODO Auto-generated catch block
-                    LOG.error("Invalid Gateway Address", e);
+                    LOG.warn("Invalid Gateway IP {}", e.getMessage());
                 }
-
             }
         }
 
@@ -2269,13 +2244,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             try {
                 clientDhcpDetails.setSubnetMask(InetAddress.getByName(dhcpLeasedIps.get("subnet_mask")));
             } catch (UnknownHostException e) {
-                LOG.error("Invalid Subnet Mask", e);
                 try {
                     clientDhcpDetails
-                            .setGatewayIp(InetAddress.getByAddress(dhcpLeasedIps.get("subnet_mask").getBytes()));
+                            .setSubnetMask(InetAddress.getByAddress(dhcpLeasedIps.get("subnet_mask").getBytes()));
                 } catch (UnknownHostException e1) {
-                    // TODO Auto-generated catch block
-                    LOG.error("Invalid Subnet Mask Address", e);
+                    LOG.warn("Invalid Subnet Mask {}", e.getMessage());
                 }
             }
         }
@@ -2284,15 +2257,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             try {
                 clientDhcpDetails.setPrimaryDns(InetAddress.getByName(dhcpLeasedIps.get("primary_dns")));
             } catch (UnknownHostException e) {
-                LOG.error("Invalid Primary DNS", e);
                 try {
                     clientDhcpDetails
-                            .setGatewayIp(InetAddress.getByAddress(dhcpLeasedIps.get("primary_dns").getBytes()));
+                            .setPrimaryDns(InetAddress.getByAddress(dhcpLeasedIps.get("primary_dns").getBytes()));
                 } catch (UnknownHostException e1) {
-                    // TODO Auto-generated catch block
-                    LOG.error("Invalid Primary DNS Address", e);
+                    LOG.warn("Invalid Primary DNS {}", e.getMessage());
                 }
-
             }
         }
 
@@ -2300,25 +2270,19 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             try {
                 clientDhcpDetails.setSecondaryDns(InetAddress.getByName(dhcpLeasedIps.get("secondary_dns")));
             } catch (UnknownHostException e) {
-                LOG.error("Invalid Secondary DNS", e);
                 try {
                     clientDhcpDetails
-                            .setGatewayIp(InetAddress.getByAddress(dhcpLeasedIps.get("secondary_dns").getBytes()));
+                            .setSecondaryDns(InetAddress.getByAddress(dhcpLeasedIps.get("secondary_dns").getBytes()));
                 } catch (UnknownHostException e1) {
-                    // TODO Auto-generated catch block
-                    LOG.error("Invalid Seconary DNS Address", e);
+                    LOG.warn("Invalid Secondary DNS {}", e.getMessage());
                 }
             }
         }
-
         if (dhcpLeasedIps.containsKey("device_name")) {
             clientSessionDetails.setClassificationName(dhcpLeasedIps.get("device_name"));
         }
-
         clientSessionDetails.setDhcpDetails(clientDhcpDetails);
-
         session.getDetails().mergeSession(clientSessionDetails);
-
         return session;
     }
 

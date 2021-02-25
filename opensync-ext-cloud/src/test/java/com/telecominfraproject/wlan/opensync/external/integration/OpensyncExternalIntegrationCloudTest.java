@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -75,6 +76,7 @@ import com.telecominfraproject.wlan.profile.rf.models.RfConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.telecominfraproject.wlan.routing.RoutingServiceInterface;
 import com.telecominfraproject.wlan.status.StatusServiceInterface;
+import com.telecominfraproject.wlan.status.equipment.models.EquipmentChannelStatusData;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentProtocolStatusData;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeStatusData;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSID;
@@ -678,7 +680,19 @@ public class OpensyncExternalIntegrationCloudTest {
         protocolStatus.setStatusDataType(StatusDataType.PROTOCOL);
 
         Mockito.when(statusServiceInterface.getOrNull(2, 1L, StatusDataType.PROTOCOL)).thenReturn(protocolStatus);
+        
+        Status channelStatus = new Status();
+        channelStatus.setCustomerId(2);
+        channelStatus.setEquipmentId(1L);
+        EquipmentChannelStatusData channelStatusData = new EquipmentChannelStatusData();
+        Map<RadioType, Integer> channelStatusDataMap = new EnumMap<>(RadioType.class);
+        channelStatusDataMap.put(RadioType.is2dot4GHz, 6);
+        channelStatusDataMap.put(RadioType.is5GHzL, 36);
+        channelStatusDataMap.put(RadioType.is5GHzU, 157);
+        channelStatusData.setChannelNumberStatusDataMap(channelStatusDataMap);
+        channelStatus.setDetails(channelStatusData);
 
+        Mockito.when(statusServiceInterface.getOrNull(2, 1L, StatusDataType.RADIO_CHANNEL)).thenReturn(channelStatus);
         Status bssidStatus = new Status();
         bssidStatus.setStatusDataType(StatusDataType.ACTIVE_BSSIDS);
         bssidStatus.setCustomerId(2);
@@ -688,8 +702,6 @@ public class OpensyncExternalIntegrationCloudTest {
         bssidStatus.setDetails(activeBssidsDetails);
 
         Mockito.when(statusServiceInterface.getOrNull(2, 1L, StatusDataType.ACTIVE_BSSIDS)).thenReturn(bssidStatus);
-
-        Mockito.when(statusServiceInterface.update(bssidStatus)).thenReturn(bssidStatus);
 
         Status clientStatus = new Status();
         clientStatus.setCustomerId(2);
@@ -702,7 +714,7 @@ public class OpensyncExternalIntegrationCloudTest {
         clientStatus.setDetails(clientConnectionDetails);
 
         Mockito.when(statusServiceInterface.getOrNull(2, 1L, StatusDataType.CLIENT_DETAILS)).thenReturn(clientStatus);
-        Mockito.when(statusServiceInterface.update(clientStatus)).thenReturn(clientStatus);
+        Mockito.when(statusServiceInterface.update(Mockito.any(Status.class))).thenReturn(channelStatus).thenReturn(bssidStatus).thenReturn(clientStatus);
 
         OvsdbSession session = Mockito.mock(OvsdbSession.class);
         Mockito.when(session.getEquipmentId()).thenReturn(1L);
@@ -717,7 +729,7 @@ public class OpensyncExternalIntegrationCloudTest {
         Mockito.verify(session).getEquipmentId();
 
         Mockito.verify(ovsdbSessionMapInterface).getSession(apId);
-        Mockito.verify(equipmentServiceInterface, Mockito.times(2)).getByInventoryIdOrNull(apId);
+        Mockito.verify(equipmentServiceInterface, Mockito.times(1)).getByInventoryIdOrNull(apId);
 
         Mockito.verify(statusServiceInterface, Mockito.times(3)).getOrNull(2, 1L, StatusDataType.PROTOCOL);
         Mockito.verify(statusServiceInterface, Mockito.never()).update(bssidStatus);

@@ -44,6 +44,8 @@ public class OvsdbDao extends OvsdbDaoBase {
     OvsdbFirmwareConfig ovsdbFirmware;
     @Autowired
     OvsdbCommandConfig ovsdbCommand;
+    @Autowired
+    OvsdbNodeConfig ovsdbNodeConfig;
 
     public String changeRedirectorAddress(OvsdbClient ovsdbClient, String apId, String newRedirectorAddress) {
         return ovsdbNode.changeRedirectorAddress(ovsdbClient, apId, newRedirectorAddress);
@@ -51,18 +53,17 @@ public class OvsdbDao extends OvsdbDaoBase {
 
     public void configureBlockList(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig,
             List<MacAddress> blockList) {
-        ovsdbSsid.configureBlockList(ovsdbClient, opensyncAPConfig, blockList);
+        ovsdbSsid.configureBlockList(ovsdbClient, blockList);
     }
 
     public void configureCommands(OvsdbClient ovsdbClient, String startdebugengineapcommand,
             Map<String, String> payload, long l, long defaultCommandDurationSec) {
-        ovsdbCommand.configureCommands(ovsdbClient, startdebugengineapcommand, payload, null, null);
+	    ovsdbCommand.configureCommands(ovsdbClient, startdebugengineapcommand, payload, l, defaultCommandDurationSec);
     }
 
     public void configureFirmwareDownload(OvsdbClient ovsdbClient, String apId, String firmwareUrl,
-            String firmwareVersion, String username, String validationCode) throws Exception {
-        ovsdbFirmware.configureFirmwareDownload(ovsdbClient, apId, firmwareUrl, firmwareVersion, username,
-                validationCode);
+            String firmwareVersion, String username) throws Exception {
+        ovsdbFirmware.configureFirmwareDownload(ovsdbClient, apId, firmwareUrl, firmwareVersion, username);
     }
 
     public void configureFirmwareFlash(OvsdbClient ovsdbClient, String apId, String firmwareVersion, String username) {
@@ -79,6 +80,10 @@ public class OvsdbDao extends OvsdbDaoBase {
 
     public void configureInterfaces(OvsdbClient ovsdbClient) {
         ovsdbNetwork.configureInterfaces(ovsdbClient);
+    }
+    
+    public void configureNtpServer(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
+        ovsdbNodeConfig.configureNtpServer(ovsdbClient, opensyncAPConfig);
     }
 
     public void configureSsids(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {

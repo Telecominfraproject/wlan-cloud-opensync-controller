@@ -122,19 +122,13 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
      * @param isNat
      */
     void configureInetInterface(OvsdbClient ovsdbClient, String ifName, boolean enabled, String ifType,
-            boolean isUpdate, boolean isNat) {
-
-        try {
-
-            List<Operation> operations = new ArrayList<>();
+            boolean isUpdate, boolean isNat, List<Operation> operations) {
             Map<String, Value> tableColumns = new HashMap<>();
-
             tableColumns.put("if_type", new Atom<>(ifType));
             tableColumns.put("enabled", new Atom<>(enabled));
             tableColumns.put("network", new Atom<>(true));
             tableColumns.put("if_name", new Atom<>(ifName));
             tableColumns.put("NAT", new Atom<>(isNat));
-
             Row row = new Row(tableColumns);
             if (isUpdate) {
                 List<Condition> conditions = new ArrayList<>();
@@ -143,50 +137,24 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
             } else {
                 operations.add(new Insert(wifiInetConfigDbTable, row));
             }
-            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
-            LOG.debug("Updated Inet {}", ifName);
-
-            for (OperationResult res : result) {
-
-                if (res instanceof InsertResult) {
-                    LOG.info("configureInetInterface insert new row result {}", (res));
-                    // for insert, make sure it is actually in the table
-                    confirmRowExistsInTable(ovsdbClient, ((InsertResult) res).getUuid(), wifiInetConfigDbTable);
-                } else if (res instanceof UpdateResult) {
-                    LOG.info("configureInetInterface update new row result {}", (res));
-                } else if (res instanceof ErrorResult) {
-                    LOG.error("configureInetInterface error {}", (res));
-                    throw new RuntimeException("configureInetInterface " + ((ErrorResult) res).getError() + " "
-                            + ((ErrorResult) res).getDetails());
-                }
-
-            }
-
-        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
-            LOG.error("Error in updateWifiInetConfig", e);
-            throw new RuntimeException(e);
-        }
-
     }
 
     /**
-     *
-     * @param ovsdbClient
+     *  @param ovsdbClient
      * @param vifInterfaceName
      * @param enabled
      * @param networkForwardMode
+     * @param operations
      */
     void configureInetVifInterface(OvsdbClient ovsdbClient, String vifInterfaceName, boolean enabled,
-            NetworkForwardMode networkForwardMode) {
+                                   NetworkForwardMode networkForwardMode, List<Operation> operations) {
         Map<String, WifiInetConfigInfo> inetConfigs = ovsdbGet.getProvisionedWifiInetConfigs(ovsdbClient);
         if (inetConfigs.containsKey(vifInterfaceName)) {
             configureInetInterface(ovsdbClient, vifInterfaceName, enabled, "vif", true,
-                    (networkForwardMode == NetworkForwardMode.NAT));
+                    (networkForwardMode == NetworkForwardMode.NAT), operations);
         } else {
             configureInetInterface(ovsdbClient, vifInterfaceName, enabled, "vif", false,
-                    (networkForwardMode == NetworkForwardMode.NAT));
+                    (networkForwardMode == NetworkForwardMode.NAT), operations);
         }
     }
 

@@ -37,7 +37,8 @@
                 "radioType": "is5GHzU",
                 "channelNumber": 149,
                 "manualChannelNumber": 149,
-                "backupChannelNumber": 154,
+                "backupChannelNumber": 157,
+                "manualBackupChannelNumber": 157,
                 "rxCellSizeDb": {
                     "model_type": "SourceSelectionValue",
                     "source": "profile",
@@ -168,6 +169,7 @@
                 "channelNumber": 6,
                 "manualChannelNumber": 6,
                 "backupChannelNumber": 11,
+                "manualBackupChannelNumber": 11,
                 "rxCellSizeDb": {
                     "model_type": "SourceSelectionValue",
                     "source": "profile",
@@ -277,6 +279,7 @@
                 "channelNumber": 36,
                 "manualChannelNumber": 36,
                 "backupChannelNumber": 44,
+                "manualBackupChannelNumber": 44,
                 "rxCellSizeDb": {
                     "model_type": "SourceSelectionValue",
                     "source": "profile",

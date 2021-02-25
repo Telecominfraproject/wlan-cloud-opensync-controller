@@ -67,6 +67,7 @@ import com.vmware.ovsdb.service.OvsdbClient;
 @Import(value = { OvsdbDao.class, OvsdbDaoTest.Config.class, OvsdbNode.class, OvsdbRadioConfig.class,
         OvsdbHotspotConfig.class, OvsdbCommandConfig.class, OvsdbMonitor.class, OvsdbFirmwareConfig.class,
         OvsdbStatsConfig.class, OvsdbSsidConfig.class, OvsdbRrmConfig.class, OvsdbNetworkConfig.class,
+        OvsdbNodeConfig.class
 
 })
 public class OvsdbDaoTest {
@@ -124,7 +125,6 @@ public class OvsdbDaoTest {
 
     @Autowired
     OvsdbDao ovsdbDao;
-
     @Autowired
     OvsdbNode ovsdbNode;
     @Autowired
@@ -145,6 +145,9 @@ public class OvsdbDaoTest {
     OvsdbFirmwareConfig ovsdbFirmware;
     @Autowired
     OvsdbCommandConfig ovsdbCommand;
+    @Autowired
+    OvsdbNodeConfig ovsdbNodeConfig;
+
     @MockBean(answer = Answers.RETURNS_MOCKS)
     OvsdbGet ovsdbGet;
 

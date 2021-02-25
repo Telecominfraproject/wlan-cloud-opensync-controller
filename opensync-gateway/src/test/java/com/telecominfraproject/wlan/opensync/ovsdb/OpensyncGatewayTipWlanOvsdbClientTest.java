@@ -30,6 +30,7 @@ import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSession;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSessionMapInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.OvsdbDao;
+import com.telecominfraproject.wlan.opensync.ovsdb.metrics.OvsdbMetrics;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.vmware.ovsdb.callback.MonitorCallback;
 import com.vmware.ovsdb.exception.OvsdbClientException;
@@ -47,7 +48,7 @@ import io.netty.handler.ssl.SslContext;
 @SpringBootTest(webEnvironment = WebEnvironment.NONE, classes = OpensyncGatewayTipWlanOvsdbClientTest.class)
 @Import(value = { OpensyncGatewayTipWlanOvsdbClientTest.Config.class, TipWlanOvsdbClient.class,
         TipWlanOvsdbRedirector.class, OvsdbListenerConfig.class, OvsdbSessionMapInterface.class, OvsdbDao.class,
-        OpensyncExternalIntegrationInterface.class, OvsdbSession.class, SslContext.class })
+        OpensyncExternalIntegrationInterface.class, OvsdbSession.class, OvsdbMetrics.class, SslContext.class })
 public class OpensyncGatewayTipWlanOvsdbClientTest {
 
     @MockBean
@@ -133,10 +134,8 @@ public class OpensyncGatewayTipWlanOvsdbClientTest {
         Mockito.verify(ovsdbSession).getOvsdbClient();
         Mockito.verify(opensyncExternalIntegrationInterface).getApConfig("Test_Client_21P10C68818122");
         Mockito.verify(ovsdbDao).removeAllSsids(ovsdbClient);
-        Mockito.verify(ovsdbDao).removeAllStatsConfigs(ovsdbClient);
         Mockito.verify(ovsdbDao).configureWifiRadios(ovsdbClient, apConfig);
         Mockito.verify(ovsdbDao).configureSsids(ovsdbClient, apConfig);
-        Mockito.verify(ovsdbDao).configureStatsFromProfile(ovsdbClient, apConfig);
 
     }
 
@@ -152,13 +151,11 @@ public class OpensyncGatewayTipWlanOvsdbClientTest {
 
         assert (tipwlanOvsdbClient.processFirmwareDownload("Test_Client_21P10C68818122",
                 "http://127.0.0.1/~username/ea8300-2020-07-08-6632239/openwrt-ipq40xx-generic-linksys_ea8300-squashfs-sysupgrade.bin",
-                "openwrt-ipq40xx-generic-linksys_ea8300-squashfs-sysupgrade", "username",
-                "b0d03d8fba6b2261786ac97d49a629f2").equals(expectedResult));
+                "openwrt-ipq40xx-generic-linksys_ea8300-squashfs-sysupgrade", "username").equals(expectedResult));
 
         Mockito.verify(ovsdbDao).configureFirmwareDownload(ovsdbClient, "Test_Client_21P10C68818122",
                 "http://127.0.0.1/~username/ea8300-2020-07-08-6632239/openwrt-ipq40xx-generic-linksys_ea8300-squashfs-sysupgrade.bin",
-                "openwrt-ipq40xx-generic-linksys_ea8300-squashfs-sysupgrade", "username",
-                "b0d03d8fba6b2261786ac97d49a629f2");
+                "openwrt-ipq40xx-generic-linksys_ea8300-squashfs-sysupgrade", "username");
 
     }
 
