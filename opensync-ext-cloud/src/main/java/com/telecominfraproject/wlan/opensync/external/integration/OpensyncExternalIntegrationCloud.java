@@ -85,6 +85,7 @@ import com.telecominfraproject.wlan.routing.RoutingServiceInterface;
 import com.telecominfraproject.wlan.routing.models.EquipmentRoutingRecord;
 import com.telecominfraproject.wlan.status.StatusServiceInterface;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentAdminStatusData;
+import com.telecominfraproject.wlan.status.equipment.models.EquipmentChannelStatusData;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentLANStatusData;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentProtocolState;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentProtocolStatusData;
@@ -645,6 +646,19 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             networkAdminStatusRec.setDetails(netAdminStatusData);
 
             networkAdminStatusRec = statusServiceInterface.update(networkAdminStatusRec);
+            
+            Status channelStatusRec = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(),
+                    StatusDataType.RADIO_CHANNEL);
+            if (channelStatusRec == null) {
+            	channelStatusRec = new Status();
+            	channelStatusRec.setCustomerId(ce.getCustomerId());
+            	channelStatusRec.setEquipmentId(ce.getId());
+            	channelStatusRec.setStatusDataType(StatusDataType.RADIO_CHANNEL);
+                EquipmentChannelStatusData channelStatusData = new EquipmentChannelStatusData();
+                channelStatusRec.setDetails(channelStatusData);
+                
+                channelStatusRec = statusServiceInterface.update(channelStatusRec);
+            }
 
         } catch (Exception e) {
             LOG.error("Exception in updateApStatus", e);
@@ -1207,6 +1221,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         boolean configStateMismatch = false;
 
         Status protocolStatus = null;
+        
+        Status channelStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.RADIO_CHANNEL);
+        Status channelStatusClone = channelStatus.clone();
 
         for (OpensyncAPRadioState radioState : radioStateTables) {
             LOG.debug("Processing Wifi_Radio_State table update for AP {} Radio {}", apId, radioState.freqBand);
@@ -1219,11 +1236,17 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     radioState);
 
             protocolStatus = updateProtocolStatus(customerId, equipmentId, radioState);
-
+            
+            updateChannelStatus(channelStatus, radioState);
         }
 
         if (protocolStatus != null) {
             statusServiceInterface.update(protocolStatus);
+        }
+        
+        if (!Objects.equals(channelStatus, channelStatusClone)) {
+        	LOG.debug("update Channel Status before {} after {}", channelStatusClone, channelStatus);
+        	statusServiceInterface.update(channelStatus);
         }
 
         if (configStateMismatch) {
@@ -1276,8 +1299,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
         return protocolStatus;
     }
-
- 
+    
+    private void updateChannelStatus(Status channelStatus, OpensyncAPRadioState radioState) {
+        if (channelStatus != null && channelStatus.getDetails() != null) {
+        	((EquipmentChannelStatusData) channelStatus.getDetails()).getChannelNumberStatusDataMap().put(
+        			radioState.getFreqBand(), radioState.getChannel());
+		}
+    }
 
     private boolean updateChannelPowerLevels(String apId, ApElementConfiguration apElementConfiguration,
             OpensyncAPRadioState radioState) {
