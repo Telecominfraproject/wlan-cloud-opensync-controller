@@ -878,7 +878,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         LOG.info("OpensyncExternalIntegrationCloud::disconnectClients for Equipment {}", ce);
         PaginationResponse<ClientSession> clientSessions = clientServiceInterface.getSessionsForCustomer(
-                ce.getCustomerId(), Set.of(ce.getId()), Set.of(ce.getLocationId()), null,
+                ce.getCustomerId(), Set.of(ce.getId()), Set.of(ce.getLocationId()), null, null,
                 new PaginationContext<ClientSession>(100));
 
         if (clientSessions == null) {
@@ -1885,7 +1885,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         List<ClientSession> clientSessionsForCustomerAndEquipment = new ArrayList<>();
         if (ce != null) {
             PaginationResponse<ClientSession> clientSessions = clientServiceInterface.getSessionsForCustomer(customerId,
-                    ImmutableSet.of(equipmentId), ImmutableSet.of(ce.getLocationId()), null,
+                    ImmutableSet.of(equipmentId), ImmutableSet.of(ce.getLocationId()), null, null,
                     new PaginationContext<ClientSession>());
             clientSessionsForCustomerAndEquipment.addAll(clientSessions.getItems());
         }
