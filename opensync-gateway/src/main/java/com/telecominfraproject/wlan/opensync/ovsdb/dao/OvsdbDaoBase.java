@@ -65,6 +65,8 @@ public class OvsdbDaoBase {
     public static final String hotspot20IconConfigDbTable = "Hotspot20_Icon_Config";
     public static final String hotspot20OsuProvidersDbTable = "Hotspot20_OSU_Providers";
     public static final String hotspot20ConfigDbTable = "Hotspot20_Config";
+    public static final String radiusConfigDbTable = "radius_config";
+    public static final String realmConfigDbTable = "realm_config";
     public static final String StartDebugEngineApCommand = "startPortForwardingSession";
     public static final String StopDebugEngineApCommand = "stopSession";
 

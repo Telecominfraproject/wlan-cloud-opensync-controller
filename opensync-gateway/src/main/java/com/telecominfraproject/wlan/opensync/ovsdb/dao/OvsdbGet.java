@@ -18,6 +18,8 @@ import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.Hotspot20Config;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.Hotspot20IconConfig;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.Hotspot20OsuProviders;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.NodeConfigInfo;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.RadiusConfigInfo;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.RealmConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiInetConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiRadioConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiStatsConfigInfo;
@@ -169,4 +171,21 @@ public class OvsdbGet extends OvsdbDaoBase {
         return ret;
     }
 
+    Map<String, RadiusConfigInfo> getProvisionedRadiusConfigs(OvsdbClient ovsdbClient) {
+        Map<String, RadiusConfigInfo> ret = new HashMap<>();
+        for (Row row : getOvsdbTableRowsForCondition(ovsdbClient, radiusConfigDbTable, null)) {
+            RadiusConfigInfo radiusConfigInfo = new RadiusConfigInfo(row);
+            ret.put(radiusConfigInfo.radiusConfigName, radiusConfigInfo);
+        }
+        return ret;
+    }
+    
+    Map<String, RealmConfigInfo> getProvisionedRealmConfigs(OvsdbClient ovsdbClient) {
+        Map<String, RealmConfigInfo> ret = new HashMap<>();
+        for (Row row : getOvsdbTableRowsForCondition(ovsdbClient, realmConfigDbTable, null)) {
+            RealmConfigInfo realmConfigInfo = new RealmConfigInfo(row);
+            ret.put(realmConfigInfo.realmConfigName, realmConfigInfo);
+        }
+        return ret;
+    }
 }
