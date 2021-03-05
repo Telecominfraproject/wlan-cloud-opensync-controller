@@ -1,8 +1,37 @@
 package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
-import com.telecominfraproject.wlan.equipment.models.*;
+import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
+import com.telecominfraproject.wlan.equipment.models.NetworkForwardMode;
+import com.telecominfraproject.wlan.equipment.models.RadioConfiguration;
+import com.telecominfraproject.wlan.equipment.models.RadioMode;
+import com.telecominfraproject.wlan.equipment.models.StateSetting;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiRadioConfigInfo;
@@ -11,7 +40,10 @@ import com.telecominfraproject.wlan.profile.bonjour.models.BonjourGatewayProfile
 import com.telecominfraproject.wlan.profile.bonjour.models.BonjourServiceSet;
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalAuthenticationType;
 import com.telecominfraproject.wlan.profile.captiveportal.models.CaptivePortalConfiguration;
+import com.telecominfraproject.wlan.profile.captiveportal.user.models.TimedAccessUserRecord;
 import com.telecominfraproject.wlan.profile.models.Profile;
+import com.telecominfraproject.wlan.profile.models.common.FileCategory;
+import com.telecominfraproject.wlan.profile.models.common.FileType;
 import com.telecominfraproject.wlan.profile.models.common.ManagedFileInfo;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.telecominfraproject.wlan.profile.network.models.GreTunnelConfiguration;
@@ -23,22 +55,21 @@ import com.telecominfraproject.wlan.profile.ssid.models.NasIdType;
 import com.telecominfraproject.wlan.profile.ssid.models.NasIpType;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.vmware.ovsdb.exception.OvsdbClientException;
-import com.vmware.ovsdb.protocol.operation.*;
-import com.vmware.ovsdb.protocol.operation.notation.*;
-import com.vmware.ovsdb.protocol.operation.result.*;
+import com.vmware.ovsdb.protocol.operation.Delete;
+import com.vmware.ovsdb.protocol.operation.Insert;
+import com.vmware.ovsdb.protocol.operation.Operation;
+import com.vmware.ovsdb.protocol.operation.Select;
+import com.vmware.ovsdb.protocol.operation.Update;
+import com.vmware.ovsdb.protocol.operation.notation.Atom;
+import com.vmware.ovsdb.protocol.operation.notation.Condition;
+import com.vmware.ovsdb.protocol.operation.notation.Function;
+import com.vmware.ovsdb.protocol.operation.notation.Row;
+import com.vmware.ovsdb.protocol.operation.notation.Value;
+import com.vmware.ovsdb.protocol.operation.result.ErrorResult;
+import com.vmware.ovsdb.protocol.operation.result.OperationResult;
+import com.vmware.ovsdb.protocol.operation.result.SelectResult;
+import com.vmware.ovsdb.protocol.operation.result.UpdateResult;
 import com.vmware.ovsdb.service.OvsdbClient;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-
-import java.util.Map;
-import java.util.*;
-import java.util.Set;
-import java.util.Map.Entry;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 
 @Component
 public class OvsdbSsidConfig extends OvsdbDaoBase {
@@ -668,22 +699,26 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                     captiveMap.put("login_success_text", captiveProfileDetails.getSuccessPageMarkdownText());
                     captiveMap.put("authentication",
                             getCaptiveAuthentication(captiveProfileDetails.getAuthenticationType()));
-                    if (captiveProfileDetails.getUsernamePasswordFile() != null) {
+		    if (!externalFileStoreURL.endsWith("/filestore/")) {
+                        externalFileStoreURL = externalFileStoreURL + "/filestore/";
+                    }
+                    if (captiveProfileDetails.getAuthenticationType().equals(CaptivePortalAuthenticationType.username)) {
+                        // create a user/password file for the AP to pull
+                        Path userFilepath = createCaptivePortalUserFile(captiveProfileDetails.getUserList(),profileCaptive.getId());
+                        ManagedFileInfo mfi = new ManagedFileInfo();
+                        mfi.setFileCategory(FileCategory.UsernamePasswordList);
+                        mfi.setFileType(FileType.TEXT);
+                        mfi.setApExportUrl(userFilepath.getFileName().toString());
                         captiveMap
-                                .put("username_password_file",
-                                        ManagedFileInfo.resolveWithPopulatedHostname(
-                                                captiveProfileDetails.getUsernamePasswordFile(), externalFileStoreURL)
-                                                .getApExportUrl());
+                                .put("username_password_file", externalFileStoreURL + mfi.getApExportUrl());
                     }
                     if (captiveProfileDetails.getLogoFile() != null) {
-                        captiveMap.put("splash_page_logo", ManagedFileInfo
-                                .resolveWithPopulatedHostname(captiveProfileDetails.getLogoFile(), externalFileStoreURL)
-                                .getApExportUrl());
+                        captiveMap.put("splash_page_logo", externalFileStoreURL +
+                                captiveProfileDetails.getLogoFile().getApExportUrl());
                     }
                     if (captiveProfileDetails.getBackgroundFile() != null) {
                         captiveMap.put("splash_page_background_logo",
-                                ManagedFileInfo.resolveWithPopulatedHostname(captiveProfileDetails.getBackgroundFile(),
-                                        externalFileStoreURL).getApExportUrl());
+                                externalFileStoreURL + captiveProfileDetails.getBackgroundFile().getApExportUrl());
                     }
                     LOG.debug("captiveMap {}", captiveMap);
                     walledGardenAllowlist.addAll(captiveProfileDetails.getWalledGardenAllowlist());
@@ -693,6 +728,36 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
         }
     }
 
+    Path createCaptivePortalUserFile(List<TimedAccessUserRecord> userList, long captivePortalProfileId) {
+
+        Path path = Paths.get(
+                fileStoreDirectoryName + File.separator + "captive-portal-users-" + captivePortalProfileId + ".txt");
+
+        try {
+            Files.deleteIfExists(path);
+        } catch (Exception e) {
+            LOG.error("Cannot delete {}", path, e);
+        }
+        for (TimedAccessUserRecord userRecord : userList) {
+            byte[] bytes = ("username=" + userRecord.getUsername() + ", password=" + userRecord.getPassword()
+                    + ", firstname=" + userRecord.getUserDetails().getFirstName() + ", lastname="
+                    + userRecord.getUserDetails().getLastName() + System.lineSeparator()).getBytes();
+            try {
+                Files.write(path, bytes, StandardOpenOption.APPEND);
+                LOG.debug("Successfully written data to the file {}", path);
+            } catch (IOException e) {
+                try {
+                    Files.write(path, bytes);
+                } catch (IOException e1) {
+                    throw new RuntimeException(e1);
+                }
+            }
+        }
+        return path;
+
+    }
+    
+    
     /**
      * Maps between the osvdb security definitions and the cloud's security mode
      * for the give SSID being configured.

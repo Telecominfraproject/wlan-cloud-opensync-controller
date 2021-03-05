@@ -139,6 +139,9 @@ public class OvsdbDaoBase {
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.externalFileStoreURL:https://localhost:9096}")
     String externalFileStoreURL;
 
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.fileStoreDirectory:/tmp/tip-wlan-filestore}")
+    String fileStoreDirectoryName;
+
     public OvsdbDaoBase() {
     }
 
