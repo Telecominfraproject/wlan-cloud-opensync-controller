@@ -686,20 +686,15 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                         mfi.setFileType(FileType.TEXT);
                         mfi.setApExportUrl(userFilepath.getFileName().toString());
                         captiveMap
-                                .put("username_password_file",
-                                        ManagedFileInfo.resolveWithPopulatedHostname(
-                                               mfi, externalFileStoreURL)
-                                                .getApExportUrl());
+                                .put("username_password_file", externalFileStoreURL + mfi.getApExportUrl());
                     }
                     if (captiveProfileDetails.getLogoFile() != null) {
-                        captiveMap.put("splash_page_logo", ManagedFileInfo
-                                .resolveWithPopulatedHostname(captiveProfileDetails.getLogoFile(), externalFileStoreURL)
-                                .getApExportUrl());
+                        captiveMap.put("splash_page_logo", externalFileStoreURL +
+                                captiveProfileDetails.getLogoFile().getApExportUrl());
                     }
                     if (captiveProfileDetails.getBackgroundFile() != null) {
                         captiveMap.put("splash_page_background_logo",
-                                ManagedFileInfo.resolveWithPopulatedHostname(captiveProfileDetails.getBackgroundFile(),
-                                        externalFileStoreURL).getApExportUrl());
+                                externalFileStoreURL + captiveProfileDetails.getBackgroundFile().getApExportUrl());
                     }
                     LOG.debug("captiveMap {}", captiveMap);
                     walledGardenAllowlist.addAll(captiveProfileDetails.getWalledGardenAllowlist());
