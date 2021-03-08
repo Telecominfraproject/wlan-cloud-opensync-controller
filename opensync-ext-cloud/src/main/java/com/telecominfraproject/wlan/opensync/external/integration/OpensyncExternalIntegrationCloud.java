@@ -2389,4 +2389,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         disconnectClients(ce);
 
     }
+
+    @Override
+    public void apcStateDbTableUpdate(Map<String, String> apcStateAttributes, String apId,
+            RowUpdateOperation rowUpdateOperation) {
+        if (rowUpdateOperation.equals(RowUpdateOperation.DELETE)) {
+            // TODO: clear protocol Status apcProxy info, send event
+        } else {
+            // TODO: Update protocol status for apcProxy, send event
+        }
+        
+    }
 }

@@ -67,6 +67,8 @@ public class OvsdbDaoBase {
     public static final String hotspot20ConfigDbTable = "Hotspot20_Config";
     public static final String radiusConfigDbTable = "radius_config";
     public static final String realmConfigDbTable = "realm_config";
+    public static final String apcConfigDbTable = "APC_Config";
+    public static final String apcStateDbTable = "APC_State";
     public static final String StartDebugEngineApCommand = "startPortForwardingSession";
     public static final String StopDebugEngineApCommand = "stopSession";
 

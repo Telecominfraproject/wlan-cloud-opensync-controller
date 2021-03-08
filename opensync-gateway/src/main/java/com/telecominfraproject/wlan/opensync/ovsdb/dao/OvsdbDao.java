@@ -151,6 +151,10 @@ public class OvsdbDao extends OvsdbDaoBase {
             String key, OvsdbClient ovsdbClient) {
         return ovsdbMonitor.getOpensyncWifiAssociatedClients(rowUpdate, key, ovsdbClient);
     }
+    
+    public Map<String,String> getAPCState(RowUpdate rowUpdate, String key) {
+        return ovsdbMonitor.getAPCState(rowUpdate, key);
+    }
 
     public void getRadiusAccountingConfiguration(OpensyncAPConfig apConfig, SsidConfiguration ssidConfig,
             Map<String, String> security) {

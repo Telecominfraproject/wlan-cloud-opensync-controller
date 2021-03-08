@@ -1,7 +1,9 @@
 package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.UUID;
 
@@ -169,4 +171,18 @@ public class OvsdbMonitor extends OvsdbDaoBase {
             return List.of();
         }
     }
+
+    Map<String, String> getAPCState(RowUpdate rowUpdate, String apId) {
+        Map<String, String> ret = new HashMap<>();
+        if (rowUpdate.getNew() != null) {
+            Row row = rowUpdate.getNew();
+            ret.put("baseRouterIp", getSingleValueFromSet(row, "base_addr"));
+            ret.put("deputyRouterIp", getSingleValueFromSet(row, "dbr_addr"));
+            ret.put("enabled", getSingleValueFromSet(row, "enabled"));
+            ret.put("mode", getSingleValueFromSet(row, "mode"));
+        }
+        return ret;
+    }
+    
 }
+

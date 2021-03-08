@@ -35,7 +35,7 @@ public interface OpensyncExternalIntegrationInterface {
     void wifiInetStateDbTableUpdate(List<OpensyncAPInetState> inetStateTables, String apId);
 
     void wifiInetStateDbTableDelete(List<OpensyncAPInetState> inetStateTables, String apId);
-    
+
     void processMqttMessage(String topic, Report report);
 
     void processMqttMessage(String topic, FlowReport flowReport);
@@ -47,10 +47,15 @@ public interface OpensyncExternalIntegrationInterface {
     void wifiAssociatedClientsDbTableDelete(String deletedClientMac, String apId);
 
     void awlanNodeDbTableUpdate(OpensyncAWLANNode opensyncAPState, String apId);
-    
-    void dhcpLeasedIpDbTableUpdate(List<Map<String,String>> dhcpAttributes, String apId, RowUpdateOperation rowUpdateOperation);
 
-    void commandStateDbTableUpdate(List<Map<String,String>> commandStateAttributes, String apId, RowUpdateOperation rowUpdateOperation);
-    
+    void dhcpLeasedIpDbTableUpdate(List<Map<String, String>> dhcpAttributes, String apId,
+            RowUpdateOperation rowUpdateOperation);
+
+    void commandStateDbTableUpdate(List<Map<String, String>> commandStateAttributes, String apId,
+            RowUpdateOperation rowUpdateOperation);
+
+    void apcStateDbTableUpdate(Map<String, String> apcStateAttributes, String apId,
+            RowUpdateOperation rowUpdateOperation);
+
     void clearEquipmentStatus(String apId);
 }

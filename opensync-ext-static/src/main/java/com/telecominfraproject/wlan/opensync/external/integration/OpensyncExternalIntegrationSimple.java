@@ -44,7 +44,7 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 
     @Value("${tip.wlan.ovsdb.ssidProfileFileName:/app/config/ProfileSsid.json}")
     private String ssidProfileFileName;
-    
+
     @Value("${tip.wlan.ovsdb.radiusProfileFileName:/app/config/ProfileRadius.json}")
     private String radiusProfileFileName;
 
@@ -84,7 +84,6 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
             List<com.telecominfraproject.wlan.profile.models.Profile> ssidProfiles = com.telecominfraproject.wlan.profile.models.Profile
                     .listFromFile(ssidProfileFileName, com.telecominfraproject.wlan.profile.models.Profile.class);
             ssidProfiles.stream().forEach(p -> apProfile.getChildProfileIds().add(p.getId()));
-            
 
             equipment.setProfileId(apProfile.getId());
             Location location = Location.fromFile(locationFileName, Location.class);
@@ -119,7 +118,6 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
         report.getEventReportList().stream().forEach(e -> {
             LOG.info("Received EventReport {}", e);
         });
-
 
     }
 
@@ -198,8 +196,15 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 
     @Override
     public void clearEquipmentStatus(String apId) {
-        LOG.info("Received clearEquipmentStatus for ap {}",apId);
-        
+        LOG.info("Received clearEquipmentStatus for ap {}", apId);
+
+    }
+
+    @Override
+    public void apcStateDbTableUpdate(Map<String, String> apcStateAttributes, String apId,
+            RowUpdateOperation rowUpdateOperation) {
+        LOG.info("Received APC_State {} for operation {}", apcStateAttributes, rowUpdateOperation);
+
     }
 
 }
