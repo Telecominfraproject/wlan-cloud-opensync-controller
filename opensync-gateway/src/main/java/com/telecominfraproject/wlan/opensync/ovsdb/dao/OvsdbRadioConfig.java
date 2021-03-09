@@ -33,24 +33,15 @@ public class OvsdbRadioConfig extends OvsdbDaoBase {
     OvsdbGet ovsdbGet;
 
     void configureWifiRadios(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
-
         String country = opensyncAPConfig.getCountryCode(); // should be the
-        // same for all
-        // radios on this AP
-        // ;-)
-
         ApElementConfiguration apElementConfiguration = (ApElementConfiguration) opensyncAPConfig.getCustomerEquipment()
                 .getDetails();
         RfConfiguration rfConfig = (RfConfiguration) opensyncAPConfig.getRfProfile().getDetails();
-
         Map<String, WifiRadioConfigInfo> provisionedRadioConfigs = ovsdbGet.getProvisionedWifiRadioConfigs(ovsdbClient);
         Map<String, WifiVifConfigInfo> vifConfigs = ovsdbGet.getProvisionedWifiVifConfigs(ovsdbClient);
-
         List<Operation> operations = new ArrayList<>();
-
         for (RadioType radioType : apElementConfiguration.getRadioMap().keySet()) {
             Map<String, String> hwConfig = new HashMap<>();
-
             ElementRadioConfiguration elementRadioConfig = apElementConfiguration.getRadioMap().get(radioType);
             RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(radioType);
             boolean autoChannelSelection = rfElementConfig.getAutoChannelSelection();
@@ -58,114 +49,19 @@ public class OvsdbRadioConfig extends OvsdbDaoBase {
             LOG.debug("configureWifiRadios autoChannelSelection {} activeChannel {} getChannelNumber {} ",
                     autoChannelSelection, channel, elementRadioConfig.getChannelNumber());
             ChannelBandwidth bandwidth = rfElementConfig.getChannelBandwidth();
-            String ht_mode;
-            switch (bandwidth) {
-            case is20MHz:
-                ht_mode = "HT20";
-                break;
-            case is40MHz:
-                ht_mode = "HT40";
-                break;
-            case is80MHz:
-                ht_mode = "HT80";
-                break;
-            case is160MHz:
-                ht_mode = "HT160";
-                break;
-            case auto:
-                ht_mode = "0";
-                break;
-            default:
-                ht_mode = null;
-            }
-
+            String ht_mode = getBandwidth(bandwidth);
             RadioConfiguration radioConfig = apElementConfiguration.getAdvancedRadioMap().get(radioType);
             int beaconInterval = rfElementConfig.getBeaconInterval();
             boolean enabled = radioConfig.getRadioAdminState().equals(StateSetting.enabled);
-
             int txPower;
             if (elementRadioConfig.getEirpTxPower().getSource() == SourceType.profile) {
                 txPower = rfElementConfig.getEirpTxPower();
             } else {
                 txPower = elementRadioConfig.getEirpTxPower().getValue();
             }
-
-            String hwMode = null;
-            switch (rfElementConfig.getRadioMode()) {
-            case modeA:
-                hwMode = "11a";
-                break;
-            case modeAB:
-                hwMode = "11ab";
-                break;
-            case modeAC:
-                hwMode = "11ac";
-                break;
-            case modeB:
-                hwMode = "11b";
-                break;
-            case modeG:
-                hwMode = "11g";
-                break;
-            case modeAX:
-                hwMode = "11ax";
-                break;
-            case modeN:
-                hwMode = "11n";
-                break;
-            default:
-            }
-            String freqBand;
-            switch (radioType) {
-            case is2dot4GHz:
-                freqBand = "2.4G";
-                break;
-            case is5GHz:
-                // 802.11h dfs (Dynamic Frequency Selection) aka military
-                // and
-                // weather radar
-                // avoidance protocol
-                // Must not be disabled (by law)
-                // NA for 2.4GHz
-                hwConfig.put("dfs_enable", "1");
-                hwConfig.put("dfs_ignorecac", "0");
-                hwConfig.put("dfs_usenol", "1");
-                freqBand = "5G";
-
-                break;
-            case is5GHzL:
-                // 802.11h dfs (Dynamic Frequency Selection) aka military
-                // and
-                // weather radar
-                // avoidance protocol
-                // Must not be disabled (by law)
-                // NA for 2.4GHz
-                hwConfig.put("dfs_enable", "1");
-                hwConfig.put("dfs_ignorecac", "0");
-                hwConfig.put("dfs_usenol", "1");
-                freqBand = "5GL";
-
-                break;
-            case is5GHzU:
-                // 802.11h dfs (Dynamic Frequency Selection) aka military
-                // and
-                // weather radar
-                // avoidance protocol
-                // Must not be disabled (by law)
-                // NA for 2.4GHz
-                hwConfig.put("dfs_enable", "1");
-                hwConfig.put("dfs_ignorecac", "0");
-                hwConfig.put("dfs_usenol", "1");
-                freqBand = "5GU";
-
-                break;
-            default: // don't know this interface
-                continue;
-
-            }
-
+            String hwMode = getHwMode(rfElementConfig);
+            String freqBand = getHwConfigAndFreq(radioType, hwConfig);
             String radioName = null;
-
             for (String key : provisionedRadioConfigs.keySet()) {
                 if (provisionedRadioConfigs.get(key).freqBand.equals(freqBand)) {
                     radioName = key;
@@ -173,7 +69,6 @@ public class OvsdbRadioConfig extends OvsdbDaoBase {
                 }
             }
             if (radioName == null) continue;
-
             String ifName = null; // for vifConfigs
             if (radioName.equals(radio0)) {
                 ifName = defaultRadio0;
@@ -183,42 +78,36 @@ public class OvsdbRadioConfig extends OvsdbDaoBase {
                 ifName = defaultRadio2;
             }
             if (ifName == null) continue;
-
             Set<Uuid> vifUuidsForRadio = new HashSet<>();
             for (String key : vifConfigs.keySet()) {
                 if (key.contains(ifName))
                     vifUuidsForRadio.add(vifConfigs.get(key).uuid);
             }
-
             int mimoMode = MimoMode.none.getId();
             if (rfElementConfig.getMimoMode() != null) {
                 mimoMode = rfElementConfig.getMimoMode().getId();
+            }           
+            int maxNumClients = 0;          
+            if (rfElementConfig.getMaxNumClients() != null) {
+                maxNumClients = rfElementConfig.getMaxNumClients();
             }
-
             try {
-
                 configureWifiRadios(freqBand, channel, hwConfig, country.toUpperCase(), beaconInterval,
-                        enabled, hwMode, ht_mode, txPower, mimoMode, vifUuidsForRadio, operations);
+                        enabled, hwMode, ht_mode, txPower, mimoMode, vifUuidsForRadio, operations, maxNumClients);
             } catch (OvsdbClientException e) {
                 LOG.error("ConfigureWifiRadios failed with OvsdbClient exception.", e);
                 throw new RuntimeException(e);
-
             } catch (TimeoutException e) {
                 LOG.error("ConfigureWifiRadios failed with Timeout.", e);
                 throw new RuntimeException(e);
-
             } catch (ExecutionException e) {
                 LOG.error("ConfigureWifiRadios excecution failed.", e);
                 throw new RuntimeException(e);
-
             } catch (InterruptedException e) {
                 LOG.error("ConfigureWifiRadios interrupted.", e);
                 throw new RuntimeException(e);
-
             }
-
         }
-
         try {
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
@@ -231,14 +120,107 @@ public class OvsdbRadioConfig extends OvsdbDaoBase {
 
     }
 
+    String getHwConfigAndFreq(RadioType radioType, Map<String, String> hwConfig) {
+        switch (radioType) {
+        case is2dot4GHz:
+            return "2.4G";
+        case is5GHz:
+            // 802.11h dfs (Dynamic Frequency Selection) aka military
+            // and
+            // weather radar
+            // avoidance protocol
+            // Must not be disabled (by law)
+            // NA for 2.4GHz
+            hwConfig.put("dfs_enable", "1");
+            hwConfig.put("dfs_ignorecac", "0");
+            hwConfig.put("dfs_usenol", "1");
+            return "5G";
+        case is5GHzL:
+            // 802.11h dfs (Dynamic Frequency Selection) aka military
+            // and
+            // weather radar
+            // avoidance protocol
+            // Must not be disabled (by law)
+            // NA for 2.4GHz
+            hwConfig.put("dfs_enable", "1");
+            hwConfig.put("dfs_ignorecac", "0");
+            hwConfig.put("dfs_usenol", "1");
+            return "5GL";
+        case is5GHzU:
+            // 802.11h dfs (Dynamic Frequency Selection) aka military
+            // and
+            // weather radar
+            // avoidance protocol
+            // Must not be disabled (by law)
+            // NA for 2.4GHz
+            hwConfig.put("dfs_enable", "1");
+            hwConfig.put("dfs_ignorecac", "0");
+            hwConfig.put("dfs_usenol", "1");
+            return "5GU";
+        default: // don't know this interface
+            return null;
+        }
+    }
+
+    private String getBandwidth(ChannelBandwidth bandwidth) {
+        String ht_mode;
+        switch (bandwidth) {
+        case is20MHz:
+            ht_mode = "HT20";
+            break;
+        case is40MHz:
+            ht_mode = "HT40";
+            break;
+        case is80MHz:
+            ht_mode = "HT80";
+            break;
+        case is160MHz:
+            ht_mode = "HT160";
+            break;
+        case auto:
+            ht_mode = "0";
+            break;
+        default:
+            ht_mode = null;
+        }
+        return ht_mode;
+    }
+
+    String getHwMode(RfElementConfiguration rfElementConfig) {
+        String hwMode = null;
+        switch (rfElementConfig.getRadioMode()) {
+        case modeA:
+            hwMode = "11a";
+            break;
+        case modeAB:
+            hwMode = "11ab";
+            break;
+        case modeAC:
+            hwMode = "11ac";
+            break;
+        case modeB:
+            hwMode = "11b";
+            break;
+        case modeG:
+            hwMode = "11g";
+            break;
+        case modeAX:
+            hwMode = "11ax";
+            break;
+        case modeN:
+            hwMode = "11n";
+            break;
+        default:
+        }
+        return hwMode;
+    }
+
     void configureWifiRadios(String freqBand, int channel, Map<String, String> hwConfig,
                              String country, int beaconInterval, boolean enabled, String hwMode, String ht_mode, int txPower,
-                             int mimoMode, Set<Uuid> vifUuidsForRadio, List<Operation> operations) throws OvsdbClientException, TimeoutException, ExecutionException, InterruptedException {
-
+                             int mimoMode, Set<Uuid> vifUuidsForRadio, List<Operation> operations, int maxNumClients) throws OvsdbClientException, TimeoutException, ExecutionException, InterruptedException {
         Map<String, Value> updateColumns = new HashMap<>();
         List<Condition> conditions = new ArrayList<>();
         conditions.add(new Condition("freq_band", Function.EQUALS, new Atom<>(freqBand)));
-
         updateColumns.put("channel", new Atom<>(channel));
         updateColumns.put("country", new Atom<>(country));
         @SuppressWarnings("unchecked")
@@ -260,18 +242,24 @@ public class OvsdbRadioConfig extends OvsdbDaoBase {
         if (hwMode != null) {
             updateColumns.put("hw_mode", new Atom<>(hwMode));
         }
-        
+        configureCustomOptionsMap(maxNumClients, updateColumns);
         setTxAndRxChainmask(mimoMode, updateColumns);
-
         if (vifUuidsForRadio.size() > 0) {
             com.vmware.ovsdb.protocol.operation.notation.Set vifConfigUuids = com.vmware.ovsdb.protocol.operation.notation.Set
                     .of(vifUuidsForRadio);
             updateColumns.put("vif_configs", vifConfigUuids);
         }
-
         Row row = new Row(updateColumns);
         operations.add(new Update(wifiRadioConfigDbTable, conditions, row));
+    }
 
+    void configureCustomOptionsMap(int maxNumClients, Map<String, Value> updateColumns) {
+        Map<String,String> customOptions = new HashMap<>();
+        customOptions.put("max_clients", String.valueOf(maxNumClients));
+        @SuppressWarnings("unchecked")
+        com.vmware.ovsdb.protocol.operation.notation.Map<String, String> customOptionsMap = com.vmware.ovsdb.protocol.operation.notation.Map
+        .of(customOptions);           
+        updateColumns.put("custom_options", customOptionsMap);           
     }
 
     void setTxAndRxChainmask(int mimoMode, Map<String, Value> updateColumns) {
@@ -290,8 +278,7 @@ public class OvsdbRadioConfig extends OvsdbDaoBase {
         else if (mimoMode == 3) {mimoMode = 7;}
         else if (mimoMode == 4) {mimoMode = 15;}
         updateColumns.put("tx_chainmask", new Atom<>(mimoMode));
-        updateColumns.put("rx_chainmask", new Atom<>(mimoMode));
-        
+        updateColumns.put("rx_chainmask", new Atom<>(mimoMode));       
     }
 
 }

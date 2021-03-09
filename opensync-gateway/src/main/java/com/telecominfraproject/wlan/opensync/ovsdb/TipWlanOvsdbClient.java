@@ -1,6 +1,13 @@
 package com.telecominfraproject.wlan.opensync.ovsdb;
 
 import com.google.common.collect.ImmutableMap;
+import com.netflix.servo.DefaultMonitorRegistry;
+import com.netflix.servo.monitor.BasicCounter;
+import com.netflix.servo.monitor.Counter;
+import com.netflix.servo.monitor.MonitorConfig;
+import com.netflix.servo.monitor.Monitors;
+import com.netflix.servo.tag.TagList;
+import com.telecominfraproject.wlan.cloudmetrics.CloudMetricsTags;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExternalIntegrationInterface;
@@ -10,6 +17,8 @@ import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSession;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSessionMapInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.models.*;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.OvsdbDao;
+import com.telecominfraproject.wlan.opensync.ovsdb.metrics.OvsdbClientWithMetrics;
+import com.telecominfraproject.wlan.opensync.ovsdb.metrics.OvsdbMetrics;
 import com.telecominfraproject.wlan.opensync.util.OvsdbStringConstants;
 import com.telecominfraproject.wlan.opensync.util.SslUtil;
 import com.vmware.ovsdb.callback.ConnectionCallback;
@@ -35,6 +44,21 @@ import java.util.concurrent.CompletableFuture;
 public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
     private static final Logger LOG = LoggerFactory.getLogger(TipWlanOvsdbClient.class);
+
+    private final TagList tags = CloudMetricsTags.commonTags;
+
+    private final Counter connectionsAttempted = new BasicCounter(
+            MonitorConfig.builder("osgw-connectionsAttempted").withTags(tags).build());
+
+    private final Counter connectionsFailed = new BasicCounter(
+            MonitorConfig.builder("osgw-connectionsFailed").withTags(tags).build());
+
+    private final Counter connectionsCreated = new BasicCounter(
+            MonitorConfig.builder("osgw-connectionsCreated").withTags(tags).build());
+
+    private final Counter connectionsDropped = new BasicCounter(
+            MonitorConfig.builder("osgw-connectionsDropped").withTags(tags).build());
+    
 
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.ovsdb.listenPort:6640}")
     private int ovsdbListenPort;
@@ -63,8 +87,21 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
     @Autowired
     private OvsdbSessionMapInterface ovsdbSessionMapInterface;
 
+    @Autowired
+    private OvsdbMetrics ovsdbMetrics;
+
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.manager.collectionIntervalSec.event:60}")
     private long collectionIntervalSecEvent;
+
+    // dtop: use anonymous constructor to ensure that the following code always
+    // get executed,
+    // even when somebody adds another constructor in here
+    {
+        DefaultMonitorRegistry.getInstance().register(connectionsAttempted);
+        DefaultMonitorRegistry.getInstance().register(connectionsCreated);
+        DefaultMonitorRegistry.getInstance().register(connectionsDropped);
+        DefaultMonitorRegistry.getInstance().register(connectionsFailed);
+    }
 
     @PostConstruct
     private void postCreate() {
@@ -78,6 +115,12 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             @Override
             public void connected(OvsdbClient ovsdbClient) {
 
+                connectionsAttempted.increment();
+                
+                if(! (ovsdbClient instanceof OvsdbClientWithMetrics )) {
+                    ovsdbClient = new OvsdbClientWithMetrics(ovsdbClient, ovsdbMetrics);
+                }
+                
                 String remoteHost = ovsdbClient.getConnectionInfo().getRemoteAddress().getHostAddress();
                 int localPort = ovsdbClient.getConnectionInfo().getLocalPort();
                 String subjectDn;
@@ -102,14 +145,17 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
                     monitorOvsdbStateTables(ovsdbClient, key);
 
+                    connectionsCreated.increment();
                     LOG.info("ovsdbClient connected from {} on port {} AP {} ", remoteHost, localPort, key);
                     LOG.info("ovsdbClient connectedClients = {}", ovsdbSessionMapInterface.getNumSessions());
 
                 } catch (IllegalStateException e) {
+                    connectionsFailed.increment();
                     LOG.error("autoprovisioning error {}", e.getMessage(), e);
                     // something is wrong with the SSL
                     ovsdbClient.shutdown();
                 } catch (Exception e) {
+                    connectionsFailed.increment();
                     LOG.error("ovsdbClient error", e);
                     // something is wrong with the SSL
                     ovsdbClient.shutdown();
@@ -120,6 +166,8 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             @Override
             public void disconnected(OvsdbClient ovsdbClient) {
 
+                connectionsDropped.increment();
+                
                 String remoteHost;
                 int localPort;
                 String clientCn;
