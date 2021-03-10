@@ -39,6 +39,7 @@ import javax.annotation.PostConstruct;
 import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 @Profile("ovsdb_manager")
 @Component
@@ -239,6 +240,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         ovsdbDao.removeAllSsids(ovsdbClient); // always
         ovsdbDao.removeAllInetConfigs(ovsdbClient);
         ovsdbDao.removeWifiRrm(ovsdbClient);
+        ovsdbDao.removeRadsecRadiusAndRealmConfigs(ovsdbClient);
         ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
 
         extIntegrationInterface.clearEquipmentStatus(apId);
@@ -250,6 +252,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureGreTunnels(ovsdbClient, opensyncAPConfig);
             ovsdbDao.createVlanNetworkInterfaces(ovsdbClient, opensyncAPConfig);
+            ovsdbDao.configureRadsecRadiusAndRealm(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
             if (opensyncAPConfig.getHotspotConfig() != null) {
                 ovsdbDao.configureHotspots(ovsdbClient, opensyncAPConfig);
@@ -312,13 +315,15 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         ovsdbDao.removeAllSsids(ovsdbClient); // always
         ovsdbDao.removeAllInetConfigs(ovsdbClient);
         ovsdbDao.removeWifiRrm(ovsdbClient);
+        ovsdbDao.removeRadsecRadiusAndRealmConfigs(ovsdbClient);
 
         extIntegrationInterface.clearEquipmentStatus(apId);
+        
         ovsdbDao.configureNtpServer(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureGreTunnels(ovsdbClient, opensyncAPConfig);
         ovsdbDao.createVlanNetworkInterfaces(ovsdbClient, opensyncAPConfig);
-
+        ovsdbDao.configureRadsecRadiusAndRealm(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
         if (opensyncAPConfig.getHotspotConfig() != null) {
             ovsdbDao.configureHotspots(ovsdbClient, opensyncAPConfig);
@@ -406,6 +411,14 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             monitorNodeStateTable(ovsdbClient, key);
         } catch (OvsdbClientException e) {
             LOG.debug("Could not enable monitor for Node_State table. {}", e.getMessage());
+        }
+        
+        try {
+            if (ovsdbClient.getSchema(OvsdbDao.ovsdbName).get().getTables().containsKey("APC_State")) {
+                monitorAPCStateTable(ovsdbClient, key);
+            }
+        } catch (InterruptedException | ExecutionException | OvsdbClientException e) {
+           LOG.debug("Could not enable monitor for APC_State table. {}", e);
         }
         LOG.debug("Finished (re)setting monitors for AP {}", key);
     }
@@ -780,7 +793,28 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
                     });
                 });
-        nsCf.join();
+        
+        
+        nsCf.join().getTableUpdates().forEach((key1, value) -> {
+            LOG.info("TableUpdate for {}", key1);
+            value.getRowUpdates().values().forEach(r -> {
+
+                Map<String, String> apcStateAttributes = ovsdbDao.getAPCState(r, key);
+                if (apcStateAttributes.isEmpty()) {
+                    extIntegrationInterface.apcStateDbTableUpdate(apcStateAttributes, key,
+                            RowUpdateOperation.DELETE);
+                } else if (r.getOld() == null) {
+                    extIntegrationInterface.apcStateDbTableUpdate(apcStateAttributes, key,
+                            RowUpdateOperation.INSERT);
+                } else {
+                    extIntegrationInterface.apcStateDbTableUpdate(apcStateAttributes, key,
+                            RowUpdateOperation.MODIFY);
+                }
+
+            });
+
+        });
+
     }
 
     @Override

@@ -170,15 +170,15 @@ public class OvsdbMonitor extends OvsdbDaoBase {
         } else {
             return List.of();
         }
-    }
-
+    }   
+    
     Map<String, String> getAPCState(RowUpdate rowUpdate, String apId) {
         Map<String, String> ret = new HashMap<>();
         if (rowUpdate.getNew() != null) {
             Row row = rowUpdate.getNew();
-            ret.put("baseRouterIp", getSingleValueFromSet(row, "base_addr"));
-            ret.put("deputyRouterIp", getSingleValueFromSet(row, "dbr_addr"));
-            ret.put("enabled", getSingleValueFromSet(row, "enabled"));
+            ret.put("designatedRouterIp", getSingleValueFromSet(row, "dr_addr"));
+            ret.put("backupDesignatedRouterIp", getSingleValueFromSet(row, "bdr_addr"));
+            ret.put("enabled", getSingleValueFromSet(row, "enabled").toString());
             ret.put("mode", getSingleValueFromSet(row, "mode"));
         }
         return ret;

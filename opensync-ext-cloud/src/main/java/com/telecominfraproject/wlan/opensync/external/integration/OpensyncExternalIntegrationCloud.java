@@ -646,7 +646,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             networkAdminStatusRec.setDetails(netAdminStatusData);
 
             networkAdminStatusRec = statusServiceInterface.update(networkAdminStatusRec);
-            
+
         } catch (Exception e) {
             LOG.error("Exception in updateApStatus", e);
             throw e;
@@ -1057,7 +1057,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         if (apNode == null) {
             LOG.debug("wifiVIFStateDbTableUpdate::Cannot get EquipmentId for AP {}", apId);
             return; // we don't have the required info to get the
-                    // radio type yet
+            // radio type yet
         }
         ApElementConfiguration apElementConfig = (ApElementConfiguration) apNode.getDetails();
 
@@ -1208,11 +1208,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         boolean configStateMismatch = false;
 
         Status protocolStatus = null;
-        
+
         Status channelStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.RADIO_CHANNEL);
         Status channelStatusClone = null;
         if (channelStatus != null) {
-        	channelStatusClone = channelStatus.clone();
+            channelStatusClone = channelStatus.clone();
         }
 
         for (OpensyncAPRadioState radioState : radioStateTables) {
@@ -1222,22 +1222,21 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 LOG.debug("Could not get radio configuration for AP {}", apId);
                 continue;
             }
-            configStateMismatch = updateEquipmentConfigFromState(apId, apElementConfiguration,
-                    radioState);
+            configStateMismatch = updateEquipmentConfigFromState(apId, apElementConfiguration, radioState);
 
             protocolStatus = updateProtocolStatus(customerId, equipmentId, radioState);
-            
+
             channelStatus = updateChannelStatus(customerId, equipmentId, channelStatus, radioState);
         }
 
         if (protocolStatus != null) {
             statusServiceInterface.update(protocolStatus);
         }
-        
+
         if (channelStatus != null && !Objects.equals(channelStatus, channelStatusClone)) {
-        	LOG.debug("wifiRadioStatusDbTableUpdate update Channel Status before {} after {}",
-        			channelStatusClone, channelStatus);
-        	statusServiceInterface.update(channelStatus);
+            LOG.debug("wifiRadioStatusDbTableUpdate update Channel Status before {} after {}", channelStatusClone,
+                    channelStatus);
+            statusServiceInterface.update(channelStatus);
         }
 
         if (configStateMismatch) {
@@ -1253,16 +1252,16 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     }
 
-    private boolean updateEquipmentConfigFromState(String apId, ApElementConfiguration apElementConfiguration,OpensyncAPRadioState radioState) {
+    private boolean updateEquipmentConfigFromState(String apId, ApElementConfiguration apElementConfiguration,
+            OpensyncAPRadioState radioState) {
         if (apElementConfiguration.getRadioMap().containsKey(radioState.getFreqBand())
                 && apElementConfiguration.getRadioMap().get(radioState.getFreqBand()) != null) {
             if (radioState.getChannels() != null) {
-                return updateChannelPowerLevels(apId, apElementConfiguration,
-                        radioState);
+                return updateChannelPowerLevels(apId, apElementConfiguration, radioState);
             }
 
         }
-        
+
         return false;
     }
 
@@ -1276,8 +1275,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             protocolStatusData = (EquipmentProtocolStatusData) protocolStatus.getDetails();
             if (!protocolStatusData.getReportedCC().equals(CountryCode.getByName((radioState.getCountry())))) {
 
-                LOG.debug(
-                        "Protocol Status reportedCC {} radioStatus.getCountry {} radioStatus CountryCode fromName {}",
+                LOG.debug("Protocol Status reportedCC {} radioStatus.getCountry {} radioStatus CountryCode fromName {}",
                         protocolStatusData.getReportedCC(), radioState.getCountry(),
                         CountryCode.getByName((radioState.getCountry())));
                 protocolStatusData.setReportedCC(CountryCode.getByName((radioState.getCountry())));
@@ -1290,25 +1288,26 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
         return protocolStatus;
     }
-    
-    private Status updateChannelStatus(int customerId, long equipmentId, Status channelStatus, OpensyncAPRadioState radioState) {
-    	if (channelStatus == null) {
-    		channelStatus = new Status();
-        	channelStatus.setCustomerId(customerId);
-        	channelStatus.setEquipmentId(equipmentId);
-        	channelStatus.setStatusDataType(StatusDataType.RADIO_CHANNEL);
-        	EquipmentChannelStatusData channelStatusData = new EquipmentChannelStatusData();
-        	channelStatus.setDetails(channelStatusData);
+
+    private Status updateChannelStatus(int customerId, long equipmentId, Status channelStatus,
+            OpensyncAPRadioState radioState) {
+        if (channelStatus == null) {
+            channelStatus = new Status();
+            channelStatus.setCustomerId(customerId);
+            channelStatus.setEquipmentId(equipmentId);
+            channelStatus.setStatusDataType(StatusDataType.RADIO_CHANNEL);
+            EquipmentChannelStatusData channelStatusData = new EquipmentChannelStatusData();
+            channelStatus.setDetails(channelStatusData);
         }
-    	((EquipmentChannelStatusData) channelStatus.getDetails()).getChannelNumberStatusDataMap().put(
-    			radioState.getFreqBand(), radioState.getChannel());
-    	return channelStatus;
+        ((EquipmentChannelStatusData) channelStatus.getDetails()).getChannelNumberStatusDataMap()
+                .put(radioState.getFreqBand(), radioState.getChannel());
+        return channelStatus;
     }
 
     private boolean updateChannelPowerLevels(String apId, ApElementConfiguration apElementConfiguration,
             OpensyncAPRadioState radioState) {
-        
-        boolean configStateMismatch=false;
+
+        boolean configStateMismatch = false;
         Set<ChannelPowerLevel> channelPowerLevels = new HashSet<>();
 
         radioState.getChannels().entrySet().stream().forEach(k -> {
@@ -1320,8 +1319,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         ChannelPowerLevel cpl = new ChannelPowerLevel();
                         cpl.setChannelNumber(Integer.parseInt(channel));
                         cpl.setDfs(k.getKey().equals("radar_detection"));
-                        if (radioState.getChannelMode() != null
-                                && radioState.getChannelMode().equals("auto")) {
+                        if (radioState.getChannelMode() != null && radioState.getChannelMode().equals("auto")) {
                             cpl.setChannelWidth(-1);
                         } else {
                             switch (radioState.getHtMode()) {
@@ -1351,8 +1349,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             }
         });
 
-        if (!Objects.deepEquals(apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                .getAllowedChannelsPowerLevels(), channelPowerLevels)) {
+        if (!Objects.deepEquals(
+                apElementConfiguration.getRadioMap().get(radioState.getFreqBand()).getAllowedChannelsPowerLevels(),
+                channelPowerLevels)) {
             configStateMismatch = true;
             apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
                     .setAllowedChannelsPowerLevels(channelPowerLevels);
@@ -2393,11 +2392,84 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     @Override
     public void apcStateDbTableUpdate(Map<String, String> apcStateAttributes, String apId,
             RowUpdateOperation rowUpdateOperation) {
-        if (rowUpdateOperation.equals(RowUpdateOperation.DELETE)) {
-            // TODO: clear protocol Status apcProxy info, send event
-        } else {
-            // TODO: Update protocol status for apcProxy, send event
+
+        LOG.info("apcStateDbTableUpdate {} operations on AP {} with values {} ", rowUpdateOperation, apId, apcStateAttributes);
+
+        OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
+
+        if (ovsdbSession == null) {
+            LOG.info("apcStateDbTableUpdate::Cannot get Session for AP {}", apId);
+            return;
         }
-        
+
+        int customerId = ovsdbSession.getCustomerId();
+        long equipmentId = ovsdbSession.getEquipmentId();
+
+        if ((customerId < 0) || (equipmentId < 0)) {
+            LOG.info("apcStateDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId,
+                    equipmentId, apId);
+            return;
+        }
+
+        Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
+
+        if (ce == null) {
+            LOG.info("apcStateDbTableUpdate::Cannot get Equipment for AP {}", apId);
+            return;
+        }
+
+        if (rowUpdateOperation.equals(RowUpdateOperation.DELETE)) {
+            Status protocolStatus;
+            EquipmentProtocolStatusData protocolStatusData;
+            protocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.PROTOCOL);
+            if (protocolStatus != null) {
+                protocolStatusData = (EquipmentProtocolStatusData) protocolStatus.getDetails();
+                protocolStatusData.setLastApcUpdate(System.currentTimeMillis());
+                protocolStatusData.setIsApcConnected(false);
+                protocolStatusData.setReportedApcAddress(null);
+                protocolStatusData.setRadiusProxyAddress(null);
+
+                protocolStatus.setDetails(protocolStatusData);
+                protocolStatus = statusServiceInterface.update(protocolStatus);
+
+                LOG.info("apcStateDbTableUpdate for {} protocolStatus {}", rowUpdateOperation, protocolStatus);
+            }
+        } else {
+            try {
+                Status protocolStatus;
+                EquipmentProtocolStatusData protocolStatusData;
+                protocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.PROTOCOL);
+                if (protocolStatus != null) {
+                    protocolStatusData = (EquipmentProtocolStatusData) protocolStatus.getDetails();
+                    protocolStatusData.setLastApcUpdate(System.currentTimeMillis());
+                    
+                    if (apcStateAttributes.containsKey("mode")) {
+                        String mode = apcStateAttributes.get("mode");
+                        if (mode.equals("DR")) {
+                            String drAddr = apcStateAttributes.get("designatedRouterIp");
+                            protocolStatusData.setReportedApcAddress(InetAddress.getByName(drAddr));
+                            protocolStatusData.setRadiusProxyAddress(InetAddress.getByName(drAddr));
+                            protocolStatusData
+                                    .setIsApcConnected((drAddr == null || drAddr.equals("0.0.0.0")) ? false : true);
+                        } else if (mode.equals("BDR")) {
+                            String bdrAddr = apcStateAttributes.get("backupDesignatedRouterIp");
+                            protocolStatusData.setReportedApcAddress(InetAddress.getByName(bdrAddr));
+                            protocolStatusData.setRadiusProxyAddress(InetAddress.getByName(bdrAddr));
+                            protocolStatusData
+                                    .setIsApcConnected((bdrAddr == null || bdrAddr.equals("0.0.0.0")) ? false : true);
+                        } else if (mode.equals("SR")) {
+                            // TODO: do we set for this scenario?
+                        } else if (mode.equals("NC")) {
+                            protocolStatusData.setIsApcConnected(false);
+                        }
+                    }
+                    protocolStatus.setDetails(protocolStatusData);
+                    protocolStatus = statusServiceInterface.update(protocolStatus);
+                    LOG.info("apcStateDbTableUpdate for {} protocolStatus {}", rowUpdateOperation, protocolStatus);
+                }
+            } catch (UnknownHostException e) {
+                LOG.error("Unknown host for radius proxy.", e);
+            }
+        }
     }
 }

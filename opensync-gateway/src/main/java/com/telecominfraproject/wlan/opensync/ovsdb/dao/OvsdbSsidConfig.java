@@ -58,6 +58,8 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
     OvsdbNetworkConfig networkConfig;
     @Autowired
     OvsdbNode ovsdbNode;
+    @Autowired
+    OvsdbRadSecConfig radsecConfig;
 
     protected void getEnabledRadios(OvsdbClient ovsdbClient, List<RadioType> radios) {
         try {
@@ -217,6 +219,10 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
         customOptions.put("client_ul_limit", String.valueOf(clientUlLimit * 1000));
         customOptions.put("rts_threshold", String.valueOf(rtsCtsThreshold));
     }
+    
+    void configureCustomOptionsForUseRadSecProxy(boolean useradsec, Map<String, String> customOptions) {
+        customOptions.put("radsecproxy", useradsec ? "1" : "0");
+    }
 
     /**
      * Populate the various <K,V> fields in the custom_options column of the
@@ -236,12 +242,16 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
      * @param radiusOperatorName
      * @param updateColumns
      * @param dynamicVlan
+     * @param radsecproxy TODO
      */
     void configureCustomOptionsForSsid(OvsdbClient ovsdbClient, boolean enable80211k, boolean rateLimitEnable,
             int ssidDlLimit, int ssidUlLimit, int clientDlLimit, int clientUlLimit, int rtsCtsThreshold, int dtimPeriod,
             String radiusNasId, String radiusNasIp, String radiusOperatorName, Map<String, Value> updateColumns,
-            int dynamicVlan) {
+            int dynamicVlan, Boolean radsecproxy) {
         Map<String, String> customOptions = new HashMap<>();
+        
+        configureCustomOptionsForUseRadSecProxy(radsecproxy, customOptions);
+        
         configureCustomOptionsForRatesAndLimits(rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit,
                 rtsCtsThreshold, customOptions);
 
@@ -264,7 +274,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
             List<MacAddress> macBlockList, boolean rateLimitEnable, int ssidDlLimit, int ssidUlLimit, int clientDlLimit,
             int clientUlLimit, int rtsCtsThreshold, int dtimPeriod, Map<String, String> captiveMap,
             List<String> walledGardenAllowlist, String radiusNasId, String radiusNasIp, String radiusOperatorName,
-            String greTunnelName, int dynamicVlan, List<Operation> operations) {
+            String greTunnelName, int dynamicVlan, Boolean useradsec, Boolean useRadiusProxy, List<Operation> operations) {
 
         Map<String, Value> updateColumns = new HashMap<>();
         // If we are doing a NAT SSID, no bridge, else yes
@@ -325,7 +335,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
         updateColumns.put("security", securityMap);
         configureCustomOptionsForSsid(ovsdbClient, enable80211k, rateLimitEnable, ssidDlLimit, ssidUlLimit,
                 clientDlLimit, clientUlLimit, rtsCtsThreshold, dtimPeriod, radiusNasId, radiusNasIp, radiusOperatorName,
-                updateColumns, dynamicVlan);
+                updateColumns, dynamicVlan, useRadiusProxy);
         updateBlockList(updateColumns, macBlockList);
         Row row = new Row(updateColumns);
         operations.add(new Insert(wifiVifConfigDbTable, row));
@@ -546,16 +556,30 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                     interfacesPerFreqBand.put(freqBand, 1);
                 }
 
+                boolean useradsec = false;
+                if (ssidConfig.getUseRadSec() != null) {
+                    useradsec = ssidConfig.getUseRadSec();
+                }
+                boolean useRadiusProxy = false;
+                if (ssidConfig.getUseRadiusProxy() != null) {
+                    useRadiusProxy = ssidConfig.getUseRadiusProxy();
+                }
                 try {
                     configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(), ssidBroadcast, security, vlanId,
                             rrmEnabled, enable80211r, mobilityDomain, enable80211v, enable80211k, minHwMode, enabled,
                             keyRefresh, uapsdEnabled, apBridge, ssidConfig.getForwardMode(), macBlockList,
                             rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit, rtsCtsThreshold,
                             dtimPeriod, captiveMap, walledGardenAllowlist, radiusNasId, radiusNasIp, radiusOperName,
-                            greTunnelName, dynamicVlan, operations);
+                            greTunnelName, dynamicVlan, useradsec, useRadiusProxy, operations);
 
                     networkConfig.configureInetVifInterface(ovsdbClient, ifName, enabled, ssidConfig.getForwardMode(),
                             operations);
+                    
+                    if (useRadiusProxy) {
+                        // make sure it's enabled if we are going to use it
+                        radsecConfig.configureApc(ovsdbClient, useRadiusProxy,operations);
+                    }
+                        
                 } catch (IllegalStateException e) {
                     // could not provision this SSID, but still can go on
                     LOG.warn("could not provision SSID {} on {}", ssidConfig.getSsid(), freqBand);
@@ -676,21 +700,22 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                     captiveMap.put("authentication",
                             getCaptiveAuthentication(captiveProfileDetails.getAuthenticationType()));
                     if (!externalFileStoreURL.endsWith("/filestore/")) {
-                        externalFileStoreURL = externalFileStoreURL + "/filestore/"; 
+                        externalFileStoreURL = externalFileStoreURL + "/filestore/";
                     }
-                    if (captiveProfileDetails.getAuthenticationType().equals(CaptivePortalAuthenticationType.username)) {
+                    if (captiveProfileDetails.getAuthenticationType()
+                            .equals(CaptivePortalAuthenticationType.username)) {
                         // create a user/password file for the AP to pull
-                        Path userFilepath = createCaptivePortalUserFile(captiveProfileDetails.getUserList(),profileCaptive.getId());
+                        Path userFilepath = createCaptivePortalUserFile(captiveProfileDetails.getUserList(),
+                                profileCaptive.getId());
                         ManagedFileInfo mfi = new ManagedFileInfo();
                         mfi.setFileCategory(FileCategory.UsernamePasswordList);
                         mfi.setFileType(FileType.TEXT);
                         mfi.setApExportUrl(userFilepath.getFileName().toString());
-                        captiveMap
-                                .put("username_password_file", externalFileStoreURL + mfi.getApExportUrl());
+                        captiveMap.put("username_password_file", externalFileStoreURL + mfi.getApExportUrl());
                     }
                     if (captiveProfileDetails.getLogoFile() != null) {
-                        captiveMap.put("splash_page_logo", externalFileStoreURL +
-                                captiveProfileDetails.getLogoFile().getApExportUrl());
+                        captiveMap.put("splash_page_logo",
+                                externalFileStoreURL + captiveProfileDetails.getLogoFile().getApExportUrl());
                     }
                     if (captiveProfileDetails.getBackgroundFile() != null) {
                         captiveMap.put("splash_page_background_logo",
@@ -787,10 +812,17 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
             RadiusProfile profileDetails = ((RadiusProfile) profileRadius.getDetails());
             RadiusServer rServer = profileDetails.getPrimaryRadiusAccountingServer();
             if (rServer != null) {
-                security.put("radius_acct_ip",
-                        rServer.getIpAddress() != null ? rServer.getIpAddress().getHostAddress() : null);
-                security.put("radius_acct_port", rServer.getPort() != null ? String.valueOf(rServer.getPort()) : null);
-                security.put("radius_acct_secret", rServer.getSecret());
+                if (ssidConfig.getUseRadSec()) {
+                    security.put("radius_acct_ip",
+                            "127.0.0.1");
+                    security.put("radius_acct_port", rServer.getPort() != null ? String.valueOf(rServer.getPort()) : null);
+                    security.put("radius_acct_secret", "secret");
+                } else {
+                    security.put("radius_acct_ip",
+                            rServer.getIpAddress() != null ? rServer.getIpAddress().getHostAddress() : null);
+                    security.put("radius_acct_port", rServer.getPort() != null ? String.valueOf(rServer.getPort()) : null);
+                    security.put("radius_acct_secret", rServer.getSecret());
+                }
                 if (ssidConfig.getRadiusAcountingServiceInterval() != null) {
                     // if the value is present, use the
                     // radius_acct_interval
@@ -831,11 +863,19 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
             Profile profileRadius = radiusProfileList.get(0);
             RadiusProfile profileDetails = ((RadiusProfile) profileRadius.getDetails());
             RadiusServer radiusServer = profileDetails.getPrimaryRadiusAuthServer();
-            security.put("radius_server_ip",
-                    radiusServer.getIpAddress() != null ? radiusServer.getIpAddress().getHostAddress() : null);
-            security.put("radius_server_port",
-                    radiusServer.getPort() != null ? String.valueOf(radiusServer.getPort()) : null);
-            security.put("radius_server_secret", radiusServer.getSecret());
+            if (ssidConfig.getUseRadSec()) {
+                security.put("radius_server_ip",
+                        "127.0.0.1");
+                security.put("radius_server_port",
+                        radiusServer.getPort() != null ? String.valueOf(radiusServer.getPort()) : null);
+                security.put("radius_server_secret", "secret");
+            } else {
+                security.put("radius_server_ip",
+                        radiusServer.getIpAddress() != null ? radiusServer.getIpAddress().getHostAddress() : null);
+                security.put("radius_server_port",
+                        radiusServer.getPort() != null ? String.valueOf(radiusServer.getPort()) : null);
+                security.put("radius_server_secret", radiusServer.getSecret());
+            }
             LOG.info("set Radius server attributes radius_server_ip {} radius_server_port {} radius_server_secret {}",
                     security.get("radius_server_ip"), security.get("radius_server_port"),
                     security.get("radius_server_secret"));
