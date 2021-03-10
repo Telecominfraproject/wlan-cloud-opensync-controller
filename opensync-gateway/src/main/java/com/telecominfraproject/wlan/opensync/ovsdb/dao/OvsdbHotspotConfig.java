@@ -502,9 +502,11 @@ public class OvsdbHotspotConfig extends OvsdbDaoBase {
         }
 
         for (Profile ssidProfile : opensyncApConfig.getSsidProfile()) {
-            if (ssidProfile.getId() == hs2Profile.getOsuSsidProfileId()) {
-                rowColumns.put("osu_ssid", new Atom<>(((SsidConfiguration) ssidProfile.getDetails()).getSsid()));
-                break;
+            if (hs2Profile.getOsuSsidProfileId() != null) {
+                if (ssidProfile.getId() == hs2Profile.getOsuSsidProfileId()) {
+                    rowColumns.put("osu_ssid", new Atom<>(((SsidConfiguration) ssidProfile.getDetails()).getSsid()));
+                    break;
+                }
             }
         }
     }
