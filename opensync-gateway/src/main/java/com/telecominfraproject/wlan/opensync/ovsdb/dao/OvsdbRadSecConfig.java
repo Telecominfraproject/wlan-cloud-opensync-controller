@@ -77,7 +77,7 @@ public class OvsdbRadSecConfig extends OvsdbDaoBase {
             updateColumns.put("radius_config_name", new Atom<>(rsc.getName()));
             updateColumns.put("client_key", new Atom<>(externalFileStoreURL + rsc.getClientKey().getApExportUrl()));
             updateColumns.put("ca_cert", new Atom<>(externalFileStoreURL + rsc.getCaCert().getApExportUrl()));
-            updateColumns.put("passpharase", new Atom<>(rsc.getPassphrase()));
+            updateColumns.put("passphrase", new Atom<>(rsc.getPassphrase()));
             Row row = new Row(updateColumns);
             operations.add(new Insert(radiusConfigDbTable, row));
         }
