@@ -69,14 +69,13 @@ public class OvsdbRadSecConfig extends OvsdbDaoBase {
 
     private void configureRadiusServers(OvsdbClient ovsdbClient, OpensyncAPConfig apConfig, List<Operation> operations)
             throws OvsdbClientException, InterruptedException, ExecutionException, TimeoutException {
+
         for (RadSecConfiguration rsc : ((ApNetworkConfiguration) apConfig.getApProfile().getDetails())
                 .getRadSecConfigurations()) {
             Map<String, Value> updateColumns = new HashMap<>();
             updateColumns.put("server", new Atom<>(rsc.getServer().getHostAddress()));
-            updateColumns.put("client_cert", new Atom<>(externalFileStoreURL + rsc.getClientCert().getApExportUrl()));
+            getCertificateUrls(rsc, updateColumns);
             updateColumns.put("radius_config_name", new Atom<>(rsc.getName()));
-            updateColumns.put("client_key", new Atom<>(externalFileStoreURL + rsc.getClientKey().getApExportUrl()));
-            updateColumns.put("ca_cert", new Atom<>(externalFileStoreURL + rsc.getCaCert().getApExportUrl()));
             updateColumns.put("passphrase", new Atom<>(rsc.getPassphrase()));
             Row row = new Row(updateColumns);
             operations.add(new Insert(radiusConfigDbTable, row));
@@ -90,6 +89,24 @@ public class OvsdbRadSecConfig extends OvsdbDaoBase {
                 LOG.debug("Op Result {}", res);
             }
         }
+    }
+
+    private void getCertificateUrls(RadSecConfiguration rsc, Map<String, Value> updateColumns) {
+        String clientCertFilestoreUrl = externalFileStoreURL + rsc.getClientCert().getApExportUrl();
+        String clientKeyFilestoreUrl = externalFileStoreURL + rsc.getClientKey().getApExportUrl();
+        String caCertFilestoreUrl = externalFileStoreURL + rsc.getCaCert().getApExportUrl();
+        if (!clientCertFilestoreUrl.contains("filestore")) {
+            clientCertFilestoreUrl = externalFileStoreURL + "/filestore/" + rsc.getClientCert().getApExportUrl();
+        }
+        if (!clientKeyFilestoreUrl.contains("filestore")) {
+            clientKeyFilestoreUrl = externalFileStoreURL + "/filestore/" + rsc.getClientKey().getApExportUrl();
+        }
+        if (!caCertFilestoreUrl.contains("filestore")) {
+            caCertFilestoreUrl = externalFileStoreURL + "/filestore/" + rsc.getCaCert().getApExportUrl();
+        }           
+        updateColumns.put("client_cert", new Atom<>(clientCertFilestoreUrl));
+        updateColumns.put("client_key", new Atom<>(clientKeyFilestoreUrl));
+        updateColumns.put("ca_cert", new Atom<>(caCertFilestoreUrl));
     }
 
     private void configureRealmForRadiusServers(OvsdbClient ovsdbClient, OpensyncAPConfig apConfig)

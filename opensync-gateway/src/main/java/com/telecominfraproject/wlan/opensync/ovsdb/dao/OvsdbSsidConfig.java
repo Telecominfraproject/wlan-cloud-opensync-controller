@@ -699,8 +699,21 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                     captiveMap.put("login_success_text", captiveProfileDetails.getSuccessPageMarkdownText());
                     captiveMap.put("authentication",
                             getCaptiveAuthentication(captiveProfileDetails.getAuthenticationType()));
-                    if (!externalFileStoreURL.endsWith("/filestore/")) {
-                        externalFileStoreURL = externalFileStoreURL + "/filestore/";
+                    if (captiveProfileDetails.getLogoFile() != null) {
+                        String splashLogoUrl = externalFileStoreURL + captiveProfileDetails.getLogoFile().getApExportUrl();
+                        if (!splashLogoUrl.contains("filestore")) {
+                            splashLogoUrl = externalFileStoreURL + "/filestore/" + captiveProfileDetails.getLogoFile().getApExportUrl();
+                        }
+                        captiveMap.put("splash_page_logo",
+                                splashLogoUrl);
+                    }
+                    if (captiveProfileDetails.getBackgroundFile() != null) {
+                        String splashBackgroundUrl = externalFileStoreURL + captiveProfileDetails.getBackgroundFile().getApExportUrl();
+                        if (!splashBackgroundUrl.contains("filestore")) {
+                            splashBackgroundUrl = externalFileStoreURL + "/filestore/" + captiveProfileDetails.getBackgroundFile().getApExportUrl();
+                        }
+                        captiveMap.put("splash_page_background_logo",
+                                splashBackgroundUrl);
                     }
                     if (captiveProfileDetails.getAuthenticationType()
                             .equals(CaptivePortalAuthenticationType.username)) {
@@ -711,16 +724,13 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                         mfi.setFileCategory(FileCategory.UsernamePasswordList);
                         mfi.setFileType(FileType.TEXT);
                         mfi.setApExportUrl(userFilepath.getFileName().toString());
-                        captiveMap.put("username_password_file", externalFileStoreURL + mfi.getApExportUrl());
+                        String usernamePasswordFileUrl = externalFileStoreURL + mfi.getApExportUrl();
+                        if (!usernamePasswordFileUrl.contains("filestore")) {
+                            usernamePasswordFileUrl = externalFileStoreURL + "/filestore/" + mfi.getApExportUrl();
+                        }
+                        captiveMap.put("username_password_file", usernamePasswordFileUrl);
                     }
-                    if (captiveProfileDetails.getLogoFile() != null) {
-                        captiveMap.put("splash_page_logo",
-                                externalFileStoreURL + captiveProfileDetails.getLogoFile().getApExportUrl());
-                    }
-                    if (captiveProfileDetails.getBackgroundFile() != null) {
-                        captiveMap.put("splash_page_background_logo",
-                                externalFileStoreURL + captiveProfileDetails.getBackgroundFile().getApExportUrl());
-                    }
+
                     LOG.debug("captiveMap {}", captiveMap);
                     walledGardenAllowlist.addAll(captiveProfileDetails.getWalledGardenAllowlist());
 

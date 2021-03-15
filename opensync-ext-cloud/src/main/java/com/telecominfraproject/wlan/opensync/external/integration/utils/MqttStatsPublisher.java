@@ -72,6 +72,7 @@ import com.telecominfraproject.wlan.status.models.Status;
 import com.telecominfraproject.wlan.status.models.StatusCode;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
 import com.telecominfraproject.wlan.status.network.models.NetworkAdminStatusData;
+import com.telecominfraproject.wlan.systemevent.models.SystemEvent;
 
 import sts.OpensyncStats;
 import sts.OpensyncStats.AssocType;
@@ -269,6 +270,10 @@ public class MqttStatsPublisher {
 
     }
 
+    public void publishSystemEventFromTableStateMonitor(SystemEvent event) {
+        cloudEventDispatcherInterface.publishEvent(event);
+    }
+    
     void publishEvents(Report report, int customerId, long equipmentId, String apId, long locationId) {
 
         realtimeEventPublisher.publishSipCallEvents(customerId, equipmentId, locationId, report.getVideoVoiceReportList());
