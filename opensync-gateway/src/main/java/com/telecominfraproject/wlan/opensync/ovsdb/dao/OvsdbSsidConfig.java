@@ -59,7 +59,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
     @Autowired
     OvsdbNode ovsdbNode;
     @Autowired
-    OvsdbRadSecConfig radsecConfig;
+    OvsdbRadiusProxyConfig radsecConfig;
 
     protected void getEnabledRadios(OvsdbClient ovsdbClient, List<RadioType> radios) {
         try {
@@ -557,8 +557,8 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                 }
 
                 boolean useradsec = false;
-                if (ssidConfig.getUseRadSec() != null) {
-                    useradsec = ssidConfig.getUseRadSec();
+                if (ssidConfig.getUseRadiusProxy() != null) {
+                    useradsec = ssidConfig.getUseRadiusProxy();
                 }
                 boolean useRadiusProxy = false;
                 if (ssidConfig.getUseRadiusProxy() != null) {
@@ -822,7 +822,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
             RadiusProfile profileDetails = ((RadiusProfile) profileRadius.getDetails());
             RadiusServer rServer = profileDetails.getPrimaryRadiusAccountingServer();
             if (rServer != null) {
-                if (ssidConfig.getUseRadSec()) {
+                if (ssidConfig.getUseRadiusProxy()) {
                     security.put("radius_acct_ip",
                             "127.0.0.1");
                     security.put("radius_acct_port", rServer.getPort() != null ? String.valueOf(rServer.getPort()) : null);
@@ -873,7 +873,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
             Profile profileRadius = radiusProfileList.get(0);
             RadiusProfile profileDetails = ((RadiusProfile) profileRadius.getDetails());
             RadiusServer radiusServer = profileDetails.getPrimaryRadiusAuthServer();
-            if (ssidConfig.getUseRadSec()) {
+            if (ssidConfig.getUseRadiusProxy()) {
                 security.put("radius_server_ip",
                         "127.0.0.1");
                 security.put("radius_server_port",

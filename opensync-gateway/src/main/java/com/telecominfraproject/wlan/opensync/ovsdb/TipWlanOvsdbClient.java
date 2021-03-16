@@ -770,7 +770,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
     private void monitorAPCStateTable(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
         CompletableFuture<TableUpdates> nsCf = ovsdbClient.monitor(
                 OvsdbDao.ovsdbName, OvsdbDao.apcStateDbTable + "_" + key, new MonitorRequests(ImmutableMap
-                        .of(OvsdbDao.apcStateDbTable, new MonitorRequest(new MonitorSelect(true, true, true, true)))),
+                        .of(OvsdbDao.apcStateDbTable, new MonitorRequest(new MonitorSelect(true, false, false, true)))),
                 tableUpdates -> {
                     LOG.info(OvsdbDao.apcStateDbTable + "_" + key + " monitor callback received {}");
                     tableUpdates.getTableUpdates().forEach((key1, value) -> {
@@ -778,43 +778,15 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                         value.getRowUpdates().values().forEach(r -> {
 
                             Map<String, String> apcStateAttributes = ovsdbDao.getAPCState(r, key);
-                            if (apcStateAttributes.isEmpty()) {
-                                extIntegrationInterface.apcStateDbTableUpdate(apcStateAttributes, key,
-                                        RowUpdateOperation.DELETE);
-                            } else if (r.getOld() == null) {
-                                extIntegrationInterface.apcStateDbTableUpdate(apcStateAttributes, key,
-                                        RowUpdateOperation.INSERT);
-                            } else {
-                                extIntegrationInterface.apcStateDbTableUpdate(apcStateAttributes, key,
-                                        RowUpdateOperation.MODIFY);
-                            }
+
+                            extIntegrationInterface.apcStateDbTableUpdate(apcStateAttributes, key,
+                                    RowUpdateOperation.MODIFY);
 
                         });
 
                     });
                 });
-        
-        
-        nsCf.join().getTableUpdates().forEach((key1, value) -> {
-            LOG.info("TableUpdate for {}", key1);
-            value.getRowUpdates().values().forEach(r -> {
-
-                Map<String, String> apcStateAttributes = ovsdbDao.getAPCState(r, key);
-                if (apcStateAttributes.isEmpty()) {
-                    extIntegrationInterface.apcStateDbTableUpdate(apcStateAttributes, key,
-                            RowUpdateOperation.DELETE);
-                } else if (r.getOld() == null) {
-                    extIntegrationInterface.apcStateDbTableUpdate(apcStateAttributes, key,
-                            RowUpdateOperation.INSERT);
-                } else {
-                    extIntegrationInterface.apcStateDbTableUpdate(apcStateAttributes, key,
-                            RowUpdateOperation.MODIFY);
-                }
-
-            });
-
-        });
-
+        nsCf.join();
     }
 
     @Override

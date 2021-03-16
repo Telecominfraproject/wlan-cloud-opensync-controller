@@ -47,7 +47,7 @@ public class OvsdbDao extends OvsdbDaoBase {
     @Autowired
     OvsdbNodeConfig ovsdbNodeConfig;
     @Autowired
-    OvsdbRadSecConfig ovsdbRadSecConfig;
+    OvsdbRadiusProxyConfig ovsdbRadiusProxyConfig;
 
     public String changeRedirectorAddress(OvsdbClient ovsdbClient, String apId, String newRedirectorAddress) {
         return ovsdbNode.changeRedirectorAddress(ovsdbClient, apId, newRedirectorAddress);
@@ -89,7 +89,7 @@ public class OvsdbDao extends OvsdbDaoBase {
     }
 
     public void configureRadsecRadiusAndRealm(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
-        ovsdbRadSecConfig.configureRadiusAndRealm(ovsdbClient, opensyncAPConfig);
+        ovsdbRadiusProxyConfig.configureRadius(ovsdbClient, opensyncAPConfig);
     }
 
     public void configureSsids(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
@@ -202,7 +202,7 @@ public class OvsdbDao extends OvsdbDaoBase {
     }
     
     public void removeRadsecRadiusAndRealmConfigs(OvsdbClient ovsdbClient) {
-        ovsdbRadSecConfig.removeRadiusAndRealmConfigurations(ovsdbClient);
+        ovsdbRadiusProxyConfig.removeRadiusConfigurations(ovsdbClient);
     }
 
     public void removeWifiRrm(OvsdbClient ovsdbClient) {

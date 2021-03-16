@@ -2395,114 +2395,54 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     @Override
     public void apcStateDbTableUpdate(Map<String, String> apcStateAttributes, String apId,
             RowUpdateOperation rowUpdateOperation) {
-
         LOG.info("apcStateDbTableUpdate {} operations on AP {} with values {} ", rowUpdateOperation, apId,
                 apcStateAttributes);
-
         OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
-
         if (ovsdbSession == null) {
             LOG.info("apcStateDbTableUpdate::Cannot get Session for AP {}", apId);
             return;
         }
-
         int customerId = ovsdbSession.getCustomerId();
         long equipmentId = ovsdbSession.getEquipmentId();
-
         if ((customerId < 0) || (equipmentId < 0)) {
             LOG.info("apcStateDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId,
                     equipmentId, apId);
             return;
         }
-
         Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
-
         if (ce == null) {
             LOG.info("apcStateDbTableUpdate::Cannot get Equipment for AP {}", apId);
             return;
         }
-
-        ApcElectionEvent electionEvent = new ApcElectionEvent(RealTimeEventType.APC_Election_event, customerId,
-                customerId, equipmentId, System.currentTimeMillis());
-
-        if (rowUpdateOperation.equals(RowUpdateOperation.DELETE)) {
-            try {
-                electionEvent.setApcBackupDesignatedRouterIpAddress(
-                        InetAddress.getByName(apcStateAttributes.get("backupDesignatedRouterIp")));
-            } catch (UnknownHostException e) {
-                LOG.error("UnknownHost for backupDesignatedRouterIp", e);
-            }
-            try {
-                electionEvent.setApcDesignatedRouterIpAddress(
-                        InetAddress.getByName(apcStateAttributes.get("designatedRouterIp")));
-            } catch (UnknownHostException e) {
-                LOG.error("UnknownHost for designatedRouterIp", e);
-            }
-            electionEvent.setApcMode(ApcMode.valueOf(apcStateAttributes.get("mode")));
-            electionEvent.setEnabled(Boolean.valueOf(apcStateAttributes.get("enabled")));
-            electionEvent.setLocationId(ce.getLocationId());
-
-            electionEvent.setRadiusProxyAddress(null);
-            Status protocolStatus;
-            EquipmentProtocolStatusData protocolStatusData;
-            protocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.PROTOCOL);
-            if (protocolStatus != null) {
-                protocolStatusData = (EquipmentProtocolStatusData) protocolStatus.getDetails();
-                protocolStatusData.setLastApcUpdate(System.currentTimeMillis());
-                protocolStatusData.setIsApcConnected(false);
-                protocolStatusData.setReportedApcAddress(null);
-                protocolStatusData.setRadiusProxyAddress(null);
-                protocolStatus.setDetails(protocolStatusData);
-                protocolStatus = statusServiceInterface.update(protocolStatus);
-
-                electionEvent.setLocalIpAddress(protocolStatusData.getReportedIpV4Addr());
-                LOG.info("apcStateDbTableUpdate for {} protocolStatus {}", rowUpdateOperation, protocolStatus);
-            }
-        } else {
-            try {
-                Status protocolStatus;
-                EquipmentProtocolStatusData protocolStatusData;
-                protocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.PROTOCOL);
-                if (protocolStatus != null) {
-                    protocolStatusData = (EquipmentProtocolStatusData) protocolStatus.getDetails();
-                    protocolStatusData.setLastApcUpdate(System.currentTimeMillis());
-                    String mode = apcStateAttributes.get("mode");
-                    String drAddr = apcStateAttributes.get("designatedRouterIp");
-                    String bdrAddr = apcStateAttributes.get("backupDesignatedRouterIp");
-                    if (mode.equals("DR")) {
-                        protocolStatusData.setReportedApcAddress(InetAddress.getByName(drAddr));
-                        protocolStatusData.setRadiusProxyAddress(InetAddress.getByName(drAddr));
-                        protocolStatusData
-                        .setIsApcConnected((drAddr == null || drAddr.equals("0.0.0.0")) ? false : true);
-                    } else if (mode.equals("BDR")) {
-                        protocolStatusData.setReportedApcAddress(InetAddress.getByName(bdrAddr));
-                        protocolStatusData.setRadiusProxyAddress(InetAddress.getByName(bdrAddr));
-                        protocolStatusData
-                        .setIsApcConnected((bdrAddr == null || bdrAddr.equals("0.0.0.0")) ? false : true);
-                    } else if (mode.equals("SR")) {
-                        // TODO: do we set for this scenario?
-                    } else if (mode.equals("NC")) {
-                        protocolStatusData.setIsApcConnected(false);
-                    }
-                    protocolStatus.setDetails(protocolStatusData);
-                    protocolStatus = statusServiceInterface.update(protocolStatus);
-
-                    electionEvent.setApcDesignatedRouterIpAddress(
-                            InetAddress.getByName(drAddr));                       
-                    electionEvent.setApcBackupDesignatedRouterIpAddress(
-                            InetAddress.getByName(bdrAddr));
-                    electionEvent.setLocalIpAddress(protocolStatusData.getReportedIpV4Addr());
-                    electionEvent.setApcMode(ApcMode.valueOf(apcStateAttributes.get("mode")));
-                    electionEvent.setEnabled(Boolean.valueOf(apcStateAttributes.get("enabled")));
-                    electionEvent.setLocationId(ce.getLocationId());
-                    LOG.info("apcStateDbTableUpdate for {} protocolStatus {}", rowUpdateOperation, protocolStatus);
-                }
-            } catch (UnknownHostException e) {
-                LOG.error("Unknown host for radius proxy.", e);
-            }
+        InetAddress drIpAddr = null;
+        InetAddress bdrIpAddr = null;
+        try {
+            bdrIpAddr = InetAddress.getByName(apcStateAttributes.get("backupDesignatedRouterIp"));
+        } catch (UnknownHostException e) {
+            LOG.error("UnknownHost for backupDesignatedRouterIp", e);
         }
-        
+        try {
+            drIpAddr = InetAddress.getByName(apcStateAttributes.get("designatedRouterIp"));
+        } catch (UnknownHostException e) {
+            LOG.error("UnknownHost for designatedRouterIp", e);
+        }
+        Status protocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.PROTOCOL);
+
+        InetAddress localIpV4Addr = null;
+        if (protocolStatus != null) {
+            localIpV4Addr = ((EquipmentProtocolStatusData) protocolStatus.getDetails()).getReportedIpV4Addr();
+            ((EquipmentProtocolStatusData) protocolStatus.getDetails())
+                    .setIsApcConnected((drIpAddr != null && !drIpAddr.getHostAddress().equals("0.0.0.0")));
+            ((EquipmentProtocolStatusData) protocolStatus.getDetails()).setLastApcUpdate(System.currentTimeMillis());
+            ((EquipmentProtocolStatusData) protocolStatus.getDetails()).setReportedApcAddress(drIpAddr);
+            ((EquipmentProtocolStatusData) protocolStatus.getDetails()).setRadiusProxyAddress(drIpAddr);
+            protocolStatus = statusServiceInterface.update(protocolStatus);
+            LOG.info("Protocol Status updated for APC_State table monitor change {}", protocolStatus);
+        }
+        String mode = apcStateAttributes.get("mode");
+        ApcElectionEvent electionEvent = new ApcElectionEvent(drIpAddr, bdrIpAddr, localIpV4Addr, drIpAddr, mode,
+                Boolean.valueOf(apcStateAttributes.get("enabled")), RealTimeEventType.APC_Election_event, customerId,
+                ce.getLocationId(), equipmentId, System.currentTimeMillis());
         mqttMessageProcessor.publishSystemEventFromTableStateMonitor(electionEvent);
-        
     }
 }

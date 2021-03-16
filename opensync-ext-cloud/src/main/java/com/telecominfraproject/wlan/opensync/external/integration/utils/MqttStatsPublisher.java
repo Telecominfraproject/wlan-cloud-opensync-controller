@@ -271,6 +271,7 @@ public class MqttStatsPublisher {
     }
 
     public void publishSystemEventFromTableStateMonitor(SystemEvent event) {
+        LOG.info("Publishing SystemEvent received by TableStateMonitor {}", event);
         cloudEventDispatcherInterface.publishEvent(event);
     }
     
