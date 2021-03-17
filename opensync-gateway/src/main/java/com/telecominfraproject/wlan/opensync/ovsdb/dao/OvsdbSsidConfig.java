@@ -220,8 +220,8 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
         customOptions.put("rts_threshold", String.valueOf(rtsCtsThreshold));
     }
     
-    void configureCustomOptionsForUseRadSecProxy(boolean useradsec, Map<String, String> customOptions) {
-        customOptions.put("radsecproxy", useradsec ? "1" : "0");
+    void configureCustomOptionsForUseRadiusProxy(boolean useRadiusProxy, Map<String, String> customOptions) {
+        customOptions.put("radproxy", useRadiusProxy ? "1" : "0");
     }
 
     /**
@@ -242,15 +242,15 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
      * @param radiusOperatorName
      * @param updateColumns
      * @param dynamicVlan
-     * @param radsecproxy TODO
+     * @param useRadiusProxy 
      */
     void configureCustomOptionsForSsid(OvsdbClient ovsdbClient, boolean enable80211k, boolean rateLimitEnable,
             int ssidDlLimit, int ssidUlLimit, int clientDlLimit, int clientUlLimit, int rtsCtsThreshold, int dtimPeriod,
             String radiusNasId, String radiusNasIp, String radiusOperatorName, Map<String, Value> updateColumns,
-            int dynamicVlan, Boolean radsecproxy) {
+            int dynamicVlan, Boolean useRadiusProxy) {
         Map<String, String> customOptions = new HashMap<>();
         
-        configureCustomOptionsForUseRadSecProxy(radsecproxy, customOptions);
+        configureCustomOptionsForUseRadiusProxy(useRadiusProxy, customOptions);
         
         configureCustomOptionsForRatesAndLimits(rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit,
                 rtsCtsThreshold, customOptions);
@@ -274,7 +274,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
             List<MacAddress> macBlockList, boolean rateLimitEnable, int ssidDlLimit, int ssidUlLimit, int clientDlLimit,
             int clientUlLimit, int rtsCtsThreshold, int dtimPeriod, Map<String, String> captiveMap,
             List<String> walledGardenAllowlist, String radiusNasId, String radiusNasIp, String radiusOperatorName,
-            String greTunnelName, int dynamicVlan, Boolean useradsec, Boolean useRadiusProxy, List<Operation> operations) {
+            String greTunnelName, int dynamicVlan, Boolean useRadiusProxy, List<Operation> operations) {
 
         Map<String, Value> updateColumns = new HashMap<>();
         // If we are doing a NAT SSID, no bridge, else yes
@@ -556,10 +556,6 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                     interfacesPerFreqBand.put(freqBand, 1);
                 }
 
-                boolean useradsec = false;
-                if (ssidConfig.getUseRadiusProxy() != null) {
-                    useradsec = ssidConfig.getUseRadiusProxy();
-                }
                 boolean useRadiusProxy = false;
                 if (ssidConfig.getUseRadiusProxy() != null) {
                     useRadiusProxy = ssidConfig.getUseRadiusProxy();
@@ -570,7 +566,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                             keyRefresh, uapsdEnabled, apBridge, ssidConfig.getForwardMode(), macBlockList,
                             rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit, rtsCtsThreshold,
                             dtimPeriod, captiveMap, walledGardenAllowlist, radiusNasId, radiusNasIp, radiusOperName,
-                            greTunnelName, dynamicVlan, useradsec, useRadiusProxy, operations);
+                            greTunnelName, dynamicVlan, useRadiusProxy, operations);
 
                     networkConfig.configureInetVifInterface(ovsdbClient, ifName, enabled, ssidConfig.getForwardMode(),
                             operations);
