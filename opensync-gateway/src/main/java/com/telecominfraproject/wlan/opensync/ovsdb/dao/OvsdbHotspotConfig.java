@@ -538,20 +538,34 @@ public class OvsdbHotspotConfig extends OvsdbDaoBase {
                                 hotspotProfile, rowColumns, hs2Profile);
 
                         rowColumns.put("deauth_request_timeout", new Atom<>(hs2Profile.getDeauthRequestTimeout()));
-                        rowColumns.put("tos", new Atom<>(hs2Profile.getTermsAndConditionsFile().getApExportUrl()));
+                        if (hs2Profile.getTermsAndConditionsFile() != null) {
+                            rowColumns.put("tos", new Atom<>(hs2Profile.getTermsAndConditionsFile().getApExportUrl()));
+                        }
                         rowColumns.put("enable", new Atom<>(hs2Profile.isEnableInterworkingAndHs20()));
                         rowColumns.put("network_auth_type",
                                 new Atom<>("0" + hs2Profile.getNetworkAuthenticationType().getId()));
-                        rowColumns.put("gas_addr3_behavior", new Atom<>(hs2Profile.getGasAddr3Behaviour().getId()));
+                        if (hs2Profile.getGasAddr3Behaviour() != null) {
+                            rowColumns.put("gas_addr3_behavior", new Atom<>(hs2Profile.getGasAddr3Behaviour().getId()));
+                        }
                         rowColumns.put("operating_class", new Atom<>(hs2Profile.getOperatingClass()));
                         rowColumns.put("anqp_domain_id", new Atom<>(hs2Profile.getAnqpDomainId()));
-
+                        rowColumns.put("asra", new Atom<>(hs2Profile.getAdditionalStepsRequiredForAccess() == 1 ? true:false));
+                        rowColumns.put("disable_dgaf", new Atom<>(hs2Profile.isDisableDownstreamGroupAddressedForwarding()));
+                        rowColumns.put("esr", new Atom<>(hs2Profile.isEmergencyServicesReachable()));
+                        if (hs2Profile.getHessid() != null) {
+                            rowColumns.put("hessid", new Atom<>(hs2Profile.getHessid().getAddressAsString()));
+                        }
+                        rowColumns.put("internet", new Atom<>(hs2Profile.isEnableInterworkingAndHs20()));
+                        if (hs2Profile.getQosMapSetConfiguration() != null) {
+                            rowColumns.put("qos_map_set", new Atom<>(String.join(",", hs2Profile.getQosMapSetConfiguration())));
+                        }
+                        rowColumns.put("uesa", new Atom<>(hs2Profile.isUnauthenticatedEmergencyServiceAccessible()));
                         Set<Atom<String>> connectionCapabilities = new HashSet<>();
                         hs2Profile.getConnectionCapabilitySet().stream()
-                                .forEach(c -> connectionCapabilities
-                                        .add(new Atom<>(c.getConnectionCapabilitiesIpProtocol().getId() + ":"
-                                                + c.getConnectionCapabilitiesPortNumber() + ":"
-                                                + c.getConnectionCapabilitiesStatus().getId())));
+                        .forEach(c -> connectionCapabilities
+                                .add(new Atom<>(c.getConnectionCapabilitiesIpProtocol().getId() + ":"
+                                        + c.getConnectionCapabilitiesPortNumber() + ":"
+                                        + c.getConnectionCapabilitiesStatus().getId())));
                         com.vmware.ovsdb.protocol.operation.notation.Set connectionCapabilitySet = com.vmware.ovsdb.protocol.operation.notation.Set
                                 .of(connectionCapabilities);
                         rowColumns.put("connection_capability", connectionCapabilitySet);
