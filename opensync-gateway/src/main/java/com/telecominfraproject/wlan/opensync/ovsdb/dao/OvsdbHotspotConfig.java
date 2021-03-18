@@ -555,7 +555,7 @@ public class OvsdbHotspotConfig extends OvsdbDaoBase {
                         if (hs2Profile.getHessid() != null) {
                             rowColumns.put("hessid", new Atom<>(hs2Profile.getHessid().getAddressAsString()));
                         }
-                        rowColumns.put("internet", new Atom<>(hs2Profile.isEnableInterworkingAndHs20()));
+                        rowColumns.put("internet", new Atom<>(hs2Profile.isInternetConnectivity()));
                         if (hs2Profile.getQosMapSetConfiguration() != null) {
                             rowColumns.put("qos_map_set", new Atom<>(String.join(",", hs2Profile.getQosMapSetConfiguration())));
                         }
@@ -570,6 +570,14 @@ public class OvsdbHotspotConfig extends OvsdbDaoBase {
                                 .of(connectionCapabilities);
                         rowColumns.put("connection_capability", connectionCapabilitySet);
 
+                        // access_network_type to add when supported by AP
+                        if (ovsdbClient.getSchema(ovsdbName).get().getTables().get(hotspot20ConfigDbTable).getColumns().containsKey("access_network_type")) {
+                            if (hs2Profile.getAccessNetworkType() != null) {
+                                rowColumns.put("access_network_type", new Atom<>(hs2Profile.getAccessNetworkType().getId()));
+                            }
+                        }
+                        
+                        
                         // # format: <1-octet encoded value as hex str>
                         // # (ipv4_type & 0x3f) << 2 | (ipv6_type & 0x3) << 2
                         // 0x3f = 63 in decimal
