@@ -697,17 +697,11 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                             getCaptiveAuthentication(captiveProfileDetails.getAuthenticationType()));
                     if (captiveProfileDetails.getLogoFile() != null) {
                         String splashLogoUrl = externalFileStoreURL + captiveProfileDetails.getLogoFile().getApExportUrl();
-                        if (!splashLogoUrl.contains("filestore")) {
-                            splashLogoUrl = externalFileStoreURL + "/filestore/" + captiveProfileDetails.getLogoFile().getApExportUrl();
-                        }
                         captiveMap.put("splash_page_logo",
                                 splashLogoUrl);
                     }
                     if (captiveProfileDetails.getBackgroundFile() != null) {
                         String splashBackgroundUrl = externalFileStoreURL + captiveProfileDetails.getBackgroundFile().getApExportUrl();
-                        if (!splashBackgroundUrl.contains("filestore")) {
-                            splashBackgroundUrl = externalFileStoreURL + "/filestore/" + captiveProfileDetails.getBackgroundFile().getApExportUrl();
-                        }
                         captiveMap.put("splash_page_background_logo",
                                 splashBackgroundUrl);
                     }
@@ -721,9 +715,6 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                         mfi.setFileType(FileType.TEXT);
                         mfi.setApExportUrl(userFilepath.getFileName().toString());
                         String usernamePasswordFileUrl = externalFileStoreURL + mfi.getApExportUrl();
-                        if (!usernamePasswordFileUrl.contains("filestore")) {
-                            usernamePasswordFileUrl = externalFileStoreURL + "/filestore/" + mfi.getApExportUrl();
-                        }
                         captiveMap.put("username_password_file", usernamePasswordFileUrl);
                     }
 
