@@ -1,3 +1,4 @@
+
 package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 
 import static org.junit.Assert.assertNotNull;
@@ -60,16 +61,16 @@ import com.vmware.ovsdb.protocol.schema.TableSchema;
 import com.vmware.ovsdb.service.OvsdbClient;
 
 @RunWith(SpringRunner.class)
-@ActiveProfiles(profiles = { "integration_test", }) // NOTE: these profiles will
+@ActiveProfiles(profiles = {"integration_test",}) // NOTE: these profiles will
 // be ADDED to the list of
 // active profiles
 @SpringBootTest(webEnvironment = WebEnvironment.NONE, classes = OvsdbDaoTest.class)
-@Import(value = { OvsdbDao.class, OvsdbDaoTest.Config.class, OvsdbNode.class, OvsdbRadioConfig.class,
-        OvsdbHotspotConfig.class, OvsdbCommandConfig.class, OvsdbMonitor.class, OvsdbFirmwareConfig.class,
-        OvsdbStatsConfig.class, OvsdbSsidConfig.class, OvsdbRrmConfig.class, OvsdbNetworkConfig.class,
-        OvsdbNodeConfig.class,OvsdbRadiusProxyConfig.class
+@Import(
+        value = {OvsdbDao.class, OvsdbDaoTest.Config.class, OvsdbNode.class, OvsdbRadioConfig.class, OvsdbHotspotConfig.class, OvsdbCommandConfig.class,
+                OvsdbMonitor.class, OvsdbFirmwareConfig.class, OvsdbStatsConfig.class, OvsdbSsidConfig.class, OvsdbRrmConfig.class, OvsdbNetworkConfig.class,
+                OvsdbNodeConfig.class, OvsdbRadiusProxyConfig.class
 
-})
+        })
 public class OvsdbDaoTest {
 
     static final int DEFAULT_CUSTOMER_ID = 1;
@@ -178,9 +179,8 @@ public class OvsdbDaoTest {
     @Test
     public void testConfigureGreTunnels() throws Exception {
         List<Row> rows = new ArrayList<>();
-        OperationResult[] operationResult = new OperationResult[] { new SelectResult(rows) };
-        Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList()))
-                .thenReturn(selectionFutureResult);
+        OperationResult[] operationResult = new OperationResult[] {new SelectResult(rows)};
+        Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList())).thenReturn(selectionFutureResult);
         Mockito.when(selectionFutureResult.get(30, TimeUnit.SECONDS)).thenReturn(operationResult);
         Profile apProfile = new Profile();
         apProfile.setCustomerId(2);
@@ -251,25 +251,21 @@ public class OvsdbDaoTest {
         passpointVenueProfile.setId(VENUE_ID);
         Profile hotspot20IdProviderProfile = new Profile();
         hotspot20IdProviderProfile.setId(HOTSPOT_PROVIDER_ID_1);
-        hotspot20IdProviderProfile = OvsdbDaoTestUtilities.createPasspointIdProviderProfile(DEFAULT_CUSTOMER_ID,
-                hotspot20IdProviderProfile, "TipWlan-Hotspot20-OSU-Provider", "Rogers AT&T Wireless", "Canada", "ca",
-                302, 720, "rogers.com", 1);
+        hotspot20IdProviderProfile = OvsdbDaoTestUtilities.createPasspointIdProviderProfile(DEFAULT_CUSTOMER_ID, hotspot20IdProviderProfile,
+                "TipWlan-Hotspot20-OSU-Provider", "Rogers AT&T Wireless", "Canada", "ca", 302, 720, "rogers.com", 1);
         Profile hotspot20IdProviderProfile2 = new Profile();
         hotspot20IdProviderProfile2.setId(HOTSPOT_PROVIDER_ID_2);
-        hotspot20IdProviderProfile2 = OvsdbDaoTestUtilities.createPasspointIdProviderProfile(DEFAULT_CUSTOMER_ID,
-                hotspot20IdProviderProfile2, "TipWlan-Hotspot20-OSU-Provider-2", "Telus Mobility", "Canada", "ca", 302,
-                220, "telus.com", 1);
+        hotspot20IdProviderProfile2 = OvsdbDaoTestUtilities.createPasspointIdProviderProfile(DEFAULT_CUSTOMER_ID, hotspot20IdProviderProfile2,
+                "TipWlan-Hotspot20-OSU-Provider-2", "Telus Mobility", "Canada", "ca", 302, 220, "telus.com", 1);
 
         profileSsidOsu.getChildProfileIds().add(hotspot20IdProviderProfile.getId());
         profileSsidOsu.getChildProfileIds().add(hotspot20IdProviderProfile2.getId());
 
-        Profile passpointHotspotConfig = OvsdbDaoTestUtilities.createPasspointHotspotConfig(DEFAULT_CUSTOMER_ID,
-                hotspot20IdProviderProfile2, hotspot20IdProviderProfile, passpointOperatorProfile,
-                passpointVenueProfile, profileSsidPsk, profileSsidOsu);
+        Profile passpointHotspotConfig = OvsdbDaoTestUtilities.createPasspointHotspotConfig(DEFAULT_CUSTOMER_ID, hotspot20IdProviderProfile2,
+                hotspot20IdProviderProfile, passpointOperatorProfile, passpointVenueProfile, profileSsidPsk, profileSsidOsu);
         passpointHotspotConfig.setId(HOTSPOT_CONFIG_ID);
 
-        Profile hotspotProfileAp = OvsdbDaoTestUtilities.createPasspointApProfile(DEFAULT_CUSTOMER_ID, profileSsidPsk,
-                profileSsidOsu);
+        Profile hotspotProfileAp = OvsdbDaoTestUtilities.createPasspointApProfile(DEFAULT_CUSTOMER_ID, profileSsidPsk, profileSsidOsu);
         hotspotProfileAp.setId(EQUIPMENT_AP_ID);
 
         hsConfig.setHotspot20OperatorSet(Set.of(passpointOperatorProfile));
@@ -283,14 +279,12 @@ public class OvsdbDaoTest {
 
         apConfig.setSsidProfile(List.of(profileSsidOsu, profileSsidPsk));
 
-        Mockito.when(futureResult.get(Mockito.anyLong(), Mockito.eq(TimeUnit.SECONDS)))
-                .thenReturn(OvsdbDaoTestUtilities.hs20IconRows()).thenReturn(OvsdbDaoTestUtilities.hs20InsertIconRows())
-                .thenReturn(OvsdbDaoTestUtilities.hs20OsuProviders()).thenReturn(OvsdbDaoTestUtilities.hs20IconRows())
-                .thenReturn(OvsdbDaoTestUtilities.hs20IconRows())
-                .thenReturn(OvsdbDaoTestUtilities.hs20InsertProviderRows())
-                .thenReturn(OvsdbDaoTestUtilities.hs20Config()).thenReturn(OvsdbDaoTestUtilities.hs20OsuProviders())
-                .thenReturn(OvsdbDaoTestUtilities.vifConfigRows()).thenReturn(OvsdbDaoTestUtilities.vifConfigRows())
-                .thenReturn(OvsdbDaoTestUtilities.hs20Config());
+        Mockito.when(futureResult.get(Mockito.anyLong(), Mockito.eq(TimeUnit.SECONDS))).thenReturn(OvsdbDaoTestUtilities.hs20IconRows())
+                .thenReturn(OvsdbDaoTestUtilities.hs20InsertIconRows()).thenReturn(OvsdbDaoTestUtilities.hs20OsuProviders())
+                .thenReturn(OvsdbDaoTestUtilities.hs20IconRows()).thenReturn(OvsdbDaoTestUtilities.hs20IconRows())
+                .thenReturn(OvsdbDaoTestUtilities.hs20InsertProviderRows()).thenReturn(OvsdbDaoTestUtilities.hs20Config())
+                .thenReturn(OvsdbDaoTestUtilities.hs20OsuProviders()).thenReturn(OvsdbDaoTestUtilities.vifConfigRows())
+                .thenReturn(OvsdbDaoTestUtilities.vifConfigRows()).thenReturn(OvsdbDaoTestUtilities.hs20Config());
 
         Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList())).thenReturn(futureResult);
 
@@ -353,274 +347,11 @@ public class OvsdbDaoTest {
     }
 
     @Test
-    public void testGetConnectNodeInfo() throws Exception {
-
-        Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList())).thenReturn(futureResult);
-
-        java.util.Map<String, Value> awlanColumns = new HashMap<>();
-        awlanColumns.put("mqtt_settings", com.vmware.ovsdb.protocol.operation.notation.Map
-                .of(ImmutableMap.of("broker", "192.168.1.101", "port", "1883")));
-        awlanColumns.put("redirector_addr", Atom.string(REDIRECT_ADDR));
-        awlanColumns.put("manager_addr", Atom.string(MGR_ADDR));
-        awlanColumns.put("platform_version", Atom.string(PLATFORM_VERSION));
-        awlanColumns.put("firmware_version", Atom.string(FW_VERSION));
-        awlanColumns.put("revision", Atom.string(REVISION));
-        awlanColumns.put("sku_number", Atom.string(SKU_NUMBER));
-        awlanColumns.put("serial_number", Atom.string(SERIAL_NUM));
-        awlanColumns.put("model", Atom.string(MODEL));
-        Row awlanRow = new Row(awlanColumns);
-
-        List<Row> awlanRows = ImmutableList.of(awlanRow);
-
-        OperationResult[] awlanResult = new OperationResult[] { new SelectResult(awlanRows) };
-
-        java.util.Map<String, Value> inetWanColumns = new HashMap<>();
-        inetWanColumns.put("inet_addr", Atom.string(WAN_IP));
-        inetWanColumns.put("hwaddr", Atom.string(WAN_MAC));
-        inetWanColumns.put("if_name", Atom.string(WAN_IF_NAME));
-        inetWanColumns.put("if_type", Atom.string(WAN_IF_TYPE));
-
-        Row inetWanRow = new Row(inetWanColumns);
-
-        List<Row> inetWanRows = ImmutableList.of(inetWanRow);
-
-        OperationResult[] inetWanResult = new OperationResult[] { new SelectResult(inetWanRows) };
-
-        java.util.Map<String, Value> inetLanColumns = new HashMap<>();
-        inetLanColumns.put("inet_addr", Atom.string(LAN_IP));
-        inetLanColumns.put("hwaddr", Atom.string(LAN_MAC));
-        inetLanColumns.put("if_name", Atom.string(LAN_IF_NAME));
-        inetLanColumns.put("if_type", Atom.string(LAN_IF_TYPE));
-
-        Row inetLanRow = new Row(inetLanColumns);
-
-        List<Row> inetLanRows = ImmutableList.of(inetLanRow);
-
-        OperationResult[] inetLanResult = new OperationResult[] { new SelectResult(inetLanRows) };
-
-        java.util.Map<String, Value> wifiRadioStateColumns = new HashMap<>();
-        wifiRadioStateColumns.put("freq_band", Atom.string("2.4G"));
-        wifiRadioStateColumns.put("if_name", Atom.string("home-ap-24"));
-        Row wifiRadioStateRow = new Row(wifiRadioStateColumns);
-
-        java.util.Map<String, Value> wifiRadioStateColumns2 = new HashMap<>();
-        wifiRadioStateColumns2.put("freq_band", Atom.string("5GL"));
-        wifiRadioStateColumns2.put("if_name", Atom.string("home-ap-l50"));
-        Row wifiRadioStateRow2 = new Row(wifiRadioStateColumns2);
-
-        java.util.Map<String, Value> wifiRadioStateColumns3 = new HashMap<>();
-        wifiRadioStateColumns3.put("freq_band", Atom.string("5GU"));
-        wifiRadioStateColumns3.put("if_name", Atom.string("home-ap-u50"));
-        Row wifiRadioStateRow3 = new Row(wifiRadioStateColumns3);
-
-        List<Row> wifiRadioStateRows = ImmutableList.of(wifiRadioStateRow, wifiRadioStateRow2, wifiRadioStateRow3);
-
-        OperationResult[] wifiRadioStateResult = new OperationResult[] { new SelectResult(wifiRadioStateRows) };
-
-        Mockito.when(futureResult.get(Mockito.anyLong(), Mockito.eq(TimeUnit.SECONDS))).thenReturn(awlanResult)
-                .thenReturn(inetWanResult).thenReturn(inetLanResult).thenReturn(wifiRadioStateResult);
-
-        ConnectNodeInfo connectNodeInfo = ovsdbDao.getConnectNodeInfo(ovsdbClient);
-
-        assertNotNull(connectNodeInfo);
-        assert (connectNodeInfo.wifiRadioStates.entrySet().size() == 3);
-        assert (connectNodeInfo.firmwareVersion.equals(FW_VERSION));
-        assert (connectNodeInfo.redirectorAddr.equals(REDIRECT_ADDR));
-        assert (connectNodeInfo.ipV4Address.equals(WAN_IP));
-
-        assert (connectNodeInfo.lanIfName.equals(LAN_IF_NAME));
-        assert (connectNodeInfo.ifName.equals(WAN_IF_NAME));
-
-        Mockito.verify(ovsdbClient, Mockito.times(4)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
-
-    }
-
-    @Test(expected = RuntimeException.class)
-    public void testFailGetConnectNodeInfo() throws Exception {
-
-        Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList())).thenReturn(futureResult);
-
-        java.util.Map<String, Value> awlanColumns = new HashMap<>();
-        awlanColumns.put("mqtt_settings", com.vmware.ovsdb.protocol.operation.notation.Map
-                .of(ImmutableMap.of("broker", "192.168.1.101", "port", "1883")));
-        awlanColumns.put("redirector_addr", Atom.string(REDIRECT_ADDR));
-        awlanColumns.put("manager_addr", Atom.string(MGR_ADDR));
-        awlanColumns.put("platform_version", Atom.string(PLATFORM_VERSION));
-        awlanColumns.put("firmware_version", Atom.string(FW_VERSION));
-        awlanColumns.put("revision", Atom.string(REVISION));
-        awlanColumns.put("sku_number", Atom.string(SKU_NUMBER));
-        awlanColumns.put("serial_number", Atom.string(SERIAL_NUM));
-        awlanColumns.put("model", Atom.string(MODEL));
-        Row awlanRow = new Row(awlanColumns);
-
-        List<Row> awlanRows = ImmutableList.of(awlanRow);
-
-        OperationResult[] awlanResult = new OperationResult[] { new SelectResult(awlanRows) };
-        java.util.Map<String, Value> inetWanColumns = new HashMap<>();
-        inetWanColumns.put("inet_addr", Atom.string(WAN_IP));
-        inetWanColumns.put("hwaddr", Atom.string(WAN_MAC));
-        inetWanColumns.put("if_name", Atom.string(WAN_IF_NAME));
-        inetWanColumns.put("if_type", Atom.string(WAN_IF_TYPE));
-
-        Row inetWanRow = new Row(inetWanColumns);
-
-        List<Row> inetWanRows = ImmutableList.of(inetWanRow);
-
-        OperationResult[] inetWanResult = new OperationResult[] { new SelectResult(inetWanRows) };
-
-        OperationResult[] errorResult = new OperationResult[] { new ErrorResult("Error", "Error") };
-
-        java.util.Map<String, Value> inetLanColumns = new HashMap<>();
-        inetLanColumns.put("inet_addr", Atom.string(LAN_IP));
-        inetLanColumns.put("hwaddr", Atom.string(LAN_MAC));
-        inetLanColumns.put("if_name", Atom.string(LAN_IF_NAME));
-        inetLanColumns.put("if_type", Atom.string(LAN_IF_TYPE));
-
-        Row inetLanRow = new Row(inetLanColumns);
-
-        List<Row> inetLanRows = ImmutableList.of(inetLanRow);
-
-        OperationResult[] inetLanResult = new OperationResult[] { new SelectResult(inetLanRows) };
-
-        java.util.Map<String, Value> wifiRadioStateColumns = new HashMap<>();
-        wifiRadioStateColumns.put("freq_band", Atom.string("2.4G"));
-        wifiRadioStateColumns.put("if_name", Atom.string("home-ap-24"));
-        Row wifiRadioStateRow = new Row(wifiRadioStateColumns);
-
-        java.util.Map<String, Value> wifiRadioStateColumns2 = new HashMap<>();
-        wifiRadioStateColumns2.put("freq_band", Atom.string("5GL"));
-        wifiRadioStateColumns2.put("if_name", Atom.string("home-ap-l50"));
-        Row wifiRadioStateRow2 = new Row(wifiRadioStateColumns2);
-
-        java.util.Map<String, Value> wifiRadioStateColumns3 = new HashMap<>();
-        wifiRadioStateColumns3.put("freq_band", Atom.string("5GU"));
-        wifiRadioStateColumns3.put("if_name", Atom.string("home-ap-u50"));
-        Row wifiRadioStateRow3 = new Row(wifiRadioStateColumns3);
-
-        List<Row> wifiRadioStateRows = ImmutableList.of(wifiRadioStateRow, wifiRadioStateRow2, wifiRadioStateRow3);
-
-        OperationResult[] wifiRadioStateResult = new OperationResult[] { new SelectResult(wifiRadioStateRows) };
-
-        // No 'WAN' for this test, will have an ERROR
-        Mockito.when(futureResult.get(Mockito.anyLong(), Mockito.eq(TimeUnit.SECONDS))).thenReturn(awlanResult)
-                .thenReturn(errorResult).thenReturn(errorResult).thenReturn(inetLanResult)
-                .thenReturn(wifiRadioStateResult);
-        ConnectNodeInfo connectNodeInfo = ovsdbDao.getConnectNodeInfo(ovsdbClient);
-        assertNotNull(connectNodeInfo.firmwareVersion);
-        assertNotNull(connectNodeInfo.model);
-        assertNotNull(connectNodeInfo.skuNumber);
-        assertNotNull(connectNodeInfo.platformVersion);
-        assertNotNull(connectNodeInfo.serialNumber);
-        assertNotNull(connectNodeInfo.mqttSettings);
-        assertNotNull(connectNodeInfo.redirectorAddr);
-        assertNotNull(connectNodeInfo.managerAddr);
-
-        assertNull(connectNodeInfo.ifName);
-        assertNull(connectNodeInfo.ifType);
-        assertNull(connectNodeInfo.ipV4Address);
-        assertNull(connectNodeInfo.macAddress);
-
-        assertNotNull(connectNodeInfo.lanIfName);
-        assertNotNull(connectNodeInfo.lanIfType);
-        assertNotNull(connectNodeInfo.lanIpV4Address);
-        assertNotNull(connectNodeInfo.lanMacAddress);
-
-        assert (connectNodeInfo.wifiRadioStates.entrySet().size() == 3);
-        Mockito.verify(ovsdbClient, Mockito.times(5)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
-        Mockito.clearInvocations(ovsdbClient);
-
-        // No 'LAN' for this test, will have an ERROR
-        Mockito.when(futureResult.get(Mockito.anyLong(), Mockito.eq(TimeUnit.SECONDS))).thenReturn(awlanResult)
-                .thenReturn(inetWanResult).thenReturn(errorResult).thenReturn(wifiRadioStateResult);
-        connectNodeInfo = ovsdbDao.getConnectNodeInfo(ovsdbClient);
-        assertNotNull(connectNodeInfo.firmwareVersion);
-        assertNotNull(connectNodeInfo.model);
-        assertNotNull(connectNodeInfo.skuNumber);
-        assertNotNull(connectNodeInfo.platformVersion);
-        assertNotNull(connectNodeInfo.serialNumber);
-        assertNotNull(connectNodeInfo.mqttSettings);
-        assertNotNull(connectNodeInfo.redirectorAddr);
-        assertNotNull(connectNodeInfo.managerAddr);
-
-        assertNotNull(connectNodeInfo.ifName);
-        assertNotNull(connectNodeInfo.ifType);
-        assertNotNull(connectNodeInfo.ipV4Address);
-        assertNotNull(connectNodeInfo.macAddress);
-
-        assertNull(connectNodeInfo.lanIfName);
-        assertNull(connectNodeInfo.lanIfType);
-        assertNull(connectNodeInfo.lanIpV4Address);
-        assertNull(connectNodeInfo.lanMacAddress);
-
-        assert (connectNodeInfo.wifiRadioStates.entrySet().size() == 3);
-        Mockito.verify(ovsdbClient, Mockito.times(4)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
-        Mockito.clearInvocations(ovsdbClient);
-
-        // No 'Wifi_Radio_State data' for this test, will have an ERROR
-        Mockito.when(futureResult.get(Mockito.anyLong(), Mockito.eq(TimeUnit.SECONDS))).thenReturn(awlanResult)
-                .thenReturn(inetWanResult).thenReturn(inetLanResult).thenReturn(errorResult);
-        connectNodeInfo = ovsdbDao.getConnectNodeInfo(ovsdbClient);
-
-        assertNotNull(connectNodeInfo.firmwareVersion);
-        assertNotNull(connectNodeInfo.model);
-        assertNotNull(connectNodeInfo.skuNumber);
-        assertNotNull(connectNodeInfo.platformVersion);
-        assertNotNull(connectNodeInfo.serialNumber);
-        assertNotNull(connectNodeInfo.mqttSettings);
-        assertNotNull(connectNodeInfo.redirectorAddr);
-        assertNotNull(connectNodeInfo.managerAddr);
-
-        assertNotNull(connectNodeInfo.ifName);
-        assertNotNull(connectNodeInfo.ifType);
-        assertNotNull(connectNodeInfo.ipV4Address);
-        assertNotNull(connectNodeInfo.macAddress);
-
-        assertNotNull(connectNodeInfo.lanIfName);
-        assertNotNull(connectNodeInfo.lanIfType);
-        assertNotNull(connectNodeInfo.lanIpV4Address);
-        assertNotNull(connectNodeInfo.lanMacAddress);
-
-        assert (connectNodeInfo.wifiRadioStates.isEmpty());
-
-        Mockito.verify(ovsdbClient, Mockito.times(4)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
-        Mockito.clearInvocations(ovsdbClient);
-
-        // No 'AWLAN_Node data' for this test, will have an ERROR
-        Mockito.when(futureResult.get(Mockito.anyLong(), Mockito.eq(TimeUnit.SECONDS))).thenReturn(errorResult)
-                .thenReturn(inetWanResult).thenReturn(inetLanResult).thenReturn(wifiRadioStateResult);
-        connectNodeInfo = ovsdbDao.getConnectNodeInfo(ovsdbClient);
-        assertNull(connectNodeInfo.firmwareVersion);
-        assertNull(connectNodeInfo.model);
-        assertNull(connectNodeInfo.skuNumber);
-        assertNull(connectNodeInfo.platformVersion);
-        assertNull(connectNodeInfo.serialNumber);
-        assertNull(connectNodeInfo.mqttSettings);
-        assertNull(connectNodeInfo.redirectorAddr);
-        assertNull(connectNodeInfo.managerAddr);
-
-        assertNotNull(connectNodeInfo.ifName);
-        assertNotNull(connectNodeInfo.ifType);
-        assertNotNull(connectNodeInfo.ipV4Address);
-        assertNotNull(connectNodeInfo.macAddress);
-
-        assertNotNull(connectNodeInfo.lanIfName);
-        assertNotNull(connectNodeInfo.lanIfType);
-        assertNotNull(connectNodeInfo.lanIpV4Address);
-        assertNotNull(connectNodeInfo.lanMacAddress);
-
-        assert (connectNodeInfo.wifiRadioStates.entrySet().size() == 3);
-
-        Mockito.verify(ovsdbClient, Mockito.times(4)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
-        Mockito.clearInvocations(ovsdbClient);
-
-    }
-
-    @Test
     public void testObsdbDaoEnableNetworkProbe() throws Exception {
 
         Uuid rowUuid = Uuid.of(UUID.randomUUID());
 
-        OperationResult[] wifiStatsConfigEnableNetworkProbe = new OperationResult[] { new InsertResult(rowUuid) };
+        OperationResult[] wifiStatsConfigEnableNetworkProbe = new OperationResult[] {new InsertResult(rowUuid)};
 
         Mockito.when(futureResult.get(30L, TimeUnit.SECONDS)).thenReturn(wifiStatsConfigEnableNetworkProbe);
 
@@ -635,9 +366,8 @@ public class OvsdbDaoTest {
     @Test
     public void testObsdbDaoEnableNetworkProbeError() throws Exception {
 
-        OperationResult[] wifiStatsConfigEnableNetworkProbeFail = new OperationResult[] { new ErrorResult(
-                "constraint violation",
-                "network_probe is not one of the allowed values ([capacity, client, device, essid, neighbor, quality, radio, rssi, steering, survey])") };
+        OperationResult[] wifiStatsConfigEnableNetworkProbeFail = new OperationResult[] {new ErrorResult("constraint violation",
+                "network_probe is not one of the allowed values ([capacity, client, device, essid, neighbor, quality, radio, rssi, steering, survey])")};
 
         Mockito.when(futureResult.get(30L, TimeUnit.SECONDS)).thenReturn(wifiStatsConfigEnableNetworkProbeFail);
 
@@ -652,19 +382,16 @@ public class OvsdbDaoTest {
     @Test
     public void testProcessNewChannelsRequest() throws Exception {
 
-        OperationResult[] testProcessNewChannelsRequestResult = new OperationResult[] { new UpdateResult(1),
-                new UpdateResult(1), new UpdateResult(1), new UpdateResult(1), new UpdateResult(1),
-                new UpdateResult(1) };
+        OperationResult[] testProcessNewChannelsRequestResult = new OperationResult[] {new UpdateResult(1), new UpdateResult(1), new UpdateResult(1),
+                new UpdateResult(1), new UpdateResult(1), new UpdateResult(1)};
 
         Mockito.when(futureResult.get(30L, TimeUnit.SECONDS)).thenReturn(testProcessNewChannelsRequestResult);
 
         Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList())).thenReturn(futureResult);
 
         ovsdbDao.processNewChannelsRequest(ovsdbClient,
-                Map.of(RadioType.is2dot4GHz, Integer.valueOf(1), RadioType.is5GHzL, Integer.valueOf(40),
-                        RadioType.is5GHzU, Integer.valueOf(153)),
-                Map.of(RadioType.is2dot4GHz, Integer.valueOf(6), RadioType.is5GHzL, Integer.valueOf(36),
-                        RadioType.is5GHzU, Integer.valueOf(149)));
+                Map.of(RadioType.is2dot4GHz, Integer.valueOf(1), RadioType.is5GHzL, Integer.valueOf(40), RadioType.is5GHzU, Integer.valueOf(153)),
+                Map.of(RadioType.is2dot4GHz, Integer.valueOf(6), RadioType.is5GHzL, Integer.valueOf(36), RadioType.is5GHzU, Integer.valueOf(149)));
 
         Mockito.verify(futureResult).get(30L, TimeUnit.SECONDS);
 
@@ -673,8 +400,7 @@ public class OvsdbDaoTest {
     @Test(expected = RuntimeException.class)
     public void testObsdbDaoEnableNetworkProbeException() throws Exception {
 
-        Mockito.when(futureResult.get(30L, TimeUnit.SECONDS))
-                .thenThrow(new OvsdbClientException("OvsdbClientException"));
+        Mockito.when(futureResult.get(30L, TimeUnit.SECONDS)).thenThrow(new OvsdbClientException("OvsdbClientException"));
 
         Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList())).thenReturn(futureResult);
 

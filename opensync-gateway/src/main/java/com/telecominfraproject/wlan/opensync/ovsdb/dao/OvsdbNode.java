@@ -1,9 +1,11 @@
+
 package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -25,6 +27,7 @@ import com.vmware.ovsdb.protocol.operation.notation.Value;
 import com.vmware.ovsdb.protocol.operation.result.ErrorResult;
 import com.vmware.ovsdb.protocol.operation.result.OperationResult;
 import com.vmware.ovsdb.protocol.operation.result.SelectResult;
+import com.vmware.ovsdb.protocol.schema.DatabaseSchema;
 import com.vmware.ovsdb.service.OvsdbClient;
 
 @Component
@@ -85,8 +88,7 @@ public class OvsdbNode extends OvsdbDaoBase {
             }
 
             Row row = null;
-            if ((result != null) && (result.length > 0) && (result[0] instanceof SelectResult)
-                    && !((SelectResult) result[0]).getRows().isEmpty()) {
+            if ((result != null) && (result.length > 0) && (result[0] instanceof SelectResult) && !((SelectResult) result[0]).getRows().isEmpty()) {
                 row = ((SelectResult) result[0]).getRows().iterator().next();
                 connectNodeInfo.lanIpV4Address = getSingleValueFromSet(row, "inet_addr");
                 connectNodeInfo.lanIfName = row.getStringColumn("if_name");
@@ -103,8 +105,7 @@ public class OvsdbNode extends OvsdbDaoBase {
 
     }
 
-    void fillInWanIpAddressAndMac(OvsdbClient ovsdbClient, ConnectNodeInfo connectNodeInfo, String ifType,
-            String ifName) {
+    void fillInWanIpAddressAndMac(OvsdbClient ovsdbClient, ConnectNodeInfo connectNodeInfo, String ifType, String ifName) {
         try {
             List<Operation> operations = new ArrayList<>();
             List<Condition> conditions = new ArrayList<>();
@@ -132,8 +133,7 @@ public class OvsdbNode extends OvsdbDaoBase {
             }
 
             Row row = null;
-            if ((result != null) && (result.length > 0) && (result[0] instanceof SelectResult)
-                    && !((SelectResult) result[0]).getRows().isEmpty()) {
+            if ((result != null) && (result.length > 0) && (result[0] instanceof SelectResult) && !((SelectResult) result[0]).getRows().isEmpty()) {
                 row = ((SelectResult) result[0]).getRows().iterator().next();
                 connectNodeInfo.ipV4Address = getSingleValueFromSet(row, "inet_addr");
                 connectNodeInfo.ifName = row.getStringColumn("if_name");
@@ -166,6 +166,15 @@ public class OvsdbNode extends OvsdbDaoBase {
             columns.add("platform_version");
             columns.add("revision");
             columns.add("version_matrix");
+            columns.add("id");
+
+            DatabaseSchema dbSchema = ovsdbClient.getSchema(ovsdbName).get();
+            Set<String> keys = dbSchema.getTables().get(awlanNodeDbTable).getColumns().keySet();
+            if (keys.containsAll(Set.of("reference_design", "qr_code", "model_description", "manufacturer_url", "manufacturer_name", "manufacturer_date",
+                    "certification_region"))) {
+                columns.addAll(Set.of("reference_design", "qr_code", "model_description", "manufacturer_url", "manufacturer_name", "manufacturer_date",
+                        "certification_region"));
+            }
 
             operations.add(new Select(awlanNodeDbTable, conditions, columns));
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
@@ -180,8 +189,7 @@ public class OvsdbNode extends OvsdbDaoBase {
             }
 
             Row row = null;
-            if ((result != null) && (result.length > 0) && (result[0] instanceof SelectResult)
-                    && !((SelectResult) result[0]).getRows().isEmpty()) {
+            if ((result != null) && (result.length > 0) && (result[0] instanceof SelectResult) && !((SelectResult) result[0]).getRows().isEmpty()) {
                 row = ((SelectResult) result[0]).getRows().iterator().next();
             }
 
@@ -199,6 +207,17 @@ public class OvsdbNode extends OvsdbDaoBase {
             ret.serialNumber = getSingleValueFromSet(row, "serial_number");
             ret.model = getSingleValueFromSet(row, "model");
 
+            if (keys.containsAll(Set.of("reference_design", "qr_code", "model_description", "manufacturer_url", "manufacturer_name", "manufacturer_date",
+                    "certification_region"))) {
+                    ret.referenceDesign = getSingleValueFromSet(row, "reference_design");
+                    ret.qrCode =  row.getMapColumn("qr_code");
+                    ret.modelDescription = getSingleValueFromSet(row, "model_description");
+                    ret.manufacturerUrl = getSingleValueFromSet(row, "manufacturer_url");
+                    ret.manufacturerName = getSingleValueFromSet(row, "manufacturer_name");
+                    ret.manufacturerDate =   getSingleValueFromSet(row, "manufacturer_date");
+                    ret.certificationRegion =  getSingleValueFromSet(row, "certification_region");
+            }
+
             // now populate macAddress, ipV4Address from Wifi_Inet_State
             // first look them up for if_name = br-wan
             fillInWanIpAddressAndMac(ovsdbClient, ret, defaultWanInterfaceType, defaultWanInterfaceName);
@@ -207,8 +226,7 @@ public class OvsdbNode extends OvsdbDaoBase {
                 fillInWanIpAddressAndMac(ovsdbClient, ret, defaultLanInterfaceType, defaultLanInterfaceName);
 
                 if (ret.ipV4Address == null) {
-                    throw new RuntimeException(
-                            "Could not get inet address for Lan and Wan network interfaces. Node is not ready to connect.");
+                    throw new RuntimeException("Could not get inet address for Lan and Wan network interfaces. Node is not ready to connect.");
                 }
             }
             fillInLanIpAddressAndMac(ovsdbClient, ret, defaultLanInterfaceType);
@@ -262,8 +280,8 @@ public class OvsdbNode extends OvsdbDaoBase {
             serialNumber = getSingleValueFromSet(row, "serial_number");
             model = getSingleValueFromSet(row, "model");
 
-            LOG.info("Redirecting AP Node: clientCn {} serialNumber {} model {} firmwareVersion {} skuNumber {}",
-                    clientCn, serialNumber, model, firmwareVersion, skuNumber);
+            LOG.info("Redirecting AP Node: clientCn {} serialNumber {} model {} firmwareVersion {} skuNumber {}", clientCn, serialNumber, model,
+                    firmwareVersion, skuNumber);
 
             // Update table AWLAN_Node - set manager_addr
             operations.clear();
@@ -293,8 +311,7 @@ public class OvsdbNode extends OvsdbDaoBase {
 
     void rebootOrResetAp(OvsdbClient ovsdbClient, String desiredApAction) {
         try {
-            LOG.debug("rebootOrResetAp on AP perform {}, setting timer for {} seconds.", desiredApAction,
-                    rebootOrResetTimerSeconds);
+            LOG.debug("rebootOrResetAp on AP perform {}, setting timer for {} seconds.", desiredApAction, rebootOrResetTimerSeconds);
             List<Operation> operations = new ArrayList<>();
             Map<String, Value> updateColumns = new HashMap<>();
             updateColumns.put("firmware_url", new Atom<>(desiredApAction));
@@ -315,8 +332,8 @@ public class OvsdbNode extends OvsdbDaoBase {
 
     }
 
-    ConnectNodeInfo updateConnectNodeInfoOnConnect(OvsdbClient ovsdbClient, String clientCn,
-            ConnectNodeInfo incomingConnectNodeInfo, boolean preventCnAlteration) {
+    ConnectNodeInfo updateConnectNodeInfoOnConnect(OvsdbClient ovsdbClient, String clientCn, ConnectNodeInfo incomingConnectNodeInfo,
+            boolean preventCnAlteration) {
         ConnectNodeInfo ret = incomingConnectNodeInfo.clone();
 
         try {
@@ -337,8 +354,7 @@ public class OvsdbNode extends OvsdbDaoBase {
             // mqtt_settings:ins:'["map",[["broker","testportal.123wlan.com"],["topics","/ap/dev-ap-0300/opensync"],["qos","0"],["port","1883"],["remote_log","1"]]]'
             Map<String, String> newMqttSettings = new HashMap<>();
             newMqttSettings.put("broker", mqttBrokerAddress);
-            String mqttClientName = OvsdbToWlanCloudTypeMappingUtility.getAlteredClientCnIfRequired(clientCn,
-                    incomingConnectNodeInfo, preventCnAlteration);
+            String mqttClientName = OvsdbToWlanCloudTypeMappingUtility.getAlteredClientCnIfRequired(clientCn, incomingConnectNodeInfo, preventCnAlteration);
             newMqttSettings.put("topics", "/ap/" + mqttClientName + "/opensync");
             newMqttSettings.put("port", "" + mqttBrokerExternalPort);
             newMqttSettings.put("compress", "zlib");
@@ -347,8 +363,8 @@ public class OvsdbNode extends OvsdbDaoBase {
 
             if ((ret.mqttSettings == null) || !ret.mqttSettings.equals(newMqttSettings)) {
                 @SuppressWarnings("unchecked")
-                com.vmware.ovsdb.protocol.operation.notation.Map<String, String> mgttSettings = com.vmware.ovsdb.protocol.operation.notation.Map
-                        .of(newMqttSettings);
+                com.vmware.ovsdb.protocol.operation.notation.Map<String, String> mgttSettings =
+                        com.vmware.ovsdb.protocol.operation.notation.Map.of(newMqttSettings);
                 ret.mqttSettings = newMqttSettings;
                 updateColumns.put("mqtt_settings", mgttSettings);
             }

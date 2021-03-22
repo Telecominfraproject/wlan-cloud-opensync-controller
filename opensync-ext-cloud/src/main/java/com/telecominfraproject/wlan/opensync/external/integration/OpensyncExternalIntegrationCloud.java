@@ -1,3 +1,4 @@
+
 package com.telecominfraproject.wlan.opensync.external.integration;
 
 import java.net.Inet4Address;
@@ -87,6 +88,9 @@ import com.telecominfraproject.wlan.status.StatusServiceInterface;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentAdminStatusData;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentChannelStatusData;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentLANStatusData;
+import com.telecominfraproject.wlan.status.equipment.models.EquipmentManufacturer;
+import com.telecominfraproject.wlan.status.equipment.models.EquipmentManufacturerDataStatus;
+import com.telecominfraproject.wlan.status.equipment.models.EquipmentManufacturerQrCode;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentProtocolState;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentProtocolStatusData;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeState;
@@ -105,7 +109,6 @@ import com.telecominfraproject.wlan.status.models.StatusDataType;
 import com.telecominfraproject.wlan.status.network.models.NetworkAdminStatusData;
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.ApcElectionEvent;
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeEventType;
-import com.telecominfraproject.wlan.systemevent.equipment.realtime.ApcElectionEvent.ApcMode;
 
 import sts.OpensyncStats.Report;
 import traffic.NetworkMetadata.FlowReport;
@@ -177,20 +180,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                 Customer customer = customerServiceInterface.getOrNull(autoProvisionedCustomerId);
                 if (customer == null) {
-                    LOG.error("Cannot auto-provision equipment because customer with id {} is not found",
-                            autoProvisionedCustomerId);
-                    throw new IllegalStateException("Cannot auto-provision equipment because customer is not found : "
-                            + autoProvisionedCustomerId);
+                    LOG.error("Cannot auto-provision equipment because customer with id {} is not found", autoProvisionedCustomerId);
+                    throw new IllegalStateException("Cannot auto-provision equipment because customer is not found : " + autoProvisionedCustomerId);
                 }
 
                 if ((customer.getDetails() != null) && (customer.getDetails().getAutoProvisioning() != null)
                         && !customer.getDetails().getAutoProvisioning().isEnabled()) {
-                    LOG.error(
-                            "Cannot auto-provision equipment because customer with id {} explicitly turned that feature off",
-                            autoProvisionedCustomerId);
+                    LOG.error("Cannot auto-provision equipment because customer with id {} explicitly turned that feature off", autoProvisionedCustomerId);
                     throw new IllegalStateException(
-                            "Cannot auto-provision equipment because customer explicitly turned that feature off : "
-                                    + autoProvisionedCustomerId);
+                            "Cannot auto-provision equipment because customer explicitly turned that feature off : " + autoProvisionedCustomerId);
                 }
 
                 // String dbUrlString =
@@ -214,11 +212,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     Location location = locationServiceInterface.get(locationId);
                     ce.setLocationId(location.getId());
                 } catch (Exception e) {
-                    LOG.error("Cannot auto-provision equipment because customer location with id {} cannot be found",
-                            locationId);
-                    throw new IllegalStateException(
-                            "Cannot auto-provision equipment because customer location cannot be found : "
-                                    + locationId);
+                    LOG.error("Cannot auto-provision equipment because customer location with id {} cannot be found", locationId);
+                    throw new IllegalStateException("Cannot auto-provision equipment because customer location cannot be found : " + locationId);
 
                 }
 
@@ -267,8 +262,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                     // try to find auto-provisioning profile for the current
                     // equipment model
-                    profileId = customer.getDetails().getAutoProvisioning().getEquipmentProfileIdPerModel()
-                            .get(ce.getDetails().getEquipmentModel());
+                    profileId = customer.getDetails().getAutoProvisioning().getEquipmentProfileIdPerModel().get(ce.getDetails().getEquipmentModel());
                     if (profileId == null) {
                         // could not find profile for the equipment model,
                         // lets try to find a default profile
@@ -317,14 +311,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         needToUpdateEquipment = true;
                     }
 
-                    if (apElementConfig.getDeviceName() == null
-                            || !apElementConfig.getDeviceName().equals(ce.getName())) {
+                    if (apElementConfig.getDeviceName() == null || !apElementConfig.getDeviceName().equals(ce.getName())) {
                         apElementConfig.setDeviceName(ce.getName());
                         needToUpdateEquipment = true;
                     }
 
-                    if (apElementConfig.getEquipmentModel() == null
-                            || !apElementConfig.getEquipmentModel().equals(connectNodeInfo.model)) {
+                    if (apElementConfig.getEquipmentModel() == null || !apElementConfig.getEquipmentModel().equals(connectNodeInfo.model)) {
                         apElementConfig.setEquipmentModel(connectNodeInfo.model);
                         needToUpdateEquipment = true;
                     }
@@ -387,14 +379,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             }
 
-            EquipmentRoutingRecord equipmentRoutingRecord = gatewayController.registerCustomerEquipment(ce.getName(),
-                    ce.getCustomerId(), ce.getId());
+            EquipmentRoutingRecord equipmentRoutingRecord = gatewayController.registerCustomerEquipment(ce.getName(), ce.getCustomerId(), ce.getId());
 
             // Status and client cleanup, when AP reconnects or has been
             // disconnected, reset statuses, clients set to disconnected as
             // SSIDs etc will be reconfigured on AP
-            LOG.info("Clear existing status {} for AP {}",
-                    statusServiceInterface.delete(ce.getCustomerId(), ce.getId()), apId);
+            LOG.info("Clear existing status {} for AP {}", statusServiceInterface.delete(ce.getCustomerId(), ce.getId()), apId);
             LOG.info("Set pre-existing client sessions to disconnected for AP {}", apId);
             disconnectClients(ce);
 
@@ -412,9 +402,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             LOG.info("ConnectNodeInfo {}", connectNodeInfo);
 
             if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY)) {
-                reconcileFwVersionToTrack(ce,
-                        connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY),
-                        connectNodeInfo.model);
+                reconcileFwVersionToTrack(ce, connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY), connectNodeInfo.model);
             } else {
                 LOG.info("Cloud based firmware upgrade is not supported for this AP");
             }
@@ -503,8 +491,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         try {
 
-            Status statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(),
-                    StatusDataType.EQUIPMENT_ADMIN);
+            Status statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(), StatusDataType.EQUIPMENT_ADMIN);
             if (statusRecord == null) {
                 statusRecord = new Status();
                 statusRecord.setCustomerId(ce.getCustomerId());
@@ -556,20 +543,16 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             protocolStatusData.setReportedCC(CountryCode.CA);
             protocolStatusData.setReportedHwVersion(connectNodeInfo.platformVersion);
             if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY)) {
-                protocolStatusData.setReportedSwVersion(
-                        connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY));
+                protocolStatusData.setReportedSwVersion(connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY));
             } else if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_NAME_KEY)) {
-                protocolStatusData.setReportedSwVersion(
-                        connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_NAME_KEY));
+                protocolStatusData.setReportedSwVersion(connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_NAME_KEY));
             } else {
                 protocolStatusData.setReportedSwVersion("Unknown");
             }
             if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_INACTIVE_KEY)) {
-                protocolStatusData.setReportedSwAltVersion(
-                        connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_INACTIVE_KEY));
+                protocolStatusData.setReportedSwAltVersion(connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_INACTIVE_KEY));
             } else if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_NAME_KEY)) {
-                protocolStatusData.setReportedSwVersion(
-                        connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_NAME_KEY));
+                protocolStatusData.setReportedSwVersion(connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_NAME_KEY));
             } else {
                 protocolStatusData.setReportedSwVersion("Unknown");
             }
@@ -578,8 +561,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     protocolStatusData.setReportedIpV4Addr(InetAddress.getByName(connectNodeInfo.ipV4Address));
                 }
             } catch (UnknownHostException e) {
-                LOG.error("Could not set IpV4Addr {} on AP {} due to UnknownHostException ",
-                        connectNodeInfo.ipV4Address, ce.getName(), e);
+                LOG.error("Could not set IpV4Addr {} on AP {} due to UnknownHostException ", connectNodeInfo.ipV4Address, ce.getName(), e);
             }
             if ((connectNodeInfo.macAddress != null) && (MacAddress.valueOf(connectNodeInfo.macAddress) != null)) {
                 protocolStatusData.setReportedMacAddr(MacAddress.valueOf(connectNodeInfo.macAddress));
@@ -602,20 +584,16 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             EquipmentUpgradeStatusData fwUpgradeStatusData = (EquipmentUpgradeStatusData) statusRecord.getDetails();
             if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY)) {
-                fwUpgradeStatusData.setActiveSwVersion(
-                        connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY));
+                fwUpgradeStatusData.setActiveSwVersion(connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY));
             } else if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_NAME_KEY)) {
-                fwUpgradeStatusData
-                        .setActiveSwVersion(connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_NAME_KEY));
+                fwUpgradeStatusData.setActiveSwVersion(connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_NAME_KEY));
             } else {
                 fwUpgradeStatusData.setActiveSwVersion("Unknown");
             }
             if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_INACTIVE_KEY)) {
-                fwUpgradeStatusData.setAlternateSwVersion(
-                        connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_INACTIVE_KEY));
+                fwUpgradeStatusData.setAlternateSwVersion(connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_INACTIVE_KEY));
             } else if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_NAME_KEY)) {
-                fwUpgradeStatusData.setAlternateSwVersion(
-                        connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_NAME_KEY));
+                fwUpgradeStatusData.setAlternateSwVersion(connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_NAME_KEY));
             } else {
                 fwUpgradeStatusData.setAlternateSwVersion("Unknown");
             }
@@ -629,8 +607,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             statusRecord.setDetails(fwUpgradeStatusData);
             statusServiceInterface.update(statusRecord);
 
-            Status networkAdminStatusRec = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(),
-                    StatusDataType.NETWORK_ADMIN);
+            Status networkAdminStatusRec = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(), StatusDataType.NETWORK_ADMIN);
             if (networkAdminStatusRec == null) {
                 networkAdminStatusRec = new Status();
                 networkAdminStatusRec.setCustomerId(ce.getCustomerId());
@@ -664,18 +641,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         Client client = clientServiceInterface.getOrNull(ce.getCustomerId(), ce.getBaseMacAddress());
 
         if (client != null) {
-            ClientSession clientSession = clientServiceInterface.getSessionOrNull(ce.getCustomerId(), ce.getId(),
-                    ce.getBaseMacAddress());
+            ClientSession clientSession = clientServiceInterface.getSessionOrNull(ce.getCustomerId(), ce.getId(), ce.getBaseMacAddress());
             if (clientSession != null) {
-                clientSession = clientServiceInterface.deleteSession(ce.getCustomerId(), ce.getId(),
-                        client.getMacAddress());
+                clientSession = clientServiceInterface.deleteSession(ce.getCustomerId(), ce.getId(), client.getMacAddress());
                 LOG.info("Removed invalid client session {}", clientSession);
             }
             client = clientServiceInterface.delete(ce.getCustomerId(), client.getMacAddress());
             LOG.info("Removed invalid client type {}", client);
         } else {
-            LOG.info("No clients with MAC address {} registered for customer {}", ce.getBaseMacAddress(),
-                    ce.getCustomerId());
+            LOG.info("No clients with MAC address {} registered for customer {}", ce.getBaseMacAddress(), ce.getCustomerId());
         }
 
         LOG.info("Finished checking for and removing non-wifi client types for Equipment {}", ce);
@@ -684,8 +658,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     private void reconcileFwVersionToTrack(Equipment ce, String reportedFwVersionFromAp, String model) {
 
-        LOG.debug("reconcileFwVersionToTrack for AP {} with active firmware version {} model {}", ce.getInventoryId(),
-                reportedFwVersionFromAp, model);
+        LOG.debug("reconcileFwVersionToTrack for AP {} with active firmware version {} model {}", ce.getInventoryId(), reportedFwVersionFromAp, model);
         Status statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(), StatusDataType.FIRMWARE);
 
         EquipmentUpgradeStatusData fwUpgradeStatusData = (EquipmentUpgradeStatusData) statusRecord.getDetails();
@@ -694,8 +667,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         CustomerFirmwareTrackSettings trackSettings = firmwareServiceInterface.getDefaultCustomerTrackSetting();
 
         // check for updated/modified track settings for this customer
-        CustomerFirmwareTrackRecord custFwTrackRecord = firmwareServiceInterface
-                .getCustomerFirmwareTrackRecord(ce.getCustomerId());
+        CustomerFirmwareTrackRecord custFwTrackRecord = firmwareServiceInterface.getCustomerFirmwareTrackRecord(ce.getCustomerId());
 
         long trackRecordId = -1;
         if (custFwTrackRecord != null) {
@@ -704,8 +676,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
         // determine if AP requires FW upgrade before cloud
         // connection/provision
-        if (trackSettings.getAutoUpgradeDeprecatedOnBind().equals(TrackFlag.ALWAYS)
-                || trackSettings.getAutoUpgradeUnknownOnBind().equals(TrackFlag.ALWAYS)) {
+        if (trackSettings.getAutoUpgradeDeprecatedOnBind().equals(TrackFlag.ALWAYS) || trackSettings.getAutoUpgradeUnknownOnBind().equals(TrackFlag.ALWAYS)) {
 
             LOG.debug("reconcileFwVersionToTrack for AP {} track flag for auto-upgrade {}", ce.getInventoryId(),
                     trackSettings.getAutoUpgradeDeprecatedOnBind());
@@ -726,11 +697,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             if (fwTrackRecord != null) {
 
-                LOG.debug("reconcileFwVersionToTrack for AP {} firmwareTrackRecord {}", ce.getInventoryId(),
-                        fwTrackRecord);
+                LOG.debug("reconcileFwVersionToTrack for AP {} firmwareTrackRecord {}", ce.getInventoryId(), fwTrackRecord);
 
-                List<FirmwareTrackAssignmentDetails> fwTrackAssignmentDetails = firmwareServiceInterface
-                        .getFirmwareTrackAssignments(fwTrackRecord.getTrackName());
+                List<FirmwareTrackAssignmentDetails> fwTrackAssignmentDetails =
+                        firmwareServiceInterface.getFirmwareTrackAssignments(fwTrackRecord.getTrackName());
 
                 String targetFwVersionNameForTrack = null;
 
@@ -747,8 +717,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     LOG.info("No target FW version for this track {}", fwTrackRecord);
 
                 } else {
-                    LOG.debug("reconcileFwVersionToTrack for AP {} targetFwVersion for track {}", ce.getInventoryId(),
-                            targetFwVersionNameForTrack);
+                    LOG.debug("reconcileFwVersionToTrack for AP {} targetFwVersion for track {}", ce.getInventoryId(), targetFwVersionNameForTrack);
 
                     if (reportedFwVersionFromAp != null) {
                         if (!targetFwVersionNameForTrack.equals(reportedFwVersionFromAp)) {
@@ -762,8 +731,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                             statusRecord = statusServiceInterface.update(statusRecord);
                             triggerFwDownload(ce, fwUpgradeStatusData, trackSettings);
                         } else if (targetFwVersionNameForTrack.equals(reportedFwVersionFromAp)) {
-                            LOG.debug("reconcileFwVersionToTrack for AP {} targetFwVersion {} is active",
-                                    ce.getInventoryId(), targetFwVersionNameForTrack);
+                            LOG.debug("reconcileFwVersionToTrack for AP {} targetFwVersion {} is active", ce.getInventoryId(), targetFwVersionNameForTrack);
 
                             fwUpgradeStatusData.setUpgradeState(EquipmentUpgradeState.up_to_date);
                             fwUpgradeStatusData.setActiveSwVersion(targetFwVersionNameForTrack);
@@ -787,13 +755,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
     }
 
-    private void triggerFwDownload(Equipment ce, EquipmentUpgradeStatusData fwUpgradeStatusData,
-            CustomerFirmwareTrackSettings trackSettings) {
+    private void triggerFwDownload(Equipment ce, EquipmentUpgradeStatusData fwUpgradeStatusData, CustomerFirmwareTrackSettings trackSettings) {
         LOG.debug("triggerFwDownloadAndFlash Automatic firmware upgrade is configured for track {}.", trackSettings);
 
         try {
-            FirmwareVersion fwVersion = firmwareServiceInterface
-                    .getFirmwareVersionByName(fwUpgradeStatusData.getTargetSwVersion());
+            FirmwareVersion fwVersion = firmwareServiceInterface.getFirmwareVersionByName(fwUpgradeStatusData.getTargetSwVersion());
 
             if (fwVersion != null) {
                 OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(ce.getInventoryId());
@@ -801,8 +767,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     throw new IllegalStateException("AP is not connected " + ce.getInventoryId());
                 }
 
-                CEGWFirmwareDownloadRequest fwDownloadRequest = new CEGWFirmwareDownloadRequest(ce.getInventoryId(),
-                        ce.getId(), fwVersion.getVersionName(), fwVersion.getFilename());
+                CEGWFirmwareDownloadRequest fwDownloadRequest =
+                        new CEGWFirmwareDownloadRequest(ce.getInventoryId(), ce.getId(), fwVersion.getVersionName(), fwVersion.getFilename());
                 List<CEGWBaseCommand> commands = new ArrayList<>();
                 commands.add(fwDownloadRequest);
 
@@ -828,8 +794,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     try {
                         routingServiceInterface.delete(ovsdbSession.getRoutingId());
                     } catch (Exception e) {
-                        LOG.warn("Unable to delete routing service Id {} for ap {}. {}", ovsdbSession.getRoutingId(),
-                                apId, e);
+                        LOG.warn("Unable to delete routing service Id {} for ap {}. {}", ovsdbSession.getRoutingId(), apId, e);
                     }
                 }
             } else {
@@ -837,15 +802,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             }
             Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
             if (ce != null) {
-                List<Status> deletedStatuses = statusServiceInterface.deleteOnEquipmentDisconnect(ce.getCustomerId(),
-                        ce.getId());
+                List<Status> deletedStatuses = statusServiceInterface.deleteOnEquipmentDisconnect(ce.getCustomerId(), ce.getId());
                 LOG.info("AP {} disconnected, deleted status records {}", apId, deletedStatuses);
                 updateApDisconnectedStatus(apId, ce);
                 disconnectClients(ce);
             } else {
-                LOG.error(
-                        "updateDisconnectedApStatus::Cannot get Equipment for AP {} to update the EquipmentAdminStatus",
-                        apId);
+                LOG.error("updateDisconnectedApStatus::Cannot get Equipment for AP {} to update the EquipmentAdminStatus", apId);
 
             }
         } catch (Exception e) {
@@ -868,8 +830,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             statusRecord.setDetails(statusData);
 
-            LOG.info("Updated EquipmentAdminStatus {} for disconnected AP {}",
-                    statusServiceInterface.update(statusRecord), apId);
+            LOG.info("Updated EquipmentAdminStatus {} for disconnected AP {}", statusServiceInterface.update(statusRecord), apId);
 
         } catch (Exception e) {
             LOG.error("Exception in updateApDisconnectedStatus", e);
@@ -880,9 +841,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     private void disconnectClients(Equipment ce) {
 
         LOG.info("OpensyncExternalIntegrationCloud::disconnectClients for Equipment {}", ce);
-        PaginationResponse<ClientSession> clientSessions = clientServiceInterface.getSessionsForCustomer(
-                ce.getCustomerId(), Set.of(ce.getId()), Set.of(ce.getLocationId()), null, null,
-                new PaginationContext<ClientSession>(100));
+        PaginationResponse<ClientSession> clientSessions = clientServiceInterface.getSessionsForCustomer(ce.getCustomerId(), Set.of(ce.getId()),
+                Set.of(ce.getLocationId()), null, null, new PaginationContext<ClientSession>(100));
 
         if (clientSessions == null) {
             LOG.info("There are no existing client sessions to disconnect.");
@@ -892,10 +852,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         List<ClientSession> toBeDisconnected = new ArrayList<>();
 
         clientSessions.getItems().stream().forEach(c -> {
-            if (c.getDetails().getAssociationState() != null
-                    && !c.getDetails().getAssociationState().equals(AssociationState.Disconnected)) {
-                LOG.info("Change association state for client {} from {} to {}", c.getMacAddress(),
-                        c.getDetails().getAssociationState(), AssociationState.Disconnected);
+            if (c.getDetails().getAssociationState() != null && !c.getDetails().getAssociationState().equals(AssociationState.Disconnected)) {
+                LOG.info("Change association state for client {} from {} to {}", c.getMacAddress(), c.getDetails().getAssociationState(),
+                        AssociationState.Disconnected);
 
                 c.getDetails().setAssociationState(AssociationState.Disconnected);
                 toBeDisconnected.add(c);
@@ -938,8 +897,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             ret.setEquipmentLocation(eqLocation);
 
-            ProfileContainer profileContainer = new ProfileContainer(
-                    profileServiceInterface.getProfileWithChildren(equipmentConfig.getProfileId()));
+            ProfileContainer profileContainer = new ProfileContainer(profileServiceInterface.getProfileWithChildren(equipmentConfig.getProfileId()));
 
             ret.setApProfile(profileContainer.getOrNull(equipmentConfig.getProfileId()));
 
@@ -947,8 +905,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             ret.setSsidProfile(profileContainer.getChildrenOfType(equipmentConfig.getProfileId(), ProfileType.ssid));
 
-            ret.setMetricsProfiles(profileContainer.getChildrenOfType(equipmentConfig.getProfileId(),
-                    ProfileType.service_metrics_collection_config));
+            ret.setMetricsProfiles(profileContainer.getChildrenOfType(equipmentConfig.getProfileId(), ProfileType.service_metrics_collection_config));
 
             Set<Profile> radiusSet = new HashSet<>();
             Set<Long> captiveProfileIds = new HashSet<>();
@@ -963,8 +920,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             for (Profile ssidProfile : ret.getSsidProfile()) {
 
-                hotspot20ProfileSet
-                        .addAll(profileContainer.getChildrenOfType(ssidProfile.getId(), ProfileType.passpoint));
+                hotspot20ProfileSet.addAll(profileContainer.getChildrenOfType(ssidProfile.getId(), ProfileType.passpoint));
 
                 radiusSet.addAll(profileContainer.getChildrenOfType(ssidProfile.getId(), ProfileType.radius));
                 if (ssidProfile.getDetails() != null) {
@@ -973,8 +929,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         captiveProfileIds.add(captivePortId);
 
                     }
-                    Long bonjourGatewayProfileId = ((SsidConfiguration) ssidProfile.getDetails())
-                            .getBonjourGatewayProfileId();
+                    Long bonjourGatewayProfileId = ((SsidConfiguration) ssidProfile.getDetails()).getBonjourGatewayProfileId();
                     if (bonjourGatewayProfileId != null) {
                         bonjourGatewayProfileIds.add(bonjourGatewayProfileId);
                     }
@@ -983,12 +938,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             if (hotspot20ProfileSet.size() > 0) {
                 for (Profile hotspot20Profile : hotspot20ProfileSet) {
-                    hotspot20OperatorSet.addAll(profileContainer.getChildrenOfType(hotspot20Profile.getId(),
-                            ProfileType.passpoint_operator));
-                    hotspot20VenueSet.addAll(
-                            profileContainer.getChildrenOfType(hotspot20Profile.getId(), ProfileType.passpoint_venue));
-                    hotspot20ProviderSet.addAll(profileContainer.getChildrenOfType(hotspot20Profile.getId(),
-                            ProfileType.passpoint_osu_id_provider));
+                    hotspot20OperatorSet.addAll(profileContainer.getChildrenOfType(hotspot20Profile.getId(), ProfileType.passpoint_operator));
+                    hotspot20VenueSet.addAll(profileContainer.getChildrenOfType(hotspot20Profile.getId(), ProfileType.passpoint_venue));
+                    hotspot20ProviderSet.addAll(profileContainer.getChildrenOfType(hotspot20Profile.getId(), ProfileType.passpoint_osu_id_provider));
                 }
                 hotspotConfig.setHotspot20OperatorSet(hotspot20OperatorSet);
                 hotspotConfig.setHotspot20ProfileSet(hotspot20ProfileSet);
@@ -1051,8 +1003,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         long equipmentId = ovsdbSession.getEquipmentId();
 
         if ((customerId < 0) || (equipmentId < 0)) {
-            LOG.debug("wifiVIFStateDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
-                    customerId, equipmentId, apId);
+            LOG.debug("wifiVIFStateDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId, equipmentId, apId);
             return;
         }
 
@@ -1064,10 +1015,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
         ApElementConfiguration apElementConfig = (ApElementConfiguration) apNode.getDetails();
 
-        ProfileContainer profileContainer = new ProfileContainer(
-                profileServiceInterface.getProfileWithChildren(apNode.getProfileId()));
-        RfConfiguration rfConfig = (RfConfiguration) profileContainer
-                .getChildOfTypeOrNull(apNode.getProfileId(), ProfileType.rf).getDetails();
+        ProfileContainer profileContainer = new ProfileContainer(profileServiceInterface.getProfileWithChildren(apNode.getProfileId()));
+        RfConfiguration rfConfig = (RfConfiguration) profileContainer.getChildOfTypeOrNull(apNode.getProfileId(), ProfileType.rf).getDetails();
 
         for (OpensyncAPVIFState vifState : vifStateTables) {
 
@@ -1095,8 +1044,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 continue;
             }
 
-            LOG.debug("Values from Vif State Mac (BSSID) {} SSID {} AssociatedClients {} Channel {}", bssid, ssid,
-                    vifState.getAssociatedClients());
+            LOG.debug("Values from Vif State Mac (BSSID) {} SSID {} AssociatedClients {} Channel {}", bssid, ssid, vifState.getAssociatedClients());
 
             RadioType radioType = null;
             Map<RadioType, RfElementConfiguration> rfElementMap = rfConfig.getRfConfigMap();
@@ -1118,8 +1066,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         }
 
-        Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
-                StatusDataType.ACTIVE_BSSIDS);
+        Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.ACTIVE_BSSIDS);
         if (activeBssidsStatus != null) {
             ActiveBSSIDs bssidStatusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
 
@@ -1133,8 +1080,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     }
 
     private void updateClientDetailsStatus(int customerId, long equipmentId, ActiveBSSIDs statusDetails) {
-        Status clientDetailsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
-                StatusDataType.CLIENT_DETAILS);
+        Status clientDetailsStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.CLIENT_DETAILS);
 
         LOG.debug("Processing updateClientDetailsStatus Status for ActiveBSSIDs {}", statusDetails);
 
@@ -1164,8 +1110,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             int numConnectedForBssid = bssid.getNumDevicesConnected();
             int currentNumberOfClients = clientsPerRadioType.get(bssid.getRadioType());
             clientsPerRadioType.put(bssid.getRadioType(), currentNumberOfClients + numConnectedForBssid);
-            LOG.debug("Processing updateClientDetailsStatus. Upgrade numClients for RadioType {} from {} to {}",
-                    bssid.getRadioType(), currentNumberOfClients, clientsPerRadioType.get(bssid.getRadioType()));
+            LOG.debug("Processing updateClientDetailsStatus. Upgrade numClients for RadioType {} from {} to {}", bssid.getRadioType(), currentNumberOfClients,
+                    clientsPerRadioType.get(bssid.getRadioType()));
         }
 
         clientConnectionDetails.setNumClientsPerRadio(clientsPerRadioType);
@@ -1173,8 +1119,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         clientDetailsStatus = statusServiceInterface.update(clientDetailsStatus);
 
         if (LOG.isTraceEnabled()) {
-            LOG.trace("Processing updateClientDetailsStatus. Updated clientConnectionDetails to {}",
-                    clientDetailsStatus.toPrettyString());
+            LOG.trace("Processing updateClientDetailsStatus. Updated clientConnectionDetails to {}", clientDetailsStatus.toPrettyString());
         }
 
         LOG.info("Finished updateClientDetailsStatus updated {}", clientDetailsStatus);
@@ -1195,8 +1140,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         long equipmentId = ovsdbSession.getEquipmentId();
 
         if ((customerId < 0) || (equipmentId < 0)) {
-            LOG.debug("wifiRadioStatusDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
-                    customerId, equipmentId, apId);
+            LOG.debug("wifiRadioStatusDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId, equipmentId, apId);
             return;
         }
 
@@ -1237,8 +1181,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
 
         if (channelStatus != null && !Objects.equals(channelStatus, channelStatusClone)) {
-            LOG.debug("wifiRadioStatusDbTableUpdate update Channel Status before {} after {}", channelStatusClone,
-                    channelStatus);
+            LOG.debug("wifiRadioStatusDbTableUpdate update Channel Status before {} after {}", channelStatusClone, channelStatus);
             statusServiceInterface.update(channelStatus);
         }
 
@@ -1255,8 +1198,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     }
 
-    private boolean updateEquipmentConfigFromState(String apId, ApElementConfiguration apElementConfiguration,
-            OpensyncAPRadioState radioState) {
+    private boolean updateEquipmentConfigFromState(String apId, ApElementConfiguration apElementConfiguration, OpensyncAPRadioState radioState) {
         if (apElementConfiguration.getRadioMap().containsKey(radioState.getFreqBand())
                 && apElementConfiguration.getRadioMap().get(radioState.getFreqBand()) != null) {
             if (radioState.getChannels() != null) {
@@ -1278,9 +1220,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             protocolStatusData = (EquipmentProtocolStatusData) protocolStatus.getDetails();
             if (!protocolStatusData.getReportedCC().equals(CountryCode.getByName((radioState.getCountry())))) {
 
-                LOG.debug("Protocol Status reportedCC {} radioStatus.getCountry {} radioStatus CountryCode fromName {}",
-                        protocolStatusData.getReportedCC(), radioState.getCountry(),
-                        CountryCode.getByName((radioState.getCountry())));
+                LOG.debug("Protocol Status reportedCC {} radioStatus.getCountry {} radioStatus CountryCode fromName {}", protocolStatusData.getReportedCC(),
+                        radioState.getCountry(), CountryCode.getByName((radioState.getCountry())));
                 protocolStatusData.setReportedCC(CountryCode.getByName((radioState.getCountry())));
                 protocolStatus.setDetails(protocolStatusData);
 
@@ -1292,8 +1233,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         return protocolStatus;
     }
 
-    private Status updateChannelStatus(int customerId, long equipmentId, Status channelStatus,
-            OpensyncAPRadioState radioState) {
+    private Status updateChannelStatus(int customerId, long equipmentId, Status channelStatus, OpensyncAPRadioState radioState) {
         if (channelStatus == null) {
             channelStatus = new Status();
             channelStatus.setCustomerId(customerId);
@@ -1302,13 +1242,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             EquipmentChannelStatusData channelStatusData = new EquipmentChannelStatusData();
             channelStatus.setDetails(channelStatusData);
         }
-        ((EquipmentChannelStatusData) channelStatus.getDetails()).getChannelNumberStatusDataMap()
-                .put(radioState.getFreqBand(), radioState.getChannel());
+        ((EquipmentChannelStatusData) channelStatus.getDetails()).getChannelNumberStatusDataMap().put(radioState.getFreqBand(), radioState.getChannel());
         return channelStatus;
     }
 
-    private boolean updateChannelPowerLevels(String apId, ApElementConfiguration apElementConfiguration,
-            OpensyncAPRadioState radioState) {
+    private boolean updateChannelPowerLevels(String apId, ApElementConfiguration apElementConfiguration, OpensyncAPRadioState radioState) {
 
         boolean configStateMismatch = false;
         Set<ChannelPowerLevel> channelPowerLevels = new HashSet<>();
@@ -1326,22 +1264,22 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                             cpl.setChannelWidth(-1);
                         } else {
                             switch (radioState.getHtMode()) {
-                            case "HT20":
-                                cpl.setChannelWidth(20);
-                                break;
-                            case "HT40":
-                            case "HT40-":
-                            case "HT40+":
-                                cpl.setChannelWidth(40);
-                                break;
-                            case "HT80":
-                                cpl.setChannelWidth(80);
-                                break;
-                            case "HT160":
-                                cpl.setChannelWidth(160);
-                                break;
-                            default:
-                                LOG.warn("Unrecognized channel HtMode {}", radioState.getHtMode());
+                                case "HT20":
+                                    cpl.setChannelWidth(20);
+                                    break;
+                                case "HT40":
+                                case "HT40-":
+                                case "HT40+":
+                                    cpl.setChannelWidth(40);
+                                    break;
+                                case "HT80":
+                                    cpl.setChannelWidth(80);
+                                    break;
+                                case "HT160":
+                                    cpl.setChannelWidth(160);
+                                    break;
+                                default:
+                                    LOG.warn("Unrecognized channel HtMode {}", radioState.getHtMode());
                             }
                         }
                         cpl.setPowerLevel(radioState.getTxPower());
@@ -1352,22 +1290,17 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             }
         });
 
-        if (!Objects.deepEquals(
-                apElementConfiguration.getRadioMap().get(radioState.getFreqBand()).getAllowedChannelsPowerLevels(),
-                channelPowerLevels)) {
+        if (!Objects.deepEquals(apElementConfiguration.getRadioMap().get(radioState.getFreqBand()).getAllowedChannelsPowerLevels(), channelPowerLevels)) {
             configStateMismatch = true;
-            apElementConfiguration.getRadioMap().get(radioState.getFreqBand())
-                    .setAllowedChannelsPowerLevels(channelPowerLevels);
+            apElementConfiguration.getRadioMap().get(radioState.getFreqBand()).setAllowedChannelsPowerLevels(channelPowerLevels);
         }
 
         LOG.debug("Updated AllowedChannels from Wifi_Radio_State table change for AP {}", apId);
         return configStateMismatch;
     }
 
-    private void updateActiveBssids(int customerId, long equipmentId, Object apId, String ssid, RadioType freqBand,
-            String macAddress, int numClients) {
-        Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
-                StatusDataType.ACTIVE_BSSIDS);
+    private void updateActiveBssids(int customerId, long equipmentId, Object apId, String ssid, RadioType freqBand, String macAddress, int numClients) {
+        Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.ACTIVE_BSSIDS);
 
         if (activeBssidsStatus == null) {
             activeBssidsStatus = new Status();
@@ -1381,27 +1314,22 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             activeBssidsStatus.setDetails(statusDetails);
 
             activeBssidsStatus = statusServiceInterface.update(activeBssidsStatus);
-            LOG.debug("Processing Wifi_VIF_State table update for AP {}, created new ACTIVE_BSSID Status {}", apId,
-                    activeBssidsStatus);
+            LOG.debug("Processing Wifi_VIF_State table update for AP {}, created new ACTIVE_BSSID Status {}", apId, activeBssidsStatus);
 
         }
 
         ActiveBSSIDs statusDetails = (ActiveBSSIDs) activeBssidsStatus.getDetails();
 
-        LOG.debug("Processing Wifi_VIF_State table update for AP {}, activeBSSIDs StatusDetails before update {}", apId,
-                statusDetails);
+        LOG.debug("Processing Wifi_VIF_State table update for AP {}, activeBSSIDs StatusDetails before update {}", apId, statusDetails);
 
         List<ActiveBSSID> currentActiveBSSIDs = statusDetails.getActiveBSSIDs();
         if (currentActiveBSSIDs == null) {
             currentActiveBSSIDs = new ArrayList<>();
         } else {
-            currentActiveBSSIDs = currentActiveBSSIDs.stream()
-                    .filter(p -> (p.getRadioType() != null && p.getSsid() != null))
-                    .filter(p -> !p.getRadioType().equals(freqBand) || !p.getSsid().equals(ssid))
-                    .collect(Collectors.toList());
-            LOG.debug(
-                    "Processing Wifi_VIF_State table update for AP {}, activeBSSIDs bssidList without current radio freq {} and ssid {}",
-                    apId, currentActiveBSSIDs, ssid);
+            currentActiveBSSIDs = currentActiveBSSIDs.stream().filter(p -> (p.getRadioType() != null && p.getSsid() != null))
+                    .filter(p -> !p.getRadioType().equals(freqBand) || !p.getSsid().equals(ssid)).collect(Collectors.toList());
+            LOG.debug("Processing Wifi_VIF_State table update for AP {}, activeBSSIDs bssidList without current radio freq {} and ssid {}", apId,
+                    currentActiveBSSIDs, ssid);
         }
 
         ActiveBSSID activeBssid = new ActiveBSSID();
@@ -1416,8 +1344,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         activeBssidsStatus = statusServiceInterface.update(activeBssidsStatus);
 
-        LOG.info("Processing Wifi_VIF_State table update for AP {}, updated ACTIVE_BSSID Status {}", apId,
-                activeBssidsStatus);
+        LOG.info("Processing Wifi_VIF_State table update for AP {}, updated ACTIVE_BSSID Status {}", apId, activeBssidsStatus);
 
     }
 
@@ -1437,8 +1364,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         long equipmentId = ovsdbSession.getEquipmentId();
 
         if ((customerId < 0) || (equipmentId < 0)) {
-            LOG.debug("wifiInetStateDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
-                    customerId, equipmentId, apId);
+            LOG.debug("wifiInetStateDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId, equipmentId, apId);
             return;
         }
 
@@ -1483,20 +1409,17 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                         protocolStatus.setDetails(protocolStatusData);
                         protocolStatus = statusServiceInterface.update(protocolStatus);
                         LOG.info("Updated IpV4Addr for AP {} to {} from Wifi_Inet_State change for if_name {}", apId,
-                                ((EquipmentProtocolStatusData) protocolStatus.getDetails()).getReportedIpV4Addr(),
-                                inetState.ifName);
+                                ((EquipmentProtocolStatusData) protocolStatus.getDetails()).getReportedIpV4Addr(), inetState.ifName);
                         LOG.debug("ProtocolStatus for AP {} updated to {}", apId, protocolStatus);
 
                     } catch (UnknownHostException e) {
-                        LOG.error("Could not set IpV4Addr {} on AP {} due to UnknownHostException ", inetState.inetAddr,
-                                apId, e);
+                        LOG.error("Could not set IpV4Addr {} on AP {} due to UnknownHostException ", inetState.inetAddr, apId, e);
                     }
                 }
 
             }
 
-            if (inetState.getIfType().equals("vlan") && inetState.parentIfName != null
-                    && inetState.parentIfName.equals(defaultWanInterfaceName)) {
+            if (inetState.getIfType().equals("vlan") && inetState.parentIfName != null && inetState.parentIfName.equals(defaultWanInterfaceName)) {
 
                 try {
 
@@ -1556,11 +1479,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     }
 
     @Override
-    public void wifiAssociatedClientsDbTableUpdate(List<OpensyncWifiAssociatedClients> wifiAssociatedClients,
-            String apId) {
+    public void wifiAssociatedClientsDbTableUpdate(List<OpensyncWifiAssociatedClients> wifiAssociatedClients, String apId) {
 
-        LOG.info("Received wifiAssociatedClientsDbTableUpdate monitor notification for Client(s) {} on AP {}",
-                wifiAssociatedClients, apId);
+        LOG.info("Received wifiAssociatedClientsDbTableUpdate monitor notification for Client(s) {} on AP {}", wifiAssociatedClients, apId);
 
         OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
 
@@ -1573,8 +1494,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         long equipmentId = ovsdbSession.getEquipmentId();
 
         if ((customerId < 0) || (equipmentId < 0)) {
-            LOG.debug("wifiAssociatedClientsDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
-                    customerId, equipmentId, apId);
+            LOG.debug("wifiAssociatedClientsDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId, equipmentId, apId);
             return;
         }
 
@@ -1613,8 +1533,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
             clientInstance = clientServiceInterface.update(clientInstance);
 
-            ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                    clientInstance.getMacAddress());
+            ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId, clientInstance.getMacAddress());
 
             if (clientSession == null) {
                 clientSession = new ClientSession();
@@ -1631,16 +1550,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientSession.setDetails(clientSessionDetails);
                 clientSessionDetails.setAssocTimestamp(System.currentTimeMillis());
 
-                LOG.info(
-                        "Client {} associated with AP, no current session. Adding session with a generated session id of {}.",
-                        clientInstance, clientInstance.getMacAddress().getAddressAsLong());
+                LOG.info("Client {} associated with AP, no current session. Adding session with a generated session id of {}.", clientInstance,
+                        clientInstance.getMacAddress().getAddressAsLong());
                 clientSession = clientServiceInterface.updateSession(clientSession);
-                LOG.info("Client {} associated with AP, no current session. Created session {}.", clientInstance,
-                        clientSession);
+                LOG.info("Client {} associated with AP, no current session. Created session {}.", clientInstance, clientSession);
             }
 
-            if (opensyncWifiAssociatedClients.state != null
-                    && opensyncWifiAssociatedClients.state.equalsIgnoreCase("active")) {
+            if (opensyncWifiAssociatedClients.state != null && opensyncWifiAssociatedClients.state.equalsIgnoreCase("active")) {
                 clientSession.getDetails().setAssociationState(AssociationState.Active_Data);
                 clientSession = clientServiceInterface.updateSession(clientSession);
 
@@ -1664,9 +1580,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     }
 
     @Override
-    public void awlanNodeDbTableUpdate(OpensyncAWLANNode opensyncAPState, String apId) {
+    public void awlanNodeDbTableUpdate(OpensyncAWLANNode node, String apId) {
 
-        LOG.debug("AP {} table AWLAN_Node updated {}", apId, opensyncAPState);
+        LOG.debug("AP {} table AWLAN_Node updated {}", apId, node);
         OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
 
         if (ovsdbSession == null) {
@@ -1678,8 +1594,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         long equipmentId = ovsdbSession.getEquipmentId();
 
         if ((customerId < 0) || (equipmentId < 0)) {
-            LOG.info("awlanNodeDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId,
-                    equipmentId, apId);
+            LOG.info("awlanNodeDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId, equipmentId, apId);
             return;
         }
 
@@ -1689,52 +1604,53 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
-        int upgradeStatusFromAp = opensyncAPState.getUpgradeStatus();
+        int upgradeStatusFromAp = node.getUpgradeStatus();
         EquipmentUpgradeState fwUpgradeState = null;
         FailureReason fwUpgradeFailureReason = null;
 
-        if (opensyncAPState.getFirmwareUrl().equals(OvsdbStringConstants.OVSDB_AWLAN_AP_FACTORY_RESET)
-                || opensyncAPState.getFirmwareUrl().equals(OvsdbStringConstants.OVSDB_AWLAN_AP_REBOOT)
-                || opensyncAPState.getFirmwareUrl().equals(OvsdbStringConstants.OVSDB_AWLAN_AP_SWITCH_SOFTWARE_BANK)
-                || opensyncAPState.getFirmwareUrl().equals("")) {
+        if (node.getFirmwareUrl().equals(OvsdbStringConstants.OVSDB_AWLAN_AP_FACTORY_RESET)
+                || node.getFirmwareUrl().equals(OvsdbStringConstants.OVSDB_AWLAN_AP_REBOOT)
+                || node.getFirmwareUrl().equals(OvsdbStringConstants.OVSDB_AWLAN_AP_SWITCH_SOFTWARE_BANK) || node.getFirmwareUrl().equals("")) {
 
-            LOG.debug("Firmware Url {}, no fwUpgradeState", opensyncAPState.getFirmwareUrl());
+            LOG.debug("Firmware Url {}, no fwUpgradeState", node.getFirmwareUrl());
         } else {
-            fwUpgradeState = OvsdbToWlanCloudTypeMappingUtility
-                    .getCloudEquipmentUpgradeStateFromOpensyncUpgradeStatus(upgradeStatusFromAp);
+            fwUpgradeState = OvsdbToWlanCloudTypeMappingUtility.getCloudEquipmentUpgradeStateFromOpensyncUpgradeStatus(upgradeStatusFromAp);
 
             if (upgradeStatusFromAp < 0) {
-                fwUpgradeFailureReason = OvsdbToWlanCloudTypeMappingUtility
-                        .getCloudEquipmentUpgradeFailureReasonFromOpensyncUpgradeStatus(upgradeStatusFromAp);
+                fwUpgradeFailureReason = OvsdbToWlanCloudTypeMappingUtility.getCloudEquipmentUpgradeFailureReasonFromOpensyncUpgradeStatus(upgradeStatusFromAp);
             }
         }
 
         String reportedFwImageName = null;
         String reportedAltFwImageName = null;
 
-        if (opensyncAPState.getVersionMatrix().containsKey(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY)) {
-            reportedFwImageName = opensyncAPState.getVersionMatrix().get(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY);
+        if (node.getVersionMatrix().containsKey(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY)) {
+            reportedFwImageName = node.getVersionMatrix().get(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY);
         } else {
-            reportedFwImageName = opensyncAPState.getVersionMatrix().get(OvsdbStringConstants.FW_IMAGE_NAME_KEY);
+            reportedFwImageName = node.getVersionMatrix().get(OvsdbStringConstants.FW_IMAGE_NAME_KEY);
 
         }
 
-        if (opensyncAPState.getVersionMatrix().containsKey(OvsdbStringConstants.FW_IMAGE_INACTIVE_KEY)) {
-            reportedAltFwImageName = opensyncAPState.getVersionMatrix().get(OvsdbStringConstants.FW_IMAGE_INACTIVE_KEY);
+        if (node.getVersionMatrix().containsKey(OvsdbStringConstants.FW_IMAGE_INACTIVE_KEY)) {
+            reportedAltFwImageName = node.getVersionMatrix().get(OvsdbStringConstants.FW_IMAGE_INACTIVE_KEY);
         } else {
-            reportedAltFwImageName = opensyncAPState.getVersionMatrix().get(OvsdbStringConstants.FW_IMAGE_NAME_KEY);
+            reportedAltFwImageName = node.getVersionMatrix().get(OvsdbStringConstants.FW_IMAGE_NAME_KEY);
 
         }
         List<Status> updates = new ArrayList<>();
 
-        Status protocolStatus = configureProtocolStatus(opensyncAPState, customerId, equipmentId, reportedFwImageName,
-                reportedAltFwImageName);
+        Status protocolStatus = configureProtocolStatus(node, customerId, equipmentId, reportedFwImageName, reportedAltFwImageName);
         if (protocolStatus != null) {
             updates.add(protocolStatus);
         }
 
-        Status firmwareStatus = configureFirmwareStatus(customerId, equipmentId, fwUpgradeState, fwUpgradeFailureReason,
-                reportedFwImageName, reportedAltFwImageName);
+        Status manufacturerData = configureManufacturerDetailsStatus(node, customerId, equipmentId);
+        if (manufacturerData != null) {
+            updates.add(manufacturerData);
+        }
+
+        Status firmwareStatus =
+                configureFirmwareStatus(customerId, equipmentId, fwUpgradeState, fwUpgradeFailureReason, reportedFwImageName, reportedAltFwImageName);
         if (firmwareStatus != null) {
             updates.add(firmwareStatus);
         }
@@ -1746,26 +1662,51 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
     }
 
-    private Status configureProtocolStatus(OpensyncAWLANNode opensyncAPState, int customerId, long equipmentId,
-            String reportedSwImageName, String reportedAltSwImageName) {
+    private Status configureManufacturerDetailsStatus(OpensyncAWLANNode node, int customerId, long equipmentId) {
+
+        Status manufacturerData = null;
+        EquipmentManufacturerQrCode qrCode = null;
+        if (node.getQrCode() != null) {
+            qrCode = new EquipmentManufacturerQrCode(EquipmentType.getByName(node.getQrCode().get("DT").toUpperCase()),
+                    MacAddress.valueOf(node.getQrCode().get("DM")), node.getQrCode().get("VN"), node.getQrCode().get("SN"), node.getQrCode().get("MN"),
+                    node.getQrCode().get("HW"));
+        }
+
+        
+        if (qrCode != null && node.getReferenceDesign() != null && node.getCertificationRegion() != null && node.getManufacturerDate() != null
+                && node.getManufacturerName() != null && node.getManufacturerUrl() != null && node.getId() != null) {
+            EquipmentManufacturerDataStatus reportedDataStatus = new EquipmentManufacturerDataStatus(node.getSkuNumber(), node.getModel(), node.getRevision(),
+                    node.getSerialNumber(), qrCode, EquipmentManufacturer.getByName(node.getManufacturerName()), node.getManufacturerDate(),
+                    node.getManufacturerUrl(), node.getModelDescription(), node.getReferenceDesign(), CountryCode.getByName(node.getCertificationRegion()),
+                    MacAddress.valueOf(node.getId()));
+            
+            manufacturerData = new Status();
+            manufacturerData.setCustomerId(customerId);
+            manufacturerData.setDetails(reportedDataStatus);
+            manufacturerData.setEquipmentId(equipmentId);
+            manufacturerData.setStatusDataType(StatusDataType.EQUIPMENT_MANUFACTURER_DATA);
+            
+        }
+
+
+
+        return manufacturerData;
+    }
+
+    private Status configureProtocolStatus(OpensyncAWLANNode node, int customerId, long equipmentId, String reportedSwImageName,
+            String reportedAltSwImageName) {
         Status protocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.PROTOCOL);
         if (protocolStatus != null) {
-            EquipmentProtocolStatusData protocolStatusData = ((EquipmentProtocolStatusData) protocolStatus
-                    .getDetails());
-            if (protocolStatusData.getReportedSku() != null
-                    && protocolStatusData.getReportedSku().equals(opensyncAPState.getSkuNumber())
-                    && protocolStatusData.getReportedSwVersion() != null
-                    && protocolStatusData.getReportedSwVersion().equals(reportedSwImageName)
-                    && protocolStatusData.getReportedSwAltVersion() != null
-                    && protocolStatusData.getReportedSwAltVersion().equals(reportedAltSwImageName)
-                    && protocolStatusData.getReportedHwVersion() != null
-                    && protocolStatusData.getReportedHwVersion().equals(opensyncAPState.getPlatformVersion())
-                    && protocolStatusData.getSystemName() != null
-                    && protocolStatusData.getSystemName().equals(opensyncAPState.getModel())) {
+            EquipmentProtocolStatusData protocolStatusData = ((EquipmentProtocolStatusData) protocolStatus.getDetails());
+            if (protocolStatusData.getReportedSku() != null && protocolStatusData.getReportedSku().equals(node.getSkuNumber())
+                    && protocolStatusData.getReportedSwVersion() != null && protocolStatusData.getReportedSwVersion().equals(reportedSwImageName)
+                    && protocolStatusData.getReportedSwAltVersion() != null && protocolStatusData.getReportedSwAltVersion().equals(reportedAltSwImageName)
+                    && protocolStatusData.getReportedHwVersion() != null && protocolStatusData.getReportedHwVersion().equals(node.getPlatformVersion())
+                    && protocolStatusData.getSystemName() != null && protocolStatusData.getSystemName().equals(node.getModel())) {
                 // no changes
                 return null;
             }
-            protocolStatusData.setReportedSku(opensyncAPState.getSkuNumber());
+            protocolStatusData.setReportedSku(node.getSkuNumber());
             if (reportedSwImageName != null) {
                 protocolStatusData.setReportedSwVersion(reportedSwImageName);
             } else {
@@ -1776,24 +1717,21 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             } else {
                 protocolStatusData.setReportedSwAltVersion("Unknown");
             }
-            protocolStatusData.setReportedHwVersion(opensyncAPState.getPlatformVersion());
-            protocolStatusData.setSystemName(opensyncAPState.getModel());
+            protocolStatusData.setReportedHwVersion(node.getPlatformVersion());
+            protocolStatusData.setSystemName(node.getModel());
         }
         return protocolStatus;
     }
 
-    private Status configureFirmwareStatus(int customerId, long equipmentId, EquipmentUpgradeState fwUpgradeState,
-            FailureReason fwUpgradeFailureReason, String reportedFwImageName, String reportedAltFwImageName) {
+    private Status configureFirmwareStatus(int customerId, long equipmentId, EquipmentUpgradeState fwUpgradeState, FailureReason fwUpgradeFailureReason,
+            String reportedFwImageName, String reportedAltFwImageName) {
 
         Status firmwareStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.FIRMWARE);
         if (firmwareStatus != null) {
             EquipmentUpgradeStatusData upgradeStatusData = (EquipmentUpgradeStatusData) firmwareStatus.getDetails();
-            if (upgradeStatusData.getActiveSwVersion() != null
-                    && upgradeStatusData.getActiveSwVersion().equals(reportedFwImageName)
-                    && upgradeStatusData.getAlternateSwVersion() != null
-                    && upgradeStatusData.getAlternateSwVersion().equals(reportedAltFwImageName)
-                    && upgradeStatusData.getUpgradeState() != null
-                    && upgradeStatusData.getUpgradeState().equals(fwUpgradeState)) {
+            if (upgradeStatusData.getActiveSwVersion() != null && upgradeStatusData.getActiveSwVersion().equals(reportedFwImageName)
+                    && upgradeStatusData.getAlternateSwVersion() != null && upgradeStatusData.getAlternateSwVersion().equals(reportedAltFwImageName)
+                    && upgradeStatusData.getUpgradeState() != null && upgradeStatusData.getUpgradeState().equals(fwUpgradeState)) {
                 return null; // no changes
             }
             if (reportedFwImageName != null) {
@@ -1815,27 +1753,21 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 LOG.info("Firmware load is up to date.");
                 upgradeStatusData.setUpgradeState(fwUpgradeState);
                 firmwareStatus.setDetails(upgradeStatusData);
-            } else if (fwUpgradeState.equals(EquipmentUpgradeState.download_complete)
-                    || fwUpgradeState.equals(EquipmentUpgradeState.apply_complete)
-                    || fwUpgradeState.equals(EquipmentUpgradeState.apply_initiated)
-                    || fwUpgradeState.equals(EquipmentUpgradeState.applying)
-                    || fwUpgradeState.equals(EquipmentUpgradeState.downloading)
-                    || fwUpgradeState.equals(EquipmentUpgradeState.download_initiated)
-                    || fwUpgradeState.equals(EquipmentUpgradeState.reboot_initiated)
-                    || fwUpgradeState.equals(EquipmentUpgradeState.rebooting)) {
+            } else if (fwUpgradeState.equals(EquipmentUpgradeState.download_complete) || fwUpgradeState.equals(EquipmentUpgradeState.apply_complete)
+                    || fwUpgradeState.equals(EquipmentUpgradeState.apply_initiated) || fwUpgradeState.equals(EquipmentUpgradeState.applying)
+                    || fwUpgradeState.equals(EquipmentUpgradeState.downloading) || fwUpgradeState.equals(EquipmentUpgradeState.download_initiated)
+                    || fwUpgradeState.equals(EquipmentUpgradeState.reboot_initiated) || fwUpgradeState.equals(EquipmentUpgradeState.rebooting)) {
 
                 LOG.info("Firmware upgrade is in state {}", fwUpgradeState);
 
                 upgradeStatusData.setUpgradeState(fwUpgradeState);
                 if (fwUpgradeState.equals(EquipmentUpgradeState.apply_initiated)) {
                     upgradeStatusData.setUpgradeStartTime(System.currentTimeMillis());
-                } else if (fwUpgradeState.equals(EquipmentUpgradeState.reboot_initiated)
-                        || fwUpgradeState.equals(EquipmentUpgradeState.rebooting)) {
+                } else if (fwUpgradeState.equals(EquipmentUpgradeState.reboot_initiated) || fwUpgradeState.equals(EquipmentUpgradeState.rebooting)) {
                     upgradeStatusData.setRebooted(true);
                 }
                 firmwareStatus.setDetails(upgradeStatusData);
-            } else if (fwUpgradeState.equals(EquipmentUpgradeState.apply_failed)
-                    || fwUpgradeState.equals(EquipmentUpgradeState.download_failed)
+            } else if (fwUpgradeState.equals(EquipmentUpgradeState.apply_failed) || fwUpgradeState.equals(EquipmentUpgradeState.download_failed)
                     || fwUpgradeState.equals(EquipmentUpgradeState.reboot_failed)) {
                 LOG.warn("Firmware upgrade is in a failed state {} due to {}", fwUpgradeState, fwUpgradeFailureReason);
 
@@ -1843,8 +1775,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 firmwareStatus.setDetails(upgradeStatusData);
             } else {
 
-                ((EquipmentUpgradeStatusData) firmwareStatus.getDetails())
-                        .setUpgradeState(EquipmentUpgradeState.undefined);
+                ((EquipmentUpgradeStatusData) firmwareStatus.getDetails()).setUpgradeState(EquipmentUpgradeState.undefined);
                 ((EquipmentUpgradeStatusData) firmwareStatus.getDetails()).setUpgradeStartTime(null);
             }
         }
@@ -1866,13 +1797,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         long equipmentId = ovsdbSession.getEquipmentId();
 
         if ((customerId < 0) || (equipmentId < 0)) {
-            LOG.debug("wifiVIFStateDbTableDelete::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
-                    customerId, equipmentId, apId);
+            LOG.debug("wifiVIFStateDbTableDelete::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId, equipmentId, apId);
             return;
         }
 
-        Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
-                StatusDataType.ACTIVE_BSSIDS);
+        Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.ACTIVE_BSSIDS);
 
         if (activeBssidsStatus == null) {
             return; // nothing to delete
@@ -1886,17 +1815,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         Equipment ce = equipmentServiceInterface.getOrNull(equipmentId);
         List<ClientSession> clientSessionsForCustomerAndEquipment = new ArrayList<>();
         if (ce != null) {
-            PaginationResponse<ClientSession> clientSessions = clientServiceInterface.getSessionsForCustomer(customerId,
-                    ImmutableSet.of(equipmentId), ImmutableSet.of(ce.getLocationId()), null, null,
-                    new PaginationContext<ClientSession>());
+            PaginationResponse<ClientSession> clientSessions = clientServiceInterface.getSessionsForCustomer(customerId, ImmutableSet.of(equipmentId),
+                    ImmutableSet.of(ce.getLocationId()), null, null, new PaginationContext<ClientSession>());
             clientSessionsForCustomerAndEquipment.addAll(clientSessions.getItems());
         }
         for (OpensyncAPVIFState vifState : vifStateTables) {
 
             if (bssidList != null) {
                 for (ActiveBSSID activeBSSID : bssidList) {
-                    if (activeBSSID.getBssid().equals(vifState.getMac())
-                            && activeBSSID.getSsid().equals(vifState.getSsid())) {
+                    if (activeBSSID.getBssid().equals(vifState.getMac()) && activeBSSID.getSsid().equals(vifState.getSsid())) {
                         toBeDeleted.add(activeBSSID);
 
                     }
@@ -1921,8 +1848,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     @Override
     public void wifiAssociatedClientsDbTableDelete(String deletedClientMac, String apId) {
 
-        LOG.info("Received wifiAssociatedClientsDbTableDelete monitor notification for MAC {} on AP {}",
-                deletedClientMac, apId);
+        LOG.info("Received wifiAssociatedClientsDbTableDelete monitor notification for MAC {} on AP {}", deletedClientMac, apId);
         OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
 
         if (ovsdbSession == null) {
@@ -1934,18 +1860,15 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         long equipmentId = ovsdbSession.getEquipmentId();
 
         if ((customerId < 0) || (equipmentId < 0)) {
-            LOG.debug("wifiAssociatedClientsDbTableDelete::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
-                    customerId, equipmentId, apId);
+            LOG.debug("wifiAssociatedClientsDbTableDelete::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId, equipmentId, apId);
             return;
         }
 
         Client client = clientServiceInterface.getOrNull(customerId, MacAddress.valueOf(deletedClientMac));
-        ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                MacAddress.valueOf(deletedClientMac));
+        ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId, MacAddress.valueOf(deletedClientMac));
 
         if (client != null) {
-            if (clientSession != null && clientSession.getDetails() != null
-                    && clientSession.getDetails().getAssociationState() != null) {
+            if (clientSession != null && clientSession.getDetails() != null && clientSession.getDetails().getAssociationState() != null) {
                 if (!clientSession.getDetails().getAssociationState().equals(AssociationState.Disconnected)) {
                     clientSession.getDetails().setAssociationState(AssociationState.Disconnected);
                     clientSession = clientServiceInterface.updateSession(clientSession);
@@ -1956,8 +1879,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         } else {
             if (clientSession != null) {
 
-                clientSession = clientServiceInterface.deleteSession(customerId, equipmentId,
-                        MacAddress.valueOf(deletedClientMac));
+                clientSession = clientServiceInterface.deleteSession(customerId, equipmentId, MacAddress.valueOf(deletedClientMac));
 
                 LOG.info("No client {} found, delete session {}", MacAddress.valueOf(deletedClientMac), clientSession);
             }
@@ -1966,8 +1888,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     }
 
     @Override
-    public void dhcpLeasedIpDbTableUpdate(List<Map<String, String>> dhcpAttributes, String apId,
-            RowUpdateOperation rowUpdateOperation) {
+    public void dhcpLeasedIpDbTableUpdate(List<Map<String, String>> dhcpAttributes, String apId, RowUpdateOperation rowUpdateOperation) {
 
         LOG.info("dhcpLeasedIpDbTableUpdate {} operations on AP {} ", rowUpdateOperation, apId);
 
@@ -1982,8 +1903,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         long equipmentId = ovsdbSession.getEquipmentId();
 
         if ((customerId < 0) || (equipmentId < 0)) {
-            LOG.debug("updateDhcpIpClientFingerprints::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
-                    customerId, equipmentId, apId);
+            LOG.debug("updateDhcpIpClientFingerprints::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId, equipmentId, apId);
             return;
         }
 
@@ -2019,12 +1939,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     // In case somehow this equipment has accidentally been
                     // tagged as a client, remove
 
-                    ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                            clientMacAddress);
+                    ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId, clientMacAddress);
 
                     if (clientSession != null) {
-                        LOG.info("Deleting invalid client session {}",
-                                clientServiceInterface.deleteSession(customerId, equipmentId, clientMacAddress));
+                        LOG.info("Deleting invalid client session {}", clientServiceInterface.deleteSession(customerId, equipmentId, clientMacAddress));
                     }
 
                     LOG.info("Deleting invalid client {}", clientServiceInterface.delete(customerId, clientMacAddress));
@@ -2047,10 +1965,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                     if (dhcpLeasedIps.containsKey("device_type")) {
 
-                        DhcpFpDeviceType dhcpFpDeviceType = DhcpFpDeviceType
-                                .getByName(dhcpLeasedIps.get("device_type"));
-                        ClientType clientType = OvsdbToWlanCloudTypeMappingUtility
-                                .getClientTypeForDhcpFpDeviceType(dhcpFpDeviceType);
+                        DhcpFpDeviceType dhcpFpDeviceType = DhcpFpDeviceType.getByName(dhcpLeasedIps.get("device_type"));
+                        ClientType clientType = OvsdbToWlanCloudTypeMappingUtility.getClientTypeForDhcpFpDeviceType(dhcpFpDeviceType);
 
                         LOG.debug("Translate from ovsdb {} to cloud {}", dhcpFpDeviceType, clientType);
 
@@ -2067,8 +1983,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     // In this case, we might have a session, as the client
                     // already exists on the cloud, update if required
 
-                    ClientSession session = updateClientSession(customerId, equipmentId, locationId, dhcpLeasedIps,
-                            clientMacAddress);
+                    ClientSession session = updateClientSession(customerId, equipmentId, locationId, dhcpLeasedIps, clientMacAddress);
                     if (session != null) {
                         clientSessionList.add(session);
 
@@ -2083,8 +1998,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 LOG.info("Updated client sessions {}", clientSessionList);
             }
 
-        } else if (rowUpdateOperation.equals(RowUpdateOperation.MODIFY)
-                || rowUpdateOperation.equals(RowUpdateOperation.INIT)) {
+        } else if (rowUpdateOperation.equals(RowUpdateOperation.MODIFY) || rowUpdateOperation.equals(RowUpdateOperation.INIT)) {
 
             List<ClientSession> clientSessionList = new ArrayList<>();
 
@@ -2110,12 +2024,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     // In case somehow this equipment has accidentally been
                     // tagged as a client, remove
 
-                    ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId,
-                            clientMacAddress);
+                    ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId, clientMacAddress);
 
                     if (clientSession != null) {
-                        LOG.info("Deleting invalid client session {}",
-                                clientServiceInterface.deleteSession(customerId, equipmentId, clientMacAddress));
+                        LOG.info("Deleting invalid client session {}", clientServiceInterface.deleteSession(customerId, equipmentId, clientMacAddress));
                     }
 
                     LOG.info("Deleting invalid client {}", clientServiceInterface.delete(customerId, clientMacAddress));
@@ -2138,10 +2050,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                     if (dhcpLeasedIps.containsKey("device_type")) {
 
-                        DhcpFpDeviceType dhcpFpDeviceType = DhcpFpDeviceType
-                                .getByName(dhcpLeasedIps.get("device_type"));
-                        ClientType clientType = OvsdbToWlanCloudTypeMappingUtility
-                                .getClientTypeForDhcpFpDeviceType(dhcpFpDeviceType);
+                        DhcpFpDeviceType dhcpFpDeviceType = DhcpFpDeviceType.getByName(dhcpLeasedIps.get("device_type"));
+                        ClientType clientType = OvsdbToWlanCloudTypeMappingUtility.getClientTypeForDhcpFpDeviceType(dhcpFpDeviceType);
 
                         LOG.debug("Translate from ovsdb {} to cloud {}", dhcpFpDeviceType, clientType);
 
@@ -2157,8 +2067,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
                     // check if there is a session for this client
 
-                    ClientSession session = updateClientSession(customerId, equipmentId, locationId, dhcpLeasedIps,
-                            clientMacAddress);
+                    ClientSession session = updateClientSession(customerId, equipmentId, locationId, dhcpLeasedIps, clientMacAddress);
                     if (session != null) {
                         clientSessionList.add(session);
 
@@ -2180,15 +2089,14 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     }
 
-    protected ClientSession updateClientSession(int customerId, long equipmentId, long locationId,
-            Map<String, String> dhcpLeasedIps, MacAddress clientMacAddress) {
+    protected ClientSession updateClientSession(int customerId, long equipmentId, long locationId, Map<String, String> dhcpLeasedIps,
+            MacAddress clientMacAddress) {
 
         ClientSession session = clientServiceInterface.getSessionOrNull(customerId, equipmentId, clientMacAddress);
 
         if (session == null) {
 
-            LOG.info("Cannot get session for client {} for customerId {} equipmentId {} locationId {}",
-                    clientMacAddress, customerId, equipmentId, locationId);
+            LOG.info("Cannot get session for client {} for customerId {} equipmentId {} locationId {}", clientMacAddress, customerId, equipmentId, locationId);
             return null;
         }
 
@@ -2247,8 +2155,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientDhcpDetails.setSubnetMask(InetAddress.getByName(dhcpLeasedIps.get("subnet_mask")));
             } catch (UnknownHostException e) {
                 try {
-                    clientDhcpDetails
-                            .setSubnetMask(InetAddress.getByAddress(dhcpLeasedIps.get("subnet_mask").getBytes()));
+                    clientDhcpDetails.setSubnetMask(InetAddress.getByAddress(dhcpLeasedIps.get("subnet_mask").getBytes()));
                 } catch (UnknownHostException e1) {
                     LOG.warn("Invalid Subnet Mask {}", e.getMessage());
                 }
@@ -2260,8 +2167,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientDhcpDetails.setPrimaryDns(InetAddress.getByName(dhcpLeasedIps.get("primary_dns")));
             } catch (UnknownHostException e) {
                 try {
-                    clientDhcpDetails
-                            .setPrimaryDns(InetAddress.getByAddress(dhcpLeasedIps.get("primary_dns").getBytes()));
+                    clientDhcpDetails.setPrimaryDns(InetAddress.getByAddress(dhcpLeasedIps.get("primary_dns").getBytes()));
                 } catch (UnknownHostException e1) {
                     LOG.warn("Invalid Primary DNS {}", e.getMessage());
                 }
@@ -2273,8 +2179,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientDhcpDetails.setSecondaryDns(InetAddress.getByName(dhcpLeasedIps.get("secondary_dns")));
             } catch (UnknownHostException e) {
                 try {
-                    clientDhcpDetails
-                            .setSecondaryDns(InetAddress.getByAddress(dhcpLeasedIps.get("secondary_dns").getBytes()));
+                    clientDhcpDetails.setSecondaryDns(InetAddress.getByAddress(dhcpLeasedIps.get("secondary_dns").getBytes()));
                 } catch (UnknownHostException e1) {
                     LOG.warn("Invalid Secondary DNS {}", e.getMessage());
                 }
@@ -2289,10 +2194,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     }
 
     @Override
-    public void commandStateDbTableUpdate(List<Map<String, String>> commandStateAttributes, String apId,
-            RowUpdateOperation rowUpdateOperation) {
-        LOG.info("Received Command_State row(s) {} rowUpdateOperation {} for ap {}", commandStateAttributes,
-                rowUpdateOperation, apId);
+    public void commandStateDbTableUpdate(List<Map<String, String>> commandStateAttributes, String apId, RowUpdateOperation rowUpdateOperation) {
+        LOG.info("Received Command_State row(s) {} rowUpdateOperation {} for ap {}", commandStateAttributes, rowUpdateOperation, apId);
 
         // TODO: will handle changes from Command_State table
     }
@@ -2316,8 +2219,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         long equipmentId = ovsdbSession.getEquipmentId();
 
         if ((customerId < 0) || (equipmentId < 0)) {
-            LOG.debug("clearEquipmentStatus::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId,
-                    equipmentId, apId);
+            LOG.debug("clearEquipmentStatus::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId, equipmentId, apId);
             return;
         }
 
@@ -2378,25 +2280,21 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             LOG.info("Cleared Status Data {}", s.toPrettyString());
         });
 
-        List<Status> customerDashboardStatus = statusServiceInterface.getForEquipment(customerId, Set.of(equipmentId),
-                Set.of(StatusDataType.CUSTOMER_DASHBOARD));
+        List<Status> customerDashboardStatus =
+                statusServiceInterface.getForEquipment(customerId, Set.of(equipmentId), Set.of(StatusDataType.CUSTOMER_DASHBOARD));
         for (Status customerDashStatus : customerDashboardStatus) {
             LOG.info("Updated customer status {}", statusServiceInterface.update(customerDashStatus));
         }
 
         // Set any existing client sessions to disconnected
-        LOG.info(
-                "OpensyncExternalIntegrationCloud::clearEquipmentStatus disconnect any existing client sessions on AP {}",
-                apId);
+        LOG.info("OpensyncExternalIntegrationCloud::clearEquipmentStatus disconnect any existing client sessions on AP {}", apId);
         disconnectClients(ce);
 
     }
 
     @Override
-    public void apcStateDbTableUpdate(Map<String, String> apcStateAttributes, String apId,
-            RowUpdateOperation rowUpdateOperation) {
-        LOG.info("apcStateDbTableUpdate {} operations on AP {} with values {} ", rowUpdateOperation, apId,
-                apcStateAttributes);
+    public void apcStateDbTableUpdate(Map<String, String> apcStateAttributes, String apId, RowUpdateOperation rowUpdateOperation) {
+        LOG.info("apcStateDbTableUpdate {} operations on AP {} with values {} ", rowUpdateOperation, apId, apcStateAttributes);
         OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
         if (ovsdbSession == null) {
             LOG.info("apcStateDbTableUpdate::Cannot get Session for AP {}", apId);
@@ -2405,8 +2303,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         int customerId = ovsdbSession.getCustomerId();
         long equipmentId = ovsdbSession.getEquipmentId();
         if ((customerId < 0) || (equipmentId < 0)) {
-            LOG.info("apcStateDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId,
-                    equipmentId, apId);
+            LOG.info("apcStateDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId, equipmentId, apId);
             return;
         }
         Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
@@ -2431,8 +2328,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         InetAddress localIpV4Addr = null;
         if (protocolStatus != null) {
             localIpV4Addr = ((EquipmentProtocolStatusData) protocolStatus.getDetails()).getReportedIpV4Addr();
-            ((EquipmentProtocolStatusData) protocolStatus.getDetails())
-                    .setIsApcConnected((drIpAddr != null && !drIpAddr.getHostAddress().equals("0.0.0.0")));
+            ((EquipmentProtocolStatusData) protocolStatus.getDetails()).setIsApcConnected((drIpAddr != null && !drIpAddr.getHostAddress().equals("0.0.0.0")));
             ((EquipmentProtocolStatusData) protocolStatus.getDetails()).setLastApcUpdate(System.currentTimeMillis());
             ((EquipmentProtocolStatusData) protocolStatus.getDetails()).setReportedApcAddress(drIpAddr);
             ((EquipmentProtocolStatusData) protocolStatus.getDetails()).setRadiusProxyAddress(drIpAddr);
@@ -2440,9 +2336,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             LOG.info("Protocol Status updated for APC_State table monitor change {}", protocolStatus);
         }
         String mode = apcStateAttributes.get("mode");
-        ApcElectionEvent electionEvent = new ApcElectionEvent(drIpAddr, bdrIpAddr, localIpV4Addr, drIpAddr, mode,
-                Boolean.valueOf(apcStateAttributes.get("enabled")), RealTimeEventType.APC_Election_event, customerId,
-                ce.getLocationId(), equipmentId, System.currentTimeMillis());
+        ApcElectionEvent electionEvent =
+                new ApcElectionEvent(drIpAddr, bdrIpAddr, localIpV4Addr, drIpAddr, mode, Boolean.valueOf(apcStateAttributes.get("enabled")),
+                        RealTimeEventType.APC_Election_event, customerId, ce.getLocationId(), equipmentId, System.currentTimeMillis());
         mqttMessageProcessor.publishSystemEventFromTableStateMonitor(electionEvent);
     }
 }
