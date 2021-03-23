@@ -606,7 +606,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setSerialNumber(connectNodeInfo.serialNumber);
             ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setQrCode(qrCode);
              if (connectNodeInfo.manufacturerName != null) {
-                 ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setEquipmentManufacturer(EquipmentManufacturer.getByName(connectNodeInfo.manufacturerName.toUpperCase()));
+                 ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setEquipmentManufacturer(EquipmentManufacturer.getByManufacturer(connectNodeInfo.manufacturerName));
              }                       
             ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setManufacturerDate(connectNodeInfo.manufacturerDate);
             ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setManufacturerUrl(connectNodeInfo.manufacturerUrl);
@@ -1740,8 +1740,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setRevision(node.revision);
         ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setSerialNumber(node.serialNumber);
         ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setQrCode(qrCode);
-         if (node.manufacturerName != null && !node.manufacturerName.equalsIgnoreCase("unknown")) {
-             ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setEquipmentManufacturer(EquipmentManufacturer.getByName(node.manufacturerName));
+         if (node.manufacturerName != null ) {
+             ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setEquipmentManufacturer(EquipmentManufacturer.getByManufacturer(node.manufacturerName));
          }                       
         ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setManufacturerDate(node.manufacturerDate);
         ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setManufacturerUrl(node.manufacturerUrl);
