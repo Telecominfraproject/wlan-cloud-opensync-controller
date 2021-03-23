@@ -170,12 +170,16 @@ public class OvsdbNode extends OvsdbDaoBase {
 
             DatabaseSchema dbSchema = ovsdbClient.getSchema(ovsdbName).get();
             Set<String> keys = dbSchema.getTables().get(awlanNodeDbTable).getColumns().keySet();
-            if (keys.containsAll(Set.of("reference_design", "qr_code", "model_description", "manufacturer_url", "manufacturer_name", "manufacturer_date",
+            if (keys.containsAll(Set.of("reference_design", "model_description", "manufacturer_url", "manufacturer_name", "manufacturer_date",
                     "certification_region"))) {
-                columns.addAll(Set.of("reference_design", "qr_code", "model_description", "manufacturer_url", "manufacturer_name", "manufacturer_date",
+                columns.addAll(Set.of("reference_design", "model_description", "manufacturer_url", "manufacturer_name", "manufacturer_date",
                         "certification_region"));
             }
 
+            if (keys.contains("qr_code")) {
+                columns.add("qr_code");
+            }
+            
             operations.add(new Select(awlanNodeDbTable, conditions, columns));
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
@@ -207,17 +211,20 @@ public class OvsdbNode extends OvsdbDaoBase {
             ret.serialNumber = getSingleValueFromSet(row, "serial_number");
             ret.model = getSingleValueFromSet(row, "model");
 
-            if (keys.containsAll(Set.of("reference_design", "qr_code", "model_description", "manufacturer_url", "manufacturer_name", "manufacturer_date",
+            if (keys.containsAll(Set.of("reference_design", "model_description", "manufacturer_url", "manufacturer_name", "manufacturer_date",
                     "certification_region"))) {
-                    ret.referenceDesign = getSingleValueFromSet(row, "reference_design");
-                    ret.qrCode =  row.getMapColumn("qr_code");
-                    ret.modelDescription = getSingleValueFromSet(row, "model_description");
-                    ret.manufacturerUrl = getSingleValueFromSet(row, "manufacturer_url");
-                    ret.manufacturerName = getSingleValueFromSet(row, "manufacturer_name");
-                    ret.manufacturerDate =   getSingleValueFromSet(row, "manufacturer_date");
-                    ret.certificationRegion =  getSingleValueFromSet(row, "certification_region");
+                    ret.referenceDesign = row.getStringColumn("reference_design");
+                    ret.modelDescription = row.getStringColumn("model_description");
+                    ret.manufacturerUrl = row.getStringColumn("manufacturer_url");
+                    ret.manufacturerName = row.getStringColumn("manufacturer_name");
+                    ret.manufacturerDate =  row.getStringColumn("manufacturer_date");
+                    ret.certificationRegion =  row.getStringColumn("certification_region");
             }
 
+            if (keys.contains("qr_code")) {
+                ret.qrCode =  row.getMapColumn("qr_code");
+            }
+            
             // now populate macAddress, ipV4Address from Wifi_Inet_State
             // first look them up for if_name = br-wan
             fillInWanIpAddressAndMac(ovsdbClient, ret, defaultWanInterfaceType, defaultWanInterfaceName);

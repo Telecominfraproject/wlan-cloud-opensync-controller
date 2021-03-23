@@ -68,6 +68,38 @@ public class OpensyncAWLANNode extends OpensyncAPBase {
 
     public OpensyncAWLANNode(Row row) {
         this();
+        
+//        mqtt_settings        {"key":"string","max":"unlimited","min":0,"value":"string"}
+//        model                {"key":"string","min":0}
+//        sku_number           {"key":"string","min":0}
+//        version_matrix       {"key":"string","max":"unlimited","min":0,"value":{"maxLength":128,"type":"string"}}
+//        model_description    "string"
+//        certification_region "string"
+//        id                   "string"
+//        firmware_version     "string"
+//        firmware_url         {"key":{"maxLength":256,"type":"string"}}
+//        _uuid                "uuid"
+//        upgrade_dl_timer     "integer"
+//        reference_design     "string"
+//        platform_version     "string"
+//        firmware_pass        {"key":{"maxLength":256,"type":"string"}}
+//        upgrade_timer        "integer"
+//        redirector_addr      "string"
+//        led_config           {"key":"string","max":"unlimited","min":0,"value":"string"}
+//        max_backoff          "integer"
+//        mqtt_headers         {"key":"string","max":"unlimited","min":0,"value":"string"}
+//        serial_number        {"key":"string","min":0}
+//        _version             "uuid"
+//        upgrade_status       "integer"
+//        device_mode          {"key":{"enum":["set",["battery","cloud","custom","monitor"]],"type":"string"},"min":0}
+//        min_backoff          "integer"
+//        manufacturer_date    "string"
+//        mqtt_topics          {"key":"string","max":"unlimited","min":0,"value":{"maxLength":128,"type":"string"}}
+//        revision             "string"
+//        manufacturer_name    "string"
+//        manufacturer_url     "string"
+//        manager_addr         "string"
+//        factory_reset        {"key":"boolean","min":0}
         Map<String, Value> map = row.getColumns();
         if (map.get("mqtt_settings") != null) {
             this.setMqttSettings(row.getMapColumn("mqtt_settings"));
@@ -88,25 +120,25 @@ public class OpensyncAWLANNode extends OpensyncAPBase {
             this.setId(getSingleValueFromSet(row, "id"));
         }
         if (map.get("reference_design") != null) {
-            this.setReferenceDesign(getSingleValueFromSet(row, "reference_design"));
+            this.setReferenceDesign(row.getStringColumn("reference_design"));
         }
         if (map.get("qr_code") != null) {
             this.setQrCode(row.getMapColumn("qr_code"));
         }
         if ((map.get("model_description") != null)) {
-            this.setModelDescription(getSingleValueFromSet(row, "model_description"));
+            this.setModelDescription(row.getStringColumn("model_description"));
         }
         if ((map.get("manufacturer_url") != null)) {
-            this.setManufacturerUrl(getSingleValueFromSet(row, "manufacturer_url"));
+            this.setManufacturerUrl(row.getStringColumn("manufacturer_url"));
         }
         if ((map.get("manufacturer_name") != null)) {
-            this.setManufacturerName(getSingleValueFromSet(row, "manufacturer_name"));
+            this.setManufacturerName(row.getStringColumn("manufacturer_name"));
         }
         if ((map.get("manufacturer_date") != null)) {
-            this.setManufacturerDate(getSingleValueFromSet(row, "manufacturer_date"));
+            this.setManufacturerDate(row.getStringColumn("manufacturer_date"));
         }
         if (map.get("certification_region") != null) {
-            this.setCertificationRegion(getSingleValueFromSet(row, "certification_region"));
+            this.setCertificationRegion(row.getStringColumn("certification_region"));
         }
         if (map.get("version_matrix") != null) {
             this.setVersionMatrix(row.getMapColumn("version_matrix"));
