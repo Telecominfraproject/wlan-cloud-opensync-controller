@@ -178,11 +178,7 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
         updateColumns.put("freq_band", new Atom<>(freqBand));
         updateColumns.put("backup_channel", new Atom<>(backupChannel));
 
-        if (ovsdbClient.getSchema(ovsdbName).get().getTables().get(wifiRadioConfigDbTable).getColumns()
-                .containsKey("mcast_rate")) {
-
-            updateColumns.put("mcast_rate", new Atom<>(multicastRate));
-        }
+        updateColumns.put("mcast_rate", new Atom<>(multicastRate));
 
         if (probeResponseThreshold == null || probeResponseThreshold.isAuto()) {
             updateColumns.put("probe_resp_threshold", new com.vmware.ovsdb.protocol.operation.notation.Set());
@@ -196,13 +192,10 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
             updateColumns.put("client_disconnect_threshold", new Atom<>(clientDisconnectThreshold.getValue()));
         }
 
-        if (ovsdbClient.getSchema(ovsdbName).get().getTables().get(wifiRadioConfigDbTable).getColumns()
-                .containsKey("beacon_rate")) {
-            if (managementRate == null || managementRate == ManagementRate.auto) {
-                updateColumns.put("beacon_rate", new Atom<>(0));
-            } else {
-                updateColumns.put("beacon_rate", new Atom<>(managementRate.getId() * 10));
-            }
+        if (managementRate == null || managementRate == ManagementRate.auto) {
+            updateColumns.put("beacon_rate", new Atom<>(0));
+        } else {
+            updateColumns.put("beacon_rate", new Atom<>(managementRate.getId() * 10));
         }
 
         if (bestApSettings == null) {
@@ -238,8 +231,7 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
                 confirmRowExistsInTable(ovsdbClient, ((InsertResult) res).getUuid(), wifiRrmConfigDbTable);
             } else if (res instanceof ErrorResult) {
                 LOG.error("configureWifiRrm error {}", (res));
-                throw new RuntimeException(
-                        "configureWifiRrm " + ((ErrorResult) res).getError() + " " + ((ErrorResult) res).getDetails());
+                throw new RuntimeException("configureWifiRrm " + ((ErrorResult) res).getError() + " " + ((ErrorResult) res).getDetails());
             }
 
         }
