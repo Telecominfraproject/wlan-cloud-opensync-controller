@@ -217,7 +217,7 @@ public class OvsdbDaoTest {
         apConfig.setEquipmentLocation(location);
         ovsdbDao.getRadiusAccountingConfiguration(apConfig, ssidConfig, security);
 
-        assert (security.get("radius_acct_interval").equals("0"));
+        assertNull (security.get("radius_acct_interval"));
         assert (security.get("radius_acct_ip").equals("192.168.0.1"));
         assert (security.get("radius_acct_port").equals("1813"));
         assert (security.get("radius_acct_secret").equals("secret"));

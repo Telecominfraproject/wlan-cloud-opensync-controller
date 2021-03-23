@@ -820,16 +820,12 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                     security.put("radius_acct_port", rServer.getPort() != null ? String.valueOf(rServer.getPort()) : null);
                     security.put("radius_acct_secret", rServer.getSecret());
                 }
-                if (ssidConfig.getRadiusAcountingServiceInterval() != null) {
+                if (ssidConfig.getRadiusAcountingServiceInterval() != null && ssidConfig.getRadiusAcountingServiceInterval() > 0) {
                     // if the value is present, use the
                     // radius_acct_interval
                     security.put("radius_acct_interval", ssidConfig.getRadiusAcountingServiceInterval().toString());
 
-                } else {
-                    LOG.info("No radius_acct_interval defined for ssid {}, Setting radius_acct_interval to 0",
-                            ssidConfig.getSsid());
-                    security.put("radius_acct_interval", "0");
-                }
+                } 
                 LOG.info(
                         "set Radius Accounting server attributes radius_acct_ip {} radius_acct_port {} radius_acct_secret {} radius_acct_interval {}",
                         security.get("radius_acct_ip"), security.get("radius_acct_port"),
