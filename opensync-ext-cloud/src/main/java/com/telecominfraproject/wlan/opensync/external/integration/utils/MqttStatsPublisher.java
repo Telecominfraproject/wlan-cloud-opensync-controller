@@ -1513,7 +1513,7 @@ public class MqttStatsPublisher {
                 // some shifting
                 int rssi = nBss.getRssi();
                 nr.setRssi(rssi);
-                // nr.setScanTimeInSeconds(scanTimeInSeconds);
+                nr.setScanTimeInSeconds(neighbor.getTimestampMs()/1000L);
                 nr.setSecureMode(DetectedAuthMode.WPA);
                 // nr.setSignal(signal);
                 nr.setSsid(nBss.getSsid());
