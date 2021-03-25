@@ -257,7 +257,7 @@ public class RealtimeEventPublisher {
                 LOG.error("Invalid Ip Address for client {}", clientConnectEvent.getIpAddr(), e1);
             }
         }
-
+        clientEvent.setEventTimestamp(clientConnectEvent.getTimestampMs());
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
         clientEvent.setLocationId(locationId);
@@ -307,7 +307,7 @@ public class RealtimeEventPublisher {
         if (clientDisconnectEvent.hasRssi()) {
             clientEvent.setRssi(clientDisconnectEvent.getRssi());
         }
-
+        clientEvent.setEventTimestamp(clientDisconnectEvent.getTimestampMs());
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
         clientEvent.setLocationId(locationId);
@@ -331,6 +331,7 @@ public class RealtimeEventPublisher {
         if (clientAuthEvent.hasAuthStatus()) {
             clientEvent.setAuthStatus(WlanStatusCode.getById(clientAuthEvent.getAuthStatus()));
         }
+        clientEvent.setEventTimestamp(clientAuthEvent.getTimestampMs());
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
         clientEvent.setLocationId(locationId);
@@ -379,7 +380,8 @@ public class RealtimeEventPublisher {
         if (clientAssocEvent.hasUsing11V()) {
             clientEvent.setUsing11v(clientAssocEvent.getUsing11V());
         }
-
+        
+        clientEvent.setEventTimestamp(clientAssocEvent.getTimestampMs());
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
         clientEvent.setLocationId(locationId);
@@ -407,7 +409,7 @@ public class RealtimeEventPublisher {
         if (clientFailureEvent.hasReasonCode()) {
             clientEvent.setReasonCode(WlanReasonCode.getById(clientFailureEvent.getReasonCode()));
         }
-
+        clientEvent.setEventTimestamp(clientFailureEvent.getTimestampMs());
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
         clientEvent.setLocationId(locationId);
@@ -433,7 +435,7 @@ public class RealtimeEventPublisher {
         if (clientFirstDataEvent.hasFdataRxUpTsInUs()) {
             clientEvent.setFirstDataRcvdTs(clientFirstDataEvent.getFdataRxUpTsInUs());
         }
-
+        clientEvent.setEventTimestamp(clientFirstDataEvent.getTimestampMs());
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
         clientEvent.setLocationId(locationId);
@@ -455,7 +457,7 @@ public class RealtimeEventPublisher {
         if (clientIdEvent.hasCltId()) {
             clientEvent.setUserId(clientIdEvent.getCltId());
         }
-
+        clientEvent.setEventTimestamp(clientIdEvent.getTimestampMs());
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
         clientEvent.setLocationId(locationId);
@@ -476,7 +478,7 @@ public class RealtimeEventPublisher {
         if (clientIpEvent.hasIpAddr()) {
             clientEvent.setIpAddr(clientIpEvent.getIpAddr().toByteArray());
         }
-
+        clientEvent.setEventTimestamp(clientIpEvent.getTimestampMs());
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
         clientEvent.setLocationId(locationId);
@@ -506,7 +508,7 @@ public class RealtimeEventPublisher {
         if (clientTimeoutEvent.hasLastSentUpTsInUs()) {
             clientEvent.setLastSentTime(clientTimeoutEvent.getLastSentUpTsInUs());
         }
-
+        clientEvent.setEventTimestamp(clientTimeoutEvent.getTimestampMs());
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
         clientEvent.setLocationId(locationId);

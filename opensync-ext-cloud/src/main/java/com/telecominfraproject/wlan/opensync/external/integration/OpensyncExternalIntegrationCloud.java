@@ -2,6 +2,7 @@
 package com.telecominfraproject.wlan.opensync.external.integration;
 
 import java.net.Inet4Address;
+import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ import com.telecominfraproject.wlan.client.session.models.AssociationState;
 import com.telecominfraproject.wlan.client.session.models.ClientDhcpDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientSession;
 import com.telecominfraproject.wlan.client.session.models.ClientSessionDetails;
+import com.telecominfraproject.wlan.client.session.models.ClientSessionMetricDetails;
 import com.telecominfraproject.wlan.core.model.entity.CountryCode;
 import com.telecominfraproject.wlan.core.model.equipment.EquipmentType;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
@@ -572,58 +574,67 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             statusRecord.setDetails(protocolStatusData);
             Status protocolStatus = statusServiceInterface.update(statusRecord);
             LOG.debug("ProtocolStatus for AP {} updated to {}", ce.getName(), protocolStatus);
-//
-//            TODO: enable when AP supports in load
-//            
-//            statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(), StatusDataType.EQUIPMENT_MANUFACTURER_DATA);
-//            if (statusRecord == null) {
-//                statusRecord = new Status();
-//                statusRecord.setCustomerId(ce.getCustomerId());
-//                statusRecord.setEquipmentId(ce.getId());
-//                statusRecord.setStatusDataType(StatusDataType.EQUIPMENT_MANUFACTURER_DATA);
-//                EquipmentManufacturerDataStatus statusData = new EquipmentManufacturerDataStatus();
-//                statusRecord.setDetails(statusData);
-//            }
-//
-//            EquipmentManufacturerQrCode qrCode = new EquipmentManufacturerQrCode();
-//
-//            if (connectNodeInfo.qrCode != null) {
-//                if (connectNodeInfo.qrCode.get("DT") != null) {
-//                    qrCode.setDeviceType(EquipmentType.getByName(connectNodeInfo.qrCode.get("DT")));
-//                }
-//                if (connectNodeInfo.qrCode.get("VN") != null) {
-//                    qrCode.setVendorName(connectNodeInfo.qrCode.get("VN").toUpperCase());
-//                }
-//                if (connectNodeInfo.qrCode.get("DM") != null) {
-//                    qrCode.setDeviceMac(MacAddress.valueOf(connectNodeInfo.qrCode.get("DM")));
-//                }
-//                qrCode.setHwRevision(connectNodeInfo.qrCode.get("HW"));
-//                qrCode.setModelName(connectNodeInfo.qrCode.get("MN"));
-//                qrCode.setSerialNumber(connectNodeInfo.qrCode.get("SN"));
-//            }
-//
-//            ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setSkuNumber(connectNodeInfo.skuNumber);           
-//            ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setModel(connectNodeInfo.model);
-//            ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setRevision(connectNodeInfo.revision);
-//            ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setSerialNumber(connectNodeInfo.serialNumber);
-//            ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setQrCode(qrCode);
-//             if (connectNodeInfo.manufacturerName != null) {
-//                 ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setEquipmentManufacturer(EquipmentManufacturer.getByManufacturer(connectNodeInfo.manufacturerName));
-//             }                       
-//            ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setManufacturerDate(connectNodeInfo.manufacturerDate);
-//            ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setManufacturerUrl(connectNodeInfo.manufacturerUrl);
-//            ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setModelDescription(connectNodeInfo.modelDescription);
-//            ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setReferenceDesign(connectNodeInfo.referenceDesign);
-//            if (connectNodeInfo.certificationRegion != null && !connectNodeInfo.certificationRegion.equalsIgnoreCase("unknown")) {
-//                ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setCertificationRegion(
-//                        CountryCode.getByName(connectNodeInfo.certificationRegion.toUpperCase()));
-//            }
-//            if (connectNodeInfo.macAddress != null && !connectNodeInfo.macAddress.equalsIgnoreCase("unknown")) {
-//                ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setMacAddress(MacAddress.valueOf(connectNodeInfo.macAddress));
-//            }
-//
-//            Status manufacturerStatus = statusServiceInterface.update(statusRecord);
-//            LOG.debug("EQUIPMENT_MANUFACTURER_DATA for AP {} updated to {}", ce.getName(), manufacturerStatus);
+            //
+            // TODO: enable when AP supports in load
+            //
+            // statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(),
+            // StatusDataType.EQUIPMENT_MANUFACTURER_DATA);
+            // if (statusRecord == null) {
+            // statusRecord = new Status();
+            // statusRecord.setCustomerId(ce.getCustomerId());
+            // statusRecord.setEquipmentId(ce.getId());
+            // statusRecord.setStatusDataType(StatusDataType.EQUIPMENT_MANUFACTURER_DATA);
+            // EquipmentManufacturerDataStatus statusData = new EquipmentManufacturerDataStatus();
+            // statusRecord.setDetails(statusData);
+            // }
+            //
+            // EquipmentManufacturerQrCode qrCode = new EquipmentManufacturerQrCode();
+            //
+            // if (connectNodeInfo.qrCode != null) {
+            // if (connectNodeInfo.qrCode.get("DT") != null) {
+            // qrCode.setDeviceType(EquipmentType.getByName(connectNodeInfo.qrCode.get("DT")));
+            // }
+            // if (connectNodeInfo.qrCode.get("VN") != null) {
+            // qrCode.setVendorName(connectNodeInfo.qrCode.get("VN").toUpperCase());
+            // }
+            // if (connectNodeInfo.qrCode.get("DM") != null) {
+            // qrCode.setDeviceMac(MacAddress.valueOf(connectNodeInfo.qrCode.get("DM")));
+            // }
+            // qrCode.setHwRevision(connectNodeInfo.qrCode.get("HW"));
+            // qrCode.setModelName(connectNodeInfo.qrCode.get("MN"));
+            // qrCode.setSerialNumber(connectNodeInfo.qrCode.get("SN"));
+            // }
+            //
+            // ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setSkuNumber(connectNodeInfo.skuNumber);
+            // ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setModel(connectNodeInfo.model);
+            // ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setRevision(connectNodeInfo.revision);
+            // ((EquipmentManufacturerDataStatus)
+            // statusRecord.getDetails()).setSerialNumber(connectNodeInfo.serialNumber);
+            // ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setQrCode(qrCode);
+            // if (connectNodeInfo.manufacturerName != null) {
+            // ((EquipmentManufacturerDataStatus)
+            // statusRecord.getDetails()).setEquipmentManufacturer(EquipmentManufacturer.getByManufacturer(connectNodeInfo.manufacturerName));
+            // }
+            // ((EquipmentManufacturerDataStatus)
+            // statusRecord.getDetails()).setManufacturerDate(connectNodeInfo.manufacturerDate);
+            // ((EquipmentManufacturerDataStatus)
+            // statusRecord.getDetails()).setManufacturerUrl(connectNodeInfo.manufacturerUrl);
+            // ((EquipmentManufacturerDataStatus)
+            // statusRecord.getDetails()).setModelDescription(connectNodeInfo.modelDescription);
+            // ((EquipmentManufacturerDataStatus)
+            // statusRecord.getDetails()).setReferenceDesign(connectNodeInfo.referenceDesign);
+            // if (connectNodeInfo.certificationRegion != null &&
+            // !connectNodeInfo.certificationRegion.equalsIgnoreCase("unknown")) {
+            // ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setCertificationRegion(
+            // CountryCode.getByName(connectNodeInfo.certificationRegion.toUpperCase()));
+            // }
+            // if (connectNodeInfo.macAddress != null && !connectNodeInfo.macAddress.equalsIgnoreCase("unknown")) {
+            // ((EquipmentManufacturerDataStatus)
+            // statusRecord.getDetails()).setMacAddress(MacAddress.valueOf(connectNodeInfo.macAddress));
+            // }
+            //
+            // Status manufacturerStatus = statusServiceInterface.update(statusRecord);
+            // LOG.debug("EQUIPMENT_MANUFACTURER_DATA for AP {} updated to {}", ce.getName(), manufacturerStatus);
 
             statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(), StatusDataType.FIRMWARE);
             if (statusRecord == null) {
@@ -1561,72 +1572,69 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
+        List<ClientSession> clientSessions = new ArrayList<>();
+
+        long timestamp = System.currentTimeMillis();
+        
         for (OpensyncWifiAssociatedClients opensyncWifiAssociatedClients : wifiAssociatedClients) {
 
-            LOG.info("opensyncWifiAssociatedClients {}", opensyncWifiAssociatedClients.toPrettyString());
+            LOG.info("opensyncWifiAssociatedClients {}", opensyncWifiAssociatedClients);
 
             String mMac = opensyncWifiAssociatedClients.mac;
             MacAddress macAddress = MacAddress.valueOf(mMac);
 
             Client clientInstance = clientServiceInterface.getOrNull(customerId, macAddress);
-
             boolean isReassociation = true;
             if (clientInstance == null) {
-                clientInstance = new Client();
 
+                isReassociation = false; // new client
+
+                clientInstance = new Client();
                 clientInstance.setCustomerId(customerId);
                 clientInstance.setMacAddress(MacAddress.valueOf(mMac));
                 clientInstance.setDetails(new ClientInfoDetails());
                 clientInstance = clientServiceInterface.create(clientInstance);
 
-                isReassociation = false;
-
+                LOG.info("Created client from Wifi_Associated_Clients ovsdb table change {}", clientInstance);
             }
 
-            clientInstance = clientServiceInterface.update(clientInstance);
-
             ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId, clientInstance.getMacAddress());
-
             if (clientSession == null) {
                 clientSession = new ClientSession();
                 clientSession.setCustomerId(customerId);
                 clientSession.setEquipmentId(equipmentId);
                 clientSession.setMacAddress(clientInstance.getMacAddress());
                 clientSession.setLocationId(ce.getLocationId());
-                ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
-                clientSessionDetails.setSessionId(clientInstance.getMacAddress().getAddressAsLong());
-                clientSessionDetails.setIsReassociation(isReassociation);
-                clientSessionDetails.setAssociationState(AssociationState._802_11_Associated);
-                clientSessionDetails.setAssocTimestamp(System.currentTimeMillis());
-
-                clientSession.setDetails(clientSessionDetails);
-                clientSessionDetails.setAssocTimestamp(System.currentTimeMillis());
-
-                LOG.info("Client {} associated with AP, no current session. Adding session with a generated session id of {}.", clientInstance,
-                        clientInstance.getMacAddress().getAddressAsLong());
-                clientSession = clientServiceInterface.updateSession(clientSession);
-                LOG.info("Client {} associated with AP, no current session. Created session {}.", clientInstance, clientSession);
-            }
-
-            if (opensyncWifiAssociatedClients.state != null && opensyncWifiAssociatedClients.state.equalsIgnoreCase("active")) {
-                clientSession.getDetails().setAssociationState(AssociationState.Active_Data);
-                clientSession = clientServiceInterface.updateSession(clientSession);
-
+                clientSession.setDetails(new ClientSessionDetails());
+                clientSession.getDetails().setSessionId(clientInstance.getMacAddress().getAddressAsLong());
+                clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(clientInstance.getMacAddress().getAddressAsLong()));
+                clientSession.getDetails().setMetricDetails(new ClientSessionMetricDetails());
+                clientSession.getDetails().setAssociationState(AssociationState._802_11_Associated);
+                clientSession.getDetails().setAssocTimestamp(timestamp);
             } else {
-                if (clientSession.getDetails().getAssociationState() != null) {
-                    if (!clientSession.getDetails().getAssociationState().equals(AssociationState._802_11_Associated)) {
-                        clientSession.getDetails().setAssociationState(AssociationState._802_11_Associated);
-                        clientSession.getDetails().setAssocTimestamp(System.currentTimeMillis());
-                        clientSession = clientServiceInterface.updateSession(clientSession);
-
-                    }
-                } else {
+                if (clientSession.getDetails().getPriorEquipmentId() == null) {
+                    clientSession.getDetails().setPriorEquipmentId(clientSession.getEquipmentId());
+                }
+                if (clientSession.getDetails().getPriorSessionId() == null) {
+                    clientSession.getDetails().setPriorSessionId(clientSession.getDetails().getSessionId());
+                }
+                if (clientSession.getDetails().getLastEventTimestamp() == null || clientSession.getDetails().getLastEventTimestamp() < timestamp) {
+                    clientSession.getDetails().setLastEventTimestamp(timestamp);
+                }
+                if (!clientSession.getDetails().getAssociationState().equals(AssociationState._802_11_Associated)) {
                     clientSession.getDetails().setAssociationState(AssociationState._802_11_Associated);
-                    clientSession.getDetails().setAssocTimestamp(System.currentTimeMillis());
-                    clientSession = clientServiceInterface.updateSession(clientSession);
+                    clientSession.getDetails().setAssocTimestamp(timestamp);
                 }
             }
+            clientSession.getDetails().setIsReassociation(isReassociation);
+            
 
+            clientSessions.add(clientSession);
+
+        }
+
+        if (clientSessions.size() > 0) {
+            LOG.info("Updated client sessions from Wifi_Associatied_Clients ovsdb table change {}", clientServiceInterface.updateSessions(clientSessions));
         }
 
     }
@@ -1695,11 +1703,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         if (protocolStatus != null) {
             updates.add(protocolStatus);
         }
-// TODO: this should be turned on after the AP has a load with the new mappings
-//        Status manufacturerData = configureManufacturerDetailsStatus(node, customerId, equipmentId);
-//        if (manufacturerData != null) {
-//            updates.add(manufacturerData);
-//        }
+        // TODO: this should be turned on after the AP has a load with the new mappings
+        // Status manufacturerData = configureManufacturerDetailsStatus(node, customerId, equipmentId);
+        // if (manufacturerData != null) {
+        // updates.add(manufacturerData);
+        // }
 
         Status firmwareStatus =
                 configureFirmwareStatus(customerId, equipmentId, fwUpgradeState, fwUpgradeFailureReason, reportedFwImageName, reportedAltFwImageName);
@@ -1737,21 +1745,21 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             qrCode.setSerialNumber(node.qrCode.get("SN"));
         }
 
-        ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setSkuNumber(node.skuNumber);           
+        ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setSkuNumber(node.skuNumber);
         ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setModel(node.model);
         ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setRevision(node.revision);
         ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setSerialNumber(node.serialNumber);
         ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setQrCode(qrCode);
-         if (node.manufacturerName != null ) {
-             ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setEquipmentManufacturer(EquipmentManufacturer.getByManufacturer(node.manufacturerName));
-         }                       
+        if (node.manufacturerName != null) {
+            ((EquipmentManufacturerDataStatus) statusRecord.getDetails())
+                    .setEquipmentManufacturer(EquipmentManufacturer.getByManufacturer(node.manufacturerName));
+        }
         ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setManufacturerDate(node.manufacturerDate);
         ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setManufacturerUrl(node.manufacturerUrl);
         ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setModelDescription(node.modelDescription);
         ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setReferenceDesign(node.referenceDesign);
         if (node.certificationRegion != null && !node.certificationRegion.equalsIgnoreCase("unknown")) {
-            ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setCertificationRegion(
-                    CountryCode.getByName(node.certificationRegion.toUpperCase()));
+            ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setCertificationRegion(CountryCode.getByName(node.certificationRegion.toUpperCase()));
         }
         if (node.getId() != null && !node.getId().equalsIgnoreCase("unknown")) {
             ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setMacAddress(MacAddress.valueOf(node.getId()));
@@ -1945,9 +1953,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         } else {
             if (clientSession != null) {
-
                 clientSession = clientServiceInterface.deleteSession(customerId, equipmentId, MacAddress.valueOf(deletedClientMac));
-
                 LOG.info("No client {} found, delete session {}", MacAddress.valueOf(deletedClientMac), clientSession);
             }
         }
@@ -1983,164 +1989,78 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         long locationId = ce.getLocationId();
 
-        if (rowUpdateOperation.equals(RowUpdateOperation.INSERT)) {
-
+        if (rowUpdateOperation.equals(RowUpdateOperation.INSERT) || rowUpdateOperation.equals(RowUpdateOperation.MODIFY)
+                || rowUpdateOperation.equals(RowUpdateOperation.INIT)) {
             List<ClientSession> clientSessionList = new ArrayList<>();
             for (Map<String, String> dhcpLeasedIps : dhcpAttributes) {
                 if (!dhcpLeasedIps.containsKey("hwaddr")) {
-
                     LOG.info("Cannot insert a client {} that has no hwaddr.", dhcpLeasedIps);
                     continue;
-
                 }
                 MacAddress clientMacAddress = MacAddress.valueOf(dhcpLeasedIps.get("hwaddr"));
-
-                Client client = clientServiceInterface.getOrNull(customerId, clientMacAddress);
-
-                if (client == null) {
-                    LOG.info("Cannot find client instance for {}", clientMacAddress);
-                    continue;
-                } else if (clientMacAddress.equals(equipmentServiceInterface.get(equipmentId).getBaseMacAddress())) {
+                if (clientMacAddress.equals(equipmentServiceInterface.get(equipmentId).getBaseMacAddress())) {
                     LOG.info("Not a client device {} ", dhcpLeasedIps);
-
                     // In case somehow this equipment has accidentally been
                     // tagged as a client, remove
-
                     ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId, clientMacAddress);
-
                     if (clientSession != null) {
                         LOG.info("Deleting invalid client session {}", clientServiceInterface.deleteSession(customerId, equipmentId, clientMacAddress));
                     }
-
                     LOG.info("Deleting invalid client {}", clientServiceInterface.delete(customerId, clientMacAddress));
-
                     continue;
                 } else {
-                    LOG.info("Client {} already exists on the cloud, update client values", dhcpLeasedIps);
-
-                    ClientInfoDetails clientDetails = (ClientInfoDetails) client.getDetails();
-                    if (dhcpLeasedIps.containsKey("hostname")) {
-
-                        clientDetails.setHostName(dhcpLeasedIps.get("hostname"));
-
-                    }
-
-                    if (dhcpLeasedIps.containsKey("fingerprint")) {
-
-                        clientDetails.setApFingerprint(dhcpLeasedIps.get("fingerprint"));
-                    }
-
-                    if (dhcpLeasedIps.containsKey("device_type")) {
-
-                        DhcpFpDeviceType dhcpFpDeviceType = DhcpFpDeviceType.getByName(dhcpLeasedIps.get("device_type"));
-                        ClientType clientType = OvsdbToWlanCloudTypeMappingUtility.getClientTypeForDhcpFpDeviceType(dhcpFpDeviceType);
-
-                        LOG.debug("Translate from ovsdb {} to cloud {}", dhcpFpDeviceType, clientType);
-
-                        clientDetails.setClientType(clientType.getId());
-
-                    }
-
-                    client.setDetails(clientDetails);
-
-                    client = clientServiceInterface.update(client);
-
-                    LOG.info("Updated Client {}.", client);
-
-                    // In this case, we might have a session, as the client
-                    // already exists on the cloud, update if required
-
-                    ClientSession session = updateClientSession(customerId, equipmentId, locationId, dhcpLeasedIps, clientMacAddress);
-                    if (session != null) {
-                        clientSessionList.add(session);
-
-                    }
-
-                }
-            }
-
-            if (!clientSessionList.isEmpty()) {
-                LOG.info("Updating client sessions {}", clientSessionList);
-                clientSessionList = clientServiceInterface.updateSessions(clientSessionList);
-                LOG.info("Updated client sessions {}", clientSessionList);
-            }
-
-        } else if (rowUpdateOperation.equals(RowUpdateOperation.MODIFY) || rowUpdateOperation.equals(RowUpdateOperation.INIT)) {
-
-            List<ClientSession> clientSessionList = new ArrayList<>();
-
-            for (Map<String, String> dhcpLeasedIps : dhcpAttributes) {
-
-                if (!dhcpLeasedIps.containsKey("hwaddr")) {
-
-                    LOG.info("Cannot update a client {} that has no hwaddr.", dhcpLeasedIps);
-                    continue;
-
-                }
-
-                MacAddress clientMacAddress = MacAddress.valueOf(dhcpLeasedIps.get("hwaddr"));
-
-                Client client = clientServiceInterface.getOrNull(customerId, clientMacAddress);
-                if (client == null) {
-                    LOG.info("Cannot find client instance for {}", clientMacAddress);
-                    continue;
-                } else if (clientMacAddress.equals(equipmentServiceInterface.get(equipmentId).getBaseMacAddress())) {
-
-                    LOG.info("Not a client device {} ", dhcpLeasedIps);
-
-                    // In case somehow this equipment has accidentally been
-                    // tagged as a client, remove
-
-                    ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId, clientMacAddress);
-
-                    if (clientSession != null) {
-                        LOG.info("Deleting invalid client session {}", clientServiceInterface.deleteSession(customerId, equipmentId, clientMacAddress));
-                    }
-
-                    LOG.info("Deleting invalid client {}", clientServiceInterface.delete(customerId, clientMacAddress));
-
-                    continue;
-
-                } else {
-
-                    ClientInfoDetails clientDetails = (ClientInfoDetails) client.getDetails();
-                    if (dhcpLeasedIps.containsKey("hostname")) {
-
-                        clientDetails.setHostName(dhcpLeasedIps.get("hostname"));
-
-                    }
-
-                    if (dhcpLeasedIps.containsKey("fingerprint")) {
-
-                        clientDetails.setApFingerprint(dhcpLeasedIps.get("fingerprint"));
-                    }
-
-                    if (dhcpLeasedIps.containsKey("device_type")) {
-
-                        DhcpFpDeviceType dhcpFpDeviceType = DhcpFpDeviceType.getByName(dhcpLeasedIps.get("device_type"));
-                        ClientType clientType = OvsdbToWlanCloudTypeMappingUtility.getClientTypeForDhcpFpDeviceType(dhcpFpDeviceType);
-
-                        LOG.debug("Translate from ovsdb {} to cloud {}", dhcpFpDeviceType, clientType);
-
-                        clientDetails.setClientType(clientType.getId());
-
-                    }
-
-                    client.setDetails(clientDetails);
-
-                    client = clientServiceInterface.update(client);
-
-                    LOG.info("Updated Client {}.", client);
-
-                    // check if there is a session for this client
-
-                    ClientSession session = updateClientSession(customerId, equipmentId, locationId, dhcpLeasedIps, clientMacAddress);
-                    if (session != null) {
-                        clientSessionList.add(session);
-
+                    // Create or update
+                    Client client = clientServiceInterface.getOrNull(customerId, clientMacAddress);
+                    if (client == null) {
+                        LOG.info("Cannot find client instance for {}", clientMacAddress);
+                        if (rowUpdateOperation.equals(RowUpdateOperation.INSERT)) {
+                            client = new Client();
+                            client.setCustomerId(customerId);
+                            client.setMacAddress(clientMacAddress);
+                            client.setDetails(new ClientInfoDetails());
+                            if (dhcpLeasedIps.containsKey("hostname")) {
+                                ((ClientInfoDetails) client.getDetails()).setHostName(dhcpLeasedIps.get("hostname"));
+                            }
+                            if (dhcpLeasedIps.containsKey("fingerprint")) {
+                                ((ClientInfoDetails) client.getDetails()).setApFingerprint(dhcpLeasedIps.get("fingerprint"));
+                            }
+                            if (dhcpLeasedIps.containsKey("device_type")) {
+                                DhcpFpDeviceType dhcpFpDeviceType = DhcpFpDeviceType.getByName(dhcpLeasedIps.get("device_type"));
+                                ClientType clientType = OvsdbToWlanCloudTypeMappingUtility.getClientTypeForDhcpFpDeviceType(dhcpFpDeviceType);
+                                LOG.debug("Translate from ovsdb {} to cloud {}", dhcpFpDeviceType, clientType);
+                                ((ClientInfoDetails) client.getDetails()).setClientType(clientType.getId());
+                            }
+                            client = clientServiceInterface.create(client);
+                            LOG.info("Created client from DHCP_Leased_IP event {}.", client);
+                            ClientSession session = updateClientSession(customerId, equipmentId, locationId, dhcpLeasedIps, clientMacAddress);
+                            if (session != null) {
+                                clientSessionList.add(session);
+                            }
+                        }
+                    } else {
+                        LOG.info("Client {} already exists on the cloud, update client values", dhcpLeasedIps);
+                        if (dhcpLeasedIps.containsKey("hostname")) {
+                            ((ClientInfoDetails) client.getDetails()).setHostName(dhcpLeasedIps.get("hostname"));
+                        }
+                        if (dhcpLeasedIps.containsKey("fingerprint")) {
+                            ((ClientInfoDetails) client.getDetails()).setApFingerprint(dhcpLeasedIps.get("fingerprint"));
+                        }
+                        if (dhcpLeasedIps.containsKey("device_type")) {
+                            DhcpFpDeviceType dhcpFpDeviceType = DhcpFpDeviceType.getByName(dhcpLeasedIps.get("device_type"));
+                            ClientType clientType = OvsdbToWlanCloudTypeMappingUtility.getClientTypeForDhcpFpDeviceType(dhcpFpDeviceType);
+                            LOG.debug("Translate from ovsdb {} to cloud {}", dhcpFpDeviceType, clientType);
+                            ((ClientInfoDetails) client.getDetails()).setClientType(clientType.getId());
+                        }
+                        client = clientServiceInterface.update(client);
+                        LOG.info("Updated Client {}.", client);
+                        // In this case, we might have a session, as the client
+                        // already exists on the cloud, update if required
+                        ClientSession session = updateClientSession(customerId, equipmentId, locationId, dhcpLeasedIps, clientMacAddress);
+                        if (session != null) {
+                            clientSessionList.add(session);
+                        }
                     }
                 }
-
             }
 
             if (!clientSessionList.isEmpty()) {
@@ -2150,113 +2070,220 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             }
 
         } else if (rowUpdateOperation.equals(RowUpdateOperation.DELETE)) {
-            // Client should not be 'deleted' from Cloud
-            LOG.debug("Recieved deletions, not removing client(s) from cloud", dhcpAttributes);
+            for (Map<String, String> dhcpLeasedIps : dhcpAttributes) {
+                if (!dhcpLeasedIps.containsKey("hwaddr")) {
+                    LOG.info("Cannot find a client {} that has no hwaddr.", dhcpLeasedIps);
+                    continue;
+                }
+                MacAddress clientMacAddress = MacAddress.valueOf(dhcpLeasedIps.get("hwaddr"));
+                Client client = clientServiceInterface.getOrNull(customerId, clientMacAddress);
+                if (client == null) {
+                    LOG.info("Cannot find client instance for {}", clientMacAddress);
+                    ClientSession session = clientServiceInterface.getSessionOrNull(customerId, equipmentId, clientMacAddress);
+                    if (session != null) {
+                        LOG.info("Delete clientSession for client that was removed from the Dhcp_Leased_IP table {}",
+                                clientServiceInterface.deleteSession(customerId, equipmentId, clientMacAddress));
+                    }
+                } else if (clientMacAddress.equals(equipmentServiceInterface.get(equipmentId).getBaseMacAddress())) {
+                    LOG.info("Not a client device {} ", dhcpLeasedIps);
+                    // In case somehow this equipment has accidentally been
+                    // tagged as a client, remove
+                    ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId, clientMacAddress);
+                    if (clientSession != null) {
+                        LOG.info("Deleting invalid client session {}", clientServiceInterface.deleteSession(customerId, equipmentId, clientMacAddress));
+                    }
+                    LOG.info("Deleting invalid client {}", clientServiceInterface.delete(customerId, clientMacAddress));
+                } else {
+                    LOG.info("Client {} already exists on the cloud, delete the session for the client if it exists", dhcpLeasedIps);
+                    // In this case, we might have a session, as the client
+                    // already exists on the cloud, update if required
+                    ClientSession session = clientServiceInterface.getSessionOrNull(customerId, equipmentId, clientMacAddress);
+                    if (session != null) {
+                        LOG.info("Delete clientSession that was removed from the Dhcp_Leased_IP table {}",
+                                clientServiceInterface.deleteSession(customerId, equipmentId, clientMacAddress));
+                    }
+                }
+            }
         }
-
     }
 
     protected ClientSession updateClientSession(int customerId, long equipmentId, long locationId, Map<String, String> dhcpLeasedIps,
             MacAddress clientMacAddress) {
-
+        
+        long timestamp = System.currentTimeMillis();
+        
         ClientSession session = clientServiceInterface.getSessionOrNull(customerId, equipmentId, clientMacAddress);
-
         if (session == null) {
-
-            LOG.info("Cannot get session for client {} for customerId {} equipmentId {} locationId {}", clientMacAddress, customerId, equipmentId, locationId);
-            return null;
+            session = new ClientSession();
+            session.setCustomerId(customerId);
+            session.setEquipmentId(equipmentId);
+            session.setLocationId(locationId);
+            session.setMacAddress(clientMacAddress);
+            session.setDetails(new ClientSessionDetails());
+            session.getDetails().setSessionId(clientMacAddress.getAddressAsLong());
+            session.getDetails().setDhcpDetails(new ClientDhcpDetails(clientMacAddress.getAddressAsLong()));
+            session.getDetails().getDhcpDetails().setLeaseStartTimestamp(timestamp);
+            session.getDetails().setMetricDetails(new ClientSessionMetricDetails());
+            session.getDetails().setLastEventTimestamp(timestamp);
+            session.getDetails().setAssociationState(AssociationState._802_11_Associated);
+            session.getDetails().setAssocTimestamp(timestamp);
+        } else {
+            if (session.getDetails().getPriorEquipmentId() == null) {
+                session.getDetails().setPriorEquipmentId(session.getEquipmentId());
+            }
+            if (session.getDetails().getPriorSessionId() == null) {
+                session.getDetails().setPriorSessionId(session.getDetails().getSessionId());
+            }
+            if (session.getDetails().getLastEventTimestamp() == null || session.getDetails().getLastEventTimestamp() < timestamp) {
+                session.getDetails().setLastEventTimestamp(timestamp);
+            }
+            if (!session.getDetails().getAssociationState().equals(AssociationState._802_11_Associated)) {
+                session.getDetails().setAssociationState(AssociationState._802_11_Associated);
+                session.getDetails().setAssocTimestamp(timestamp);
+            }
         }
-
-        ClientSessionDetails clientSessionDetails = new ClientSessionDetails();
-
         if (dhcpLeasedIps.containsKey("fingerprint")) {
-
-            clientSessionDetails.setApFingerprint(dhcpLeasedIps.get("fingerprint"));
+            session.getDetails().setApFingerprint(dhcpLeasedIps.get("fingerprint"));
         }
 
         if (dhcpLeasedIps.containsKey("inet_addr")) {
+            String ipAddress = dhcpLeasedIps.get("inet_addr");
+            LOG.info("Dhcp_Leased_IP inet_addr {}", ipAddress);
+            if (ipAddress != null) {
+                try {
+                    InetAddress inetAddress = InetAddress.getByName(ipAddress);
+                    if ((inetAddress instanceof Inet4Address) && inetAddress.getHostAddress().equals(ipAddress)) {
+                        LOG.info("IPv4 address {}", inetAddress);
+                        session.getDetails().setIpAddress(inetAddress);
+                    } else if (inetAddress instanceof Inet6Address) {
+                        LOG.info("IPv6 address {}", inetAddress);
+                        session.getDetails().setIpAddress(inetAddress);
+                    } else {
+                        LOG.error("Invalid IP Address {}", ipAddress);
+                    }
+                    session.getDetails().setIpTimestamp(timestamp);
 
-            try {
-                clientSessionDetails.setIpAddress(InetAddress.getByName(dhcpLeasedIps.get("inet_addr")));
-            } catch (UnknownHostException e) {
-                LOG.error("Invalid Client IP", e);
+                } catch (UnknownHostException ex) {
+                }
             }
-
         }
-
+        
         if (dhcpLeasedIps.containsKey("hostname")) {
-
-            clientSessionDetails.setHostname(dhcpLeasedIps.get("hostname"));
-
+            session.getDetails().setHostname(dhcpLeasedIps.get("hostname"));
         }
-
-        ClientDhcpDetails clientDhcpDetails = new ClientDhcpDetails(clientSessionDetails.getSessionId());
 
         if (dhcpLeasedIps.containsKey("dhcp_server")) {
-            try {
-                clientDhcpDetails.setDhcpServerIp(InetAddress.getByName(dhcpLeasedIps.get("dhcp_server")));
-            } catch (UnknownHostException e) {
-                LOG.error("Invalid DhcpServer", e);
+            String ipAddress = dhcpLeasedIps.get("dhcp_server");
+            LOG.info("Dhcp_Leased_IP dhcp_server {}", ipAddress);
+            if (ipAddress != null) {
+                try {
+                    InetAddress inetAddress = InetAddress.getByName(ipAddress);
+                    if ((inetAddress instanceof Inet4Address) && inetAddress.getHostAddress().equals(ipAddress)) {
+                        LOG.info("IPv4 address {}", inetAddress);
+                        session.getDetails().getDhcpDetails().setDhcpServerIp(inetAddress);
+                    } else if (inetAddress instanceof Inet6Address) {
+                        LOG.info("IPv6 address {}", inetAddress);
+                        session.getDetails().getDhcpDetails().setDhcpServerIp(inetAddress);
+                    } else {
+                        LOG.error("Invalid IP Address {}", ipAddress);
+                    }
+
+                } catch (UnknownHostException ex) {
+                }
             }
         }
 
         if (dhcpLeasedIps.containsKey("lease_time")) {
             Integer leaseTime = Integer.valueOf(dhcpLeasedIps.get("lease_time"));
-            clientDhcpDetails.setLeaseTimeInSeconds(leaseTime);
+            session.getDetails().getDhcpDetails().setLeaseTimeInSeconds(leaseTime);
         }
 
         if (dhcpLeasedIps.containsKey("gateway")) {
-            try {
-                clientDhcpDetails.setGatewayIp(InetAddress.getByName(dhcpLeasedIps.get("gateway")));
-            } catch (UnknownHostException e) {
+            String ipAddress = dhcpLeasedIps.get("gateway");
+            LOG.info("Dhcp_Leased_IP gateway {}", ipAddress);
+            if (ipAddress != null) {
                 try {
-                    clientDhcpDetails.setGatewayIp(InetAddress.getByAddress(dhcpLeasedIps.get("gateway").getBytes()));
-                } catch (UnknownHostException e1) {
-                    LOG.warn("Invalid Gateway IP {}", e.getMessage());
+                    InetAddress inetAddress = InetAddress.getByName(ipAddress);
+                    if ((inetAddress instanceof Inet4Address) && inetAddress.getHostAddress().equals(ipAddress)) {
+                        LOG.info("IPv4 address {}", inetAddress);
+                        session.getDetails().getDhcpDetails().setGatewayIp(inetAddress);
+                    } else if (inetAddress instanceof Inet6Address) {
+                        LOG.info("IPv6 address {}", inetAddress);
+                        session.getDetails().getDhcpDetails().setGatewayIp(inetAddress);
+                    } else {
+                        LOG.error("Invalid Gateway IP {}", ipAddress);
+                    }
+
+                } catch (UnknownHostException ex) {
                 }
             }
         }
 
         if (dhcpLeasedIps.containsKey("subnet_mask")) {
-            try {
-                clientDhcpDetails.setSubnetMask(InetAddress.getByName(dhcpLeasedIps.get("subnet_mask")));
-            } catch (UnknownHostException e) {
+            String ipAddress = dhcpLeasedIps.get("subnet_mask");
+            LOG.info("Dhcp_Leased_IP subnet_mask {}", ipAddress);
+            if (ipAddress != null) {
                 try {
-                    clientDhcpDetails.setSubnetMask(InetAddress.getByAddress(dhcpLeasedIps.get("subnet_mask").getBytes()));
-                } catch (UnknownHostException e1) {
-                    LOG.warn("Invalid Subnet Mask {}", e.getMessage());
+                    InetAddress inetAddress = InetAddress.getByName(ipAddress);
+                    if ((inetAddress instanceof Inet4Address) && inetAddress.getHostAddress().equals(ipAddress)) {
+                        LOG.info("IPv4 address {}", inetAddress);
+                        session.getDetails().getDhcpDetails().setSubnetMask(inetAddress);
+                    } else if (inetAddress instanceof Inet6Address) {
+                        LOG.info("IPv6 address {}", inetAddress);
+                        session.getDetails().getDhcpDetails().setSubnetMask(inetAddress);
+                    } else {
+                        LOG.error("Invalid subnet mask IP {}", ipAddress);
+                    }
+                } catch (UnknownHostException ex) {
                 }
             }
         }
 
         if (dhcpLeasedIps.containsKey("primary_dns")) {
-            try {
-                clientDhcpDetails.setPrimaryDns(InetAddress.getByName(dhcpLeasedIps.get("primary_dns")));
-            } catch (UnknownHostException e) {
+            String ipAddress = dhcpLeasedIps.get("primary_dns");
+            LOG.info("Dhcp_Leased_IP primary_dns {}", ipAddress);
+            if (ipAddress != null) {
                 try {
-                    clientDhcpDetails.setPrimaryDns(InetAddress.getByAddress(dhcpLeasedIps.get("primary_dns").getBytes()));
-                } catch (UnknownHostException e1) {
-                    LOG.warn("Invalid Primary DNS {}", e.getMessage());
+                    InetAddress inetAddress = InetAddress.getByName(ipAddress);
+                    if ((inetAddress instanceof Inet4Address) && inetAddress.getHostAddress().equals(ipAddress)) {
+                        LOG.info("IPv4 address {}", inetAddress);
+                        session.getDetails().getDhcpDetails().setPrimaryDns(inetAddress);
+                    } else if (inetAddress instanceof Inet6Address) {
+                        LOG.info("IPv6 address {}", inetAddress);
+                        session.getDetails().getDhcpDetails().setPrimaryDns(inetAddress);
+                    } else {
+                        LOG.error("Invalid primary_dns IP {}", ipAddress);
+                    }
+
+                } catch (UnknownHostException ex) {
                 }
             }
         }
 
         if (dhcpLeasedIps.containsKey("secondary_dns")) {
-            try {
-                clientDhcpDetails.setSecondaryDns(InetAddress.getByName(dhcpLeasedIps.get("secondary_dns")));
-            } catch (UnknownHostException e) {
+            String ipAddress = dhcpLeasedIps.get("secondary_dns");
+            LOG.info("Dhcp_Leased_IP secondary_dns {}", ipAddress);
+            if (ipAddress != null) {
                 try {
-                    clientDhcpDetails.setSecondaryDns(InetAddress.getByAddress(dhcpLeasedIps.get("secondary_dns").getBytes()));
-                } catch (UnknownHostException e1) {
-                    LOG.warn("Invalid Secondary DNS {}", e.getMessage());
+                    InetAddress inetAddress = InetAddress.getByName(ipAddress);
+                    if ((inetAddress instanceof Inet4Address) && inetAddress.getHostAddress().equals(ipAddress)) {
+                        LOG.info("IPv4 address {}", inetAddress);
+                        session.getDetails().getDhcpDetails().setSecondaryDns(inetAddress);
+                    } else if (inetAddress instanceof Inet6Address) {
+                        LOG.info("IPv6 address {}", inetAddress);
+                        session.getDetails().getDhcpDetails().setSecondaryDns(inetAddress);
+                    } else {
+                        LOG.error("Invalid secondary_dns IP {}", ipAddress);
+                    }
+
+                } catch (UnknownHostException ex) {
                 }
             }
         }
+
         if (dhcpLeasedIps.containsKey("device_name")) {
-            clientSessionDetails.setClassificationName(dhcpLeasedIps.get("device_name"));
+            session.getDetails().setClassificationName(dhcpLeasedIps.get("device_name"));
         }
-        clientSessionDetails.setDhcpDetails(clientDhcpDetails);
-        session.getDetails().mergeSession(clientSessionDetails);
         return session;
     }
 
