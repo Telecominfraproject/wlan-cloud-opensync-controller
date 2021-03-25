@@ -90,7 +90,6 @@ import com.telecominfraproject.wlan.status.StatusServiceInterface;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentAdminStatusData;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentChannelStatusData;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentLANStatusData;
-import com.telecominfraproject.wlan.status.equipment.models.EquipmentManufacturer;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentManufacturerDataStatus;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentManufacturerQrCode;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentProtocolState;
@@ -613,7 +612,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             // ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setQrCode(qrCode);
             // if (connectNodeInfo.manufacturerName != null) {
             // ((EquipmentManufacturerDataStatus)
-            // statusRecord.getDetails()).setEquipmentManufacturer(EquipmentManufacturer.getByManufacturer(connectNodeInfo.manufacturerName));
+            // statusRecord.getDetails()).setManufacturerName(connectNodeInfo.manufacturerName);
             // }
             // ((EquipmentManufacturerDataStatus)
             // statusRecord.getDetails()).setManufacturerDate(connectNodeInfo.manufacturerDate);
@@ -1752,7 +1751,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setQrCode(qrCode);
         if (node.manufacturerName != null) {
             ((EquipmentManufacturerDataStatus) statusRecord.getDetails())
-                    .setEquipmentManufacturer(EquipmentManufacturer.getByManufacturer(node.manufacturerName));
+                    .setManufacturerName(node.manufacturerName);
         }
         ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setManufacturerDate(node.manufacturerDate);
         ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setManufacturerUrl(node.manufacturerUrl);
