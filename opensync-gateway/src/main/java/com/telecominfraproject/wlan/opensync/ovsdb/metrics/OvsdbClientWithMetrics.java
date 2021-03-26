@@ -1,6 +1,7 @@
 package com.telecominfraproject.wlan.opensync.ovsdb.metrics;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 import com.vmware.ovsdb.callback.LockCallback;
@@ -73,6 +74,27 @@ public class OvsdbClientWithMetrics implements OvsdbClient {
 
     public void shutdown() {
         delegate.shutdown();
-    }    
+    }
 
+    @Override
+    public int hashCode() {
+        return Objects.hash(delegate, metrics);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == this.delegate) {
+            // in this case, we are probably handling a disconnect, so we have an OvsdbClient, but not a 'metrics' client
+            return true;
+        } 
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        OvsdbClientWithMetrics other = (OvsdbClientWithMetrics) obj;
+        return Objects.equals(delegate, other.delegate) && Objects.equals(metrics, other.metrics);
+    } 
+        
 }
