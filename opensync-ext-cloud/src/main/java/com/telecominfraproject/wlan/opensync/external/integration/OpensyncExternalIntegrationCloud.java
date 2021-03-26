@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -573,67 +575,72 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             statusRecord.setDetails(protocolStatusData);
             Status protocolStatus = statusServiceInterface.update(statusRecord);
             LOG.debug("ProtocolStatus for AP {} updated to {}", ce.getName(), protocolStatus);
-            //
-            // TODO: enable when AP supports in load
-            //
-            // statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(),
-            // StatusDataType.EQUIPMENT_MANUFACTURER_DATA);
-            // if (statusRecord == null) {
-            // statusRecord = new Status();
-            // statusRecord.setCustomerId(ce.getCustomerId());
-            // statusRecord.setEquipmentId(ce.getId());
-            // statusRecord.setStatusDataType(StatusDataType.EQUIPMENT_MANUFACTURER_DATA);
-            // EquipmentManufacturerDataStatus statusData = new EquipmentManufacturerDataStatus();
-            // statusRecord.setDetails(statusData);
-            // }
-            //
-            // EquipmentManufacturerQrCode qrCode = new EquipmentManufacturerQrCode();
-            //
-            // if (connectNodeInfo.qrCode != null) {
-            // if (connectNodeInfo.qrCode.get("DT") != null) {
-            // qrCode.setDeviceType(EquipmentType.getByName(connectNodeInfo.qrCode.get("DT")));
-            // }
-            // if (connectNodeInfo.qrCode.get("VN") != null) {
-            // qrCode.setVendorName(connectNodeInfo.qrCode.get("VN").toUpperCase());
-            // }
-            // if (connectNodeInfo.qrCode.get("DM") != null) {
-            // qrCode.setDeviceMac(MacAddress.valueOf(connectNodeInfo.qrCode.get("DM")));
-            // }
-            // qrCode.setHwRevision(connectNodeInfo.qrCode.get("HW"));
-            // qrCode.setModelName(connectNodeInfo.qrCode.get("MN"));
-            // qrCode.setSerialNumber(connectNodeInfo.qrCode.get("SN"));
-            // }
-            //
-            // ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setSkuNumber(connectNodeInfo.skuNumber);
-            // ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setModel(connectNodeInfo.model);
-            // ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setRevision(connectNodeInfo.revision);
-            // ((EquipmentManufacturerDataStatus)
-            // statusRecord.getDetails()).setSerialNumber(connectNodeInfo.serialNumber);
-            // ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setQrCode(qrCode);
-            // if (connectNodeInfo.manufacturerName != null) {
-            // ((EquipmentManufacturerDataStatus)
-            // statusRecord.getDetails()).setManufacturerName(connectNodeInfo.manufacturerName);
-            // }
-            // ((EquipmentManufacturerDataStatus)
-            // statusRecord.getDetails()).setManufacturerDate(connectNodeInfo.manufacturerDate);
-            // ((EquipmentManufacturerDataStatus)
-            // statusRecord.getDetails()).setManufacturerUrl(connectNodeInfo.manufacturerUrl);
-            // ((EquipmentManufacturerDataStatus)
-            // statusRecord.getDetails()).setModelDescription(connectNodeInfo.modelDescription);
-            // ((EquipmentManufacturerDataStatus)
-            // statusRecord.getDetails()).setReferenceDesign(connectNodeInfo.referenceDesign);
-            // if (connectNodeInfo.certificationRegion != null &&
-            // !connectNodeInfo.certificationRegion.equalsIgnoreCase("unknown")) {
-            // ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setCertificationRegion(
-            // CountryCode.getByName(connectNodeInfo.certificationRegion.toUpperCase()));
-            // }
-            // if (connectNodeInfo.macAddress != null && !connectNodeInfo.macAddress.equalsIgnoreCase("unknown")) {
-            // ((EquipmentManufacturerDataStatus)
-            // statusRecord.getDetails()).setMacAddress(MacAddress.valueOf(connectNodeInfo.macAddress));
-            // }
-            //
-            // Status manufacturerStatus = statusServiceInterface.update(statusRecord);
-            // LOG.debug("EQUIPMENT_MANUFACTURER_DATA for AP {} updated to {}", ce.getName(), manufacturerStatus);
+
+            statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(),
+                    StatusDataType.EQUIPMENT_MANUFACTURER_DATA);
+            if (statusRecord == null) {
+                statusRecord = new Status();
+                statusRecord.setCustomerId(ce.getCustomerId());
+                statusRecord.setEquipmentId(ce.getId());
+                statusRecord.setStatusDataType(StatusDataType.EQUIPMENT_MANUFACTURER_DATA);
+                EquipmentManufacturerDataStatus statusData = new EquipmentManufacturerDataStatus();
+                statusRecord.setDetails(statusData);
+            }
+
+            EquipmentManufacturerQrCode qrCode = new EquipmentManufacturerQrCode();
+
+            if (connectNodeInfo.qrCode != null) {
+                if (connectNodeInfo.qrCode.get("DT") != null) {
+                    qrCode.setDeviceType(EquipmentType.getByName(connectNodeInfo.qrCode.get("DT")));
+                }
+                if (connectNodeInfo.qrCode.get("VN") != null) {
+                    qrCode.setVendorName(connectNodeInfo.qrCode.get("VN").toUpperCase());
+                }
+                if (isValidMACAddress(connectNodeInfo.qrCode.get("DM"))) {
+                    qrCode.setDeviceMac(MacAddress.valueOf(connectNodeInfo.qrCode.get("DM")));
+                }
+                qrCode.setHwRevision(connectNodeInfo.qrCode.get("HW"));
+                qrCode.setModelName(connectNodeInfo.qrCode.get("MN"));
+                qrCode.setSerialNumber(connectNodeInfo.qrCode.get("SN"));
+            }
+
+            ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setSkuNumber(connectNodeInfo.skuNumber);
+            ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setModel(connectNodeInfo.model);
+            ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setRevision(connectNodeInfo.revision);
+            ((EquipmentManufacturerDataStatus)
+                    statusRecord.getDetails()).setSerialNumber(connectNodeInfo.serialNumber);
+            ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setQrCode(qrCode);
+            if (connectNodeInfo.manufacturerName != null) {
+                ((EquipmentManufacturerDataStatus)
+                        statusRecord.getDetails()).setManufacturerName(connectNodeInfo.manufacturerName);
+            }
+            if (connectNodeInfo.manufacturerDate != null) {
+                ((EquipmentManufacturerDataStatus)
+                        statusRecord.getDetails()).setManufacturerDate(connectNodeInfo.manufacturerDate);
+            }
+            if (connectNodeInfo.manufacturerUrl != null) {
+                ((EquipmentManufacturerDataStatus)
+                        statusRecord.getDetails()).setManufacturerUrl(connectNodeInfo.manufacturerUrl);
+            }
+            if (connectNodeInfo.modelDescription != null) {
+                ((EquipmentManufacturerDataStatus)
+                        statusRecord.getDetails()).setModelDescription(connectNodeInfo.modelDescription);
+            }
+            if (connectNodeInfo.referenceDesign != null) {
+                ((EquipmentManufacturerDataStatus)
+                        statusRecord.getDetails()).setReferenceDesign(connectNodeInfo.referenceDesign);
+            }
+            if (connectNodeInfo.certificationRegion != null &&
+                    !connectNodeInfo.certificationRegion.equalsIgnoreCase("unknown")) {
+                ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setCertificationRegion(
+                        CountryCode.getByName(connectNodeInfo.certificationRegion.toUpperCase()));
+            }
+            if (isValidMACAddress( connectNodeInfo.macAddress)) {
+                    ((EquipmentManufacturerDataStatus)
+                            statusRecord.getDetails()).setMacAddress(MacAddress.valueOf(connectNodeInfo.macAddress));
+            }
+            Status manufacturerStatus = statusServiceInterface.update(statusRecord);
+            LOG.debug("EQUIPMENT_MANUFACTURER_DATA for AP {} updated to {}", ce.getName(), manufacturerStatus);
 
             statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(), StatusDataType.FIRMWARE);
             if (statusRecord == null) {
@@ -1703,10 +1710,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             updates.add(protocolStatus);
         }
         // TODO: this should be turned on after the AP has a load with the new mappings
-        // Status manufacturerData = configureManufacturerDetailsStatus(node, customerId, equipmentId);
-        // if (manufacturerData != null) {
-        // updates.add(manufacturerData);
-        // }
+        Status manufacturerData = configureManufacturerDetailsStatus(node, customerId, equipmentId);
+        if (manufacturerData != null) {
+            updates.add(manufacturerData);
+        }
 
         Status firmwareStatus =
                 configureFirmwareStatus(customerId, equipmentId, fwUpgradeState, fwUpgradeFailureReason, reportedFwImageName, reportedAltFwImageName);
@@ -1734,11 +1741,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
 
         EquipmentManufacturerQrCode qrCode = new EquipmentManufacturerQrCode();
-
         if (node.qrCode != null) {
             qrCode.setDeviceType(EquipmentType.getByName(node.qrCode.get("DT")));
             qrCode.setVendorName(node.qrCode.get("VN"));
-            qrCode.setDeviceMac(MacAddress.valueOf(node.qrCode.get("DM")));
+            if (isValidMACAddress(node.qrCode.get("DM"))) {
+                qrCode.setDeviceMac(MacAddress.valueOf(node.qrCode.get("DM")));
+            }
             qrCode.setHwRevision(node.qrCode.get("HW"));
             qrCode.setModelName(node.qrCode.get("MN"));
             qrCode.setSerialNumber(node.qrCode.get("SN"));
@@ -1760,11 +1768,30 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         if (node.certificationRegion != null && !node.certificationRegion.equalsIgnoreCase("unknown")) {
             ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setCertificationRegion(CountryCode.getByName(node.certificationRegion.toUpperCase()));
         }
-        if (node.getId() != null && !node.getId().equalsIgnoreCase("unknown")) {
+        if (isValidMACAddress(node.getId())) {
             ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setMacAddress(MacAddress.valueOf(node.getId()));
         }
-
         return statusRecord;
+    }
+    
+    private boolean isValidMACAddress(String str)
+    {
+        String regex = "^([0-9A-Fa-f]{2}[:-])"
+                       + "{5}([0-9A-Fa-f]{2})|"
+                       + "([0-9a-fA-F]{4}\\."
+                       + "[0-9a-fA-F]{4}\\."
+                       + "[0-9a-fA-F]{4})$";
+ 
+        Pattern p = Pattern.compile(regex);
+        if (str == null)
+        {
+            return false;
+        }
+         // Find match between given string
+        // and regular expression
+        // uSing Pattern.matcher()
+         Matcher m = p.matcher(str);
+        return m.matches();
     }
 
     private Status configureProtocolStatus(OpensyncAWLANNode node, int customerId, long equipmentId, String reportedSwImageName,
