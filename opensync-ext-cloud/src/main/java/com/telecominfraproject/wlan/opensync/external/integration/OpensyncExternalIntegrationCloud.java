@@ -576,8 +576,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             Status protocolStatus = statusServiceInterface.update(statusRecord);
             LOG.debug("ProtocolStatus for AP {} updated to {}", ce.getName(), protocolStatus);
 
-            statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(),
-                    StatusDataType.EQUIPMENT_MANUFACTURER_DATA);
+            statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(), StatusDataType.EQUIPMENT_MANUFACTURER_DATA);
             if (statusRecord == null) {
                 statusRecord = new Status();
                 statusRecord.setCustomerId(ce.getCustomerId());
@@ -607,37 +606,29 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setSkuNumber(connectNodeInfo.skuNumber);
             ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setModel(connectNodeInfo.model);
             ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setRevision(connectNodeInfo.revision);
-            ((EquipmentManufacturerDataStatus)
-                    statusRecord.getDetails()).setSerialNumber(connectNodeInfo.serialNumber);
+            ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setSerialNumber(connectNodeInfo.serialNumber);
             ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setQrCode(qrCode);
             if (connectNodeInfo.manufacturerName != null) {
-                ((EquipmentManufacturerDataStatus)
-                        statusRecord.getDetails()).setManufacturerName(connectNodeInfo.manufacturerName);
+                ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setManufacturerName(connectNodeInfo.manufacturerName);
             }
             if (connectNodeInfo.manufacturerDate != null) {
-                ((EquipmentManufacturerDataStatus)
-                        statusRecord.getDetails()).setManufacturerDate(connectNodeInfo.manufacturerDate);
+                ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setManufacturerDate(connectNodeInfo.manufacturerDate);
             }
             if (connectNodeInfo.manufacturerUrl != null) {
-                ((EquipmentManufacturerDataStatus)
-                        statusRecord.getDetails()).setManufacturerUrl(connectNodeInfo.manufacturerUrl);
+                ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setManufacturerUrl(connectNodeInfo.manufacturerUrl);
             }
             if (connectNodeInfo.modelDescription != null) {
-                ((EquipmentManufacturerDataStatus)
-                        statusRecord.getDetails()).setModelDescription(connectNodeInfo.modelDescription);
+                ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setModelDescription(connectNodeInfo.modelDescription);
             }
             if (connectNodeInfo.referenceDesign != null) {
-                ((EquipmentManufacturerDataStatus)
-                        statusRecord.getDetails()).setReferenceDesign(connectNodeInfo.referenceDesign);
+                ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setReferenceDesign(connectNodeInfo.referenceDesign);
             }
-            if (connectNodeInfo.certificationRegion != null &&
-                    !connectNodeInfo.certificationRegion.equalsIgnoreCase("unknown")) {
-                ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setCertificationRegion(
-                        CountryCode.getByName(connectNodeInfo.certificationRegion.toUpperCase()));
+            if (connectNodeInfo.certificationRegion != null && !connectNodeInfo.certificationRegion.equalsIgnoreCase("unknown")) {
+                ((EquipmentManufacturerDataStatus) statusRecord.getDetails())
+                        .setCertificationRegion(CountryCode.getByName(connectNodeInfo.certificationRegion.toUpperCase()));
             }
-            if (isValidMACAddress( connectNodeInfo.macAddress)) {
-                    ((EquipmentManufacturerDataStatus)
-                            statusRecord.getDetails()).setMacAddress(MacAddress.valueOf(connectNodeInfo.macAddress));
+            if (isValidMACAddress(connectNodeInfo.macAddress)) {
+                ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setMacAddress(MacAddress.valueOf(connectNodeInfo.macAddress));
             }
             Status manufacturerStatus = statusServiceInterface.update(statusRecord);
             LOG.debug("EQUIPMENT_MANUFACTURER_DATA for AP {} updated to {}", ce.getName(), manufacturerStatus);
@@ -715,8 +706,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientSession = clientServiceInterface.deleteSession(ce.getCustomerId(), ce.getId(), client.getMacAddress());
                 LOG.info("Removed invalid client session {}", clientSession);
             }
-            client = clientServiceInterface.delete(ce.getCustomerId(), client.getMacAddress());
-            LOG.info("Removed invalid client type {}", client);
+            if (clientServiceInterface.getOrNull(ce.getCustomerId(), client.getMacAddress()) != null) {
+                LOG.info("Deleting invalid client {}", clientServiceInterface.delete(ce.getCustomerId(), client.getMacAddress()));
+            }
         } else {
             LOG.info("No clients with MAC address {} registered for customer {}", ce.getBaseMacAddress(), ce.getCustomerId());
         }
@@ -1581,7 +1573,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         List<ClientSession> clientSessions = new ArrayList<>();
 
         long timestamp = System.currentTimeMillis();
-        
+
         for (OpensyncWifiAssociatedClients opensyncWifiAssociatedClients : wifiAssociatedClients) {
 
             LOG.info("opensyncWifiAssociatedClients {}", opensyncWifiAssociatedClients);
@@ -1633,7 +1625,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 }
             }
             clientSession.getDetails().setIsReassociation(isReassociation);
-            
 
             clientSessions.add(clientSession);
 
@@ -1758,8 +1749,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setSerialNumber(node.serialNumber);
         ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setQrCode(qrCode);
         if (node.manufacturerName != null) {
-            ((EquipmentManufacturerDataStatus) statusRecord.getDetails())
-                    .setManufacturerName(node.manufacturerName);
+            ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setManufacturerName(node.manufacturerName);
         }
         ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setManufacturerDate(node.manufacturerDate);
         ((EquipmentManufacturerDataStatus) statusRecord.getDetails()).setManufacturerUrl(node.manufacturerUrl);
@@ -1773,24 +1763,18 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
         return statusRecord;
     }
-    
-    private boolean isValidMACAddress(String str)
-    {
-        String regex = "^([0-9A-Fa-f]{2}[:-])"
-                       + "{5}([0-9A-Fa-f]{2})|"
-                       + "([0-9a-fA-F]{4}\\."
-                       + "[0-9a-fA-F]{4}\\."
-                       + "[0-9a-fA-F]{4})$";
- 
+
+    private boolean isValidMACAddress(String str) {
+        String regex = "^([0-9A-Fa-f]{2}[:-])" + "{5}([0-9A-Fa-f]{2})|" + "([0-9a-fA-F]{4}\\." + "[0-9a-fA-F]{4}\\." + "[0-9a-fA-F]{4})$";
+
         Pattern p = Pattern.compile(regex);
-        if (str == null)
-        {
+        if (str == null) {
             return false;
         }
-         // Find match between given string
+        // Find match between given string
         // and regular expression
         // uSing Pattern.matcher()
-         Matcher m = p.matcher(str);
+        Matcher m = p.matcher(str);
         return m.matches();
     }
 
@@ -2032,7 +2016,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     if (clientSession != null) {
                         LOG.info("Deleting invalid client session {}", clientServiceInterface.deleteSession(customerId, equipmentId, clientMacAddress));
                     }
-                    LOG.info("Deleting invalid client {}", clientServiceInterface.delete(customerId, clientMacAddress));
+                    if (clientServiceInterface.getOrNull(customerId, clientMacAddress) != null) {
+                        LOG.info("Deleting invalid client {}", clientServiceInterface.delete(customerId, clientMacAddress));
+                    }
                     continue;
                 } else {
                     // Create or update
@@ -2118,7 +2104,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     if (clientSession != null) {
                         LOG.info("Deleting invalid client session {}", clientServiceInterface.deleteSession(customerId, equipmentId, clientMacAddress));
                     }
-                    LOG.info("Deleting invalid client {}", clientServiceInterface.delete(customerId, clientMacAddress));
+                    if (clientServiceInterface.getOrNull(customerId, clientMacAddress) != null) {
+                        LOG.info("Deleting invalid client {}", clientServiceInterface.delete(customerId, clientMacAddress));
+                    }
                 } else {
                     LOG.info("Client {} already exists on the cloud, delete the session for the client if it exists", dhcpLeasedIps);
                     // In this case, we might have a session, as the client
@@ -2135,9 +2123,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     protected ClientSession updateClientSession(int customerId, long equipmentId, long locationId, Map<String, String> dhcpLeasedIps,
             MacAddress clientMacAddress) {
-        
+
         long timestamp = System.currentTimeMillis();
-        
+
         ClientSession session = clientServiceInterface.getSessionOrNull(customerId, equipmentId, clientMacAddress);
         if (session == null) {
             session = new ClientSession();
@@ -2193,7 +2181,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 }
             }
         }
-        
+
         if (dhcpLeasedIps.containsKey("hostname")) {
             session.getDetails().setHostname(dhcpLeasedIps.get("hostname"));
         }
