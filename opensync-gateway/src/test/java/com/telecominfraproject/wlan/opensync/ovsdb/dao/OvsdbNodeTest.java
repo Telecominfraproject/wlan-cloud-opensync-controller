@@ -112,6 +112,7 @@ public class OvsdbNodeTest {
         connectNodeInfo.lanIfName = "lan";
         connectNodeInfo.lanIfType = "bridge";
         connectNodeInfo.serialNumber = "0123456789";
+        connectNodeInfo.model = "EA8300-CA";
 
         Map<String, String> newMqttSettings = new HashMap<>();
         newMqttSettings.put("broker", ovsdbNode.mqttBrokerAddress);
@@ -126,7 +127,7 @@ public class OvsdbNodeTest {
         ConnectNodeInfo newConnectNodeInfo = ovsdbNode.updateConnectNodeInfoOnConnect(ovsdbClient, "AP-1",
                 connectNodeInfo, false);
         assert (connectNodeInfo.ifName.equals(newConnectNodeInfo.ifName));
-        assert (newConnectNodeInfo.skuNumber.equals("tip.wlan_" + connectNodeInfo.serialNumber));
+        assert (newConnectNodeInfo.skuNumber.equals("TIP-" + connectNodeInfo.model));
         assert (newConnectNodeInfo.mqttSettings.equals(newMqttSettings));
     }
 

@@ -351,9 +351,27 @@ public class OvsdbNode extends OvsdbDaoBase {
             // updateColumns.put("device_mode", new Atom<String>("cloud") );
 
             // update sku_number if it was empty
-            if ((ret.skuNumber == null) || ret.skuNumber.isEmpty()) {
-                ret.skuNumber = "tip.wlan_" + ret.serialNumber;
-                updateColumns.put("sku_number", new Atom<>(ret.skuNumber));
+            if (( ret.skuNumber == null) || ret.skuNumber.isEmpty()  || ret.skuNumber.equals("unknown") || ret.skuNumber.startsWith("tip.wlan_")) {              
+                if ((ret.certificationRegion != null && !ret.certificationRegion.equals("unknown") ) && (ret.model != null && !ret.model.equals("unknown"))) {
+                    if (ret.model.endsWith("-" + ret.certificationRegion)) {
+                        updateColumns.put("sku_number", new Atom<>("TIP-" + ret.model));
+                        ret.skuNumber = "TIP-" + ret.model;
+                    } else {
+                        updateColumns.put("sku_number", new Atom<>("TIP-" + ret.model + "-" + ret.certificationRegion));
+                        ret.skuNumber = "TIP-" + ret.model + "-" + ret.certificationRegion;
+                    }
+                } else if ((ret.country != null ) && (ret.model != null && !ret.model.equals("unknown"))) {
+                    if (ret.model.endsWith("-" + ret.country)) {
+                        updateColumns.put("sku_number", new Atom<>("TIP-" + ret.model));
+                        ret.skuNumber = "TIP-" + ret.model;
+                    } else {
+                        updateColumns.put("sku_number", new Atom<>("TIP-" + ret.model + "-" + ret.country));
+                        ret.skuNumber = "TIP-" + ret.model + "-" + ret.country;
+                    }
+                } else if (ret.model != null && !ret.model.equals("unknown")){
+                    updateColumns.put("sku_number", new Atom<>("TIP-" + ret.model));
+                    ret.skuNumber = "TIP-" + ret.model;
+                }
             }
 
             // Configure the MQTT connection
