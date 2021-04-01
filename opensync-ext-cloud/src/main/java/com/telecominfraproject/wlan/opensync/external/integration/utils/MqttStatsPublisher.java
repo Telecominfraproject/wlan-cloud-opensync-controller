@@ -6,7 +6,6 @@ import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -81,8 +80,6 @@ import com.telecominfraproject.wlan.status.models.StatusDataType;
 import com.telecominfraproject.wlan.status.network.models.NetworkAdminStatusData;
 import com.telecominfraproject.wlan.systemevent.models.SystemEvent;
 
-import javassist.bytecode.ByteArray;
-import sts.OpensyncStats;
 import sts.OpensyncStats.AssocType;
 import sts.OpensyncStats.Client;
 import sts.OpensyncStats.ClientReport;
@@ -1829,7 +1826,8 @@ public class MqttStatsPublisher {
 
             survey.getSurveyListList().stream().filter(t -> {
                 if (survey.getSurveyType().equals(SurveyType.ON_CHANNEL)) {
-                    return t.hasDurationMs() && (t.getDurationMs() > 0) && t.hasChannel() && t.hasBusy() && t.hasBusyTx() && t.hasNoise();
+                    return t.hasDurationMs() && (t.getDurationMs() > 0) && t.hasChannel() &&
+                            (t.hasBusy() || t.hasBusyTx() || t.hasBusySelf() || t.hasNoise());
                 } else {
                     return t.hasDurationMs() && t.hasChannel();
                 }
@@ -1855,10 +1853,12 @@ public class MqttStatsPublisher {
                 channelInfoReports.setChannelInformationReportsPerRadio(channelInfoMap);
             }
 
-            channelInfoReports.setChannelInformationReportsPerRadio(channelInfoMap);
-            smr.setDetails(channelInfoReports);
-            smr.setCreatedTimestamp(survey.getTimestampMs());
-            metricRecordList.add(smr);
+            if (!channelInfoMap.isEmpty()) {
+                channelInfoReports.setChannelInformationReportsPerRadio(channelInfoMap);
+                smr.setDetails(channelInfoReports);
+                smr.setCreatedTimestamp(survey.getTimestampMs());
+                metricRecordList.add(smr);
+            }
 
             LOG.debug("ChannelInfoReports {}", channelInfoReports);
 
