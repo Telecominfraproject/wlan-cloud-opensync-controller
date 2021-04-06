@@ -1087,72 +1087,74 @@ public class MqttStatsPublisher {
 
         // populate it from report.survey
         for (Survey survey : report.getSurveyList()) {
+            
+            if (survey.getSurveyType().equals(SurveyType.ON_CHANNEL)) { // only interested in ON_CHANNEL for this Metrics Report
 
-            int busyRx = 0; /* Rx = Rx_obss + Rx_errr (self and obss errors) */
-            int busyTx = 0; /* Tx */
-            int busySelf = 0; /* Rx_self (derived from succesful Rx frames) */
-            int busy = 0; /* Busy = Rx + Tx + Interference */
-            int totalDurationMs = 0;
-            RadioType radioType = RadioType.UNSUPPORTED;
+                int busyRx = 0; /* Rx = Rx_obss + Rx_errr (self and obss errors) */
+                int busyTx = 0; /* Tx */
+                int busySelf = 0; /* Rx_self (derived from succesful Rx frames) */
+                int busy = 0; /* Busy = Rx + Tx + Interference */
+                int totalDurationMs = 0;
+                RadioType radioType = RadioType.UNSUPPORTED;
 
-            List<Integer> noiseList = new ArrayList<>();
-            for (SurveySample surveySample : survey.getSurveyListList()) {
-                if (surveySample.getDurationMs() == 0) {
-                    continue;
-                }
-
-                // we need to perform a weighted average here because the
-                // samples are in percentage, and may be of different durations
-
-                busyTx += surveySample.getBusyTx() * surveySample.getDurationMs();
-                busyRx += surveySample.getBusyRx() * surveySample.getDurationMs();
-                busy += surveySample.getBusy() * surveySample.getDurationMs();
-                busySelf += surveySample.getBusySelf() * surveySample.getDurationMs();
-                totalDurationMs += surveySample.getDurationMs();
-                noiseList.add(getNegativeSignedIntFrom8BitUnsigned(surveySample.getNoise()));
-            }
-
-            if (totalDurationMs > 0) {
-                RadioUtilization radioUtil = new RadioUtilization();
-                radioUtil.setTimestampSeconds((int) ((survey.getTimestampMs()) / 1000));
-                int pctBusyTx = busyTx / totalDurationMs;
-                checkIfOutOfBound("pctBusyTx", pctBusyTx, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
-
-                radioUtil.setAssocClientTx(pctBusyTx);
-                int pctBusyRx = busyRx / totalDurationMs;
-                checkIfOutOfBound("pctBusyRx", pctBusyRx, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
-                radioUtil.setAssocClientRx(pctBusyRx);
-
-                double pctIBSS = (busyTx + busySelf) / totalDurationMs;
-                radioUtil.setIbss(pctIBSS);
-                int nonWifi = (busy - (busyTx + busyRx)) / totalDurationMs;
-                checkIfOutOfBound("nonWifi", nonWifi, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
-                radioUtil.setNonWifi(nonWifi);
-
-                radioType = OvsdbToWlanCloudTypeMappingUtility.getRadioTypeFromOpensyncStatsRadioBandType(survey.getBand());
-                if (radioType != RadioType.UNSUPPORTED) {
-                    if (apNodeMetrics.getRadioUtilization(radioType) == null) {
-                        apNodeMetrics.setRadioUtilization(radioType, new ArrayList<>());
+                List<Integer> noiseList = new ArrayList<>();
+                for (SurveySample surveySample : survey.getSurveyListList()) {
+                    if (surveySample.getDurationMs() == 0) {
+                        continue;
                     }
-                    apNodeMetrics.getRadioUtilization(radioType).add(radioUtil);
-                    int noiseAvg = (int) Math.round(DecibelUtils.getAverageDecibel(toIntArray(noiseList)));
-                    avgNoiseFloor.put(radioType, noiseAvg);
-                    apNodeMetrics.setNoiseFloor(radioType, noiseAvg);
-
-                    Long totalUtilization = Math.round((double) busy / totalDurationMs);
-                    Long totalNonWifi = totalUtilization - ((busyTx + busyRx) / totalDurationMs);
-
-                    EquipmentCapacityDetails cap = new EquipmentCapacityDetails();
-                    cap.setUnavailableCapacity(totalNonWifi.intValue());
-                    int availableCapacity = (int) (100 - totalUtilization);
-                    cap.setAvailableCapacity(availableCapacity);
-                    cap.setUsedCapacity(totalUtilization.intValue());
-                    cap.setUnusedCapacity(availableCapacity - totalUtilization.intValue());
-                    cap.setTotalCapacity(100);
-
-                    apNodeMetrics.setChannelUtilization(radioType, totalUtilization.intValue());
-                    capacityDetails.put(radioType, cap);
+                    // we need to perform a weighted average here because the
+                    // samples are in percentage, and may be of different durations
+                    busyTx += surveySample.getBusyTx() * surveySample.getDurationMs();
+                    busyRx += surveySample.getBusyRx() * surveySample.getDurationMs();
+                    busy += surveySample.getBusy() * surveySample.getDurationMs();
+                    busySelf += surveySample.getBusySelf() * surveySample.getDurationMs();
+                    totalDurationMs += surveySample.getDurationMs();
+                    noiseList.add(getNegativeSignedIntFrom8BitUnsigned(surveySample.getNoise()));
                 }
+
+                if (totalDurationMs > 0) {
+                    RadioUtilization radioUtil = new RadioUtilization();
+                    radioUtil.setTimestampSeconds((int) ((survey.getTimestampMs()) / 1000));
+                    int pctBusyTx = busyTx / totalDurationMs;
+                    checkIfOutOfBound("pctBusyTx", pctBusyTx, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
+
+                    radioUtil.setAssocClientTx(pctBusyTx);
+                    int pctBusyRx = busyRx / totalDurationMs;
+                    checkIfOutOfBound("pctBusyRx", pctBusyRx, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
+                    radioUtil.setAssocClientRx(pctBusyRx);
+
+                    double pctIBSS = (busyTx + busySelf) / totalDurationMs;
+                    radioUtil.setIbss(pctIBSS);
+                    int nonWifi = (busy - (busyTx + busyRx)) / totalDurationMs;
+                    checkIfOutOfBound("nonWifi", nonWifi, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
+                    radioUtil.setNonWifi(nonWifi);
+
+                    radioType = OvsdbToWlanCloudTypeMappingUtility.getRadioTypeFromOpensyncStatsRadioBandType(survey.getBand());
+                    if (radioType != RadioType.UNSUPPORTED) {
+                        if (apNodeMetrics.getRadioUtilization(radioType) == null) {
+                            apNodeMetrics.setRadioUtilization(radioType, new ArrayList<>());
+                        }
+                        apNodeMetrics.getRadioUtilization(radioType).add(radioUtil);
+                        int noiseAvg = (int) Math.round(DecibelUtils.getAverageDecibel(toIntArray(noiseList)));
+                        avgNoiseFloor.put(radioType, noiseAvg);
+                        apNodeMetrics.setNoiseFloor(radioType, noiseAvg);
+
+                        Long totalUtilization = Math.round((double) busy / totalDurationMs);
+                        Long totalNonWifi = totalUtilization - ((busyTx + busyRx) / totalDurationMs);
+
+                        EquipmentCapacityDetails cap = new EquipmentCapacityDetails();
+                        cap.setUnavailableCapacity(totalNonWifi.intValue());
+                        int availableCapacity = (int) (100 - totalUtilization);
+                        cap.setAvailableCapacity(availableCapacity);
+                        cap.setUsedCapacity(totalUtilization.intValue());
+                        cap.setUnusedCapacity(availableCapacity - totalUtilization.intValue());
+                        cap.setTotalCapacity(100);
+
+                        apNodeMetrics.setChannelUtilization(radioType, totalUtilization.intValue());
+                        capacityDetails.put(radioType, cap);
+                    }
+                }
+
             }
         }
 
