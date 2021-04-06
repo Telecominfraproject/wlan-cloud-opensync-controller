@@ -201,7 +201,8 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
     }
 
     /**
-     *
+     *  SSID UL/DL Limits from profile should be tagged against the client UL/DL limit
+     *  ssid_ul_limit/ssid_dl_limit no longer used, set to 0 on AP to avoid unknown behaviours.
      * @param rateLimitEnable
      * @param ssidDlLimit
      * @param ssidUlLimit
@@ -213,10 +214,10 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
     void configureCustomOptionsForRatesAndLimits(boolean rateLimitEnable, int ssidDlLimit, int ssidUlLimit,
             int clientDlLimit, int clientUlLimit, int rtsCtsThreshold, Map<String, String> customOptions) {
         customOptions.put("rate_limit_en", rateLimitEnable ? "1" : "0");
-        customOptions.put("ssid_ul_limit", String.valueOf(ssidUlLimit * 1000));
-        customOptions.put("ssid_dl_limit", String.valueOf(ssidDlLimit * 1000));
-        customOptions.put("client_dl_limit", String.valueOf(clientDlLimit * 1000));
-        customOptions.put("client_ul_limit", String.valueOf(clientUlLimit * 1000));
+        customOptions.put("ssid_ul_limit", String.valueOf(0));
+        customOptions.put("ssid_dl_limit", String.valueOf(0));
+        customOptions.put("client_dl_limit", String.valueOf(ssidDlLimit * 1000));
+        customOptions.put("client_ul_limit", String.valueOf(ssidUlLimit * 1000));
         customOptions.put("rts_threshold", String.valueOf(rtsCtsThreshold));
     }
     
