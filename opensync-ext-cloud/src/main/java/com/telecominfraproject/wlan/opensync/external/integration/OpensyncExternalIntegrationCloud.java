@@ -1011,11 +1011,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 ret.setHotspotConfig(hotspotConfig);
             }
 
-            ret.setRadiusProfiles(new ArrayList<>(radiusSet));
             ret.setCaptiveProfiles(profileServiceInterface.get(captiveProfileIds));
             for (Profile captivePortal : ret.getCaptiveProfiles()) {
                 radiusSet.addAll(profileContainer.getChildrenOfType(captivePortal.getId(), ProfileType.radius));
             }
+            ret.setRadiusProfiles(new ArrayList<>(radiusSet));
+
             ret.setBonjourGatewayProfiles(profileServiceInterface.get(bonjourGatewayProfileIds));
 
             List<Client> blockedClients = clientServiceInterface.getBlockedClients(customerId);
@@ -1023,7 +1024,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             if ((blockedClients != null) && !blockedClients.isEmpty()) {
                 blockedClients.forEach(client -> blockList.add(client.getMacAddress()));
             }
+            
             ret.setBlockedClients(blockList);
+            ret.setRadiusProfiles(new ArrayList<>(radiusSet));
 
             LOG.debug("ApConfig {}", ret);
 
