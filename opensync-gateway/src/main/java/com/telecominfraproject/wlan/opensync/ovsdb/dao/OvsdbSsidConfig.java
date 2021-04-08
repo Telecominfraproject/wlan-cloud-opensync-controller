@@ -182,9 +182,13 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                 defaultWanInterfaceName);
 
         if (radiusNasId != null) {
-            if (radiusNasId.equals(NasIdType.DEFAULT.toString())) {
+            if (radiusNasId.equals(NasIdType.AP_BASE_MAC.toString())) {
+                LOG.info("NAS-ID is {}, set radius_nas_id to {}", radiusNasId, partialConnectNode.macAddress);
                 customOptions.put("radius_nas_id", partialConnectNode.macAddress);
+            } else if (radiusNasId.equals(NasIdType.DEFAULT.toString()) || radiusNasId.equals(NasIdType.BSSID.toString())) {
+                LOG.info("NAS-ID is {}, do not configure, AP will determine radius_nas_id when SSID configuration complete.", radiusNasId);
             } else {
+                LOG.info("NAS-ID is USER_DEFINED, set radius_nas_id to provided value {}.", radiusNasId);
                 customOptions.put("radius_nas_id", radiusNasId);
             }
         }
