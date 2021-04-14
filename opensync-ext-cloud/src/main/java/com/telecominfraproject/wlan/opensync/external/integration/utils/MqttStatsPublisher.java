@@ -1109,7 +1109,9 @@ public class MqttStatsPublisher {
                     busy += surveySample.getBusy() * surveySample.getDurationMs();
                     busySelf += surveySample.getBusySelf() * surveySample.getDurationMs();
                     totalDurationMs += surveySample.getDurationMs();
-                    noiseList.add(getNegativeSignedIntFrom8BitUnsigned(surveySample.getNoise()));
+                    if (surveySample.hasNoise()) {
+                        noiseList.add(getNegativeSignedIntFrom8BitUnsigned(surveySample.getNoise()));
+                    }
                 }
 
                 if (totalDurationMs > 0) {
@@ -1761,15 +1763,16 @@ public class MqttStatsPublisher {
         long totalDurationMs = 0;
         ChannelInfo channelInfo = new ChannelInfo();
 
-        int[] noiseArray = new int[surveySampleList.size()];
-        int index = 0;
+        List<Integer> noiseList = new ArrayList<>();
         for (SurveySample sample : surveySampleList) {
             busyTx += sample.getBusyTx() * sample.getDurationMs();
             busySelf += sample.getBusySelf() * sample.getDurationMs(); // successful
                                                                        // Rx
             busy += sample.getBusy() * sample.getDurationMs();
             channelInfo.setChanNumber(sample.getChannel());
-            noiseArray[index++] = getNegativeSignedIntFrom8BitUnsigned(sample.getNoise());
+            if (sample.hasNoise()) {
+                noiseList.add(getNegativeSignedIntFrom8BitUnsigned(sample.getNoise()));
+            }
             totalDurationMs += sample.getDurationMs();
         }
 
@@ -1781,8 +1784,8 @@ public class MqttStatsPublisher {
         channelInfo.setTotalUtilization(totalUtilization.intValue());
         channelInfo.setWifiUtilization(totalUtilization.intValue() - totalNonWifi.intValue());
         channelInfo.setBandwidth(channelBandwidth);
-        if (surveySampleList.size() > 0) {
-            channelInfo.setNoiseFloor((int) Math.round(DecibelUtils.getAverageDecibel(noiseArray)));
+        if (noiseList.size() > 0) {
+            channelInfo.setNoiseFloor((int) Math.round(DecibelUtils.getAverageDecibel(toIntArray(noiseList))));
         }
         return channelInfo;
     }
