@@ -1137,9 +1137,11 @@ public class MqttStatsPublisher {
                             apNodeMetrics.setRadioUtilization(radioType, new ArrayList<>());
                         }
                         apNodeMetrics.getRadioUtilization(radioType).add(radioUtil);
-                        int noiseAvg = (int) Math.round(DecibelUtils.getAverageDecibel(toIntArray(noiseList)));
-                        avgNoiseFloor.put(radioType, noiseAvg);
-                        apNodeMetrics.setNoiseFloor(radioType, noiseAvg);
+                        if (!noiseList.isEmpty()) {
+                            int noiseAvg = (int) Math.round(DecibelUtils.getAverageDecibel(noiseList));
+                            avgNoiseFloor.put(radioType, noiseAvg);
+                            apNodeMetrics.setNoiseFloor(radioType, noiseAvg);
+                        }
 
                         Long totalUtilization = Math.round((double) busy / totalDurationMs);
                         Long totalNonWifi = totalUtilization - ((busyTx + busyRx) / totalDurationMs);
@@ -1784,8 +1786,8 @@ public class MqttStatsPublisher {
         channelInfo.setTotalUtilization(totalUtilization.intValue());
         channelInfo.setWifiUtilization(totalUtilization.intValue() - totalNonWifi.intValue());
         channelInfo.setBandwidth(channelBandwidth);
-        if (noiseList.size() > 0) {
-            channelInfo.setNoiseFloor((int) Math.round(DecibelUtils.getAverageDecibel(toIntArray(noiseList))));
+        if (!noiseList.isEmpty()) {
+            channelInfo.setNoiseFloor((int) Math.round(DecibelUtils.getAverageDecibel(noiseList)));
         }
         return channelInfo;
     }
