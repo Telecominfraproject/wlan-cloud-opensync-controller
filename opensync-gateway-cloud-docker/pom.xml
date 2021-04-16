@@ -3,7 +3,7 @@
 	<parent>
 		<groupId>com.telecominfraproject.wlan</groupId>
 		<artifactId>tip-wlan-cloud-root-pom</artifactId>
-		<version>0.0.1-SNAPSHOT</version>
+		<version>1.1.0-SNAPSHOT</version>
 		<relativePath>../../wlan-cloud-root</relativePath>
 	</parent>
 	<artifactId>opensync-gateway-cloud-docker</artifactId>
@@ -22,7 +22,7 @@
 		<dependency>
 			<groupId>com.telecominfraproject.wlan</groupId>
 			<artifactId>opensync-gateway-cloud-process</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
+			<version>1.1.0-SNAPSHOT</version>
 		</dependency>
 
 	</dependencies>
