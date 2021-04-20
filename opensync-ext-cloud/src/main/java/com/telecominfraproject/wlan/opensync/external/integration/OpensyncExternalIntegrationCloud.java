@@ -1736,7 +1736,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         EquipmentManufacturerQrCode qrCode = new EquipmentManufacturerQrCode();
         if (node.qrCode != null) {
-            qrCode.setDeviceType(EquipmentType.getByName(node.qrCode.get("DT")));
+            if (node.qrCode.containsKey("DT")) {
+                qrCode.setDeviceType(EquipmentType.getByName(node.qrCode.get("DT")));
+            }               
             qrCode.setVendorName(node.qrCode.get("VN"));
             if (isValidMACAddress(node.qrCode.get("DM"))) {
                 qrCode.setDeviceMac(MacAddress.valueOf(node.qrCode.get("DM")));
