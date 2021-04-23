@@ -84,8 +84,16 @@ public class OvsdbDao extends OvsdbDaoBase {
         ovsdbNetwork.configureInterfaces(ovsdbClient);
     }
     
-    public void configureNtpServer(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
+    public void configureNode(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
+        configureNtpServer(ovsdbClient,opensyncAPConfig);configureSyslog(ovsdbClient, opensyncAPConfig);
+    }
+    
+    void configureNtpServer(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
         ovsdbNodeConfig.configureNtpServer(ovsdbClient, opensyncAPConfig);
+    }
+    
+    void configureSyslog(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
+        ovsdbNodeConfig.configureSyslog(ovsdbClient, opensyncAPConfig);
     }
 
     public void configureRadsecRadiusAndRealm(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {

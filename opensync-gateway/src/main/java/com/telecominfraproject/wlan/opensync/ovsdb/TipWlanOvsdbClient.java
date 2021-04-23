@@ -248,7 +248,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
 
         if (opensyncAPConfig != null) {
-            ovsdbDao.configureNtpServer(ovsdbClient, opensyncAPConfig);
+            ovsdbDao.configureNode(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureGreTunnels(ovsdbClient, opensyncAPConfig);
             ovsdbDao.createVlanNetworkInterfaces(ovsdbClient, opensyncAPConfig);
@@ -319,7 +319,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
         extIntegrationInterface.clearEquipmentStatus(apId);
         
-        ovsdbDao.configureNtpServer(ovsdbClient, opensyncAPConfig);
+        ovsdbDao.configureNode(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureGreTunnels(ovsdbClient, opensyncAPConfig);
         ovsdbDao.createVlanNetworkInterfaces(ovsdbClient, opensyncAPConfig);
