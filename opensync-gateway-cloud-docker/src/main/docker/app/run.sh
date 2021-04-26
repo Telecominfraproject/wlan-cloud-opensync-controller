@@ -22,6 +22,8 @@ FILE_STORE_DIRECTORY="${FILE_STORE_DIRECTORY_INTERNAL:=/tmp/filestore}"
 FILE_STORE_EXTERNAL_URL="${FILE_STORE_URL}"
 MQTT_BROKER_EXTERNAL_PORT="${MQTT_BROKER_EXTERNAL_PORT}"
 OVSDB_EXTERNAL_PORT="${OVSDB_EXTERNAL_PORT}"
+OFF_CHANNEL_REPORTING_INTERVAL_SECONDS="${OFF_CHANNEL_REPORTING_INTERVAL_SECONDS:=120}"
+REPORTING_INTERVAL_SECONDS="${REPORTING_INTERVAL_SECONDS:=60}"
 
 
 
@@ -106,6 +108,8 @@ PROV_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_wan_type=$DEFAULT_WAN_TYPE"
 PROV_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_wan_name=$DEFAULT_WAN_NAME"
 PROV_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_lan_type=$DEFAULT_LAN_TYPE"
 PROV_PROPS+=" -Dtip.wlan.ovsdb.wifi-iface.default_lan_name=$DEFAULT_LAN_NAME"
+PROV_PROPS+=" -Dtip.wlan.defaultOffChannelReportingIntervalSeconds=$OFF_CHANNEL_REPORTING_INTERVAL_SECONDS"
+PROV_PROPS+=" -Dtip.wlan.defaultReportingIntervalSeconds=$REPORTING_INTERVAL_SECONDS"
 
 PROV_PROPS+=" -Dtip.wlan.ovsdb.autoProvisionedCustomerId=$AUTO_PROV_CUSTOMER_ID"
 

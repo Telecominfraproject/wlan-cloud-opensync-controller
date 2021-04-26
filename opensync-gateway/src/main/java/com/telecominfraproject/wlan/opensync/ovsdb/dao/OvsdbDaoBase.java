@@ -144,6 +144,12 @@ public class OvsdbDaoBase {
     
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.fileStoreDirectory:/tmp/tip-wlan-filestore}")
     String fileStoreDirectoryName;
+    
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.defaultReportingIntervalSeconds:60}")
+    public int defaultReportingIntervalSeconds;
+    
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.defaultOffChannelReportingIntervalSeconds:120}")
+    public int defaultOffChannelReportingIntervalSeconds;
 
     public OvsdbDaoBase() {
     }

@@ -106,7 +106,7 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
             List<Operation> operations = new ArrayList<>();
             Map<String, Value> updateColumns = new HashMap<>();
 
-            updateColumns.put("reporting_interval", new Atom<>(60));
+            updateColumns.put("reporting_interval", new Atom<>(defaultReportingIntervalSeconds));
             updateColumns.put("radio_type", new Atom<>("2.4G"));
             updateColumns.put("stats_type", new Atom<>("network_probe"));
 
@@ -197,7 +197,7 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
             List<Operation> operations = new ArrayList<>();
             Map<String, Value> rowColumns = new HashMap<>();
             rowColumns.put("radio_type", new Atom<>("2.4G"));
-            rowColumns.put("reporting_interval", new Atom<>(60));
+            rowColumns.put("reporting_interval", new Atom<>(defaultReportingIntervalSeconds));
             rowColumns.put("report_type", new Atom<>("raw"));
             rowColumns.put("sampling_interval", new Atom<>(10));
             rowColumns.put("stats_type", new Atom<>("video_voice"));
@@ -244,7 +244,7 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
                     //
                     Map<String, Value> rowColumns = new HashMap<>();
                     rowColumns.put("radio_type", new Atom<>(rc.freqBand));
-                    rowColumns.put("reporting_interval", new Atom<>(60));
+                    rowColumns.put("reporting_interval", new Atom<>(defaultReportingIntervalSeconds));
                     rowColumns.put("report_type", new Atom<>("raw"));
                     rowColumns.put("sampling_interval", new Atom<>(10));
                     rowColumns.put("stats_type", new Atom<>("client"));
@@ -277,7 +277,7 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
                     rowColumns.put("channel_list", channels);
 
                     rowColumns.put("radio_type", new Atom<>(rc.freqBand));
-                    rowColumns.put("reporting_interval", new Atom<>(60));
+                    rowColumns.put("reporting_interval", new Atom<>(defaultOffChannelReportingIntervalSeconds));
                     rowColumns.put("stats_type", new Atom<>("neighbor"));
                     rowColumns.put("survey_type", new Atom<>("off-chan"));
 
@@ -296,7 +296,7 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
                     //
                     Map<String, Value> rowColumns = new HashMap<>();
                     rowColumns.put("radio_type", new Atom<>(rc.freqBand));
-                    rowColumns.put("reporting_interval", new Atom<>(60));
+                    rowColumns.put("reporting_interval", new Atom<>(defaultReportingIntervalSeconds));
                     rowColumns.put("stats_type", new Atom<>("neighbor"));
                     rowColumns.put("survey_type", new Atom<>("on-chan"));
 
@@ -321,7 +321,7 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
 
                     Map<String, Value> rowColumns = new HashMap<>();
                     rowColumns.put("radio_type", new Atom<>(rc.freqBand));
-                    rowColumns.put("reporting_interval", new Atom<>(60));
+                    rowColumns.put("reporting_interval", new Atom<>(defaultReportingIntervalSeconds));
                     rowColumns.put("report_type", new Atom<>("raw"));
                     rowColumns.put("sampling_interval", new Atom<>(10));
                     rowColumns.put("stats_type", new Atom<>("survey"));
@@ -350,7 +350,7 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
                     rowColumns.put("channel_list", channels);
 
                     rowColumns.put("radio_type", new Atom<>(rc.freqBand));
-                    rowColumns.put("reporting_interval", new Atom<>(120));
+                    rowColumns.put("reporting_interval", new Atom<>(defaultOffChannelReportingIntervalSeconds));
                     rowColumns.put("report_type", new Atom<>("raw"));
                     rowColumns.put("stats_type", new Atom<>("survey"));
                     rowColumns.put("survey_type", new Atom<>("off-chan"));
