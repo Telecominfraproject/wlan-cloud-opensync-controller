@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
+import com.telecominfraproject.wlan.equipment.models.CellSizeAttributes;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPInetState;
@@ -187,6 +188,10 @@ public class OvsdbDao extends OvsdbDaoBase {
     public void processNewChannelsRequest(OvsdbClient ovsdbClient, Map<RadioType, Integer> backupChannelMap,
             Map<RadioType, Integer> primaryChannelMap) {
         ovsdbRrm.processNewChannelsRequest(ovsdbClient, backupChannelMap, primaryChannelMap);
+    }
+    
+    public void processCellSizeAttributesRequest(OvsdbClient ovsdbClient, Map<RadioType, CellSizeAttributes> cellSizeAttributeMap) {
+        ovsdbRrm.processCellSizeAttributesRequest(ovsdbClient, cellSizeAttributeMap);
     }
 
     public void rebootOrResetAp(OvsdbClient ovsdbClient, String ovsdbAwlanApSwitchSoftwareBank) {

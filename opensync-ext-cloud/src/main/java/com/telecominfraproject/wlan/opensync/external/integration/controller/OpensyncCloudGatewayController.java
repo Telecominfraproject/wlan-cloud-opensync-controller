@@ -32,6 +32,7 @@ import com.telecominfraproject.wlan.core.model.service.GatewayType;
 import com.telecominfraproject.wlan.core.model.service.ServiceInstanceInformation;
 import com.telecominfraproject.wlan.core.server.container.ConnectorProperties;
 import com.telecominfraproject.wlan.datastore.exceptions.DsEntityNotFoundException;
+import com.telecominfraproject.wlan.equipment.models.CellSizeAttributes;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWBaseCommand;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWBlinkRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWChangeRedirectorHost;
@@ -42,6 +43,7 @@ import com.telecominfraproject.wlan.equipmentgateway.models.CEGWConfigChangeNoti
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWFirmwareDownloadRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWFirmwareFlashRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWNewChannelRequest;
+import com.telecominfraproject.wlan.equipmentgateway.models.CEGWCellSizeRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRadioResetRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRebootRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRouteCheck;
@@ -205,6 +207,9 @@ public class OpensyncCloudGatewayController {
                     case NewChannelRequest:
                         ret.add(sendNewChannelRequest(session, (CEGWNewChannelRequest) command));
                         break;
+                    case CellSizeRequest:
+                        ret.add(sendCellSizeRequest(session, (CEGWCellSizeRequest) command));
+                        break;
                     default:
                         LOG.warn("[{}] Failed to deliver command {}, unsupported command type", inventoryId, command);
                         ret.add(new EquipmentCommandResponse(
@@ -296,6 +301,10 @@ public class OpensyncCloudGatewayController {
     private EquipmentCommandResponse sendNewChannelRequest(OvsdbSession session, CEGWNewChannelRequest command) {
         return sendMessage(session, command.getInventoryId(), command);
     }
+    
+    private EquipmentCommandResponse sendCellSizeRequest(OvsdbSession session, CEGWCellSizeRequest command) {
+        return sendMessage(session, command.getInventoryId(), command);
+    }
 
     /**
      * Deliver a message in payload to the CE
@@ -332,6 +341,12 @@ public class OpensyncCloudGatewayController {
             Map<RadioType, Integer> newPrimaryChannels = request.getNewPrimaryChannels();
 
             String resultDetails = tipwlanOvsdbClient.processNewChannelsRequest(inventoryId, newBackupChannels,newPrimaryChannels);
+            response.setResultDetail(resultDetails);
+        } else if (command instanceof CEGWCellSizeRequest) {
+            CEGWCellSizeRequest request = (CEGWCellSizeRequest) command;
+            Map<RadioType, CellSizeAttributes> cellSizeAttributeMap = request.getCellSizeAttributesMap();
+
+            String resultDetails = tipwlanOvsdbClient.processCellSizeAttributesRequest(inventoryId, cellSizeAttributeMap);
             response.setResultDetail(resultDetails);
 
         } else if (command instanceof CEGWFirmwareDownloadRequest) {
