@@ -576,26 +576,25 @@ public class OvsdbHotspotConfig extends OvsdbDaoBase {
                                 rowColumns.put("access_network_type", new Atom<>(hs2Profile.getAccessNetworkType().getId()));
                             }
                         }
-                        
-                        
+
+
                         // # format: <1-octet encoded value as hex str>
-                        // # (ipv4_type & 0x3f) << 2 | (ipv6_type & 0x3) << 2
+                        // # (ipv4_type & 0x3f) << 2 | (ipv6_type & 0x3) 
                         // 0x3f = 63 in decimal
                         // 0x3 = 3 in decimal
                         if (PasspointIPv6AddressType.getByName(
                                 hs2Profile.getIpAddressTypeAvailability()) != PasspointIPv6AddressType.UNSUPPORTED) {
                             int availability = PasspointIPv6AddressType
                                     .getByName(hs2Profile.getIpAddressTypeAvailability()).getId();
-                            String hexString = Integer.toHexString((availability & 3) << 2);
+                            String hexString = String.format("%02x", (availability & 0x3));
                             rowColumns.put("ipaddr_type_availability", new Atom<>(hexString));
-                        } else if (PasspointIPv4AddressType.getByName(
+                        }else  if (PasspointIPv4AddressType.getByName(
                                 hs2Profile.getIpAddressTypeAvailability()) != PasspointIPv4AddressType.UNSUPPORTED) {
                             int availability = PasspointIPv4AddressType
                                     .getByName(hs2Profile.getIpAddressTypeAvailability()).getId();
-                            String hexString = Integer.toHexString((availability & 63) << 2);
+                            String hexString = String.format("%02x", ((availability & 0x3f) << 2));
                             rowColumns.put("ipaddr_type_availability", new Atom<>(hexString));
-                        }
-
+                        } 
                         Row row = new Row(rowColumns);
 
                         Insert newHs20Config = new Insert(hotspot20ConfigDbTable, row);
@@ -676,8 +675,8 @@ public class OvsdbHotspotConfig extends OvsdbDaoBase {
                             operations.add(newOsuProvider);
                         } else {
                             List<Condition> conditions = new ArrayList<>();
-                            conditions.add(new Condition("server_uri", Function.EQUALS,
-                                    new Atom<>(providerProfile.getOsuServerUri())));
+                            conditions.add(new Condition("osu_provider_name", Function.EQUALS,
+                                    new Atom<>(apOsuProviderName)));
                             Update updatedOsuProvider = new Update(hotspot20OsuProvidersDbTable, conditions, row);
                             operations.add(updatedOsuProvider);
                         }
