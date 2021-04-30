@@ -43,7 +43,7 @@ import com.telecominfraproject.wlan.equipmentgateway.models.CEGWConfigChangeNoti
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWFirmwareDownloadRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWFirmwareFlashRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWNewChannelRequest;
-import com.telecominfraproject.wlan.equipmentgateway.models.CEGWCellSizeRequest;
+import com.telecominfraproject.wlan.equipmentgateway.models.CEGWCellSizeAttributesRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRadioResetRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRebootRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRouteCheck;
@@ -207,8 +207,8 @@ public class OpensyncCloudGatewayController {
                     case NewChannelRequest:
                         ret.add(sendNewChannelRequest(session, (CEGWNewChannelRequest) command));
                         break;
-                    case CellSizeRequest:
-                        ret.add(sendCellSizeRequest(session, (CEGWCellSizeRequest) command));
+                    case CellSizeAttributesRequest:
+                        ret.add(sendCellSizeRequest(session, (CEGWCellSizeAttributesRequest) command));
                         break;
                     default:
                         LOG.warn("[{}] Failed to deliver command {}, unsupported command type", inventoryId, command);
@@ -302,7 +302,7 @@ public class OpensyncCloudGatewayController {
         return sendMessage(session, command.getInventoryId(), command);
     }
     
-    private EquipmentCommandResponse sendCellSizeRequest(OvsdbSession session, CEGWCellSizeRequest command) {
+    private EquipmentCommandResponse sendCellSizeRequest(OvsdbSession session, CEGWCellSizeAttributesRequest command) {
         return sendMessage(session, command.getInventoryId(), command);
     }
 
@@ -342,8 +342,8 @@ public class OpensyncCloudGatewayController {
 
             String resultDetails = tipwlanOvsdbClient.processNewChannelsRequest(inventoryId, newBackupChannels,newPrimaryChannels);
             response.setResultDetail(resultDetails);
-        } else if (command instanceof CEGWCellSizeRequest) {
-            CEGWCellSizeRequest request = (CEGWCellSizeRequest) command;
+        } else if (command instanceof CEGWCellSizeAttributesRequest) {
+            CEGWCellSizeAttributesRequest request = (CEGWCellSizeAttributesRequest) command;
             Map<RadioType, CellSizeAttributes> cellSizeAttributeMap = request.getCellSizeAttributesMap();
 
             String resultDetails = tipwlanOvsdbClient.processCellSizeAttributesRequest(inventoryId, cellSizeAttributeMap);

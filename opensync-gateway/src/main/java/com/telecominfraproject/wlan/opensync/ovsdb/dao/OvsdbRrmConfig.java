@@ -327,8 +327,9 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
                     // for insert, make sure it is actually in the table
                     confirmRowExistsInTable(ovsdbClient, ((InsertResult) res).getUuid(), wifiRrmConfigDbTable);
                 } else if (res instanceof ErrorResult) {
-                    LOG.error("configureWifiRrm error {}", (res));
-                    throw new RuntimeException("configureWifiRrm " + ((ErrorResult) res).getError() + " " + ((ErrorResult) res).getDetails());
+                    LOG.error("processCellSizeAttributesRequest error {}", (res));
+                    throw new RuntimeException("processCellSizeAttributesRequest " + ((ErrorResult) res).getError() +
+                            " " + ((ErrorResult) res).getDetails());
                 }
             }
 
