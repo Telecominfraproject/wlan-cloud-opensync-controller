@@ -10,6 +10,7 @@ import com.netflix.servo.tag.TagList;
 import com.telecominfraproject.wlan.cloudmetrics.CloudMetricsTags;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
+import com.telecominfraproject.wlan.equipment.models.CellSizeAttributes;
 import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExternalIntegrationInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExternalIntegrationInterface.RowUpdateOperation;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbClientInterface;
@@ -963,6 +964,24 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                     "TipWlanOvsdbClient::processNewChannelsRequest failed to change backup and/or primary channels for AP {}",
                     apId, e);
             return "failed to change backup and/or primary channels for AP " + apId;
+        }
+    }
+    
+    public String processCellSizeAttributesRequest(String apId, Map<RadioType, CellSizeAttributes> cellSizeAttributeMap) {
+        LOG.info("TipWlanOvsdbClient::processCellSizeAttributesRequest for AP {}", apId);
+
+        try {
+            OvsdbSession session = ovsdbSessionMapInterface.getSession(apId);
+            OvsdbClient ovsdbClient = session.getOvsdbClient();
+            ovsdbDao.processCellSizeAttributesRequest(ovsdbClient, cellSizeAttributeMap);
+            LOG.info("TipWlanOvsdbClient::processCellSizeAttributesRequest change cellSizeAttributes for AP {}",
+                    apId);
+            return " change cell size attributes for AP " + apId;
+        } catch (Exception e) {
+            LOG.error(
+                    "TipWlanOvsdbClient::processCellSizeAttributesRequest failed to change cell size attributes for AP {}",
+                    apId, e);
+            return "failed to change cell size attributes for AP " + apId;
         }
     }
 

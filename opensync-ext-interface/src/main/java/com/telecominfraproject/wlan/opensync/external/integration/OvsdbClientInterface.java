@@ -6,6 +6,7 @@ import java.util.Set;
 
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
+import com.telecominfraproject.wlan.equipment.models.CellSizeAttributes;
 
 public interface OvsdbClientInterface {
 
@@ -32,5 +33,7 @@ public interface OvsdbClientInterface {
     String processFactoryResetRequest(String apId);
     
     String processNewChannelsRequest(String apId, Map<RadioType,Integer> backupChannelMap, Map<RadioType,Integer> primaryChannelMap);
+
+    String processCellSizeAttributesRequest(String apId, Map<RadioType, CellSizeAttributes> cellSizeAttributeMap);
 
 }
