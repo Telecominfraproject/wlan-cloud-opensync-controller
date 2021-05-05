@@ -72,21 +72,19 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
             
             boolean autoChannelSelection = rfElementConfig.getAutoChannelSelection();
             int backupChannel = elementRadioConfig.getActiveBackupChannel(autoChannelSelection);
-            LOG.debug("configureWifiRadios autoChannelSelection {} activeBackupChannel {}",
-                    autoChannelSelection, backupChannel);
             
-            AutoOrManualValue probeResponseThresholdDb = null;
-            AutoOrManualValue clientDisconnectThresholdDb = null;
+            boolean autoCellSizeSelection = rfElementConfig.getAutoCellSizeSelection();
+            Integer probeResponseThresholdDb = null;
+            Integer clientDisconnectThresholdDb = null;
             
             if (elementRadioConfig.getProbeResponseThresholdDb() != null) {
-	            probeResponseThresholdDb = getSourcedValue(elementRadioConfig.getProbeResponseThresholdDb().getSource(),
+	            probeResponseThresholdDb = getSourcedValue(autoCellSizeSelection,
 	                    rfElementConfig.getProbeResponseThresholdDb(),
 	                    elementRadioConfig.getProbeResponseThresholdDb().getValue());
             }
             
             if (elementRadioConfig.getClientDisconnectThresholdDb() != null) {
-	            clientDisconnectThresholdDb = getSourcedValue(
-	                    elementRadioConfig.getClientDisconnectThresholdDb().getSource(),
+	            clientDisconnectThresholdDb = getSourcedValue(autoCellSizeSelection,
 	                    rfElementConfig.getClientDisconnectThresholdDb(),
 	                    elementRadioConfig.getClientDisconnectThresholdDb().getValue());
             }
@@ -97,15 +95,13 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
             RadioBestApSettings bestApSettings = null;
             if (radioConfig != null) {
             	if (radioConfig.getMulticastRate() != null) {
-            		multicastRate = radioConfig.getMulticastRate().getSource() == SourceType.profile
-                        ? rfElementConfig.getMulticastRate()
-                        : radioConfig.getMulticastRate().getValue();
+            		multicastRate = autoCellSizeSelection ?
+            		    radioConfig.getMulticastRate().getValue() : rfElementConfig.getMulticastRate();
             	}
             	
             	if (radioConfig.getManagementRate() != null) {
-                	managementRate = radioConfig.getManagementRate().getSource() == SourceType.profile
-                        ? rfElementConfig.getManagementRate()
-                        : radioConfig.getManagementRate().getValue();
+                	managementRate = autoCellSizeSelection ?
+                        radioConfig.getManagementRate().getValue() : rfElementConfig.getManagementRate();
             	}
             	
             	if (radioConfig.getBestApSettings() != null) {
@@ -136,7 +132,7 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
     }
 
     void configureWifiRrm(OvsdbClient ovsdbClient, String freqBand, int backupChannel,
-            AutoOrManualValue probeResponseThreshold, AutoOrManualValue clientDisconnectThreshold,
+            Integer probeResponseThreshold, Integer clientDisconnectThreshold,
             ManagementRate managementRate, RadioBestApSettings bestApSettings, MulticastRate multicastRate)
             throws OvsdbClientException, TimeoutException, ExecutionException, InterruptedException {
 
@@ -149,19 +145,19 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
         if (multicastRate == null || multicastRate == MulticastRate.auto) {
             updateColumns.put("mcast_rate", new Atom<>(0));
         } else {
-            updateColumns.put("mcast_rate", new Atom<>(managementRate.getId()));
+            updateColumns.put("mcast_rate", new Atom<>(multicastRate.getId()));
         }
 
-        if (probeResponseThreshold == null || probeResponseThreshold.isAuto()) {
+        if (probeResponseThreshold == null) {
             updateColumns.put("probe_resp_threshold", new com.vmware.ovsdb.protocol.operation.notation.Set());
         } else {
-            updateColumns.put("probe_resp_threshold", new Atom<>(probeResponseThreshold.getValue()));
+            updateColumns.put("probe_resp_threshold", new Atom<>(probeResponseThreshold.intValue()));
         }
 
-        if (clientDisconnectThreshold == null || clientDisconnectThreshold.isAuto()) {
+        if (clientDisconnectThreshold == null) {
             updateColumns.put("client_disconnect_threshold", new com.vmware.ovsdb.protocol.operation.notation.Set());
         } else {
-            updateColumns.put("client_disconnect_threshold", new Atom<>(clientDisconnectThreshold.getValue()));
+            updateColumns.put("client_disconnect_threshold", new Atom<>(clientDisconnectThreshold.intValue()));
         }
 
         if (managementRate == null || managementRate == ManagementRate.auto) {
@@ -215,6 +211,16 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
             return AutoOrManualValue.createAutomaticInstance(equipmentValue);
         }
         return AutoOrManualValue.createManualInstance(equipmentValue);
+    }
+    
+    //For cell size related attributes, the “manual" mode will not be supported any more,
+    //user can create a new RF profile with desired values to achieve it
+    int getSourcedValue(boolean autoCellSizeSelection, int profileValue, int equipmentValue) {
+        if (autoCellSizeSelection) {
+            return equipmentValue;
+        } else {
+            return profileValue;
+        }
     }
 
     void processNewChannelsRequest(OvsdbClient ovsdbClient, Map<RadioType, Integer> backupChannelMap,
@@ -307,7 +313,7 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
                 
                 Map<String, Value> updateRadioColumns = new HashMap<>();
                 Integer txPower = cellSizeAttributes.getEirpTxPowerDb();
-                if (txPower > 0) {
+                if (txPower != null && txPower > 0) {
                     updateRadioColumns.put("tx_power", new Atom<>(txPower));
                 } else {
                     updateRadioColumns.put("tx_power", new com.vmware.ovsdb.protocol.operation.notation.Set());

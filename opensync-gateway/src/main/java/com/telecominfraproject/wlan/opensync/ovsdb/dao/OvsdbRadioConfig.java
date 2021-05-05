@@ -2,7 +2,6 @@ package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 
 import com.telecominfraproject.wlan.core.model.equipment.ChannelBandwidth;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
-import com.telecominfraproject.wlan.core.model.equipment.SourceType;
 import com.telecominfraproject.wlan.equipment.models.*;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiRadioConfigInfo;
@@ -44,6 +43,9 @@ public class OvsdbRadioConfig extends OvsdbDaoBase {
             Map<String, String> hwConfig = new HashMap<>();
             ElementRadioConfiguration elementRadioConfig = apElementConfiguration.getRadioMap().get(radioType);
             RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(radioType);
+            if (elementRadioConfig == null || rfElementConfig == null) {
+                continue;
+            }
             boolean autoChannelSelection = rfElementConfig.getAutoChannelSelection();
             int channel = elementRadioConfig.getActiveChannel(autoChannelSelection);
             LOG.debug("configureWifiRadios autoChannelSelection {} activeChannel {} getChannelNumber {} ",
@@ -53,11 +55,14 @@ public class OvsdbRadioConfig extends OvsdbDaoBase {
             RadioConfiguration radioConfig = apElementConfiguration.getAdvancedRadioMap().get(radioType);
             int beaconInterval = rfElementConfig.getBeaconInterval();
             boolean enabled = radioConfig.getRadioAdminState().equals(StateSetting.enabled);
-            int txPower;
-            if (elementRadioConfig.getEirpTxPower().getSource() == SourceType.profile) {
-                txPower = rfElementConfig.getEirpTxPower();
+            boolean autoCellSizeSelection = rfElementConfig.getAutoCellSizeSelection();
+            int txPower = 0;
+            if (autoCellSizeSelection) {
+                if (elementRadioConfig.getEirpTxPower() != null) {
+                    txPower = elementRadioConfig.getEirpTxPower().getValue();
+                }
             } else {
-                txPower = elementRadioConfig.getEirpTxPower().getValue();
+                txPower = rfElementConfig.getEirpTxPower();
             }
             String hwMode = getHwMode(rfElementConfig);
             String freqBand = getHwConfigAndFreq(radioType, hwConfig);
