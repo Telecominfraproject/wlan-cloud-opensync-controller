@@ -213,7 +213,7 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
         return AutoOrManualValue.createManualInstance(equipmentValue);
     }
     
-    //For cell size related attributes, the “manual" mode will not be supported any more,
+    //For cell size related attributes, the “manual" mode is not supported any more,
     //user can create a new RF profile with desired values to achieve it
     int getSourcedValue(boolean autoCellSizeSelection, int profileValue, int equipmentValue) {
         if (autoCellSizeSelection) {
