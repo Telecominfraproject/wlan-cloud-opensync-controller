@@ -1,3 +1,4 @@
+
 package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 
 import java.util.ArrayList;
@@ -65,19 +66,53 @@ public class OvsdbRadiusProxyConfig extends OvsdbDaoBase {
         }
     }
 
+    // _version "uuid"
+    // server "string"
+    // realm {"key":{"maxLength":256,"type":"string"},"max":16,"min":0}
+    // port "integer"
+    // client_cert {"key":{"maxLength":256,"minLength":1,"type":"string"},"min":0}
+    // radsec "boolean"
+    // acct_server {"key":"string","min":0}
+    // radius_config_name "string"
+    // passphrase {"key":{"maxLength":128,"type":"string"},"min":0}
+    // acct_secret {"key":"string","min":0}
+    // acct_port {"key":"integer","min":0}
+    // _uuid "uuid"
+    // secret "string"
+    // ca_cert {"key":{"maxLength":256,"minLength":1,"type":"string"},"min":0}
+    // client_key {"key":{"maxLength":256,"minLength":1,"type":"string"},"min":0}
     private void configureRadiusServers(OvsdbClient ovsdbClient, OpensyncAPConfig apConfig, List<Operation> operations)
             throws OvsdbClientException, InterruptedException, ExecutionException, TimeoutException {
 
-        for (RadiusProxyConfiguration rsc : ((ApNetworkConfiguration) apConfig.getApProfile().getDetails())
-                .getRadiusProxyConfigurations()) {
+        for (RadiusProxyConfiguration rsc : ((ApNetworkConfiguration) apConfig.getApProfile().getDetails()).getRadiusProxyConfigurations()) {
             Map<String, Value> updateColumns = new HashMap<>();
             updateColumns.put("server", new Atom<>(rsc.getServer().getHostAddress()));
             getCertificateUrls(rsc, updateColumns);
             updateColumns.put("radius_config_name", new Atom<>(rsc.getName()));
-            updateColumns.put("passphrase", new Atom<>(rsc.getPassphrase()));          
-            updateColumns.put("port", new Atom<>(rsc.getPort()));           
+            updateColumns.put("passphrase", new Atom<>(rsc.getPassphrase()));
+            updateColumns.put("port", new Atom<>(rsc.getPort()));
             updateColumns.put("realm", Set.of(rsc.getRealm()));
             updateColumns.put("radsec", new Atom<>(rsc.getUseRadSec()));
+
+            java.util.Set<String> columnKeys = ovsdbClient.getSchema(ovsdbName).get().getTables().get(radiusConfigDbTable).getColumns().keySet();
+
+            if (columnKeys.contains("acct_server") && columnKeys.contains("acct_secret") && columnKeys.contains("acct_port") && columnKeys.contains("secret")) {
+                
+                if (rsc.getAcctServer() != null) {
+                    updateColumns.put("acct_server", new Atom<>(rsc.getAcctServer().getHostAddress()));
+                }
+                
+                if (rsc.getSharedSecret() != null) {
+                    updateColumns.put("secret", new Atom<>(rsc.getSharedSecret()));
+                    updateColumns.put("acct_secret", new Atom<>(rsc.getSharedSecret()));
+                }
+                
+                if (rsc.getAcctPort() != null) {
+                    updateColumns.put("acct_port", new Atom<>(rsc.getAcctPort()));
+                }
+                
+                
+            }
             Row row = new Row(updateColumns);
             operations.add(new Insert(radiusConfigDbTable, row));
         }
@@ -104,7 +139,7 @@ public class OvsdbRadiusProxyConfig extends OvsdbDaoBase {
         }
         if (!caCertFilestoreUrl.contains("filestore")) {
             caCertFilestoreUrl = externalFileStoreURL + "/filestore/" + rsc.getCaCert().getApExportUrl();
-        }           
+        }
         updateColumns.put("client_cert", new Atom<>(clientCertFilestoreUrl));
         updateColumns.put("client_key", new Atom<>(clientKeyFilestoreUrl));
         updateColumns.put("ca_cert", new Atom<>(caCertFilestoreUrl));
@@ -124,8 +159,7 @@ public class OvsdbRadiusProxyConfig extends OvsdbDaoBase {
                         LOG.info("removeRadiusConfigurations {}", res.toString());
                     } else if (res instanceof ErrorResult) {
                         LOG.error("removeRadiusConfigurations error {}", (res));
-                        throw new RuntimeException("removeRadiusConfigurations "
-                                + ((ErrorResult) res).getError() + " " + ((ErrorResult) res).getDetails());
+                        throw new RuntimeException("removeRadiusConfigurations " + ((ErrorResult) res).getError() + " " + ((ErrorResult) res).getDetails());
                     }
                 }
                 LOG.info("Removed all radius and realm configurations");
