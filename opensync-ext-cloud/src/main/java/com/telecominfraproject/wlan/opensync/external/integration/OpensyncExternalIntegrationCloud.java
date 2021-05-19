@@ -112,6 +112,7 @@ import com.telecominfraproject.wlan.status.models.StatusDataType;
 import com.telecominfraproject.wlan.status.network.models.NetworkAdminStatusData;
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.ApcElectionEvent;
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeEventType;
+import com.telecominfraproject.wlan.systemevent.equipment.realtime.ApcElectionEvent.ApcMode;
 
 import sts.OpensyncStats.Report;
 import traffic.NetworkMetadata.FlowReport;
@@ -2437,6 +2438,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             LOG.error("UnknownHost for designatedRouterIp", e);
         }
         Status protocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.PROTOCOL);
+        String mode = apcStateAttributes.get("mode");
 
         InetAddress localIpV4Addr = null;
         if (protocolStatus != null) {
@@ -2445,10 +2447,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             ((EquipmentProtocolStatusData) protocolStatus.getDetails()).setLastApcUpdate(System.currentTimeMillis());
             ((EquipmentProtocolStatusData) protocolStatus.getDetails()).setReportedApcAddress(drIpAddr);
             ((EquipmentProtocolStatusData) protocolStatus.getDetails()).setRadiusProxyAddress(drIpAddr);
+            ((EquipmentProtocolStatusData) protocolStatus.getDetails()).setApcMode(ApcMode.valueOf(mode));
+            ((EquipmentProtocolStatusData) protocolStatus.getDetails()).setApcBackupDesignatedRouterIpAddress(bdrIpAddr);
+            ((EquipmentProtocolStatusData) protocolStatus.getDetails()).setApcDesignatedRouterIpAddress(drIpAddr);
+
             protocolStatus = statusServiceInterface.update(protocolStatus);
             LOG.info("Protocol Status updated for APC_State table monitor change {}", protocolStatus);
         }
-        String mode = apcStateAttributes.get("mode");
         ApcElectionEvent electionEvent =
                 new ApcElectionEvent(drIpAddr, bdrIpAddr, localIpV4Addr, drIpAddr, mode, Boolean.valueOf(apcStateAttributes.get("enabled")),
                         RealTimeEventType.APC_Election_event, customerId, ce.getLocationId(), equipmentId, System.currentTimeMillis());
