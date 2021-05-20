@@ -1025,7 +1025,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             if ((blockedClients != null) && !blockedClients.isEmpty()) {
                 blockedClients.forEach(client -> blockList.add(client.getMacAddress()));
             }
-            
+
             ret.setBlockedClients(blockList);
             ret.setRadiusProfiles(new ArrayList<>(radiusSet));
 
@@ -1739,7 +1739,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         if (node.qrCode != null) {
             if (node.qrCode.containsKey("DT")) {
                 qrCode.setDeviceType(EquipmentType.getByName(node.qrCode.get("DT")));
-            }               
+            }
             qrCode.setVendorName(node.qrCode.get("VN"));
             if (isValidMACAddress(node.qrCode.get("DM"))) {
                 qrCode.setDeviceMac(MacAddress.valueOf(node.qrCode.get("DM")));
@@ -2030,31 +2030,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     // Create or update
                     Client client = clientServiceInterface.getOrNull(customerId, clientMacAddress);
                     if (client == null) {
-                        LOG.info("Cannot find client instance for {}", clientMacAddress);
-                        if (rowUpdateOperation.equals(RowUpdateOperation.INSERT)) {
-                            client = new Client();
-                            client.setCustomerId(customerId);
-                            client.setMacAddress(clientMacAddress);
-                            client.setDetails(new ClientInfoDetails());
-                            if (dhcpLeasedIps.containsKey("hostname")) {
-                                ((ClientInfoDetails) client.getDetails()).setHostName(dhcpLeasedIps.get("hostname"));
-                            }
-                            if (dhcpLeasedIps.containsKey("fingerprint")) {
-                                ((ClientInfoDetails) client.getDetails()).setApFingerprint(dhcpLeasedIps.get("fingerprint"));
-                            }
-                            if (dhcpLeasedIps.containsKey("device_type")) {
-                                DhcpFpDeviceType dhcpFpDeviceType = DhcpFpDeviceType.getByName(dhcpLeasedIps.get("device_type"));
-                                ClientType clientType = OvsdbToWlanCloudTypeMappingUtility.getClientTypeForDhcpFpDeviceType(dhcpFpDeviceType);
-                                LOG.debug("Translate from ovsdb {} to cloud {}", dhcpFpDeviceType, clientType);
-                                ((ClientInfoDetails) client.getDetails()).setClientType(clientType.getId());
-                            }
-                            client = clientServiceInterface.create(client);
-                            LOG.info("Created client from DHCP_Leased_IP event {}.", client);
-                            ClientSession session = updateClientSession(customerId, equipmentId, locationId, dhcpLeasedIps, clientMacAddress);
-                            if (session != null) {
-                                clientSessionList.add(session);
-                            }
-                        }
+                        LOG.info("No client present for {}", clientMacAddress);
+                        continue;
                     } else {
                         LOG.info("Client {} already exists on the cloud, update client values", dhcpLeasedIps);
                         if (dhcpLeasedIps.containsKey("hostname")) {
@@ -2134,19 +2111,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         ClientSession session = clientServiceInterface.getSessionOrNull(customerId, equipmentId, clientMacAddress);
         if (session == null) {
-            session = new ClientSession();
-            session.setCustomerId(customerId);
-            session.setEquipmentId(equipmentId);
-            session.setLocationId(locationId);
-            session.setMacAddress(clientMacAddress);
-            session.setDetails(new ClientSessionDetails());
-            session.getDetails().setSessionId(clientMacAddress.getAddressAsLong());
-            session.getDetails().setDhcpDetails(new ClientDhcpDetails(clientMacAddress.getAddressAsLong()));
-            session.getDetails().getDhcpDetails().setLeaseStartTimestamp(timestamp);
-            session.getDetails().setMetricDetails(new ClientSessionMetricDetails());
-            session.getDetails().setLastEventTimestamp(timestamp);
-            session.getDetails().setAssociationState(AssociationState._802_11_Associated);
-            session.getDetails().setAssocTimestamp(timestamp);
+            LOG.info("No session for client {} with for customer {} equipment {}", clientMacAddress, customerId, equipmentId);
+            return null;
         } else {
             if (session.getDetails().getPriorEquipmentId() == null) {
                 session.getDetails().setPriorEquipmentId(session.getEquipmentId());
