@@ -12,6 +12,7 @@ import java.util.concurrent.TimeoutException;
 import org.springframework.stereotype.Component;
 
 import com.telecominfraproject.wlan.core.model.equipment.AutoOrManualValue;
+import com.telecominfraproject.wlan.core.model.equipment.OBSSHopMode;
 import com.telecominfraproject.wlan.core.model.equipment.RadioBestApSettings;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.core.model.equipment.SourceType;
@@ -111,10 +112,13 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
             	}
             }
 
+            OBSSHopMode obssHopMode = rfElementConfig.getChannelHopSettings().getObssHopMode();
+            int noiseFloorThresholdInDB = rfElementConfig.getChannelHopSettings().getNoiseFloorThresholdInDB();
+            int noiseFloorThresholdTimeInSeconds = rfElementConfig.getChannelHopSettings().getNoiseFloorThresholdTimeInSeconds();
             if (freqBand != null) {
                 try {
                     configureWifiRrm(ovsdbClient, freqBand, backupChannel, probeResponseThresholdDb, 
-                    		clientDisconnectThresholdDb, managementRate, bestApSettings, multicastRate);
+                    		clientDisconnectThresholdDb, managementRate, bestApSettings, multicastRate, obssHopMode, noiseFloorThresholdInDB, noiseFloorThresholdTimeInSeconds);
                 } catch (OvsdbClientException e) {
                     LOG.error("configureRrm failed with OvsdbClient exception.", e);
                     throw new RuntimeException(e);
@@ -133,7 +137,7 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
 
     void configureWifiRrm(OvsdbClient ovsdbClient, String freqBand, int backupChannel,
             Integer probeResponseThreshold, Integer clientDisconnectThreshold,
-            ManagementRate managementRate, RadioBestApSettings bestApSettings, MulticastRate multicastRate)
+            ManagementRate managementRate, RadioBestApSettings bestApSettings, MulticastRate multicastRate, OBSSHopMode obssHopMode, Integer noiseFloorThresholdInDB, Integer noiseFloorThresholdTimeInSeconds)
             throws OvsdbClientException, TimeoutException, ExecutionException, InterruptedException {
 
         List<Operation> operations = new ArrayList<>();
@@ -180,6 +184,18 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
             } else {
                 updateColumns.put("min_load", new Atom<>(bestApSettings.getMinLoadFactor()));
             }
+        }
+        
+        if (obssHopMode != null) {
+            updateColumns.put("obss_hop_mode", new Atom<>(obssHopMode.equals(OBSSHopMode.NON_WIFI) ? 1 : 2 ));
+        }
+        
+        if (noiseFloorThresholdInDB != null) {
+            updateColumns.put("noise_floor_thresh", new Atom<>(noiseFloorThresholdInDB));
+        }
+        
+        if (noiseFloorThresholdTimeInSeconds != null) {
+            updateColumns.put("noise_floor_time", new Atom<>(noiseFloorThresholdTimeInSeconds));
         }
 
         Row row = new Row(updateColumns);
