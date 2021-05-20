@@ -1136,6 +1136,10 @@ public class MqttStatsPublisher {
                     int nonWifi = (busy - (busyTx + busyRx)) / totalDurationMs;
                     checkIfOutOfBound("nonWifi", nonWifi, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
                     radioUtil.setNonWifi(nonWifi);
+                    
+                    int pctOBSSAndSelfErrors = (busyRx - busySelf) / totalDurationMs;
+                    checkIfOutOfBound("OBSSAndSelfErrors", pctOBSSAndSelfErrors, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
+                    radioUtil.setUnassocClientRx(pctOBSSAndSelfErrors);
 
                     radioType = OvsdbToWlanCloudTypeMappingUtility.getRadioTypeFromOpensyncStatsRadioBandType(survey.getBand());
                     if (radioType != RadioType.UNSUPPORTED) {
