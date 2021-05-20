@@ -1,3 +1,4 @@
+
 package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 
 import java.util.ArrayList;
@@ -46,8 +47,7 @@ import com.vmware.ovsdb.service.OvsdbClient;
 public class OvsdbRrmConfig extends OvsdbDaoBase {
     void configureWifiRrm(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
 
-        ApElementConfiguration apElementConfig = (ApElementConfiguration) opensyncApConfig.getCustomerEquipment()
-                .getDetails();
+        ApElementConfiguration apElementConfig = (ApElementConfiguration) opensyncApConfig.getCustomerEquipment().getDetails();
         RfConfiguration rfConfig = (RfConfiguration) opensyncApConfig.getRfProfile().getDetails();
         for (RadioType radioType : apElementConfig.getRadioMap().keySet()) {
             String freqBand = null;
@@ -68,26 +68,24 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
             ElementRadioConfiguration elementRadioConfig = apElementConfig.getRadioMap().get(radioType);
             RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(radioType);
             if (elementRadioConfig == null || rfElementConfig == null) {
-            	continue; // don't have a radio of this kind in the map
+                continue; // don't have a radio of this kind in the map
             }
-            
+
             boolean autoChannelSelection = rfElementConfig.getAutoChannelSelection();
             int backupChannel = elementRadioConfig.getActiveBackupChannel(autoChannelSelection);
-            
+
             boolean autoCellSizeSelection = rfElementConfig.getAutoCellSizeSelection();
             Integer probeResponseThresholdDb = null;
             Integer clientDisconnectThresholdDb = null;
-            
+
             if (elementRadioConfig.getProbeResponseThresholdDb() != null) {
-	            probeResponseThresholdDb = getSourcedValue(autoCellSizeSelection,
-	                    rfElementConfig.getProbeResponseThresholdDb(),
-	                    elementRadioConfig.getProbeResponseThresholdDb().getValue());
+                probeResponseThresholdDb = getSourcedValue(autoCellSizeSelection, rfElementConfig.getProbeResponseThresholdDb(),
+                        elementRadioConfig.getProbeResponseThresholdDb().getValue());
             }
-            
+
             if (elementRadioConfig.getClientDisconnectThresholdDb() != null) {
-	            clientDisconnectThresholdDb = getSourcedValue(autoCellSizeSelection,
-	                    rfElementConfig.getClientDisconnectThresholdDb(),
-	                    elementRadioConfig.getClientDisconnectThresholdDb().getValue());
+                clientDisconnectThresholdDb = getSourcedValue(autoCellSizeSelection, rfElementConfig.getClientDisconnectThresholdDb(),
+                        elementRadioConfig.getClientDisconnectThresholdDb().getValue());
             }
 
             RadioConfiguration radioConfig = apElementConfig.getAdvancedRadioMap().get(radioType);
@@ -95,30 +93,30 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
             ManagementRate managementRate = null;
             RadioBestApSettings bestApSettings = null;
             if (radioConfig != null) {
-            	if (radioConfig.getMulticastRate() != null) {
-            		multicastRate = autoCellSizeSelection ?
-            		    radioConfig.getMulticastRate().getValue() : rfElementConfig.getMulticastRate();
-            	}
-            	
-            	if (radioConfig.getManagementRate() != null) {
-                	managementRate = autoCellSizeSelection ?
-                        radioConfig.getManagementRate().getValue() : rfElementConfig.getManagementRate();
-            	}
-            	
-            	if (radioConfig.getBestApSettings() != null) {
-                	bestApSettings = radioConfig.getBestApSettings().getSource() == SourceType.profile
-                        ? rfElementConfig.getBestApSettings()
-                        : radioConfig.getBestApSettings().getValue();
-            	}
+                if (radioConfig.getMulticastRate() != null) {
+                    multicastRate = autoCellSizeSelection ? radioConfig.getMulticastRate().getValue() : rfElementConfig.getMulticastRate();
+                }
+
+                if (radioConfig.getManagementRate() != null) {
+                    managementRate = autoCellSizeSelection ? radioConfig.getManagementRate().getValue() : rfElementConfig.getManagementRate();
+                }
+
+                if (radioConfig.getBestApSettings() != null) {
+                    bestApSettings = radioConfig.getBestApSettings().getSource() == SourceType.profile ? rfElementConfig.getBestApSettings()
+                            : radioConfig.getBestApSettings().getValue();
+                }
             }
 
             OBSSHopMode obssHopMode = rfElementConfig.getChannelHopSettings().getObssHopMode();
             int noiseFloorThresholdInDB = rfElementConfig.getChannelHopSettings().getNoiseFloorThresholdInDB();
             int noiseFloorThresholdTimeInSeconds = rfElementConfig.getChannelHopSettings().getNoiseFloorThresholdTimeInSeconds();
+            int nonWifiThresholdInPercentage = rfElementConfig.getChannelHopSettings().getNonWifiThresholdInPercentage();
+            int nonWifiThresholdTimeInSeconds = rfElementConfig.getChannelHopSettings().getNonWifiThresholdTimeInSeconds();
             if (freqBand != null) {
                 try {
-                    configureWifiRrm(ovsdbClient, freqBand, backupChannel, probeResponseThresholdDb, 
-                    		clientDisconnectThresholdDb, managementRate, bestApSettings, multicastRate, obssHopMode, noiseFloorThresholdInDB, noiseFloorThresholdTimeInSeconds);
+                    configureWifiRrm(ovsdbClient, freqBand, backupChannel, probeResponseThresholdDb, clientDisconnectThresholdDb, managementRate,
+                            bestApSettings, multicastRate, obssHopMode, noiseFloorThresholdInDB, noiseFloorThresholdTimeInSeconds, nonWifiThresholdInPercentage,
+                            nonWifiThresholdTimeInSeconds);
                 } catch (OvsdbClientException e) {
                     LOG.error("configureRrm failed with OvsdbClient exception.", e);
                     throw new RuntimeException(e);
@@ -135,9 +133,9 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
         }
     }
 
-    void configureWifiRrm(OvsdbClient ovsdbClient, String freqBand, int backupChannel,
-            Integer probeResponseThreshold, Integer clientDisconnectThreshold,
-            ManagementRate managementRate, RadioBestApSettings bestApSettings, MulticastRate multicastRate, OBSSHopMode obssHopMode, Integer noiseFloorThresholdInDB, Integer noiseFloorThresholdTimeInSeconds)
+    void configureWifiRrm(OvsdbClient ovsdbClient, String freqBand, int backupChannel, Integer probeResponseThreshold, Integer clientDisconnectThreshold,
+            ManagementRate managementRate, RadioBestApSettings bestApSettings, MulticastRate multicastRate, OBSSHopMode obssHopMode,
+            int noiseFloorThresholdInDB, int noiseFloorThresholdTimeInSeconds, int nonWifiThresholdInPercentage, int nonWifiThresholdTimeInSeconds)
             throws OvsdbClientException, TimeoutException, ExecutionException, InterruptedException {
 
         List<Operation> operations = new ArrayList<>();
@@ -185,25 +183,22 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
                 updateColumns.put("min_load", new Atom<>(bestApSettings.getMinLoadFactor()));
             }
         }
-        
+
         if (obssHopMode != null) {
-            updateColumns.put("obss_hop_mode", new Atom<>(obssHopMode.equals(OBSSHopMode.NON_WIFI) ? 1 : 2 ));
+            updateColumns.put("obss_hop_mode", new Atom<>(obssHopMode.equals(OBSSHopMode.NON_WIFI) ? 1 : 2));
         }
-        
-        if (noiseFloorThresholdInDB != null) {
-            updateColumns.put("noise_floor_thresh", new Atom<>(noiseFloorThresholdInDB));
-        }
-        
-        if (noiseFloorThresholdTimeInSeconds != null) {
-            updateColumns.put("noise_floor_time", new Atom<>(noiseFloorThresholdTimeInSeconds));
-        }
+        updateColumns.put("noise_floor_thresh", new Atom<>(noiseFloorThresholdInDB));
+        updateColumns.put("noise_floor_time", new Atom<>(noiseFloorThresholdTimeInSeconds));
+        updateColumns.put("non_wifi_thresh", new Atom<>(nonWifiThresholdInPercentage));
+        updateColumns.put("non_wifi_time", new Atom<>(nonWifiThresholdTimeInSeconds));
+
 
         Row row = new Row(updateColumns);
         operations.add(new Insert(wifiRrmConfigDbTable, row));
 
         CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
         OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-        
+
         LOG.debug("Provisioned rrm config with multicastRate {} Mbps for {}", multicastRate, freqBand);
 
         for (OperationResult res : result) {
@@ -228,9 +223,9 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
         }
         return AutoOrManualValue.createManualInstance(equipmentValue);
     }
-    
-    //For cell size related attributes, the “manual" mode is not supported any more,
-    //user can create a new RF profile with desired values to achieve it
+
+    // For cell size related attributes, the “manual" mode is not supported any more,
+    // user can create a new RF profile with desired values to achieve it
     int getSourcedValue(boolean autoCellSizeSelection, int profileValue, int equipmentValue) {
         if (autoCellSizeSelection) {
             return equipmentValue;
@@ -239,8 +234,7 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
         }
     }
 
-    void processNewChannelsRequest(OvsdbClient ovsdbClient, Map<RadioType, Integer> backupChannelMap,
-            Map<RadioType, Integer> primaryChannelMap) {
+    void processNewChannelsRequest(OvsdbClient ovsdbClient, Map<RadioType, Integer> backupChannelMap, Map<RadioType, Integer> primaryChannelMap) {
 
         LOG.info("OvsdbDao::processNewChannelsRequest backup {} primary {}", backupChannelMap, primaryChannelMap);
         try {
@@ -282,7 +276,7 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
         }
 
     }
-    
+
     void processCellSizeAttributesRequest(OvsdbClient ovsdbClient, Map<RadioType, CellSizeAttributes> cellSizeAttributesMap) {
 
         LOG.info("OvsdbDao::processCellSizeAttributesRequest cellSizeAttributes {}", cellSizeAttributesMap);
@@ -294,7 +288,7 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
                 List<Condition> conditions = new ArrayList<>();
                 conditions.add(new Condition("freq_band", Function.EQUALS, new Atom<>(freqBand)));
                 Map<String, Value> updateRrmColumns = new HashMap<>();
-                
+
                 CellSizeAttributes cellSizeAttributes = c.getValue();
                 MulticastRate multicastRate = cellSizeAttributes.getMulticastRate();
                 if (multicastRate == null || multicastRate == MulticastRate.auto) {
@@ -309,7 +303,7 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
                 } else {
                     updateRrmColumns.put("probe_resp_threshold", new Atom<>(probeResponseThreshold.intValue()));
                 }
-                
+
                 Integer clientDisconnectThreshold = cellSizeAttributes.getClientDisconnectThresholdDb();
                 if (clientDisconnectThreshold == null) {
                     updateRrmColumns.put("client_disconnect_threshold", new com.vmware.ovsdb.protocol.operation.notation.Set());
@@ -323,10 +317,10 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
                 } else {
                     updateRrmColumns.put("beacon_rate", new Atom<>(managementRate.getId() * 10));
                 }
-                
+
                 Row rowRrm = new Row(updateRrmColumns);
                 operations.add(new Update(wifiRrmConfigDbTable, conditions, rowRrm));
-                
+
                 Map<String, Value> updateRadioColumns = new HashMap<>();
                 Integer txPower = cellSizeAttributes.getEirpTxPowerDb();
                 if (txPower != null && txPower > 0) {
@@ -343,15 +337,14 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
 
             for (OperationResult res : result) {
                 LOG.info("Op Result {}", res);
-                
+
                 if (res instanceof InsertResult) {
                     LOG.info("processCellSizeAttributesRequest insert new row result {}", (res));
                     // for insert, make sure it is actually in the table
                     confirmRowExistsInTable(ovsdbClient, ((InsertResult) res).getUuid(), wifiRrmConfigDbTable);
                 } else if (res instanceof ErrorResult) {
                     LOG.error("processCellSizeAttributesRequest error {}", (res));
-                    throw new RuntimeException("processCellSizeAttributesRequest " + ((ErrorResult) res).getError() +
-                            " " + ((ErrorResult) res).getDetails());
+                    throw new RuntimeException("processCellSizeAttributesRequest " + ((ErrorResult) res).getError() + " " + ((ErrorResult) res).getDetails());
                 }
             }
 
