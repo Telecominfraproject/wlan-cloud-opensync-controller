@@ -227,8 +227,9 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
         customOptions.put("rts_threshold", String.valueOf(rtsCtsThreshold));
     }
 
-    void configureCustomOptionsForUseRadiusProxy(boolean useRadiusProxy, Map<String, String> customOptions) {
+    void configureCustomOptionsForUseRadiusProxyAndHotspot(boolean useRadiusProxy, boolean enableProxyArpForHotspot, Map<String, String> customOptions) {
         customOptions.put("radproxy", useRadiusProxy ? "1" : "0");
+        customOptions.put("proxy_arp", enableProxyArpForHotspot ? "1" : "0");
     }
 
     /**
@@ -251,13 +252,14 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
      * @param updateColumns
      * @param dynamicVlan
      * @param useRadiusProxy
+     * @param enableProxyArpForHotspot TODO
      */
     void configureCustomOptionsForSsid(OvsdbClient ovsdbClient, boolean enable80211k, boolean enable80211r, boolean rateLimitEnable, int ssidDlLimit,
             int ssidUlLimit, int clientDlLimit, int clientUlLimit, int rtsCtsThreshold, int dtimPeriod, String radiusNasId, String radiusNasIp,
-            String radiusOperatorName, Map<String, Value> updateColumns, int dynamicVlan, Boolean useRadiusProxy) {
+            String radiusOperatorName, Map<String, Value> updateColumns, int dynamicVlan, Boolean useRadiusProxy, Boolean enableProxyArpForHotspot) {
         Map<String, String> customOptions = new HashMap<>();
 
-        configureCustomOptionsForUseRadiusProxy(useRadiusProxy, customOptions);
+        configureCustomOptionsForUseRadiusProxyAndHotspot(useRadiusProxy, enableProxyArpForHotspot, customOptions);
 
         configureCustomOptionsForRatesAndLimits(rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit, rtsCtsThreshold, customOptions);
 
@@ -277,7 +279,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
             int keyRefresh, boolean uapsdEnabled, boolean apBridge, NetworkForwardMode networkForwardMode, List<MacAddress> macBlockList,
             boolean rateLimitEnable, int ssidDlLimit, int ssidUlLimit, int clientDlLimit, int clientUlLimit, int rtsCtsThreshold, int dtimPeriod,
             Map<String, String> captiveMap, List<String> walledGardenAllowlist, String radiusNasId, String radiusNasIp, String radiusOperatorName,
-            String greTunnelName, int dynamicVlan, Boolean useRadiusProxy, List<Operation> operations) {
+            String greTunnelName, int dynamicVlan, Boolean useRadiusProxy, List<Operation> operations, Boolean enableProxyArpForHotspot) {
 
         Map<String, Value> updateColumns = new HashMap<>();
         // If we are doing a NAT SSID, no bridge, else yes
@@ -334,7 +336,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
         com.vmware.ovsdb.protocol.operation.notation.Map<String, String> securityMap = com.vmware.ovsdb.protocol.operation.notation.Map.of(security);
         updateColumns.put("security", securityMap);
         configureCustomOptionsForSsid(ovsdbClient, enable80211k, enable80211r, rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit,
-                rtsCtsThreshold, dtimPeriod, radiusNasId, radiusNasIp, radiusOperatorName, updateColumns, dynamicVlan, useRadiusProxy);
+                rtsCtsThreshold, dtimPeriod, radiusNasId, radiusNasIp, radiusOperatorName, updateColumns, dynamicVlan, useRadiusProxy, enableProxyArpForHotspot);
         updateBlockList(updateColumns, macBlockList);
         Row row = new Row(updateColumns);
         operations.add(new Insert(wifiVifConfigDbTable, row));
@@ -550,11 +552,15 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                 if (ssidConfig.getUseRadiusProxy() != null) {
                     useRadiusProxy = ssidConfig.getUseRadiusProxy();
                 }
+                boolean enableProxyArpForHotspot = false;
+                if (ssidConfig.getEnableProxyArpForHotspot() != null) {
+                    enableProxyArpForHotspot = false;
+                }
                 try {
                     configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(), ssidBroadcast, security, vlanId, rrmEnabled, enable80211r, mobilityDomain,
                             enable80211v, enable80211k, minHwMode, enabled, keyRefresh, uapsdEnabled, apBridge, ssidConfig.getForwardMode(), macBlockList,
                             rateLimitEnable, ssidDlLimit, ssidUlLimit, clientDlLimit, clientUlLimit, rtsCtsThreshold, dtimPeriod, captiveMap,
-                            walledGardenAllowlist, radiusNasId, radiusNasIp, radiusOperName, greTunnelName, dynamicVlan, useRadiusProxy, operations);
+                            walledGardenAllowlist, radiusNasId, radiusNasIp, radiusOperName, greTunnelName, dynamicVlan, useRadiusProxy, operations, enableProxyArpForHotspot);
 
                     networkConfig.configureInetVifInterface(ovsdbClient, ifName, enabled, ssidConfig.getForwardMode(), operations);
 
