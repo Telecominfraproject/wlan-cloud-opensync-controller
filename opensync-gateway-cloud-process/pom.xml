@@ -3,7 +3,7 @@
 	<parent>
 		<groupId>com.telecominfraproject.wlan</groupId>
 		<artifactId>tip-wlan-cloud-root-pom</artifactId>
-		<version>1.1.0-SNAPSHOT</version>
+		<version>1.2.0-SNAPSHOT</version>
 		<relativePath>../../wlan-cloud-root</relativePath>
 	</parent>
 	<artifactId>opensync-gateway-cloud-process</artifactId>
@@ -20,95 +20,95 @@
 		<dependency>
 			<groupId>com.telecominfraproject.wlan</groupId>
 			<artifactId>opensync-ext-cloud</artifactId>
-			<version>1.1.0-SNAPSHOT</version>
+			<version>1.2.0-SNAPSHOT</version>
 		</dependency>
         <dependency>
             <artifactId>filestore-service</artifactId>
             <groupId>com.telecominfraproject.wlan</groupId>
-            <version>1.1.0-SNAPSHOT</version>
+            <version>1.2.0-SNAPSHOT</version>
         </dependency>
 		<dependency>
 			<artifactId>customer-service-remote</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>1.1.0-SNAPSHOT</version>
+			<version>1.2.0-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
 			<artifactId>location-service-remote</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>1.1.0-SNAPSHOT</version>
+			<version>1.2.0-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
 			<artifactId>equipment-service-remote</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>1.1.0-SNAPSHOT</version>
+			<version>1.2.0-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
 			<artifactId>profile-service-remote</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>1.1.0-SNAPSHOT</version>
+			<version>1.2.0-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
 			<artifactId>portal-user-service-remote</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>1.1.0-SNAPSHOT</version>
+			<version>1.2.0-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
 			<artifactId>service-metric-service-remote</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>1.1.0-SNAPSHOT</version>
+			<version>1.2.0-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
 			<artifactId>system-event-service-remote</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>1.1.0-SNAPSHOT</version>
+			<version>1.2.0-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
 			<artifactId>alarm-service-remote</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>1.1.0-SNAPSHOT</version>
+			<version>1.2.0-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
 			<artifactId>status-service-remote</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>1.1.0-SNAPSHOT</version>
+			<version>1.2.0-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
 			<artifactId>client-service-remote</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>1.1.0-SNAPSHOT</version>
+			<version>1.2.0-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
 			<artifactId>routing-service-remote</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>1.1.0-SNAPSHOT</version>
+			<version>1.2.0-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
 			<artifactId>firmware-service-remote</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>1.1.0-SNAPSHOT</version>
+			<version>1.2.0-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
 			<artifactId>manufacturer-service-remote</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>1.1.0-SNAPSHOT</version>
+			<version>1.2.0-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
 			<artifactId>cloud-event-dispatcher-remote</artifactId>
 			<groupId>com.telecominfraproject.wlan</groupId>
-			<version>1.1.0-SNAPSHOT</version>
+			<version>1.2.0-SNAPSHOT</version>
 		</dependency>
 
 	</dependencies>
