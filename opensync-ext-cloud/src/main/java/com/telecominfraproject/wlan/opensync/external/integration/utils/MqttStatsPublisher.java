@@ -1455,7 +1455,7 @@ public class MqttStatsPublisher {
                         cMetrics.setNumTxDropped((int) cl.getStats().getTxErrors());
                     }
 
-                    if (cl.getStats().hasRxFrames()) {
+                    if (cl.getStats().hasTxFrames()) {
                         cMetrics.setNumTxFramesTransmitted(cl.getStats().getTxFrames());
                     }
 
