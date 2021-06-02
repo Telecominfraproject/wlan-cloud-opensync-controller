@@ -1615,7 +1615,7 @@ public class MqttStatsPublisher {
 
             float rxBytesFv = Long.valueOf(client.getStats().getRxBytes()).floatValue();
             float rxBytesToMb = rxBytesFv / 125000F;
-            float txBytesFv = Long.valueOf(client.getStats().getRxBytes()).floatValue();
+            float txBytesFv = Long.valueOf(client.getStats().getTxBytes()).floatValue();
             float txBytesToMb = txBytesFv / 125000F;
 
             if (LOG.isDebugEnabled())
@@ -1700,8 +1700,8 @@ public class MqttStatsPublisher {
 
                     rxBytes += client.getStats().getRxBytes();
                     txBytes += client.getStats().getTxBytes();
-                    txFrames += client.getStats().getRxFrames();
-                    rxFrames += client.getStats().getTxFrames();
+                    rxFrames += client.getStats().getRxFrames();
+                    txFrames += client.getStats().getTxFrames();
                     rxRetries += client.getStats().getRxRetries();
                     txRetries += client.getStats().getTxRetries();
                     rxErrors += client.getStats().getRxErrors();
