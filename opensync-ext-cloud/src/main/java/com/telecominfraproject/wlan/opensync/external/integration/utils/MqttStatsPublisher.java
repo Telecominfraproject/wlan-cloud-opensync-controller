@@ -964,7 +964,10 @@ public class MqttStatsPublisher {
             List<PerProcessUtilization> memPerProcess = new ArrayList<>();
             deviceReport.getPsMemUtilList().stream().forEach(c -> memPerProcess.add(new PerProcessUtilization(c.getPid(), c.getCmd(), c.getUtil())));
             apPerformance.setPsMemUtil(memPerProcess);
-
+            apPerformance.setSourceTimestampMs(deviceReport.getTimestampMs());
+            // The service metric report's sourceTimestamp will be the most recent timestamp from its contributing stats
+            if (smr.getSourceTimestampMs() < deviceReport.getTimestampMs())
+                smr.setSourceTimestampMs(deviceReport.getTimestampMs());
             updateDeviceStatusForReport(customerId, equipmentId, deviceReport, avgRadioTemp);
 
         }
@@ -1063,7 +1066,12 @@ public class MqttStatsPublisher {
             radioStats.setNumRxDataFrames(rxFrames);
             radioStats.setNumRxErr(rxErrors);
             radioStats.setNumRxRetry(rxRetries);
-
+            radioStats.setSourceTimestampMs(clReport.getTimestampMs());
+            
+            // The service metric report's sourceTimestamp will be the most recent timestamp from its contributing stats
+            if (smr.getSourceTimestampMs() < clReport.getTimestampMs())
+                smr.setSourceTimestampMs(clReport.getTimestampMs());
+            
             apNodeMetrics.setRadioStats(radioType, radioStats);
 
             apNodeMetrics.setRxBytes(radioType, rxBytes);
@@ -1123,6 +1131,12 @@ public class MqttStatsPublisher {
                 if (totalDurationMs > 0) {
                     RadioUtilization radioUtil = new RadioUtilization();
                     radioUtil.setTimestampSeconds((int) ((survey.getTimestampMs()) / 1000));
+                    radioUtil.setSourceTimestampMs(survey.getTimestampMs());
+                    
+                    // The service metric report's sourceTimestamp will be the most recent timestamp from its contributing stats
+                    if (smr.getSourceTimestampMs() < survey.getTimestampMs())
+                        smr.setSourceTimestampMs(survey.getTimestampMs());
+                    
                     int pctBusyTx = busyTx / totalDurationMs;
                     checkIfOutOfBound("pctBusyTx", pctBusyTx, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
 
@@ -1283,6 +1297,8 @@ public class MqttStatsPublisher {
         for (NetworkProbe networkProbe : report.getNetworkProbeList()) {
 
             NetworkProbeMetrics networkProbeMetrics = new NetworkProbeMetrics();
+            
+            networkProbeMetrics.setSourceTimestampMs(networkProbe.getTimestampMs());
 
             List<DnsProbeMetric> dnsProbeResults = new ArrayList<>();
             if (networkProbe.hasDnsProbe()) {
@@ -1390,6 +1406,7 @@ public class MqttStatsPublisher {
 
                 ServiceMetric smr = new ServiceMetric(customerId, equipmentId, MacAddress.valueOf(cl.getMacAddress()));
                 smr.setLocationId(locationId);
+                smr.setSourceTimestampMs(clReport.getTimestampMs());
                 metricRecordList.add(smr);
 
                 smr.setClientMac(MacAddress.valueOf(cl.getMacAddress()).getAddressAsLong());
@@ -1479,7 +1496,7 @@ public class MqttStatsPublisher {
 
             ServiceMetric smr = new ServiceMetric(customerId, equipmentId);
             smr.setLocationId(locationId);
-
+            smr.setSourceTimestampMs(neighbor.getTimestampMs());
             metricRecordList.add(smr);
             NeighbourScanReports neighbourScanReports = new NeighbourScanReports();
             smr.setDetails(neighbourScanReports);
@@ -1631,6 +1648,10 @@ public class MqttStatsPublisher {
 
             LOG.debug("ClientReport for channel {} RadioBand {}", clientReport.getChannel(), clientReport.getBand());
 
+            // The service metric report's sourceTimestamp will be the most recent ClientReport timestamp
+            if (smr.getSourceTimestampMs() < clientReport.getTimestampMs())
+                smr.setSourceTimestampMs(clientReport.getTimestampMs());
+            
             long txBytes = 0L;
             long rxBytes = 0L;
             long txFrames = 0L;
@@ -1651,7 +1672,7 @@ public class MqttStatsPublisher {
 
             SsidStatistics ssidStatistics = new SsidStatistics();
             // GET the Radio IF MAC (BSSID) from the activeBSSIDs
-
+            ssidStatistics.setSourceTimestampMs(clientReport.getTimestampMs());
             Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.ACTIVE_BSSIDS);
             if (activeBssidsStatus != null && activeBssidsStatus.getDetails() != null
                     && ((ActiveBSSIDs) activeBssidsStatus.getDetails()).getActiveBSSIDs() != null) {
@@ -1818,7 +1839,7 @@ public class MqttStatsPublisher {
             smr.setCustomerId(customerId);
             smr.setEquipmentId(equipmentId);
             smr.setLocationId(locationId);
-
+            smr.setSourceTimestampMs(survey.getTimestampMs());
             ChannelInfoReports channelInfoReports = new ChannelInfoReports();
             Map<RadioType, List<ChannelInfo>> channelInfoMap = channelInfoReports.getChannelInformationReportsPerRadio();
 
