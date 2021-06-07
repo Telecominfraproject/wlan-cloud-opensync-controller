@@ -25,6 +25,10 @@ import org.springframework.stereotype.Component;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import com.telecominfraproject.wlan.alarm.AlarmServiceInterface;
+import com.telecominfraproject.wlan.alarm.models.Alarm;
+import com.telecominfraproject.wlan.alarm.models.AlarmCode;
+import com.telecominfraproject.wlan.alarm.models.AlarmDetails;
 import com.telecominfraproject.wlan.client.ClientServiceInterface;
 import com.telecominfraproject.wlan.client.info.models.ClientInfoDetails;
 import com.telecominfraproject.wlan.client.models.Client;
@@ -144,6 +148,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     private FirmwareServiceInterface firmwareServiceInterface;
     @Autowired
     private MqttStatsPublisher mqttMessageProcessor;
+    @Autowired
+    private AlarmServiceInterface alarmServiceInterface;
 
     @Autowired
     private OpensyncCloudGatewayController gatewayController;
@@ -176,7 +182,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     @Override
     public void apConnected(String apId, ConnectNodeInfo connectNodeInfo) {
-
+    	
         Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
 
         try {
@@ -288,6 +294,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 // equipment already exists
                 boolean needToUpdateEquipment = false;
                 MacAddress reportedMacAddress = null;
+                alarmServiceInterface.delete(ce.getCustomerId(), ce.getId());
                 try {
                     reportedMacAddress = MacAddress.valueOf(connectNodeInfo.macAddress);
                 } catch (RuntimeException e) {
@@ -881,6 +888,21 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     private void updateApDisconnectedStatus(String apId, Equipment ce) {
         LOG.info("updateApDisconnectedStatus disconnected AP {}", apId);
         try {
+        	Alarm disconnectedAlarm = new Alarm();
+            disconnectedAlarm.setCustomerId(ce.getCustomerId());
+            disconnectedAlarm.setEquipmentId(ce.getId());
+            disconnectedAlarm.setAlarmCode(AlarmCode.Disconnected);
+            disconnectedAlarm.setCreatedTimestamp(ce.getCreatedTimestamp());
+            
+            AlarmDetails alarmDetails = new AlarmDetails();
+    		alarmDetails.setMessage(AlarmCode.Disconnected.getDescription());
+    		alarmDetails.setAffectedEquipmentIds(List.of(ce.getId()));
+    		alarmDetails.setGeneratedBy(apId);
+    		
+    		disconnectedAlarm.setDetails(alarmDetails);
+            
+    		alarmServiceInterface.create(disconnectedAlarm);
+            
             Status statusRecord = new Status();
             statusRecord.setCustomerId(ce.getCustomerId());
             statusRecord.setEquipmentId(ce.getId());
