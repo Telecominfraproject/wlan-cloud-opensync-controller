@@ -218,10 +218,9 @@ public class OvsdbRadioConfig extends OvsdbDaoBase {
             case modeN:
                 hwMode = "11n";
                 break;
-            //     case auto:
-                // TODO: enable when AP supports
-                //                hwMode = "auto";
-                //                break;
+            case auto:
+                hwMode = "auto";
+                break;
             default:
         }
         return hwMode;
