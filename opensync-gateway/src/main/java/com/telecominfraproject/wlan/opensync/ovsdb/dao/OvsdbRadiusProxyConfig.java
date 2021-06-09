@@ -93,6 +93,16 @@ public class OvsdbRadiusProxyConfig extends OvsdbDaoBase {
             updateColumns.put("port", new Atom<>(rsc.getPort()));
             updateColumns.put("realm", Set.of(rsc.getRealm()));
             updateColumns.put("radsec", new Atom<>(rsc.getUseRadSec()));
+            // TODO: remove the schema check when AP load available
+            if( ovsdbClient.getSchema(ovsdbName).get().getTables().get(radiusConfigDbTable).getColumns().containsKey("auto_discover") ){
+                if (rsc.getUseRadSec()) {
+                    // if useRadSec, auto_discover can be true or false
+                    updateColumns.put("auto_discover", new Atom<>(rsc.getDynamicDiscovery()));
+                } else {
+                    // if !useRadSec, auto_discover is false regardless of it's desired setting
+                    updateColumns.put("auto_discover", new Atom<>(false));
+                }
+            }
 
             java.util.Set<String> columnKeys = ovsdbClient.getSchema(ovsdbName).get().getTables().get(radiusConfigDbTable).getColumns().keySet();
 
