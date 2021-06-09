@@ -152,16 +152,16 @@ public class OpensyncCloudGatewayController {
                     LOG.error("[{}] Failed to deliver command {}, command contains unsupported value", inventoryId,
                             command);
                     ret.add(new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
-                            "Unsupported value in command for " + inventoryId, command, registeredGateway.getHostname(),
-                            registeredGateway.getPort()));
+                            "Unsupported value in command for " + inventoryId, command, registeredGateway == null ? null : registeredGateway.getHostname(),
+                            registeredGateway == null ? -1 : registeredGateway.getPort()));
                     return;
                 }
                 OvsdbSession session = ovsdbSessionMapInterface.getSession(inventoryId);
                 if (session == null) {
                     LOG.warn("[{}] Failed to deliver command {}, equipment session not found", inventoryId, command);
                     ret.add(new EquipmentCommandResponse(CEGWCommandResultCode.NoRouteToCE,
-                            "No session found for " + inventoryId, command, registeredGateway.getHostname(),
-                            registeredGateway.getPort()));
+                            "No session found for " + inventoryId, command, registeredGateway == null ? null : registeredGateway.getHostname(),
+                            registeredGateway == null ? -1 : registeredGateway.getPort()));
                     return;
                 }
 
@@ -215,7 +215,7 @@ public class OpensyncCloudGatewayController {
                         ret.add(new EquipmentCommandResponse(
                                 CEGWCommandResultCode.UnsupportedCommand, "Invalid command type ("
                                         + command.getCommandType() + ") for equipment (" + inventoryId + ")",
-                                command, registeredGateway.getHostname(), registeredGateway.getPort()));
+                                command, registeredGateway == null ? null : registeredGateway.getHostname(), registeredGateway == null ? -1 : registeredGateway.getPort()));
                 }
 
             }
@@ -263,11 +263,11 @@ public class OpensyncCloudGatewayController {
                         command.getInventoryId(), session.getRoutingId(), command.getRoutingId());
 
                 return new EquipmentCommandResponse(CEGWCommandResultCode.NoRouteToCE, "Inactive Route Identifer",
-                        command, registeredGateway.getHostname(), registeredGateway.getPort());
+                        command, registeredGateway == null ? null : registeredGateway.getHostname(), registeredGateway == null ? -1 : registeredGateway.getPort());
             }
         }
         return new EquipmentCommandResponse(CEGWCommandResultCode.Success, "Route active", command,
-                registeredGateway.getHostname(), registeredGateway.getPort());
+                registeredGateway == null ? null : registeredGateway.getHostname(), registeredGateway == null ? -1 : registeredGateway.getPort());
     }
 
     private EquipmentCommandResponse sendConfigChangeNotification(OvsdbSession session,
@@ -284,12 +284,12 @@ public class OpensyncCloudGatewayController {
             return new EquipmentCommandResponse(
                     CEGWCommandResultCode.FailedToSend, "Failed to send command " + command.getCommandType() + " to "
                             + command.getInventoryId() + ": " + e.getMessage(),
-                    command, registeredGateway.getHostname(), registeredGateway.getPort());
+                    command, registeredGateway == null ? null : registeredGateway.getHostname(), registeredGateway == null ? -1 : registeredGateway.getPort());
         }
         LOG.debug("[{}] Closed session to CE", command.getInventoryId());
         return new EquipmentCommandResponse(CEGWCommandResultCode.Success,
-                "Closed session to " + command.getInventoryId(), command, registeredGateway.getHostname(),
-                registeredGateway.getPort());
+                "Closed session to " + command.getInventoryId(), command, registeredGateway == null ? null : registeredGateway.getHostname(),
+                registeredGateway == null ? -1 : registeredGateway.getPort());
 
     }
 
@@ -319,7 +319,7 @@ public class OpensyncCloudGatewayController {
         LOG.debug("Received command {} for {}", command.getCommandType(), inventoryId);
         EquipmentCommandResponse response = new EquipmentCommandResponse(CEGWCommandResultCode.Success,
                 "Received Command " + command.getCommandType() + " for " + inventoryId, command,
-                registeredGateway.getHostname(), registeredGateway.getPort());
+                registeredGateway == null ? null : registeredGateway.getHostname(), registeredGateway == null ? -1 : registeredGateway.getPort());
 
         if (command instanceof CEGWConfigChangeNotification) {
             tipwlanOvsdbClient.processConfigChanged(inventoryId);
@@ -378,7 +378,7 @@ public class OpensyncCloudGatewayController {
         } else if (command instanceof CEGWRadioResetRequest) {
             response = new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
                     "Received Command " + command.getCommandType() + " for " + inventoryId, command,
-                    registeredGateway.getHostname(), registeredGateway.getPort());
+                    registeredGateway == null ? null : registeredGateway.getHostname(), registeredGateway == null ? -1 : registeredGateway.getPort());
         } else if (command instanceof CEGWRebootRequest) {
 
             CEGWRebootRequest rebootRequest = (CEGWRebootRequest) command;
@@ -402,7 +402,7 @@ public class OpensyncCloudGatewayController {
                 default:
                     response = new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
                             "Received Command " + command.getCommandType() + " for " + inventoryId, command,
-                            registeredGateway.getHostname(), registeredGateway.getPort());
+                            registeredGateway == null ? null : registeredGateway.getHostname(), registeredGateway == null ? -1 : registeredGateway.getPort());
             }
 
 
