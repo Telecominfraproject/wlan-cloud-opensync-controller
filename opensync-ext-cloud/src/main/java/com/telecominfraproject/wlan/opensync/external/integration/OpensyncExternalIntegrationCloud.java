@@ -892,7 +892,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             disconnectedAlarm.setCustomerId(ce.getCustomerId());
             disconnectedAlarm.setEquipmentId(ce.getId());
             disconnectedAlarm.setAlarmCode(AlarmCode.Disconnected);
-            disconnectedAlarm.setCreatedTimestamp(ce.getCreatedTimestamp());
             
             AlarmDetails alarmDetails = new AlarmDetails();
     		alarmDetails.setMessage(AlarmCode.Disconnected.getDescription());
