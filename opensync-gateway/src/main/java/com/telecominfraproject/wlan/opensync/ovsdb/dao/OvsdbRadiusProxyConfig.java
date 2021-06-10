@@ -28,6 +28,7 @@ import com.vmware.ovsdb.protocol.operation.notation.Value;
 import com.vmware.ovsdb.protocol.operation.result.ErrorResult;
 import com.vmware.ovsdb.protocol.operation.result.OperationResult;
 import com.vmware.ovsdb.protocol.operation.result.UpdateResult;
+import com.vmware.ovsdb.protocol.schema.DatabaseSchema;
 import com.vmware.ovsdb.service.OvsdbClient;
 
 @Component
@@ -66,23 +67,33 @@ public class OvsdbRadiusProxyConfig extends OvsdbDaoBase {
         }
     }
 
-    // _version "uuid"
-    // server "string"
-    // realm {"key":{"maxLength":256,"type":"string"},"max":16,"min":0}
-    // port "integer"
-    // client_cert {"key":{"maxLength":256,"minLength":1,"type":"string"},"min":0}
-    // radsec "boolean"
-    // acct_server {"key":"string","min":0}
-    // radius_config_name "string"
-    // passphrase {"key":{"maxLength":128,"type":"string"},"min":0}
-    // acct_secret {"key":"string","min":0}
-    // acct_port {"key":"integer","min":0}
-    // _uuid "uuid"
-    // secret "string"
-    // ca_cert {"key":{"maxLength":256,"minLength":1,"type":"string"},"min":0}
-    // client_key {"key":{"maxLength":256,"minLength":1,"type":"string"},"min":0}
+    /*
+     * root@OpenAp-ab1f4d:~# ovsdb-client list-columns Radius_Proxy_Config
+     * 
+     * Column Type
+     * ------------------ ---------------------------------------------------------------
+     * realm {"key":{"maxLength":256,"type":"string"},"max":16,"min":0}
+     * radius_config_name "string"
+     * _uuid "uuid"
+     * acct_port {"key":"integer","min":0}
+     * client_key {"key":{"maxLength":256,"minLength":1,"type":"string"},"min":0}
+     * server "string"
+     * _version "uuid"
+     * port "integer"
+     * radsec "boolean"
+     * client_cert {"key":{"maxLength":256,"minLength":1,"type":"string"},"min":0}
+     * acct_server {"key":"string","min":0}
+     * passphrase {"key":{"maxLength":128,"type":"string"},"min":0}
+     * acct_secret {"key":"string","min":0}
+     * ca_cert {"key":{"maxLength":256,"minLength":1,"type":"string"},"min":0}
+     * auto_discover "boolean"
+     * secret "string"
+     */
     private void configureRadiusServers(OvsdbClient ovsdbClient, OpensyncAPConfig apConfig, List<Operation> operations)
             throws OvsdbClientException, InterruptedException, ExecutionException, TimeoutException {
+
+        // TODO: remove the schema check when AP load available
+        DatabaseSchema databaseSchema = ovsdbClient.getSchema(ovsdbName).get();
 
         for (RadiusProxyConfiguration rsc : ((ApNetworkConfiguration) apConfig.getApProfile().getDetails()).getRadiusProxyConfigurations()) {
             Map<String, Value> updateColumns = new HashMap<>();
@@ -93,36 +104,34 @@ public class OvsdbRadiusProxyConfig extends OvsdbDaoBase {
             updateColumns.put("port", new Atom<>(rsc.getPort()));
             updateColumns.put("realm", Set.of(rsc.getRealm()));
             updateColumns.put("radsec", new Atom<>(rsc.getUseRadSec()));
-            // TODO: remove the schema check when AP load available
-            if( ovsdbClient.getSchema(ovsdbName).get().getTables().get(radiusConfigDbTable).getColumns().containsKey("auto_discover") ){
-                if (rsc.getUseRadSec()) {
-                    // if useRadSec, auto_discover can be true or false
-                    updateColumns.put("auto_discover", new Atom<>(rsc.getDynamicDiscovery()));
+            updateColumns.put("secret", new Atom<>(rsc.getSharedSecret()));
+            if (rsc.getAcctServer() != null) {
+                updateColumns.put("acct_server", new Atom<>(rsc.getAcctServer().getHostAddress()));
+            }                
+            if (rsc.getSharedSecret() != null) {
+                updateColumns.put("acct_secret", new Atom<>(rsc.getSharedSecret()));
+            }            
+            if (rsc.getAcctPort() != null) {
+                updateColumns.put("acct_port", new Atom<>(rsc.getAcctPort()));
+            }        
+            
+            if( databaseSchema.getTables().get(radiusConfigDbTable).getColumns().containsKey("auto_discover") ){
+                if (rsc.getUseRadSec() && rsc.getDynamicDiscovery()) {
+                    // if useRadSec && dynamicDiscovery enabled, do not send server information
+                    updateColumns.put("auto_discover", new Atom<>(true));
+                    updateColumns.remove("acct_server");
+                    updateColumns.remove("acct_secret");
+                    updateColumns.remove("acct_port");
+                    updateColumns.remove("server");
+                    updateColumns.remove("port");
+                    updateColumns.remove("secret");
                 } else {
                     // if !useRadSec, auto_discover is false regardless of it's desired setting
+                    // retain server information
                     updateColumns.put("auto_discover", new Atom<>(false));
                 }
             }
 
-            java.util.Set<String> columnKeys = ovsdbClient.getSchema(ovsdbName).get().getTables().get(radiusConfigDbTable).getColumns().keySet();
-
-            if (columnKeys.contains("acct_server") && columnKeys.contains("acct_secret") && columnKeys.contains("acct_port") && columnKeys.contains("secret")) {
-                
-                if (rsc.getAcctServer() != null) {
-                    updateColumns.put("acct_server", new Atom<>(rsc.getAcctServer().getHostAddress()));
-                }
-                
-                if (rsc.getSharedSecret() != null) {
-                    updateColumns.put("secret", new Atom<>(rsc.getSharedSecret()));
-                    updateColumns.put("acct_secret", new Atom<>(rsc.getSharedSecret()));
-                }
-                
-                if (rsc.getAcctPort() != null) {
-                    updateColumns.put("acct_port", new Atom<>(rsc.getAcctPort()));
-                }
-                
-                
-            }
             Row row = new Row(updateColumns);
             operations.add(new Insert(radiusConfigDbTable, row));
         }
