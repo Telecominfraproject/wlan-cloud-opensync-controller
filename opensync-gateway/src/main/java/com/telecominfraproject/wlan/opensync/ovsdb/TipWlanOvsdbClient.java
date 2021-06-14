@@ -287,6 +287,15 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
         return ovsdbDao.changeRedirectorAddress(ovsdbSession.getOvsdbClient(), apId, newRedirectorAddress);
     }
+    
+    public String processBlinkRequest(String apId, boolean blinkAllLEDs) {
+        OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
+        if (ovsdbSession == null) {
+            throw new IllegalStateException("AP with id " + apId + " is not connected");
+        }
+
+        return ovsdbDao.processBlinkRequest(ovsdbSession.getOvsdbClient(), apId, blinkAllLEDs);
+    }
 
     @Override
     public void processConfigChanged(String apId) {

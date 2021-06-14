@@ -25,6 +25,7 @@ import com.vmware.ovsdb.protocol.operation.notation.Condition;
 import com.vmware.ovsdb.protocol.operation.notation.Function;
 import com.vmware.ovsdb.protocol.operation.notation.Row;
 import com.vmware.ovsdb.protocol.operation.notation.Value;
+import com.vmware.ovsdb.protocol.operation.result.InsertResult;
 import com.vmware.ovsdb.protocol.operation.result.OperationResult;
 import com.vmware.ovsdb.protocol.operation.result.UpdateResult;
 import com.vmware.ovsdb.service.OvsdbClient;
@@ -59,18 +60,17 @@ public class OvsdbNodeConfig extends OvsdbDaoBase {
 
     public void configureSyslog(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
         // /usr/opensync/tools/ovsh insert Node_Config module:="syslog" key:="remote" value:="udp:192.168.178.9:1000:4"
-        // The format is a colon delimited list.  log_proto:log_ip:log_port:log_priority
+        // The format is a colon delimited list. log_proto:log_ip:log_port:log_priority
         try {
             ApNetworkConfiguration apNetworkConfig = (ApNetworkConfiguration) opensyncAPConfig.getApProfile().getDetails();
-            if (apNetworkConfig.getSyslogRelay() == null ) {
+            if (apNetworkConfig.getSyslogRelay() == null) {
                 LOG.info("Cannot configure syslog to null value. {}", apNetworkConfig);
                 return;
             }
-            
+
             if (apNetworkConfig.getSyslogRelay().isEnabled()) {
-                
-                if (apNetworkConfig.getSyslogRelay().getSrvHostIp() == null
-                    || apNetworkConfig.getSyslogRelay().getSeverity() == null) {
+
+                if (apNetworkConfig.getSyslogRelay().getSrvHostIp() == null || apNetworkConfig.getSyslogRelay().getSeverity() == null) {
                     LOG.info("Cannot configure syslog remote_logging without SrvHostIp and Severity values. {}", apNetworkConfig);
                     return;
                 }
@@ -78,8 +78,8 @@ public class OvsdbNodeConfig extends OvsdbDaoBase {
                 Map<String, Value> columns = new HashMap<>();
                 columns.put("key", new Atom<>("remote"));
                 columns.put("module", new Atom<>("syslog"));
-                String delimitedValue = "udp:" + apNetworkConfig.getSyslogRelay().getSrvHostIp().getHostAddress() + ":" + String
-                        .valueOf(apNetworkConfig.getSyslogRelay().getSrvHostPort() + ":" +String.valueOf(apNetworkConfig.getSyslogRelay().getSeverity().getId()));
+                String delimitedValue = "udp:" + apNetworkConfig.getSyslogRelay().getSrvHostIp().getHostAddress() + ":" + String.valueOf(
+                        apNetworkConfig.getSyslogRelay().getSrvHostPort() + ":" + String.valueOf(apNetworkConfig.getSyslogRelay().getSeverity().getId()));
                 columns.put("value", new Atom<>(delimitedValue));
                 List<Operation> operations = new ArrayList<>();
                 operations.add(new Update(nodeConfigTable, List.of(new Condition("module", Function.EQUALS, new Atom<>("syslog"))), new Row(columns)));
@@ -118,5 +118,53 @@ public class OvsdbNodeConfig extends OvsdbDaoBase {
             throw new RuntimeException(e);
         }
 
+    }
+
+    public String processBlinkRequest(OvsdbClient ovsdbClient, String apId, boolean blinkAllLEDs) {
+
+        String ret = null;
+        try {
+
+            LOG.debug("processBlinkRequest set BlinkLEDs to {}", blinkAllLEDs);
+            Map<String, Value> columns = new HashMap<>();
+            if (blinkAllLEDs) {
+                columns.put("module", new Atom<>("led"));
+                columns.put("key", new Atom<>("led_blink"));
+                columns.put("value", new Atom<>("on"));
+            } else {
+                columns.put("module", new Atom<>("led"));
+                columns.put("key", new Atom<>("led_off"));
+                columns.put("value", new Atom<>("off"));
+            }
+            List<Operation> operations = new ArrayList<>();
+            operations.add(new Update(nodeConfigTable, List.of(new Condition("module", Function.EQUALS, new Atom<>("led"))), new Row(columns)));
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+            long numUpdates = 0;
+            for (OperationResult res : result) {
+                if (res instanceof UpdateResult) {
+                    numUpdates += ((UpdateResult) res).getCount();
+                    LOG.debug("processBlinkRequest update result {}", res);
+                    ret = "processBlinkRequest update result " + res;
+                }
+            }
+            if (numUpdates == 0) {
+                // no records existed, insert the row instead
+                operations.clear();
+                operations.add(new Insert(nodeConfigTable, new Row(columns)));
+                fResult = ovsdbClient.transact(ovsdbName, operations);
+                result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+                for (OperationResult res : result) {
+                    if (res instanceof InsertResult) {
+                        LOG.debug("processBlinkRequest insert result {}", res);
+                        ret = "processBlinkRequest insert result " + res;
+                    }
+                }
+            }
+            
+            return ret;
+        } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

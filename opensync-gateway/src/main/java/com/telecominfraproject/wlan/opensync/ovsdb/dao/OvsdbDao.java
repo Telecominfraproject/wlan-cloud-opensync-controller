@@ -237,4 +237,8 @@ public class OvsdbDao extends OvsdbDaoBase {
         ovsdbStats.updateEventReportingInterval(ovsdbClient, collectionIntervalSecEvent);
     }
 
+    public String processBlinkRequest(OvsdbClient ovsdbClient, String apId, boolean blinkAllLEDs) {
+        return ovsdbNodeConfig.processBlinkRequest(ovsdbClient,apId,blinkAllLEDs);
+    }
+
 }

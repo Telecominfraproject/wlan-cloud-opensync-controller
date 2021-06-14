@@ -17,6 +17,8 @@ public interface OvsdbClientInterface {
     String startDebugEngine(String apId, String gatewayHostname, Integer gatewayPort);
 
     String stopDebugEngine(String apId);
+    
+    String processBlinkRequest(String apId, boolean blinkAllLEDs);
 
     void processConfigChanged(String apId);
 

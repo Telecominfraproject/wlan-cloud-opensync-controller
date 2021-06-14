@@ -1,3 +1,4 @@
+
 package com.telecominfraproject.wlan.opensync.external.integration.controller;
 
 import java.util.ArrayList;
@@ -149,19 +150,16 @@ public class OpensyncCloudGatewayController {
                 String inventoryId = command.getInventoryId();
 
                 if (com.telecominfraproject.wlan.core.model.json.BaseJsonModel.hasUnsupportedValue(command)) {
-                    LOG.error("[{}] Failed to deliver command {}, command contains unsupported value", inventoryId,
-                            command);
-                    ret.add(new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
-                            "Unsupported value in command for " + inventoryId, command, registeredGateway == null ? null : registeredGateway.getHostname(),
-                            registeredGateway == null ? -1 : registeredGateway.getPort()));
+                    LOG.error("[{}] Failed to deliver command {}, command contains unsupported value", inventoryId, command);
+                    ret.add(new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand, "Unsupported value in command for " + inventoryId, command,
+                            registeredGateway == null ? null : registeredGateway.getHostname(), registeredGateway == null ? -1 : registeredGateway.getPort()));
                     return;
                 }
                 OvsdbSession session = ovsdbSessionMapInterface.getSession(inventoryId);
                 if (session == null) {
                     LOG.warn("[{}] Failed to deliver command {}, equipment session not found", inventoryId, command);
-                    ret.add(new EquipmentCommandResponse(CEGWCommandResultCode.NoRouteToCE,
-                            "No session found for " + inventoryId, command, registeredGateway == null ? null : registeredGateway.getHostname(),
-                            registeredGateway == null ? -1 : registeredGateway.getPort()));
+                    ret.add(new EquipmentCommandResponse(CEGWCommandResultCode.NoRouteToCE, "No session found for " + inventoryId, command,
+                            registeredGateway == null ? null : registeredGateway.getHostname(), registeredGateway == null ? -1 : registeredGateway.getPort()));
                     return;
                 }
 
@@ -201,8 +199,7 @@ public class OpensyncCloudGatewayController {
                         ret.add(processRadioReboot(session, (CEGWRebootRequest) command));
                         break;
                     case ClientBlocklistChangeNotification:
-                        ret.add(sendClientBlocklistChangeNotification(session,
-                                (CEGWClientBlocklistChangeNotification) command));
+                        ret.add(sendClientBlocklistChangeNotification(session, (CEGWClientBlocklistChangeNotification) command));
                         break;
                     case NewChannelRequest:
                         ret.add(sendNewChannelRequest(session, (CEGWNewChannelRequest) command));
@@ -212,22 +209,20 @@ public class OpensyncCloudGatewayController {
                         break;
                     default:
                         LOG.warn("[{}] Failed to deliver command {}, unsupported command type", inventoryId, command);
-                        ret.add(new EquipmentCommandResponse(
-                                CEGWCommandResultCode.UnsupportedCommand, "Invalid command type ("
-                                        + command.getCommandType() + ") for equipment (" + inventoryId + ")",
-                                command, registeredGateway == null ? null : registeredGateway.getHostname(), registeredGateway == null ? -1 : registeredGateway.getPort()));
+                        ret.add(new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
+                                "Invalid command type (" + command.getCommandType() + ") for equipment (" + inventoryId + ")", command,
+                                registeredGateway == null ? null : registeredGateway.getHostname(),
+                                registeredGateway == null ? -1 : registeredGateway.getPort()));
                 }
 
             }
-
 
         });
 
         return ret;
     }
 
-    private EquipmentCommandResponse processFirmwareDownload(OvsdbSession session,
-            CEGWFirmwareDownloadRequest command) {
+    private EquipmentCommandResponse processFirmwareDownload(OvsdbSession session, CEGWFirmwareDownloadRequest command) {
         return sendMessage(session, command.getInventoryId(), command);
     }
 
@@ -259,19 +254,18 @@ public class OpensyncCloudGatewayController {
         if (null != command.getRoutingId()) {
             if (!command.getRoutingId().equals(session.getRoutingId())) {
 
-                LOG.info("[C:{} E:{} R:{}] Stale routing entry ({}) detected", session.getCustomerId(),
-                        command.getInventoryId(), session.getRoutingId(), command.getRoutingId());
+                LOG.info("[C:{} E:{} R:{}] Stale routing entry ({}) detected", session.getCustomerId(), command.getInventoryId(), session.getRoutingId(),
+                        command.getRoutingId());
 
-                return new EquipmentCommandResponse(CEGWCommandResultCode.NoRouteToCE, "Inactive Route Identifer",
-                        command, registeredGateway == null ? null : registeredGateway.getHostname(), registeredGateway == null ? -1 : registeredGateway.getPort());
+                return new EquipmentCommandResponse(CEGWCommandResultCode.NoRouteToCE, "Inactive Route Identifer", command,
+                        registeredGateway == null ? null : registeredGateway.getHostname(), registeredGateway == null ? -1 : registeredGateway.getPort());
             }
         }
         return new EquipmentCommandResponse(CEGWCommandResultCode.Success, "Route active", command,
                 registeredGateway == null ? null : registeredGateway.getHostname(), registeredGateway == null ? -1 : registeredGateway.getPort());
     }
 
-    private EquipmentCommandResponse sendConfigChangeNotification(OvsdbSession session,
-            CEGWConfigChangeNotification command) {
+    private EquipmentCommandResponse sendConfigChangeNotification(OvsdbSession session, CEGWConfigChangeNotification command) {
 
         return sendMessage(session, command.getInventoryId(), command);
     }
@@ -281,27 +275,24 @@ public class OpensyncCloudGatewayController {
             session.getOvsdbClient().shutdown();
         } catch (Exception e) {
             LOG.error("[{}] Failed to close session on CE: {}", command.getInventoryId(), e.getLocalizedMessage());
-            return new EquipmentCommandResponse(
-                    CEGWCommandResultCode.FailedToSend, "Failed to send command " + command.getCommandType() + " to "
-                            + command.getInventoryId() + ": " + e.getMessage(),
-                    command, registeredGateway == null ? null : registeredGateway.getHostname(), registeredGateway == null ? -1 : registeredGateway.getPort());
+            return new EquipmentCommandResponse(CEGWCommandResultCode.FailedToSend,
+                    "Failed to send command " + command.getCommandType() + " to " + command.getInventoryId() + ": " + e.getMessage(), command,
+                    registeredGateway == null ? null : registeredGateway.getHostname(), registeredGateway == null ? -1 : registeredGateway.getPort());
         }
         LOG.debug("[{}] Closed session to CE", command.getInventoryId());
-        return new EquipmentCommandResponse(CEGWCommandResultCode.Success,
-                "Closed session to " + command.getInventoryId(), command, registeredGateway == null ? null : registeredGateway.getHostname(),
-                registeredGateway == null ? -1 : registeredGateway.getPort());
+        return new EquipmentCommandResponse(CEGWCommandResultCode.Success, "Closed session to " + command.getInventoryId(), command,
+                registeredGateway == null ? null : registeredGateway.getHostname(), registeredGateway == null ? -1 : registeredGateway.getPort());
 
     }
 
-    private EquipmentCommandResponse sendClientBlocklistChangeNotification(OvsdbSession session,
-            CEGWClientBlocklistChangeNotification command) {
+    private EquipmentCommandResponse sendClientBlocklistChangeNotification(OvsdbSession session, CEGWClientBlocklistChangeNotification command) {
         return sendMessage(session, command.getInventoryId(), command);
     }
 
     private EquipmentCommandResponse sendNewChannelRequest(OvsdbSession session, CEGWNewChannelRequest command) {
         return sendMessage(session, command.getInventoryId(), command);
     }
-    
+
     private EquipmentCommandResponse sendCellSizeRequest(OvsdbSession session, CEGWCellSizeAttributesRequest command) {
         return sendMessage(session, command.getInventoryId(), command);
     }
@@ -317,15 +308,17 @@ public class OpensyncCloudGatewayController {
     private EquipmentCommandResponse sendMessage(OvsdbSession session, String inventoryId, EquipmentCommand command) {
 
         LOG.debug("Received command {} for {}", command.getCommandType(), inventoryId);
-        EquipmentCommandResponse response = new EquipmentCommandResponse(CEGWCommandResultCode.Success,
-                "Received Command " + command.getCommandType() + " for " + inventoryId, command,
-                registeredGateway == null ? null : registeredGateway.getHostname(), registeredGateway == null ? -1 : registeredGateway.getPort());
+        EquipmentCommandResponse response =
+                new EquipmentCommandResponse(CEGWCommandResultCode.Success, "Received Command " + command.getCommandType() + " for " + inventoryId, command,
+                        registeredGateway == null ? null : registeredGateway.getHostname(), registeredGateway == null ? -1 : registeredGateway.getPort());
 
-        if (command instanceof CEGWConfigChangeNotification) {
+        if (command instanceof CEGWBlinkRequest) {
+            String resultDetails = tipwlanOvsdbClient.processBlinkRequest(inventoryId, ((CEGWBlinkRequest)command).getBlinkAllLEDs()); 
+            response.setResultDetail(resultDetails);
+        } else if (command instanceof CEGWConfigChangeNotification) {
             tipwlanOvsdbClient.processConfigChanged(inventoryId);
         } else if (command instanceof CEGWClientBlocklistChangeNotification) {
-            tipwlanOvsdbClient.processClientBlocklistChange(inventoryId,
-                    ((CEGWClientBlocklistChangeNotification) command).getBlockList());
+            tipwlanOvsdbClient.processClientBlocklistChange(inventoryId, ((CEGWClientBlocklistChangeNotification) command).getBlockList());
         } else if (command instanceof CEGWChangeRedirectorHost) {
             String newRedirectorAddress = ((CEGWChangeRedirectorHost) command).getRedirectorHost();
             tipwlanOvsdbClient.changeRedirectorHost(inventoryId, newRedirectorAddress);
@@ -340,7 +333,7 @@ public class OpensyncCloudGatewayController {
             Map<RadioType, Integer> newBackupChannels = request.getNewBackupChannels();
             Map<RadioType, Integer> newPrimaryChannels = request.getNewPrimaryChannels();
 
-            String resultDetails = tipwlanOvsdbClient.processNewChannelsRequest(inventoryId, newBackupChannels,newPrimaryChannels);
+            String resultDetails = tipwlanOvsdbClient.processNewChannelsRequest(inventoryId, newBackupChannels, newPrimaryChannels);
             response.setResultDetail(resultDetails);
         } else if (command instanceof CEGWCellSizeAttributesRequest) {
             CEGWCellSizeAttributesRequest request = (CEGWCellSizeAttributesRequest) command;
@@ -357,8 +350,7 @@ public class OpensyncCloudGatewayController {
             String firmwareVersion = dlRequest.getFirmwareVersion();
             String username = dlRequest.getUsername();
 
-            String resultDetails = tipwlanOvsdbClient.processFirmwareDownload(inventoryId, filepath, firmwareVersion,
-                    username);
+            String resultDetails = tipwlanOvsdbClient.processFirmwareDownload(inventoryId, filepath, firmwareVersion, username);
 
             response.setResultDetail(resultDetails);
 
@@ -370,8 +362,8 @@ public class OpensyncCloudGatewayController {
             flashRequest.getInventoryId();
             flashRequest.getUsername();
 
-            String resultDetails = tipwlanOvsdbClient.processFirmwareFlash(flashRequest.getInventoryId(),
-                    flashRequest.getFirmwareVersion(), flashRequest.getUsername());
+            String resultDetails =
+                    tipwlanOvsdbClient.processFirmwareFlash(flashRequest.getInventoryId(), flashRequest.getFirmwareVersion(), flashRequest.getUsername());
 
             response.setResultDetail(resultDetails);
 
@@ -405,7 +397,6 @@ public class OpensyncCloudGatewayController {
                             registeredGateway == null ? null : registeredGateway.getHostname(), registeredGateway == null ? -1 : registeredGateway.getPort());
             }
 
-
         }
 
         return response;
@@ -423,15 +414,14 @@ public class OpensyncCloudGatewayController {
         return sendMessage(session, command.getInventoryId(), command);
     }
 
-
     private EquipmentCommandResponse processBlinkRequest(OvsdbSession session, CEGWBlinkRequest command) {
 
         return sendMessage(session, command.getInventoryId(), command);
     }
 
     @RequestMapping(value = "/commandWithUser", method = RequestMethod.POST)
-    public EquipmentCommandResponse sendCommandWithAuthUser(@RequestBody EquipmentCommand command,
-            @AuthenticationPrincipal Object requestUser, HttpServletRequest httpServletRequest) {
+    public EquipmentCommandResponse sendCommandWithAuthUser(@RequestBody EquipmentCommand command, @AuthenticationPrincipal Object requestUser,
+            HttpServletRequest httpServletRequest) {
 
         // use these properties to get address and port where request has
         // arrived
@@ -464,8 +454,7 @@ public class OpensyncCloudGatewayController {
             }
 
             if (eqRoutingSvc == null) {
-                throw new ConfigurationException(
-                        "Unable to register gateway with routing service: routing service interface not initialized");
+                throw new ConfigurationException("Unable to register gateway with routing service: routing service interface not initialized");
             }
 
             cleanupStaleGwRecord();
@@ -481,13 +470,11 @@ public class OpensyncCloudGatewayController {
                 EquipmentGatewayRecord result = eqRoutingSvc.registerGateway(gwRecord);
                 registeredGwId = result.getId();
                 registeredGateway = result;
-                LOG.info("Successfully registered (name={}, id={}) with Routing Service", result.getHostname(),
-                        registeredGwId);
+                LOG.info("Successfully registered (name={}, id={}) with Routing Service", result.getHostname(), registeredGwId);
                 registeredWithRoutingService = true;
             } catch (RuntimeException e) {
                 // failed
-                LOG.error("Failed to register Customer Equipment Gateway (name={}) with Routing Service : {}",
-                        getGatewayName(), e.getLocalizedMessage());
+                LOG.error("Failed to register Customer Equipment Gateway (name={}) with Routing Service : {}", getGatewayName(), e.getLocalizedMessage());
             }
         }
     }
@@ -512,8 +499,7 @@ public class OpensyncCloudGatewayController {
                             eqRoutingSvc.deleteGateway(eqpRec.getId());
                         } catch (RuntimeException e) {
                             // failed
-                            LOG.error("Failed to delete Equipment Gateway (name={}) from Routing Service: {}",
-                                    eqpRec.getHostname(), e.getLocalizedMessage());
+                            LOG.error("Failed to delete Equipment Gateway (name={}) from Routing Service: {}", eqpRec.getHostname(), e.getLocalizedMessage());
                         }
                     } else {
                         LOG.debug("Gateway {} is reachable.", eqpRec.getHostname());
@@ -524,9 +510,8 @@ public class OpensyncCloudGatewayController {
             }
         } catch (Exception ex) { // Catching Exception to prevent crashing the
                                  // register thread
-            LOG.debug("Generic Exception encountered when trying to cleanup "
-                    + "the stale not-reachable GateWays. Continuing to register the new Gateway." + " Error: {} ",
-                    ex.getMessage());
+            LOG.debug("Generic Exception encountered when trying to cleanup " + "the stale not-reachable GateWays. Continuing to register the new Gateway."
+                    + " Error: {} ", ex.getMessage());
         }
     }
 
@@ -550,14 +535,13 @@ public class OpensyncCloudGatewayController {
         if (registeredWithRoutingService) {
             try {
                 eqRoutingSvc.deleteGateway(registeredGwId);
-                LOG.info("Deregistered Customer Equipment Gateway (name={},id={}) with Routing Service",
-                        getGatewayName(), registeredGwId);
+                LOG.info("Deregistered Customer Equipment Gateway (name={},id={}) with Routing Service", getGatewayName(), registeredGwId);
                 registeredGwId = -1;
                 registeredGateway = null;
             } catch (Exception e) {
                 // failed
-                LOG.error("Failed to deregister Customer Equipment Gateway (name={},id={}) with Routing Service: {}",
-                        getGatewayName(), registeredGwId, e.getLocalizedMessage());
+                LOG.error("Failed to deregister Customer Equipment Gateway (name={},id={}) with Routing Service: {}", getGatewayName(), registeredGwId,
+                        e.getLocalizedMessage());
             }
             registeredWithRoutingService = false;
         }
@@ -575,12 +559,10 @@ public class OpensyncCloudGatewayController {
      * @param equipmentId
      * @return associationId
      */
-    public EquipmentRoutingRecord registerCustomerEquipment(String equipmentName, Integer customerId,
-            Long equipmentId) {
+    public EquipmentRoutingRecord registerCustomerEquipment(String equipmentName, Integer customerId, Long equipmentId) {
         registerWithRoutingService();
         if (!registeredWithRoutingService) {
-            LOG.error("Unable to register customer equipement (name={},id={}): gateway not registered.", equipmentName,
-                    equipmentId);
+            LOG.error("Unable to register customer equipement (name={},id={}): gateway not registered.", equipmentName, equipmentId);
             return null;
         }
         // Clean up stale records
@@ -592,13 +574,11 @@ public class OpensyncCloudGatewayController {
         try {
             routingRecord = eqRoutingSvc.create(routingRecord);
 
-            LOG.debug("Registered customer equipment (name={},id={}) with route id={}", equipmentName, equipmentId,
-                    routingRecord.getId());
+            LOG.debug("Registered customer equipment (name={},id={}) with route id={}", equipmentName, equipmentId, routingRecord.getId());
             return routingRecord;
 
         } catch (Exception e) {
-            LOG.error("Failed to register customer equipement (name={},id={}): {}", equipmentName, equipmentId,
-                    e.getLocalizedMessage());
+            LOG.error("Failed to register customer equipement (name={},id={}): {}", equipmentName, equipmentId, e.getLocalizedMessage());
         }
         return null;
     }
@@ -611,7 +591,7 @@ public class OpensyncCloudGatewayController {
      * Gateway does not exist, delete the equipmentRouting entry.
      * 
      * @param equipmentId:
-     *            Equipment's ID
+     *        Equipment's ID
      */
     protected void cleanupStaleEqptRoutingRecord(Long equipmentId) {
         LOG.debug("In Clean Up stale Equipment Routing record for Equipment ID {}", equipmentId);
@@ -624,20 +604,17 @@ public class OpensyncCloudGatewayController {
                         if (gwRec != null) {
                             if (!isGwReachable(gwRec.getIpAddr(), gwRec.getPort())) {
                                 // GW isn't reachable --> invoke unregister
-                                LOG.debug("Gateway {} is not-reachable... Deleting the equipment routing entry",
-                                        gwRec.getHostname());
+                                LOG.debug("Gateway {} is not-reachable... Deleting the equipment routing entry", gwRec.getHostname());
                                 deleteUnresponiveGwRoutingRecord(eqRouting.getId(), equipmentId);
                             } else {
                                 LOG.debug("Gateway {} is reachable.", gwRec.getHostname());
                             }
                         } else {
-                            LOG.debug("Gateway with ID {} not found. Deleting the equipment routing entry ",
-                                    eqRouting.getGatewayId());
+                            LOG.debug("Gateway with ID {} not found. Deleting the equipment routing entry ", eqRouting.getGatewayId());
                             deleteUnresponiveGwRoutingRecord(eqRouting.getId(), equipmentId);
                         }
                     } catch (DsEntityNotFoundException entityNotFoundException) {
-                        LOG.debug("Gateway ID: {} not found... Deleting the equipment routing entry",
-                                eqRouting.getGatewayId());
+                        LOG.debug("Gateway ID: {} not found... Deleting the equipment routing entry", eqRouting.getGatewayId());
                         deleteUnresponiveGwRoutingRecord(eqRouting.getId(), equipmentId);
                     }
                 }
@@ -646,9 +623,10 @@ public class OpensyncCloudGatewayController {
             }
         } catch (Exception genericException) { // Catching Exception to prevent
                                                // crashing the register thread
-            LOG.debug("Generic Exception encountered when trying to cleanup "
-                    + "the stale routing records for equipment ID: {}. Continuing to register the new RoutingRecord."
-                    + " Error: {} ", equipmentId, genericException.getMessage());
+            LOG.debug(
+                    "Generic Exception encountered when trying to cleanup "
+                            + "the stale routing records for equipment ID: {}. Continuing to register the new RoutingRecord." + " Error: {} ",
+                    equipmentId, genericException.getMessage());
         }
     }
 
@@ -657,8 +635,7 @@ public class OpensyncCloudGatewayController {
             eqRoutingSvc.delete(routingId);
         } catch (RuntimeException e) {
             // failed
-            LOG.error("Failed to delete Equipment routing record (ID={}) from Routing Service: {}", eqptId,
-                    e.getLocalizedMessage());
+            LOG.error("Failed to delete Equipment routing record (ID={}) from Routing Service: {}", eqptId, e.getLocalizedMessage());
             return false;
         }
         return true;
@@ -666,18 +643,16 @@ public class OpensyncCloudGatewayController {
 
     public void deregisterCustomerEquipment(Long routingId, String equipmentName, Long equipmentId) {
         if (!registeredWithRoutingService) {
-            LOG.error("Unable to deregister customer equipement (name={},id={}): gateway not registered", equipmentName,
-                    equipmentId);
+            LOG.error("Unable to deregister customer equipement (name={},id={}): gateway not registered", equipmentName, equipmentId);
             return;
         }
         try {
-            LOG.debug("Deregistering customer equipment (name={},id={}) with route id={}", equipmentName, equipmentId,
-                    routingId);
+            LOG.debug("Deregistering customer equipment (name={},id={}) with route id={}", equipmentName, equipmentId, routingId);
 
             eqRoutingSvc.delete(routingId);
         } catch (Exception e) {
-            LOG.error("Failed to deregister customer equipement (name={},id={}) with route id={}: {}", equipmentName,
-                    equipmentId, routingId, e.getLocalizedMessage());
+            LOG.error("Failed to deregister customer equipement (name={},id={}) with route id={}: {}", equipmentName, equipmentId, routingId,
+                    e.getLocalizedMessage());
         }
     }
 
