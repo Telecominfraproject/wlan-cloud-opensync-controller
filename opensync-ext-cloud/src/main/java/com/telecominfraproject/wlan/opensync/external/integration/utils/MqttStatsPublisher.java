@@ -1707,51 +1707,10 @@ public class MqttStatsPublisher {
                     rxErrors += client.getStats().getRxErrors();
                     txErrors += client.getStats().getTxErrors();
                     lastRssi = client.getStats().getRssi();
-
-                    try {
-
-                        if (client.hasConnected() && client.getConnected() && client.hasMacAddress()) {
-                            // update service_metrics_collection_config for
-                            // connected client
-                            ClientSession session =
-                                    handleClientSessionMetricsUpdate(customerId, equipmentId, locationId, radioType, clientReport.getTimestampMs(), client);
-                            if (session != null) {
-                                numConnectedClients += 1;
-                            }
-                        } else {
-                            // Make sure, if we have a session for this client,
-                            // it
-                            // shows disconnected.
-                            // update any service_metrics_collection_config that
-                            // need update if the
-                            // disconnect occured during this window
-                            if (client.hasMacAddress()) {
-                                ClientSession session =
-                                        clientServiceInterface.getSessionOrNull(customerId, equipmentId, MacAddress.valueOf(client.getMacAddress()));
-
-                                if (session != null) {
-
-                                    ClientSessionDetails latestSessionDetails = new ClientSessionDetails();
-
-                                    // could still be values from before
-                                    // disconnect occured.
-                                    latestSessionDetails.setMetricDetails(calculateClientSessionMetricDetails(client, clientReport.getTimestampMs()));
-
-                                    session.getDetails().mergeSession(latestSessionDetails);
-
-                                    clientServiceInterface.updateSession(session);
-
-                                }
-
-                            }
-
-                            continue; // not connected
-                        }
-
-                    } catch (Exception e) {
-                        LOG.error("Unabled to update client {}", client, e);
+                    
+                    if (client.hasConnected() && client.getConnected() && client.hasMacAddress()) {
+                        numConnectedClients += 1;
                     }
-
                 }
 
             }
