@@ -763,6 +763,9 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
             case "wpa3MixedEAP":
                 opensyncSecurityMode = "WPA3-EAP";
                 break;
+            case "wpa3OnlyEAP192":
+                opensyncSecurityMode = "WPA3-EAP-192";
+                break;
         }
         return opensyncSecurityMode;
     }
@@ -870,6 +873,13 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                     }
                     break;
                 case "wpa3OnlyEAP":
+                    security.put("mode", "3");
+                    if (!ssidConfig.getUseRadiusProxy()) {
+                        getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
+                        getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
+                    }
+                    break;
+                case "wpa3OnlyEAP192":
                     security.put("mode", "3");
                     if (!ssidConfig.getUseRadiusProxy()) {
                         getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
