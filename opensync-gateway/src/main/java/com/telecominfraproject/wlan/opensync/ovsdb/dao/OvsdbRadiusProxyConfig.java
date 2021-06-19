@@ -98,12 +98,14 @@ public class OvsdbRadiusProxyConfig extends OvsdbDaoBase {
         for (RadiusProxyConfiguration rsc : ((ApNetworkConfiguration) apConfig.getApProfile().getDetails()).getRadiusProxyConfigurations()) {
             Map<String, Value> updateColumns = new HashMap<>();
             updateColumns.put("server", new Atom<>(rsc.getServer().getHostAddress()));
-            getCertificateUrls(rsc, updateColumns);
             updateColumns.put("radius_config_name", new Atom<>(rsc.getName()));
-            updateColumns.put("passphrase", new Atom<>(rsc.getPassphrase()));
             updateColumns.put("port", new Atom<>(rsc.getPort()));
             updateColumns.put("realm", Set.of(rsc.getRealm()));
             updateColumns.put("radsec", new Atom<>(rsc.getUseRadSec()));
+            if (rsc.getUseRadSec()) {
+                getCertificateUrls(rsc, updateColumns);
+                updateColumns.put("passphrase", new Atom<>(rsc.getPassphrase()));
+            }
             updateColumns.put("secret", new Atom<>(rsc.getSharedSecret()));
             if (rsc.getAcctServer() != null) {
                 updateColumns.put("acct_server", new Atom<>(rsc.getAcctServer().getHostAddress()));
@@ -113,8 +115,7 @@ public class OvsdbRadiusProxyConfig extends OvsdbDaoBase {
             }            
             if (rsc.getAcctPort() != null) {
                 updateColumns.put("acct_port", new Atom<>(rsc.getAcctPort()));
-            }        
-            
+            }            
             if( databaseSchema.getTables().get(radiusConfigDbTable).getColumns().containsKey("auto_discover") ){
                 if (rsc.getUseRadSec() && rsc.getDynamicDiscovery()) {
                     // if useRadSec && dynamicDiscovery enabled, do not send server information
@@ -131,7 +132,6 @@ public class OvsdbRadiusProxyConfig extends OvsdbDaoBase {
                     updateColumns.put("auto_discover", new Atom<>(false));
                 }
             }
-
             Row row = new Row(updateColumns);
             operations.add(new Insert(radiusConfigDbTable, row));
         }
