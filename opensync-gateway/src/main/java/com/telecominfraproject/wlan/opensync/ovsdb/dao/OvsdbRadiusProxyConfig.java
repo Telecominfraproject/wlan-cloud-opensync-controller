@@ -97,27 +97,34 @@ public class OvsdbRadiusProxyConfig extends OvsdbDaoBase {
 
         for (RadiusProxyConfiguration rsc : ((ApNetworkConfiguration) apConfig.getApProfile().getDetails()).getRadiusProxyConfigurations()) {
             Map<String, Value> updateColumns = new HashMap<>();
-            updateColumns.put("server", new Atom<>(rsc.getServer().getHostAddress()));
-            updateColumns.put("radius_config_name", new Atom<>(rsc.getName()));
-            updateColumns.put("port", new Atom<>(rsc.getPort()));
-            updateColumns.put("realm", Set.of(rsc.getRealm()));
-            updateColumns.put("radsec", new Atom<>(rsc.getUseRadSec()));
-            if (rsc.getUseRadSec()) {
-                getCertificateUrls(rsc, updateColumns);
-                updateColumns.put("passphrase", new Atom<>(rsc.getPassphrase()));
+            if (rsc.getServer() != null)
+                updateColumns.put("server", new Atom<>(rsc.getServer().getHostAddress()));
+            if (rsc.getName() != null)
+                updateColumns.put("radius_config_name", new Atom<>(rsc.getName()));
+            if (rsc.getPort() != null)
+                updateColumns.put("port", new Atom<>(rsc.getPort()));
+            if (rsc.getRealm() != null)
+                updateColumns.put("realm", Set.of(rsc.getRealm()));
+            if (rsc.getUseRadSec() != null) {
+                updateColumns.put("radsec", new Atom<>(rsc.getUseRadSec()));
+                if (rsc.getUseRadSec()) {
+                    getCertificateUrls(rsc, updateColumns);
+                    updateColumns.put("passphrase", new Atom<>(rsc.getPassphrase()));
+                }
             }
-            updateColumns.put("secret", new Atom<>(rsc.getSharedSecret()));
+            if (rsc.getSharedSecret() != null)
+                updateColumns.put("secret", new Atom<>(rsc.getSharedSecret()));
             if (rsc.getAcctServer() != null) {
                 updateColumns.put("acct_server", new Atom<>(rsc.getAcctServer().getHostAddress()));
-            }                
+            }
             if (rsc.getSharedSecret() != null) {
                 updateColumns.put("acct_secret", new Atom<>(rsc.getSharedSecret()));
-            }            
+            }
             if (rsc.getAcctPort() != null) {
                 updateColumns.put("acct_port", new Atom<>(rsc.getAcctPort()));
-            }            
-            if( databaseSchema.getTables().get(radiusConfigDbTable).getColumns().containsKey("auto_discover") ){
-                if (rsc.getUseRadSec() && rsc.getDynamicDiscovery()) {
+            }
+            if (databaseSchema.getTables().get(radiusConfigDbTable).getColumns().containsKey("auto_discover")) {
+                if (rsc.getUseRadSec() != null && rsc.getUseRadSec() && rsc.getDynamicDiscovery() != null &&  rsc.getDynamicDiscovery()) {
                     // if useRadSec && dynamicDiscovery enabled, do not send server information
                     updateColumns.put("auto_discover", new Atom<>(true));
                     updateColumns.remove("acct_server");
