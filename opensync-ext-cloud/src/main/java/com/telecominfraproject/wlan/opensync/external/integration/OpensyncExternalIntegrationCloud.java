@@ -550,8 +550,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             protocolStatusData.setBaseMacAddress(MacAddress.valueOf(connectNodeInfo.macAddress));
             protocolStatusData.setCloudCfgDataVersion(42L);
             protocolStatusData.setReportedCfgDataVersion(42L);
-            protocolStatusData.setCountryCode("CA");
-            protocolStatusData.setReportedCC(CountryCode.CA);
+            CountryCode countryCode = Location.getCountryCode(locationServiceInterface.get(ce.getLocationId()));
+            protocolStatusData.setCountryCode(countryCode.getName());
+            if (connectNodeInfo.country != null) {
+                protocolStatusData.setReportedCC(CountryCode.getByName(connectNodeInfo.country));
+            }
             protocolStatusData.setReportedHwVersion(connectNodeInfo.platformVersion);
             if (connectNodeInfo.versionMatrix.containsKey(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY)) {
                 protocolStatusData.setReportedSwVersion(connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY));
@@ -1309,6 +1312,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 LOG.debug("Protocol Status reportedCC {} radioStatus.getCountry {} radioStatus CountryCode fromName {}", protocolStatusData.getReportedCC(),
                         radioState.getCountry(), CountryCode.getByName((radioState.getCountry())));
                 protocolStatusData.setReportedCC(CountryCode.getByName((radioState.getCountry())));
+                protocolStatusData.setCountryCode(radioState.getCountry());
                 protocolStatus.setDetails(protocolStatusData);
 
             } else {

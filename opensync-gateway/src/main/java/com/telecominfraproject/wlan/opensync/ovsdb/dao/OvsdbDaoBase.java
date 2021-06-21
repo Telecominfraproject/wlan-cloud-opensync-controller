@@ -265,7 +265,7 @@ public class OvsdbDaoBase {
         }
     }
 
-    void fillInRadioInterfaceNames(OvsdbClient ovsdbClient, ConnectNodeInfo ret) {
+    void fillInRadioInterfaceNamesAndCountry(OvsdbClient ovsdbClient, ConnectNodeInfo ret) {
         try {
             List<Operation> operations = new ArrayList<>();
             List<Condition> conditions = new ArrayList<>();
@@ -273,6 +273,7 @@ public class OvsdbDaoBase {
 
             columns.add("freq_band");
             columns.add("if_name");
+            columns.add("country");
 
             operations.add(new Select(wifiRadioStateDbTable, conditions, columns));
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
@@ -292,6 +293,7 @@ public class OvsdbDaoBase {
                 for (Row row : ((SelectResult) result[0]).getRows()) {
                     ret.wifiRadioStates.put(getSingleValueFromSet(row, "freq_band"),
                             getSingleValueFromSet(row, "if_name"));
+                    ret.country = getSingleValueFromSet(row, "country");
 
                 }
 

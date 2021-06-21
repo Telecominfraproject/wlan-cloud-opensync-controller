@@ -238,7 +238,7 @@ public class OvsdbNode extends OvsdbDaoBase {
             }
             fillInLanIpAddressAndMac(ovsdbClient, ret, defaultLanInterfaceType);
 
-            fillInRadioInterfaceNames(ovsdbClient, ret);
+            fillInRadioInterfaceNamesAndCountry(ovsdbClient, ret);
 
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             throw new RuntimeException(e);

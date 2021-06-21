@@ -170,10 +170,12 @@ public class OpensyncExternalIntegrationCloudTest {
         Location location = new Location();
         location.setId(8L);
         location.setCustomerId(2);
-        location.setDetails(LocationDetails.createWithDefaults());
+        LocationDetails details = LocationDetails.createWithDefaults();
+        details.setCountryCode(CountryCode.CA);
+        location.setDetails(details);
         location.setName("Location-UT");
         location.setLocationType(LocationType.BUILDING);
-
+        Mockito.when(locationServiceInterface.get(8L)).thenReturn(location);
         Customer customer = new Customer();
         customer.setId(2);
         CustomerDetails customerDetails = new CustomerDetails();
@@ -239,7 +241,7 @@ public class OpensyncExternalIntegrationCloudTest {
 
 
         Mockito.verify(firmwareServiceInterface).getDefaultCustomerTrackSetting();
-        Mockito.verifyNoInteractions(locationServiceInterface);
+        Mockito.verify(locationServiceInterface).get(8L);
 
     }
 
@@ -248,10 +250,11 @@ public class OpensyncExternalIntegrationCloudTest {
         Location location = new Location();
         location.setId(8L);
         location.setCustomerId(2);
-        location.setDetails(LocationDetails.createWithDefaults());
+        LocationDetails details = LocationDetails.createWithDefaults();
+        details.setCountryCode(CountryCode.CA);
+        location.setDetails(details);
         location.setName("Location-UT");
         location.setLocationType(LocationType.BUILDING);
-
         Mockito.when(locationServiceInterface.get(8L)).thenReturn(location);
 
         Customer customer = new Customer();
@@ -339,7 +342,7 @@ public class OpensyncExternalIntegrationCloudTest {
         Mockito.verify(customerServiceInterface).getOrNull(ArgumentMatchers.anyInt());
         Mockito.verify(equipmentServiceInterface).getByInventoryIdOrNull("Test_Client_21P10C68818122");
         Mockito.verify(firmwareServiceInterface).getDefaultCustomerTrackSetting();
-        Mockito.verify(locationServiceInterface).get(ArgumentMatchers.anyLong());
+        Mockito.verify(locationServiceInterface,  Mockito.times(2)).get(ArgumentMatchers.anyLong());
 
     }
 
@@ -361,9 +364,12 @@ public class OpensyncExternalIntegrationCloudTest {
         Location location = new Location();
         location.setId(8L);
         location.setCustomerId(2);
-        location.setDetails(LocationDetails.createWithDefaults());
+        LocationDetails details = LocationDetails.createWithDefaults();
+        details.setCountryCode(CountryCode.CA);
+        location.setDetails(details);
         location.setName("Location-UT");
         location.setLocationType(LocationType.BUILDING);
+        Mockito.when(locationServiceInterface.get(8L)).thenReturn(location);
 
         Equipment equipment = new Equipment();
         equipment.setCustomerId(2);
