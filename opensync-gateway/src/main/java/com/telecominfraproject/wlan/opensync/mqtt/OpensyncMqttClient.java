@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.fusesource.mqtt.client.Future;
 import org.fusesource.mqtt.client.FutureConnection;
 import org.fusesource.mqtt.client.MQTT;
 import org.fusesource.mqtt.client.Message;
@@ -161,9 +160,8 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
 
                         // TODO: revisit this blocking connection, change it to
                         // futureConnection
-                        
                         futureConnection = mqtt.futureConnection();
-                        Future<Void> f1 = futureConnection.connect();
+                        futureConnection.connect();
 
                         LOG.info("Connected to MQTT broker at {}", mqtt.getHost());
 
@@ -175,7 +173,7 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                         // new Topic("foo/+/bar", QoS.AT_LEAST_ONCE)
                         Topic[] topics = { new Topic("#", QoS.AT_LEAST_ONCE), };
 
-                        Future<byte[]> f2 = futureConnection.subscribe(topics);
+                        futureConnection.subscribe(topics);
                         LOG.info("Subscribed to mqtt topics {}", Arrays.asList(topics));
 
                         // prepare a JSONPrinter to format protobuf messages as
@@ -190,14 +188,27 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
 
                         // main loop - receive messages
                         while (true) {
-                            
-                            Future<Message> receive = futureConnection.receive();
-                            Message mqttMsg = receive.await();
-                            mqttMsg.ack();
+                            Message mqttMsg = futureConnection.receive().await();
+
+                            if (mqttMsg == null) {
+                                continue;
+                            }
 
                             LOG.debug("MQTT Topic {}", mqttMsg.getTopic());
-                            byte payload[] =  mqttMsg.getPayload();
 
+                            byte payload[] = mqttMsg.getPayload();
+                            // we acknowledge right after receive because:
+                            // a. none of the stats messages are so important
+                            // that
+                            // we cannot skip one
+                            // b. if there's some kind of problem with the
+                            // message
+                            // (decoding or processing)
+                            // - we want to move on as quickly as possible and
+                            // not
+                            // let it get stuck in the
+                            // queue
+                            mqttMsg.ack();
 
                             messagesReceived.increment();
                             messageBytesReceived.increment(payload.length);
