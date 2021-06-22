@@ -643,10 +643,8 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                 if ((ssidConfig.getCaptivePortalId() == profileCaptive.getId()) && (profileCaptive.getDetails() != null)) {
                     CaptivePortalConfiguration captiveProfileDetails = ((CaptivePortalConfiguration) profileCaptive.getDetails());
 
-                    // +#define SCHEMA_CONSTS_PAGE_TITLE "page_title"
                     if (captiveProfileDetails.getBrowserTitle() != null) {
                         captiveMap.put("session_timeout", String.valueOf(captiveProfileDetails.getSessionTimeoutInMinutes()));
-                        captiveMap.put("page_title", captiveProfileDetails.getBrowserTitle());
                     }
                     if (captiveProfileDetails.getAuthenticationType().equals(CaptivePortalAuthenticationType.radius)) {
                         Optional<Profile> optional =
