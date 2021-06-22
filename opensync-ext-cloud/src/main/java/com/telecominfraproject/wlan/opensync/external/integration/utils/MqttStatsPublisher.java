@@ -1303,24 +1303,26 @@ public class MqttStatsPublisher {
 
         Status equipmentAdminStatus = statusServiceInterface.getOrNull(customerId,equipmentId, StatusDataType.EQUIPMENT_ADMIN);
         if (equipmentAdminStatus == null) {
+            // No admin status, create one
             equipmentAdminStatus = new Status();
             equipmentAdminStatus.setCustomerId(customerId);
             equipmentAdminStatus.setEquipmentId(equipmentId);
             equipmentAdminStatus.setStatusDataType(StatusDataType.EQUIPMENT_ADMIN);
-            EquipmentAdminStatusData equipmentAdminStatusData = new EquipmentAdminStatusData();
-            equipmentAdminStatusData.setAlarmTimestamps(new HashMap<String,Long>());
-            equipmentAdminStatus.setDetails(equipmentAdminStatusData);
-            equipmentAdminStatus.setCreatedTimestamp(timestampMs);
-        } 
-
-        ((EquipmentAdminStatusData) equipmentAdminStatus.getDetails()).putAlarmTimestamp(alarmCode.getName(), timestampMs);
-        if (equipmentAdminStatus.getLastModifiedTimestamp() < timestampMs) {
+            equipmentAdminStatus.setDetails(new EquipmentAdminStatusData()) ;
+            ((EquipmentAdminStatusData) equipmentAdminStatus.getDetails()).putAlarmTimestamp(alarmCode.getName(), timestampMs);
             ((EquipmentAdminStatusData) equipmentAdminStatus.getDetails()).setStatusCode(alarmCode.getSeverity());
             ((EquipmentAdminStatusData) equipmentAdminStatus.getDetails()).setStatusMessage(alarmCode.getDescription());
+        }  else {
+            // Update or add alarm and timestamp
+            ((EquipmentAdminStatusData) equipmentAdminStatus.getDetails()).putAlarmTimestamp(alarmCode.getName(), timestampMs);
+            if (timestampMs > equipmentAdminStatus.getLastModifiedTimestamp()) {
+                // if this alarm is more recent than the last update of the status, set the code to match it.
+                ((EquipmentAdminStatusData) equipmentAdminStatus.getDetails()).setStatusCode(alarmCode.getSeverity());
+                ((EquipmentAdminStatusData) equipmentAdminStatus.getDetails()).setStatusMessage(alarmCode.getDescription());
+            }
         }
 
-        equipmentAdminStatus = statusServiceInterface.update(equipmentAdminStatus);
-        
+        equipmentAdminStatus = statusServiceInterface.update(equipmentAdminStatus);    
         LOG.debug("Updated EquipmentAdminStatus for alarm {} to {}", alarmCode, equipmentAdminStatus.toPrettyString());
 
     }
