@@ -989,7 +989,9 @@ public class MqttStatsPublisher {
             if (deviceReport.hasMemUtil() && deviceReport.getMemUtil().hasMemTotal() && deviceReport.getMemUtil().hasMemUsed()) {
                 apPerformance.setFreeMemory(deviceReport.getMemUtil().getMemTotal() - deviceReport.getMemUtil().getMemUsed());
 
-                if (deviceReport.getMemUtil().getMemUsed()/deviceReport.getMemUtil().getMemTotal() * 100 > memoryUtilThresholdPct) {
+                double usedMemory = deviceReport.getMemUtil().getMemUsed();
+                double totalMemory = deviceReport.getMemUtil().getMemTotal();
+                if (usedMemory/totalMemory * 100 > memoryUtilThresholdPct) {
                     raiseDeviceThresholdAlarm(customerId, equipmentId, AlarmCode.MemoryUtilization, deviceReport.getTimestampMs());
                 } else {
                     // Clear any existing cpuUtilization alarms
