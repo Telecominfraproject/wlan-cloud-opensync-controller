@@ -1241,33 +1241,10 @@ public class MqttStatsPublisher {
         updateDeviceStatusRadioUtilizationReport(customerId, equipmentId, radioUtilizationReport);
     }
 
-    private void clearDeviceThresholdAlarm(int customerId, long equipmentId, AlarmCode alarmCode) {
+    void clearDeviceThresholdAlarm(int customerId, long equipmentId, AlarmCode alarmCode) {
         alarmServiceInterface.get(customerId, Set.of(equipmentId), Set.of(alarmCode)).stream().forEach(a -> {
-            alarmServiceInterface.delete(customerId, equipmentId, a.getAlarmCode(), a.getLastModifiedTimestamp());
-            Status equipmentAdminStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.EQUIPMENT_ADMIN);
-            if (equipmentAdminStatus == null) {
-                equipmentAdminStatus = new Status();
-                equipmentAdminStatus.setCustomerId(customerId);
-                equipmentAdminStatus.setEquipmentId(equipmentId);
-                equipmentAdminStatus.setStatusDataType(StatusDataType.EQUIPMENT_ADMIN);
-                EquipmentAdminStatusData equipmentAdminStatusData = new EquipmentAdminStatusData();
-                equipmentAdminStatusData.setAlarmTimestamps(new HashMap<>());
-                equipmentAdminStatusData.setStatusCode(StatusCode.normal);
-                equipmentAdminStatusData.setStatusMessage(StatusCode.normal.name());
-                equipmentAdminStatus.setDetails(equipmentAdminStatusData);
-                equipmentAdminStatus = statusServiceInterface.update(equipmentAdminStatus);
-            } else {
-                EquipmentAdminStatusData equipmentAdminStatusData = (EquipmentAdminStatusData)equipmentAdminStatus.getDetails();
-                if (equipmentAdminStatusData.getAlarmTimestamps().containsKey(alarmCode.name())) {
-                    equipmentAdminStatusData.getAlarmTimestamps().remove(alarmCode.name());
-                    if (equipmentAdminStatusData.getAlarmTimestamps().isEmpty()) {
-                        equipmentAdminStatusData.setStatusCode(StatusCode.normal);
-                        equipmentAdminStatusData.setStatusMessage(StatusCode.normal.name());
-                    }
-                    equipmentAdminStatus.setDetails(equipmentAdminStatusData);
-                    equipmentAdminStatus = statusServiceInterface.update(equipmentAdminStatus);
-                }
-            }
+            Alarm alarm = alarmServiceInterface.delete(customerId, equipmentId, a.getAlarmCode(), a.getLastModifiedTimestamp());
+            LOG.info("Cleared device threshold alarm {}", alarm);
         });
     }
 
@@ -1281,52 +1258,18 @@ public class MqttStatsPublisher {
         alarm.setSeverity(alarmCode.getSeverity());
         alarm.setScopeType(AlarmScopeType.EQUIPMENT);
         alarm.setScopeId("" + equipmentId);
+        alarm.setCreatedTimestamp(timestampMs);
         AlarmDetails alarmDetails = new AlarmDetails();
         alarmDetails.setMessage(alarmCode.getDescription());
         alarmDetails.setAffectedEquipmentIds(Collections.singletonList(equipmentId));
         alarm.setDetails(alarmDetails);
-
         List<Alarm> alarms = alarmServiceInterface.get(customerId, Set.of(equipmentId), Set.of(alarmCode));
         if (alarms.isEmpty()) {
             alarm.setCreatedTimestamp(timestampMs);
             alarm = alarmServiceInterface.create(alarm);
-        } else {
-            alarm.setCreatedTimestamp(alarms.iterator().next().getCreatedTimestamp());
-            alarm.setLastModifiedTimestamp(alarms.iterator().next().getLastModifiedTimestamp());
-            alarm = alarmServiceInterface.update(alarm);
-        }
-        updateEquipmentAdminStateForReportedAlarms(customerId, equipmentId, alarm.getLastModifiedTimestamp(), alarmCode);
+        } 
     }
     
-    void updateEquipmentAdminStateForReportedAlarms(int customerId, long equipmentId, long timestampMs, AlarmCode alarmCode) {
-        LOG.debug("updateEquipmentAdminStatusForReportedAlarms for customer {} equipmentId {} timestamp {} alarm {}", customerId, equipmentId, timestampMs, alarmCode);
-
-        Status equipmentAdminStatus = statusServiceInterface.getOrNull(customerId,equipmentId, StatusDataType.EQUIPMENT_ADMIN);
-        if (equipmentAdminStatus == null) {
-            // No admin status, create one
-            equipmentAdminStatus = new Status();
-            equipmentAdminStatus.setCustomerId(customerId);
-            equipmentAdminStatus.setEquipmentId(equipmentId);
-            equipmentAdminStatus.setStatusDataType(StatusDataType.EQUIPMENT_ADMIN);
-            equipmentAdminStatus.setDetails(new EquipmentAdminStatusData()) ;
-            ((EquipmentAdminStatusData) equipmentAdminStatus.getDetails()).putAlarmTimestamp(alarmCode.getName(), timestampMs);
-            ((EquipmentAdminStatusData) equipmentAdminStatus.getDetails()).setStatusCode(alarmCode.getSeverity());
-            ((EquipmentAdminStatusData) equipmentAdminStatus.getDetails()).setStatusMessage(alarmCode.getDescription());
-        }  else {
-            // Update or add alarm and timestamp
-            ((EquipmentAdminStatusData) equipmentAdminStatus.getDetails()).putAlarmTimestamp(alarmCode.getName(), timestampMs);
-            if (timestampMs > equipmentAdminStatus.getLastModifiedTimestamp()) {
-                // if this alarm is more recent than the last update of the status, set the code to match it.
-                ((EquipmentAdminStatusData) equipmentAdminStatus.getDetails()).setStatusCode(alarmCode.getSeverity());
-                ((EquipmentAdminStatusData) equipmentAdminStatus.getDetails()).setStatusMessage(alarmCode.getDescription());
-            }
-        }
-
-        equipmentAdminStatus = statusServiceInterface.update(equipmentAdminStatus);    
-        LOG.debug("Updated EquipmentAdminStatus for alarm {} to {}", alarmCode, equipmentAdminStatus.toPrettyString());
-
-    }
-
     private void checkIfOutOfBound(String checkedType, int checkedValue, Survey survey, int totalDurationMs, int busyTx, int busyRx, int busy, int busySelf) {
         if (checkedValue > 100 || checkedValue < 0) {
             LOG.warn(
