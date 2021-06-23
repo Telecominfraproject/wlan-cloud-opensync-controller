@@ -1068,16 +1068,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     }
 
     @Override
-    public void processMqttMessage(String topic, FlowReport flowReport) {
-        mqttMessageProcessor.processMqttMessage(topic, flowReport);
-    }
-
-    @Override
-    public void processMqttMessage(String topic, WCStatsReport wcStatsReport) {
-        mqttMessageProcessor.processMqttMessage(topic, wcStatsReport);
-    }
-
-    @Override
     public void wifiVIFStateDbTableUpdate(List<OpensyncAPVIFState> vifStateTables, String apId) {
         LOG.debug("Received Wifi_VIF_State table update for AP {}", apId);
 
