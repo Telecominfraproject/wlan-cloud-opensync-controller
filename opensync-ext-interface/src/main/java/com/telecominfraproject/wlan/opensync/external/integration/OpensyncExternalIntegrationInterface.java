@@ -38,10 +38,6 @@ public interface OpensyncExternalIntegrationInterface {
 
     void processMqttMessage(String topic, Report report);
 
-    void processMqttMessage(String topic, FlowReport flowReport);
-
-    void processMqttMessage(String topic, WCStatsReport wcStatsReport);
-
     void wifiAssociatedClientsDbTableUpdate(List<OpensyncWifiAssociatedClients> wifiAssociatedClients, String apId);
 
     void wifiAssociatedClientsDbTableDelete(String deletedClientMac, String apId);

@@ -154,43 +154,6 @@ public class MqttStatsPublisher {
     @Value("${tip.wlan.mqttStatsPublisher.memoryUtilThresholdPct:70}")
     private int memoryUtilThresholdPct;
 
-    public void processMqttMessage(String topic, WCStatsReport wcStatsReport) {
-        LOG.info("Received WCStatsReport {}", wcStatsReport.toString());
-
-        LOG.debug("Received report on topic {}", topic);
-        int customerId = extractCustomerIdFromTopic(topic);
-
-        long equipmentId = extractEquipmentIdFromTopic(topic);
-        if ((equipmentId <= 0) || (customerId <= 0)) {
-            LOG.warn("Cannot determine equipment ids from topic {} - customerId {} equipmentId {}", topic, customerId, equipmentId);
-            return;
-        }
-
-        String apId = extractApIdFromTopic(topic);
-
-        if (apId == null) {
-            LOG.warn("Cannot determine AP id from topic {} - customerId {} equipmentId {} apId {}", topic, customerId, equipmentId, apId);
-            return;
-        }
-
-        if (LOG.isTraceEnabled()) {
-            // prepare a JSONPrinter to format protobuf messages as
-            // json
-            List<Descriptors.Descriptor> protobufDescriptors = new ArrayList<>();
-            protobufDescriptors.addAll(IpDnsTelemetry.getDescriptor().getMessageTypes());
-            TypeRegistry oldRegistry = TypeRegistry.newBuilder().add(protobufDescriptors).build();
-            JsonFormat.Printer jsonPrinter = JsonFormat.printer().preservingProtoFieldNames().includingDefaultValueFields().usingTypeRegistry(oldRegistry);
-
-            try {
-                LOG.trace("MQTT IpDnsTelemetry.wcStatsReport = {}", jsonPrinter.print(wcStatsReport));
-
-            } catch (InvalidProtocolBufferException e1) {
-                LOG.error("Couldn't parse IpDnsTelemetry.wcStatsReport.", e1);
-            }
-        }
-
-    }
-
     public void processMqttMessage(String topic, Report report) {
         LOG.info("Received report on topic {} for ap {}", topic, report.getNodeID());
         int customerId = extractCustomerIdFromTopic(topic);
@@ -200,9 +163,6 @@ public class MqttStatsPublisher {
             LOG.warn("Cannot determine equipment ids from topic {} - customerId {} equipmentId {}", topic, customerId, equipmentId);
             return;
         }
-
-        // gatewayController.updateActiveCustomer(customerId);
-
         Equipment ce = equipmentServiceInterface.getOrNull(equipmentId);
         if (ce == null) {
             LOG.warn("Cannot read equipment {}", apId);
@@ -211,21 +171,6 @@ public class MqttStatsPublisher {
 
         long locationId = ce.getLocationId();
         long profileId = ce.getProfileId();
-
-        // prepare a JSONPrinter to format protobuf messages as
-        // json
-        // List<Descriptors.Descriptor> protobufDescriptors = new ArrayList<>();
-        // protobufDescriptors.addAll(OpensyncStats.getDescriptor().getMessageTypes());
-        // TypeRegistry oldRegistry = TypeRegistry.newBuilder().add(protobufDescriptors).build();
-        // JsonFormat.Printer jsonPrinter =
-        // JsonFormat.printer().preservingProtoFieldNames().includingDefaultValueFields().usingTypeRegistry(oldRegistry);
-        //
-        // try {
-        // LOG.trace(jsonPrinter.print(report));
-        //
-        // } catch (InvalidProtocolBufferException e1) {
-        // LOG.error("Couldn't parse OpensyncStats.report.", e1);
-        // }
 
         List<ServiceMetric> metricRecordList = new ArrayList<>();
 
@@ -254,49 +199,9 @@ public class MqttStatsPublisher {
                 });
                 cloudEventDispatcherInterface.publishMetrics(metricRecordList);
             }
-
             publishEvents(report, customerId, equipmentId, apId, locationId);
-            // handleRssiMetrics(metricRecordList, report, customerId,
-            // equipmentId, locationId);
-
         } catch (Exception e) {
             LOG.error("Exception when processing stats messages from AP", e);
-        }
-
-    }
-
-    public void processMqttMessage(String topic, FlowReport flowReport) {
-
-        LOG.info("Received report on topic {}", topic);
-        int customerId = extractCustomerIdFromTopic(topic);
-
-        long equipmentId = extractEquipmentIdFromTopic(topic);
-        if ((equipmentId <= 0) || (customerId <= 0)) {
-            LOG.warn("Cannot determine equipment ids from topic {} - customerId {} equipmentId {}", topic, customerId, equipmentId);
-            return;
-        }
-
-        String apId = extractApIdFromTopic(topic);
-
-        if (apId == null) {
-            LOG.warn("Cannot determine AP id from topic {} - customerId {} equipmentId {} apId {}", topic, customerId, equipmentId, apId);
-            return;
-        }
-
-        if (LOG.isTraceEnabled()) {
-            // prepare a JSONPrinter to format protobuf messages as
-            // json
-            List<Descriptors.Descriptor> protobufDescriptors = new ArrayList<>();
-            protobufDescriptors.addAll(NetworkMetadata.getDescriptor().getMessageTypes());
-            TypeRegistry oldRegistry = TypeRegistry.newBuilder().add(protobufDescriptors).build();
-            JsonFormat.Printer jsonPrinter = JsonFormat.printer().preservingProtoFieldNames().includingDefaultValueFields().usingTypeRegistry(oldRegistry);
-
-            try {
-                LOG.trace("MQTT NetworkMetadata.flowReport = {}", jsonPrinter.print(flowReport));
-
-            } catch (InvalidProtocolBufferException e1) {
-                LOG.error("Couldn't parse NetworkMetadata.flowReport.", e1);
-            }
         }
 
     }
