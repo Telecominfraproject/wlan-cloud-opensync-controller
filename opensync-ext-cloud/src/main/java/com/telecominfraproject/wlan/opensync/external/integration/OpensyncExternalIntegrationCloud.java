@@ -1333,6 +1333,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             channelStatus.setDetails(channelStatusData);
         }
         ((EquipmentChannelStatusData) channelStatus.getDetails()).getChannelNumberStatusDataMap().put(radioState.getFreqBand(), radioState.getChannel());
+        ((EquipmentChannelStatusData) channelStatus.getDetails()).getTxPowerDataMap().put(radioState.getFreqBand(), radioState.getTxPower());
         return channelStatus;
     }
 
