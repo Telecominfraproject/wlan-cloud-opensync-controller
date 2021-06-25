@@ -445,7 +445,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                 if (radioConfiguration != null) {
                     dtimPeriod = radioConfiguration.getDtimPeriod();
                     uapsdEnabled = radioConfiguration.getUapsdState() == StateSetting.enabled;
-                    apBridge = radioConfiguration.getStationIsolation() == StateSetting.disabled; // stationIsolation
+                    if (ssidConfig.getNoLocalSubnets()) apBridge = false; // no local access
                 }
 
                 String minHwMode = "11n"; // min_hw_mode is 11n
