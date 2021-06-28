@@ -1148,7 +1148,7 @@ public class MqttStatsPublisher {
 
     void clearDeviceThresholdAlarm(int customerId, long equipmentId, AlarmCode alarmCode) {
         alarmServiceInterface.get(customerId, Set.of(equipmentId), Set.of(alarmCode)).stream().forEach(a -> {
-            Alarm alarm = alarmServiceInterface.delete(customerId, equipmentId, a.getAlarmCode(), a.getLastModifiedTimestamp());
+            Alarm alarm = alarmServiceInterface.delete(customerId, equipmentId, a.getAlarmCode(), a.getCreatedTimestamp());
             LOG.info("Cleared device threshold alarm {}", alarm);
         });
     }
