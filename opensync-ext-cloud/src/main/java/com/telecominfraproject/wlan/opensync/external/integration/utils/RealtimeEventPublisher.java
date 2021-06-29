@@ -84,7 +84,7 @@ public class RealtimeEventPublisher {
 
     @Autowired
     private EquipmentServiceInterface equipmentServiceInterface;
-    
+
     @Autowired
     private ProfileServiceInterface  profileServiceInterface;
 
@@ -262,7 +262,7 @@ public class RealtimeEventPublisher {
         clientEvent.setEquipmentId(equipmentId);
         clientEvent.setLocationId(locationId);
 
-        LOG.info("publishing client event {} to cloud", clientEvent);
+        LOG.info("Publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
 
     }
@@ -380,7 +380,7 @@ public class RealtimeEventPublisher {
         if (clientAssocEvent.hasUsing11V()) {
             clientEvent.setUsing11v(clientAssocEvent.getUsing11V());
         }
-        
+
         clientEvent.setEventTimestamp(clientAssocEvent.getTimestampMs());
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
