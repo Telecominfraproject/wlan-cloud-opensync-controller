@@ -156,19 +156,15 @@ public class MqttStatsPublisher {
 
     public void processMqttMessage(String topic, Report report) {
         LOG.info("Received report on topic {} for ap {}", topic, report.getNodeID());
-        int customerId = extractCustomerIdFromTopic(topic);
         String apId = extractApIdFromTopic(topic);
-        long equipmentId = extractEquipmentIdFromTopic(topic);
-        if ((equipmentId <= 0) || (customerId <= 0)) {
-            LOG.warn("Cannot determine equipment ids from topic {} - customerId {} equipmentId {}", topic, customerId, equipmentId);
-            return;
-        }
-        Equipment ce = equipmentServiceInterface.getOrNull(equipmentId);
+        Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
         if (ce == null) {
             LOG.warn("Cannot read equipment {}", apId);
             return;
         }
-
+        
+        int customerId = ce.getCustomerId();
+        long equipmentId = ce.getId();
         long locationId = ce.getLocationId();
         long profileId = ce.getProfileId();
 
