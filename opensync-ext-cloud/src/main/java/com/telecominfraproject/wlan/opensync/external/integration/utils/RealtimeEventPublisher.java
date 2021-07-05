@@ -476,8 +476,13 @@ public class RealtimeEventPublisher {
         clientEvent.setSessionId(clientIpEvent.getSessionId());
         clientEvent.setClientMacAddress(MacAddress.valueOf(clientIpEvent.getStaMac()));
         if (clientIpEvent.hasIpAddr()) {
-            clientEvent.setIpAddr(clientIpEvent.getIpAddr().toByteArray());
+            try {
+                clientEvent.setIpAddr(InetAddress.getByAddress(clientIpEvent.getIpAddr().toByteArray()));
+            } catch (UnknownHostException e1) {
+                LOG.error("Invalid Client IP Address for equipmentId {}, clientIpEvent {}", equipmentId, clientIpEvent);
+            }
         }
+
         clientEvent.setEventTimestamp(clientIpEvent.getTimestampMs());
         clientEvent.setCustomerId(customerId);
         clientEvent.setEquipmentId(equipmentId);
