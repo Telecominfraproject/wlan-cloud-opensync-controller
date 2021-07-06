@@ -125,7 +125,7 @@ public class MqttStatsPublisherTest {
     @Before
     public void setUp() throws Exception {
 
-        mockito = Mockito.mockitoSession().initMocks(this).strictness(Strictness.STRICT_STUBS).startMocking();
+        mockito = Mockito.mockitoSession().initMocks(this).strictness(Strictness.LENIENT).startMocking();
 
     }
 
