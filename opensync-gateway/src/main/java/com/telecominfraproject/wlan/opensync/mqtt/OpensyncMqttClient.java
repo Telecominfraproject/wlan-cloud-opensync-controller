@@ -5,6 +5,7 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.fusesource.mqtt.client.BlockingConnection;
 import org.fusesource.mqtt.client.MQTT;
@@ -25,9 +26,9 @@ import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.stereotype.Component;
 
 import com.google.protobuf.Descriptors;
-import com.google.protobuf.MessageOrBuilder;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.TypeRegistry;
 import com.google.protobuf.util.JsonFormat;
-import com.google.protobuf.util.JsonFormat.TypeRegistry;
 import com.netflix.servo.DefaultMonitorRegistry;
 import com.netflix.servo.monitor.BasicCounter;
 import com.netflix.servo.monitor.BasicTimer;
@@ -46,6 +47,8 @@ import sts.OpensyncStats.Report;
 @Profile("mqtt_receiver")
 @Component
 public class OpensyncMqttClient implements ApplicationListener<ContextClosedEvent> {
+
+    public static final int REPORT_PROCESSING_THRESHOLD_SEC = 30;
 
     private static final Logger LOG = LoggerFactory.getLogger(OpensyncMqttClient.class);
 
@@ -112,7 +115,7 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                 while (keepReconnecting) {
                     BlockingConnection blockingConnection = null;
                     try {
-                        Thread.sleep(5000);
+//                        Thread.sleep(5000);
 
                         // Create a new MQTT connection to the broker.
                         /*
@@ -152,10 +155,10 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                                     case PINGREQ.TYPE:
                                     case PINGRESP.TYPE:
                                         // PINGs don't want to fill log
-                                        LOG.trace("MQTT Client Received: {}", frame);
+                                        LOG.trace("OpensyncMqttClient Rx: {}", frame);
                                         break;
                                     default:
-                                        LOG.debug("MQTT Client Received: {}", frame);
+                                        LOG.debug("OpensyncMqttClient Rx: {}", frame);
                                 }
                             }
 
@@ -165,31 +168,26 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                                     case PINGREQ.TYPE:
                                     case PINGRESP.TYPE:
                                         // PINGs don't want to fill log
-                                        LOG.trace("MQTT Client Sent: {}", frame);
+                                        LOG.trace("OpensyncMqttClient Tx: {}", frame);
                                         break;
                                     default:
-                                        LOG.debug("MQTT Client Sent: {}", frame);
+                                        LOG.debug("OpensyncMqttClient Tx: {}", frame);
                                 }
                             }
 
                             @Override
                             public void debug(String message, Object... args) {
-                                LOG.debug("MQTT Client debugging messages: {}", String.format(message, args));
+                                LOG.info(String.format(message, args));
                             }
                         });
 
                         blockingConnection = mqtt.blockingConnection();
                         blockingConnection.connect();
 
-                        LOG.info("Connected to MQTT broker at {}", mqtt.getHost());
+                        LOG.debug("Connected to MQTT broker at {}", mqtt.getHost());
 
-                        // Subscribe to topics:
-                        //
-                        // new Topic("mqtt/example/publish", QoS.AT_LEAST_ONCE),
-                        // new Topic("#", QoS.AT_LEAST_ONCE),
-                        // new Topic("test/#", QoS.EXACTLY_ONCE),
-                        // new Topic("foo/+/bar", QoS.AT_LEAST_ONCE)
-                        Topic[] topics = {new Topic("#", QoS.AT_LEAST_ONCE),};
+                        // NB. setting to AT_MOST_ONCE to match the APs message level
+                        Topic[] topics = {new Topic("/ap/#", QoS.AT_MOST_ONCE),};
 
                         blockingConnection.subscribe(topics);
                         LOG.info("Subscribed to mqtt topics {}", Arrays.asList(topics));
@@ -207,34 +205,50 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                             Message mqttMsg = blockingConnection.receive();
 
                             if (mqttMsg == null) {
+                                if (LOG.isTraceEnabled())
+                                    LOG.trace("NULL message received for blocking connection");
                                 continue;
                             }
-
-                            LOG.debug("MQTT Topic {}", mqttMsg.getTopic());
-
-                            byte payload[] = mqttMsg.getPayload();
-
-                            messagesReceived.increment();
-                            messageBytesReceived.increment(payload.length);
                             Stopwatch stopwatchTimerMessageProcess = timerMessageProcess.start();
-
-                            LOG.trace("received message on topic {} size {}", mqttMsg.getTopic(), payload.length);
-
-                            if (payload[0] == 0x78) {
-                                // looks like zlib-compressed data, let's
-                                // decompress
-                                // it before deserializing
-                                payload = ZlibUtil.decompress(payload);
-                            }
-
-                            // attempt to parse the message as protobuf
-                            MessageOrBuilder encodedMsg = null;
                             try {
+                                byte payload[] = mqttMsg.getPayload();
+                                messagesReceived.increment();
+                                messageBytesReceived.increment(payload.length);
+
+                                if (payload[0] == 0x78) {
+                                    // looks like zlib-compressed data, let's
+                                    // decompress
+                                    // it before deserializing
+                                    payload = ZlibUtil.decompress(payload);
+                                }
                                 // Only supported protobuf on the TIP opensync APs is Report
-                                encodedMsg = Report.parseFrom(payload);
-                                mqttMsg.ack();
-                                MQTT_LOG.info("topic = {}\nReport = {}", mqttMsg.getTopic(), jsonPrinter.print(encodedMsg));
-                                extIntegrationInterface.processMqttMessage(mqttMsg.getTopic(), (Report) encodedMsg);
+                                Report statsReport = Report.parseFrom(payload);
+                                if (LOG.isTraceEnabled())
+                                    LOG.trace("Received opensync stats report for topic = {}\nReport = {}", mqttMsg.getTopic(), statsReport.toString());
+
+                                Thread sender = new Thread(statsReport.getNodeID() + "-worker") {
+                                    @Override
+                                    public void run() {
+                                        long startTime = System.nanoTime();
+                                        if (LOG.isTraceEnabled())
+                                            LOG.trace("Start publishing service metrics from received mqtt stats");
+                                        extIntegrationInterface.processMqttMessage(mqttMsg.getTopic(), statsReport);
+                                        mqttMsg.ack();
+                                        long elapsedTimeSeconds = TimeUnit.SECONDS.convert(System.nanoTime() - startTime, TimeUnit.NANOSECONDS);
+                                        if (elapsedTimeSeconds > REPORT_PROCESSING_THRESHOLD_SEC) {
+                                            try {
+                                                LOG.warn("Processing threshold exceeded for {}. Elapsed processing time {} seconds. MqttMessage: {}",mqttMsg.getTopic().split("/")[2],
+                                                        elapsedTimeSeconds, jsonPrinter.print(statsReport));
+                                            } catch (InvalidProtocolBufferException e) {
+                                               LOG.error("Error parsing Report from protobuffer for Topic {}", mqttMsg.getTopic(), e);
+                                            }
+                                        }
+                                        if (LOG.isTraceEnabled())
+                                            LOG.trace("Completed publishing service metrics from received mqtt stats");
+                                    }
+                                };
+                                sender.start();
+
                             } catch (Exception e) {
                                 String msgStr = new String(mqttMsg.getPayload(), utf8);
                                 LOG.warn("Could not process message topic = {}\nmessage = {}", mqttMsg.getTopic(), msgStr);
