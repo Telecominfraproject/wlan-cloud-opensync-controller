@@ -87,7 +87,7 @@
     <appender-ref ref="mqttDataFile"/>
   </logger>
 
-  <logger name="MQTT_TRACER_LOG" level="INFO" additivity="false">
+  <logger name="MQTT_CLIENT_TRACER" level="INFO" additivity="false">
     <appender-ref ref="mqttMsgTracer"/>
   </logger>
   
