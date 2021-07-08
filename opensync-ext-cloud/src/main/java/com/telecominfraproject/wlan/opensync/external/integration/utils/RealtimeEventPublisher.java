@@ -8,6 +8,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import com.telecominfraproject.wlan.client.models.events.realtime.ClientConnectSuccessEvent;
@@ -89,7 +90,8 @@ public class RealtimeEventPublisher {
     private ProfileServiceInterface  profileServiceInterface;
 
     private static final Logger LOG = LoggerFactory.getLogger(RealtimeEventPublisher.class);
-
+    
+    @Async
     void publishChannelHopEvents(int customerId, long equipmentId, long locationId, EventReport e) {
 
         LOG.info("publishChannelHopEvents for customerId {} equipmentId {}");
@@ -178,6 +180,7 @@ public class RealtimeEventPublisher {
         }
     }
 
+    @Async
     void publishClientConnectSuccessEvent(int customerId, long equipmentId, long locationId, ClientConnectEvent clientConnectEvent) {
 
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientConnectEvent, customerId,
@@ -266,7 +269,7 @@ public class RealtimeEventPublisher {
         cloudEventDispatcherInterface.publishEvent(clientEvent);
 
     }
-
+    @Async
     void publishClientDisconnectEvent(int customerId, long equipmentId, long locationId, ClientDisconnectEvent clientDisconnectEvent) {
 
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientDisconnectEvent, customerId,
@@ -316,7 +319,8 @@ public class RealtimeEventPublisher {
         cloudEventDispatcherInterface.publishEvent(clientEvent);
 
     }
-
+    
+   @Async
     void publishClientAuthSystemEvent(int customerId, long equipmentId, long locationId, ClientAuthEvent clientAuthEvent) {
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientAuthEvent, customerId, equipmentId);
 
@@ -340,7 +344,8 @@ public class RealtimeEventPublisher {
         cloudEventDispatcherInterface.publishEvent(clientEvent);
 
     }
-
+   
+   @Async
     void publishClientAssocEvent(int customerId, long equipmentId, long locationId, ClientAssocEvent clientAssocEvent) {
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientAssocEvent, customerId, equipmentId);
 
@@ -390,7 +395,7 @@ public class RealtimeEventPublisher {
         cloudEventDispatcherInterface.publishEvent(clientEvent);
 
     }
-
+   @Async
     void publishClientFailureEvent(int customerId, long equipmentId, long locationId, ClientFailureEvent clientFailureEvent) {
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientFailureEvent, customerId,
                 equipmentId);
@@ -417,7 +422,7 @@ public class RealtimeEventPublisher {
         LOG.info("publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
     }
-
+   @Async
     void publishClientFirstDataEvent(int customerId, long equipmentId, long locationId, ClientFirstDataEvent clientFirstDataEvent) {
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientFirstDataEvent, customerId,
                 equipmentId);
@@ -444,7 +449,7 @@ public class RealtimeEventPublisher {
         cloudEventDispatcherInterface.publishEvent(clientEvent);
 
     }
-
+   @Async
     void publishClientIdEvent(int customerId, long equipmentId, long locationId, ClientIdEvent clientIdEvent) {
 
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientIdEvent, customerId, equipmentId);
@@ -465,7 +470,7 @@ public class RealtimeEventPublisher {
         LOG.info("publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
     }
-
+   @Async
     void publishClientIpEvent(int customerId, long equipmentId, long locationId, ClientIpEvent clientIpEvent) {
 
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientIpEvent, customerId, equipmentId);
@@ -491,7 +496,7 @@ public class RealtimeEventPublisher {
         LOG.info("publishing client event {} to cloud", clientEvent);
         cloudEventDispatcherInterface.publishEvent(clientEvent);
     }
-
+   @Async
     void publishClientTimeoutEvent(int customerId, long equipmentId, long locationId, ClientTimeoutEvent clientTimeoutEvent) {
 
         LOG.info("Received ClientEvent {} for customerId {} equipmentId {}", clientTimeoutEvent, customerId,
@@ -523,6 +528,7 @@ public class RealtimeEventPublisher {
 
     }
 
+   @Async
     void publishDhcpTransactionEvents(int customerId, long equipmentId, long locationId, List<DhcpTransaction> dhcpTransactionList) {
         LOG.info("Publish Dhcp Transaction Events for customer {} equipmentId {}", customerId, equipmentId);
         List<SystemEvent> dhcpEventsList = new ArrayList<>();
@@ -803,6 +809,7 @@ public class RealtimeEventPublisher {
         return cloudDhcpEvent;
     }
 
+    @Async
     void publishSipCallEvents(int customerId, long equipmentId, long locationId, List<VideoVoiceReport> sipCallReportList) {
         // only in case it is not there, we will just use the time when we
         // received the report/event

@@ -13,18 +13,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import com.google.protobuf.ByteString;
-import com.google.protobuf.Descriptors;
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.google.protobuf.util.JsonFormat;
-import com.google.protobuf.util.JsonFormat.TypeRegistry;
 import com.telecominfraproject.wlan.alarm.AlarmServiceInterface;
 import com.telecominfraproject.wlan.alarm.models.Alarm;
 import com.telecominfraproject.wlan.alarm.models.AlarmCode;
@@ -73,10 +72,10 @@ import com.telecominfraproject.wlan.servicemetric.channelinfo.models.ChannelInfo
 import com.telecominfraproject.wlan.servicemetric.channelinfo.models.ChannelInfoReports;
 import com.telecominfraproject.wlan.servicemetric.client.models.ClientMetrics;
 import com.telecominfraproject.wlan.servicemetric.models.ServiceMetric;
+import com.telecominfraproject.wlan.servicemetric.models.ServiceMetricDataType;
 import com.telecominfraproject.wlan.servicemetric.neighbourscan.models.NeighbourReport;
 import com.telecominfraproject.wlan.servicemetric.neighbourscan.models.NeighbourScanReports;
 import com.telecominfraproject.wlan.status.StatusServiceInterface;
-import com.telecominfraproject.wlan.status.equipment.models.EquipmentAdminStatusData;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSID;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSIDs;
 import com.telecominfraproject.wlan.status.equipment.report.models.EquipmentCapacityDetails;
@@ -117,10 +116,6 @@ import sts.OpensyncStats.Survey;
 import sts.OpensyncStats.Survey.SurveySample;
 import sts.OpensyncStats.SurveyType;
 import sts.OpensyncStats.VLANMetrics;
-import traffic.NetworkMetadata;
-import traffic.NetworkMetadata.FlowReport;
-import wc.stats.IpDnsTelemetry;
-import wc.stats.IpDnsTelemetry.WCStatsReport;
 
 @org.springframework.context.annotation.Profile("opensync_cloud_config")
 @Component
@@ -154,13 +149,18 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
     @Value("${tip.wlan.mqttStatsPublisher.memoryUtilThresholdPct:70}")
     private int memoryUtilThresholdPct;
 
+    @Value("${tip.wlan.mqttStatsPublisher.reportProcessingThresholdSec:30}")
+    public int reportProcessingThresholdSec;
+
     @Override
+    @Async
     public void processMqttMessage(String topic, Report report) {
-        LOG.info("Received report on topic {} for ap {}", topic, report.getNodeID());
+        long startTime = System.nanoTime();
         String apId = extractApIdFromTopic(topic);
+        LOG.info("Received report on topic {} for ap {}", topic, report.getNodeID());
         Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
         if (ce == null) {
-            LOG.warn("Cannot read equipment {}", apId);
+            LOG.warn("Cannot get equipment for inventoryId {}. Ignore mqtt message for topic {}", apId, topic);
             return;
         }
 
@@ -172,14 +172,37 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         List<ServiceMetric> metricRecordList = new ArrayList<>();
 
         try {
+            long clientMetricsStart = System.nanoTime();
             populateApClientMetrics(metricRecordList, report, customerId, equipmentId, locationId);
+            long clientMetricsStop = System.nanoTime();
+            LOG.debug("Elapsed time for constructing Client metrics record was {} milliseconds for topic {}",
+                    TimeUnit.MILLISECONDS.convert(clientMetricsStop - clientMetricsStart, TimeUnit.NANOSECONDS), topic);
+
+            long nodeMetricsStart = System.nanoTime();
             populateApNodeMetrics(metricRecordList, report, customerId, equipmentId, locationId);
+            long nodeMetricsStop = System.nanoTime();
+            LOG.debug("Elapsed time for constructing ApNode metrics record was {} milliseconds for topic {}",
+                    TimeUnit.MILLISECONDS.convert(nodeMetricsStop - nodeMetricsStart, TimeUnit.NANOSECONDS), topic);
+
+            long neighbourScanStart = System.nanoTime();
             populateNeighbourScanReports(metricRecordList, report, customerId, equipmentId, locationId);
+            long neighbourScanStop = System.nanoTime();
+            LOG.debug("Elapsed time for constructing Neighbour metrics record was {} milliseconds for topic {}",
+                    TimeUnit.MILLISECONDS.convert(neighbourScanStop - neighbourScanStart, TimeUnit.NANOSECONDS), topic);
+
+            long channelInfoStart = System.nanoTime();
             populateChannelInfoReports(metricRecordList, report, customerId, equipmentId, locationId, profileId);
+            long channelInfoStop = System.nanoTime();
+            LOG.debug("Elapsed time for constructing Channel metrics record was {} milliseconds for topic {}",
+                    TimeUnit.MILLISECONDS.convert(channelInfoStop - channelInfoStart, TimeUnit.NANOSECONDS), topic);
+
+            long ssidStart = System.nanoTime();
             populateApSsidMetrics(metricRecordList, report, customerId, equipmentId, apId, locationId);
+            long ssidStop = System.nanoTime();
+            LOG.debug("Elapsed time for constructing ApSsid metrics record was {} milliseconds for topic {}",
+                    TimeUnit.MILLISECONDS.convert(ssidStop - ssidStart, TimeUnit.NANOSECONDS), topic);
 
             if (!metricRecordList.isEmpty()) {
-
                 long serviceMetricTimestamp = System.currentTimeMillis();
                 LOG.debug("Current timestamp for service metrics is {}", serviceMetricTimestamp);
                 metricRecordList.stream().forEach(smr -> {
@@ -191,12 +214,33 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                     if (smr.getEquipmentId() == 0L)
                         smr.setEquipmentId(equipmentId);
                 });
-                metricRecordList.stream().forEach(smr -> {
-                    LOG.debug("ServiceMetric {}", smr);
-                });
+                long publishStart = System.nanoTime();
                 cloudEventDispatcherInterface.publishMetrics(metricRecordList);
+                long publishStop = System.nanoTime();
+                LOG.debug("Elapsed publishing time for metrics records from AP {} is {} milliseconds", apId,
+                        TimeUnit.MILLISECONDS.convert(publishStop - publishStart, TimeUnit.NANOSECONDS));
             }
+
+            long mqttEventsStart = System.nanoTime();
             publishEvents(report, customerId, equipmentId, apId, locationId);
+            long mqttEventsStop = System.nanoTime();
+            LOG.debug("Elapsed publishing time for mqtt events from AP {} is {} milliseconds", apId,
+                    TimeUnit.MILLISECONDS.convert(mqttEventsStop - mqttEventsStart, TimeUnit.NANOSECONDS));
+
+            long endTime = System.nanoTime();
+            long elapsedTimeMillis = TimeUnit.MILLISECONDS.convert(endTime - startTime, TimeUnit.NANOSECONDS);
+            long elapsedTimeSeconds = TimeUnit.SECONDS.convert(endTime - startTime, TimeUnit.NANOSECONDS);
+
+            if (elapsedTimeSeconds > reportProcessingThresholdSec) {
+                LOG.warn("Processing threshold exceeded for stats messages from AP {}. Elapsed processing time {} seconds. Report: {}", apId,
+                        elapsedTimeSeconds, report);
+            } else {
+                if (elapsedTimeSeconds < 1) {
+                    LOG.debug("Total elapsed processing time {} milliseconds for stats messages from AP {}", elapsedTimeMillis, apId);
+                } else {
+                    LOG.debug("Total elapsed processing time {} seconds for stats messages from AP {}", elapsedTimeSeconds, apId);
+                }
+            }
         } catch (Exception e) {
             LOG.error("Exception when processing stats messages from AP", e);
         }
@@ -211,69 +255,46 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
 
     void publishEvents(Report report, int customerId, long equipmentId, String apId, long locationId) {
 
+        // asynchronous
         realtimeEventPublisher.publishSipCallEvents(customerId, equipmentId, locationId, report.getVideoVoiceReportList());
 
         for (EventReport eventReport : report.getEventReportList()) {
 
             for (sts.OpensyncStats.EventReport.ClientSession apEventClientSession : eventReport.getClientSessionList()) {
 
-                LOG.debug("Processing EventReport::ClientSession {}", apEventClientSession);
-
+                LOG.debug("Processing EventReport::ClientSession for AP {}", apId);
+                // for the following MQTT events, the client/client session is first updated, then the real time event is published, asynchronously.
                 if (apEventClientSession.hasClientAuthEvent()) {
                     processClientAuthEvent(customerId, equipmentId, locationId, apEventClientSession);
-                    realtimeEventPublisher.publishClientAuthSystemEvent(customerId, equipmentId, locationId, apEventClientSession.getClientAuthEvent());
                 }
-
                 if (apEventClientSession.hasClientAssocEvent()) {
                     processClientAssocEvent(customerId, equipmentId, locationId, apEventClientSession);
-                    realtimeEventPublisher.publishClientAssocEvent(customerId, equipmentId, locationId, apEventClientSession.getClientAssocEvent());
                 }
-
                 if (apEventClientSession.hasClientFirstDataEvent()) {
                     processClientFirstDataEvent(customerId, equipmentId, locationId, apEventClientSession);
-                    realtimeEventPublisher.publishClientFirstDataEvent(customerId, equipmentId, locationId, apEventClientSession.getClientFirstDataEvent());
-
                 }
-
                 if (apEventClientSession.hasClientIdEvent()) {
                     processClientIdEvent(customerId, equipmentId, locationId, apEventClientSession);
-                    realtimeEventPublisher.publishClientIdEvent(customerId, equipmentId, locationId, apEventClientSession.getClientIdEvent());
-
                 }
-
                 if (apEventClientSession.hasClientIpEvent()) {
                     processClientIpEvent(customerId, equipmentId, locationId, apEventClientSession);
-                    realtimeEventPublisher.publishClientIpEvent(customerId, equipmentId, locationId, apEventClientSession.getClientIpEvent());
-
                 }
-
                 if (apEventClientSession.hasClientConnectEvent()) {
                     processClientConnectEvent(customerId, equipmentId, locationId, eventReport, apEventClientSession);
-                    realtimeEventPublisher.publishClientConnectSuccessEvent(customerId, equipmentId, locationId, apEventClientSession.getClientConnectEvent());
-
                 }
-
                 if (apEventClientSession.hasClientDisconnectEvent()) {
                     processClientDisconnectEvent(customerId, equipmentId, locationId, apEventClientSession);
-                    realtimeEventPublisher.publishClientDisconnectEvent(customerId, equipmentId, locationId, apEventClientSession.getClientDisconnectEvent());
                 }
-
                 if (apEventClientSession.hasClientTimeoutEvent()) {
                     processClientTimeoutEvent(customerId, equipmentId, locationId, apEventClientSession);
-                    realtimeEventPublisher.publishClientTimeoutEvent(customerId, equipmentId, locationId, apEventClientSession.getClientTimeoutEvent());
-
                 }
-
                 if (apEventClientSession.hasClientFailureEvent()) {
                     processClientFailureEvent(customerId, equipmentId, locationId, apEventClientSession);
-                    realtimeEventPublisher.publishClientFailureEvent(customerId, equipmentId, locationId, apEventClientSession.getClientFailureEvent());
-
                 }
-
             }
-
+            // asynchronous
             realtimeEventPublisher.publishChannelHopEvents(customerId, equipmentId, locationId, eventReport);
-
+            // asynchronous
             realtimeEventPublisher.publishDhcpTransactionEvents(customerId, equipmentId, locationId, eventReport.getDhcpTransactionList());
 
         }
@@ -381,12 +402,9 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
             if (ipAddress != null) {
                 try {
                     InetAddress inetAddress = InetAddress.getByAddress(ipAddress.toByteArray());
-                    LOG.info("ipAddr {} ", inetAddress);
                     if (inetAddress instanceof Inet4Address) {
-                        LOG.info("IPv4 address {}", inetAddress);
                         clientSession.getDetails().setIpAddress(inetAddress);
                     } else if (inetAddress instanceof Inet6Address) {
-                        LOG.info("IPv6 address {}", inetAddress);
                         clientSession.getDetails().setIpAddress(inetAddress);
                     } else {
                         LOG.error("Invalid IP Address {}", ipAddress);
@@ -404,6 +422,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         }
         clientSession.getDetails().setLastEventTimestamp(apClientEvent.getTimestampMs());
         clientSession = clientServiceInterface.updateSession(clientSession);
+        realtimeEventPublisher.publishClientConnectSuccessEvent(customerId, equipmentId, locationId, apEventClientSession.getClientConnectEvent());
 
     }
 
@@ -480,6 +499,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         clientSession.getDetails().setAssocTimestamp(apClientEvent.getTimestampMs());
         clientSession.getDetails().setLastEventTimestamp(apClientEvent.getTimestampMs());
         clientSession = clientServiceInterface.updateSession(clientSession);
+        realtimeEventPublisher.publishClientDisconnectEvent(customerId, equipmentId, locationId, apEventClientSession.getClientDisconnectEvent());
 
     }
 
@@ -527,6 +547,9 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         clientSession.getDetails().setAssociationState(AssociationState._802_11_Authenticated);
         clientSession.getDetails().setLastEventTimestamp(apClientEvent.getTimestampMs());
         clientSession = clientServiceInterface.updateSession(clientSession);
+        
+        realtimeEventPublisher.publishClientAuthSystemEvent(customerId, equipmentId, locationId, apEventClientSession.getClientAuthEvent());
+
     }
 
     protected void processClientAssocEvent(int customerId, long equipmentId, long locationId,
@@ -594,6 +617,8 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         clientSession.getDetails().setAssociationState(AssociationState._802_11_Associated);
         clientSession.getDetails().setLastEventTimestamp(apClientEvent.getTimestampMs());
         clientSession = clientServiceInterface.updateSession(clientSession);
+        realtimeEventPublisher.publishClientAssocEvent(customerId, equipmentId, locationId, apEventClientSession.getClientAssocEvent());
+
     }
 
     protected void processClientFailureEvent(int customerId, long equipmentId, long locationId,
@@ -641,7 +666,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         clientSession.getDetails().setLastFailureDetails(clientFailureDetails);
         clientSession.getDetails().setLastEventTimestamp(apClientEvent.getTimestampMs());
         clientSession = clientServiceInterface.updateSession(clientSession);
-
+        realtimeEventPublisher.publishClientFailureEvent(customerId, equipmentId, locationId, apEventClientSession.getClientFailureEvent());
     }
 
     protected void processClientFirstDataEvent(int customerId, long equipmentId, long locationId,
@@ -688,6 +713,8 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         clientSession.getDetails().setLastEventTimestamp(apClientEvent.getTimestampMs());
         clientSession = clientServiceInterface.updateSession(clientSession);
 
+        realtimeEventPublisher.publishClientFirstDataEvent(customerId, equipmentId, locationId, apEventClientSession.getClientFirstDataEvent());
+
     }
 
     protected void processClientIdEvent(int customerId, long equipmentId, long locationId, sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
@@ -732,6 +759,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         }
         clientSession.getDetails().setLastEventTimestamp(apClientEvent.getTimestampMs());
         clientSession = clientServiceInterface.updateSession(clientSession);
+        realtimeEventPublisher.publishClientIdEvent(customerId, equipmentId, locationId, apEventClientSession.getClientIdEvent());
     }
 
     protected void processClientIpEvent(int customerId, long equipmentId, long locationId, sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
@@ -774,10 +802,8 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                 try {
                     InetAddress inetAddress = InetAddress.getByAddress(ipAddress.toByteArray());
                     if (inetAddress instanceof Inet4Address) {
-                        LOG.info("IPv4 address {}", inetAddress);
                         clientSession.getDetails().setIpAddress(inetAddress);
                     } else if (inetAddress instanceof Inet6Address) {
-                        LOG.info("IPv6 address {}", inetAddress);
                         clientSession.getDetails().setIpAddress(inetAddress);
                     } else {
                         LOG.error("Invalid IP Address {}", ipAddress);
@@ -790,6 +816,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         }
         clientSession.getDetails().setLastEventTimestamp(apClientEvent.getTimestampMs());
         clientSession = clientServiceInterface.updateSession(clientSession);
+        realtimeEventPublisher.publishClientIpEvent(customerId, equipmentId, locationId, apEventClientSession.getClientIpEvent());
     }
 
     protected void processClientTimeoutEvent(int customerId, long equipmentId, long locationId,
@@ -836,6 +863,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         clientSession.getDetails().setAssociationState(AssociationState.AP_Timeout);
         clientSession.getDetails().setLastEventTimestamp(apClientEvent.getTimestampMs());
         clientSession = clientServiceInterface.updateSession(clientSession);
+        realtimeEventPublisher.publishClientTimeoutEvent(customerId, equipmentId, locationId, apEventClientSession.getClientTimeoutEvent());
     }
 
     void populateApNodeMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId, long equipmentId, long locationId) {
@@ -844,7 +872,6 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         ServiceMetric smr = new ServiceMetric(customerId, equipmentId);
 
         smr.setLocationId(locationId);
-
         metricRecordList.add(smr);
         smr.setDetails(apNodeMetrics);
 
@@ -894,7 +921,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
 
                 double usedMemory = deviceReport.getMemUtil().getMemUsed();
                 double totalMemory = deviceReport.getMemUtil().getMemTotal();
-                if (usedMemory/totalMemory * 100 > memoryUtilThresholdPct) {
+                if (usedMemory / totalMemory * 100 > memoryUtilThresholdPct) {
                     raiseDeviceThresholdAlarm(customerId, equipmentId, AlarmCode.MemoryUtilization, deviceReport.getTimestampMs());
                 } else {
                     // Clear any existing cpuUtilization alarms
@@ -1144,13 +1171,15 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         updateDeviceStatusRadioUtilizationReport(customerId, equipmentId, radioUtilizationReport);
     }
 
+    @Async
     void clearDeviceThresholdAlarm(int customerId, long equipmentId, AlarmCode alarmCode) {
         alarmServiceInterface.get(customerId, Set.of(equipmentId), Set.of(alarmCode)).stream().forEach(a -> {
             Alarm alarm = alarmServiceInterface.delete(customerId, equipmentId, a.getAlarmCode(), a.getCreatedTimestamp());
-            LOG.info("Cleared device threshold alarm {}", alarm);
+            LOG.debug("Cleared device threshold alarm {}", alarm);
         });
     }
-
+   
+    @Async
     void raiseDeviceThresholdAlarm(int customerId, long equipmentId, AlarmCode alarmCode, long timestampMs) {
         // Raise an alarm for temperature
         Alarm alarm = new Alarm();
@@ -1170,9 +1199,9 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         if (alarms.isEmpty()) {
             alarm.setCreatedTimestamp(timestampMs);
             alarm = alarmServiceInterface.create(alarm);
-        } 
+        }
     }
-    
+
     private void checkIfOutOfBound(String checkedType, int checkedValue, Survey survey, int totalDurationMs, int busyTx, int busyRx, int busy, int busySelf) {
         if (checkedValue > 100 || checkedValue < 0) {
             LOG.warn(
@@ -1186,7 +1215,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
     private void updateNetworkAdminStatusReport(int customerId, long equipmentId, ApNodeMetrics apNodeMetrics) {
         apNodeMetrics.getNetworkProbeMetrics().forEach(n -> {
 
-            LOG.info("Update NetworkAdminStatusReport for NetworkProbeMetrics {}", n.toString());
+            LOG.debug("Update NetworkAdminStatusReport for NetworkProbeMetrics {}", n.toString());
 
             Status networkAdminStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.NETWORK_ADMIN);
 
@@ -1202,7 +1231,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
             NetworkAdminStatusData statusData = (NetworkAdminStatusData) networkAdminStatus.getDetails();
 
             if (n.getDnsState() == null) {
-                LOG.debug("No DnsState present in networkProbeMetrics, DnsState and CloudLinkStatus set to 'normal");
+                LOG.trace("No DnsState present in networkProbeMetrics, DnsState and CloudLinkStatus set to 'normal");
                 statusData.setDnsStatus(StatusCode.normal);
                 statusData.setCloudLinkStatus(StatusCode.normal);
             } else {
@@ -1210,13 +1239,13 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                 statusData.setCloudLinkStatus(stateUpDownErrorToStatusCode(n.getDnsState()));
             }
             if (n.getDhcpState() == null) {
-                LOG.debug("No DhcpState present in networkProbeMetrics, set to 'normal");
+                LOG.trace("No DhcpState present in networkProbeMetrics, set to 'normal");
                 statusData.setDhcpStatus(StatusCode.normal);
             } else {
                 statusData.setDhcpStatus(stateUpDownErrorToStatusCode(n.getDhcpState()));
             }
             if (n.getRadiusState() == null) {
-                LOG.debug("No RadiusState present in networkProbeMetrics, set to 'normal");
+                LOG.trace("No RadiusState present in networkProbeMetrics, set to 'normal");
                 statusData.setRadiusStatus(StatusCode.normal);
             } else {
                 statusData.setRadiusStatus(stateUpDownErrorToStatusCode(n.getRadiusState()));
@@ -1251,9 +1280,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
 
     void updateDeviceStatusRadioUtilizationReport(int customerId, long equipmentId, RadioUtilizationReport radioUtilizationReport) {
         LOG.info("Processing updateDeviceStatusRadioUtilizationReport for equipmentId {} with RadioUtilizationReport {}", equipmentId, radioUtilizationReport);
-
         Status radioUtilizationStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.RADIO_UTILIZATION);
-
         if (radioUtilizationStatus == null) {
             LOG.debug("Create new radioUtilizationStatus");
             radioUtilizationStatus = new Status();
@@ -1261,9 +1288,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
             radioUtilizationStatus.setEquipmentId(equipmentId);
             radioUtilizationStatus.setStatusDataType(StatusDataType.RADIO_UTILIZATION);
         }
-
         radioUtilizationStatus.setDetails(radioUtilizationReport);
-
         statusServiceInterface.update(radioUtilizationStatus);
     }
 
@@ -1271,32 +1296,23 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         List<NetworkProbeMetrics> networkProbeMetricsList = new ArrayList<>();
 
         for (NetworkProbe networkProbe : report.getNetworkProbeList()) {
-
             NetworkProbeMetrics networkProbeMetrics = new NetworkProbeMetrics();
-
             networkProbeMetrics.setSourceTimestampMs(networkProbe.getTimestampMs());
-
             List<DnsProbeMetric> dnsProbeResults = new ArrayList<>();
             if (networkProbe.hasDnsProbe()) {
-
                 DNSProbeMetric dnsProbeMetricFromAp = networkProbe.getDnsProbe();
-
                 DnsProbeMetric cloudDnsProbeMetric = new DnsProbeMetric();
-
                 if (dnsProbeMetricFromAp.hasLatency()) {
                     networkProbeMetrics.setDnsLatencyMs(dnsProbeMetricFromAp.getLatency());
                     cloudDnsProbeMetric.setDnsLatencyMs(dnsProbeMetricFromAp.getLatency());
                 }
-
                 if (dnsProbeMetricFromAp.hasState()) {
                     StateUpDownError dnsState =
                             OvsdbToWlanCloudTypeMappingUtility.getCloudMetricsStateFromOpensyncStatsStateUpDown(dnsProbeMetricFromAp.getState());
 
                     networkProbeMetrics.setDnsState(dnsState);
                     cloudDnsProbeMetric.setDnsState(dnsState);
-
                 }
-
                 if (dnsProbeMetricFromAp.hasServerIP()) {
                     InetAddress ipAddress;
                     try {
@@ -1306,9 +1322,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                         LOG.error("Could not get DNS Server IP from network_probe service_metrics_collection_config", e);
                     }
                 }
-
                 dnsProbeResults.add(cloudDnsProbeMetric);
-
             }
 
             networkProbeMetrics.setDnsProbeResults(dnsProbeResults);
@@ -1317,15 +1331,11 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                 if (radiusMetrics.hasLatency()) {
                     networkProbeMetrics.setRadiusLatencyInMs(radiusMetrics.getLatency());
                 }
-
                 if (radiusMetrics.hasRadiusState()) {
                     StateUpDownError radiusState =
                             OvsdbToWlanCloudTypeMappingUtility.getCloudMetricsStateFromOpensyncStatsStateUpDown(radiusMetrics.getRadiusState());
-
                     networkProbeMetrics.setRadiusState(radiusState);
-
                 }
-
             }
 
             if (networkProbe.hasVlanProbe()) {
@@ -1344,9 +1354,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                     networkProbeMetrics.setDhcpLatencyMs(vlanMetrics.getLatency());
                 }
             }
-
             networkProbeMetricsList.add(networkProbeMetrics);
-
         }
 
         apNodeMetrics.setNetworkProbeMetrics(networkProbeMetricsList);
@@ -1364,10 +1372,8 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         eqOsPerformance.setTotalAvailableMemoryKb(deviceReport.getMemUtil().getMemTotal());
         status.setDetails(eqOsPerformance);
         status = statusServiceInterface.update(status);
-        LOG.debug("updated status {}", status);
+        LOG.trace("updated status {}", status);
     }
-
-
 
     void populateApClientMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId, long equipmentId, long locationId) {
         LOG.info("populateApClientMetrics for Customer {} Equipment {}", customerId, equipmentId);
@@ -1376,7 +1382,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
             for (Client cl : clReport.getClientListList()) {
 
                 if (cl.getMacAddress() == null) {
-                    LOG.debug("No mac address for Client {}, cannot set device mac address for client in ClientMetrics.", cl);
+                    LOG.trace("No mac address for Client {}, cannot set device mac address for client in ClientMetrics.", cl);
                     continue;
                 }
 
@@ -1527,91 +1533,6 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         }
     }
 
-    ClientSession handleClientSessionMetricsUpdate(int customerId, long equipmentId, long locationId, RadioType radioType, long timestamp,
-            sts.OpensyncStats.Client client) {
-        try
-
-        {
-            LOG.info("handleClientSessionUpdate for customerId {} equipmentId {} locationId {} client {} ", customerId, equipmentId, locationId,
-                    client.getMacAddress());
-
-            ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId, MacAddress.valueOf(client.getMacAddress()));
-
-            if (clientSession == null) {
-                LOG.warn("Cannot get client session for {}", client.getMacAddress());
-                return null;
-            }
-
-            ClientSessionDetails latestClientSessionDetails = clientSession.getDetails();
-            latestClientSessionDetails.setMetricDetails(calculateClientSessionMetricDetails(client, timestamp));
-
-            clientSession.getDetails().mergeSession(latestClientSessionDetails);
-            clientSession.setLastModifiedTimestamp(timestamp);
-
-            clientSession = clientServiceInterface.updateSession(clientSession);
-
-            LOG.debug("Updated client session {}", clientSession);
-
-            return clientSession;
-        } catch (Exception e) {
-            LOG.error("Error while attempting to create ClientSession and Info", e);
-        }
-        return null;
-    }
-
-    ClientSessionMetricDetails calculateClientSessionMetricDetails(sts.OpensyncStats.Client client, long timestamp) {
-
-        LOG.info("calculateClientSessionMetricDetails for Client {} at timestamp {}", client.getMacAddress(), timestamp);
-
-        ClientSessionMetricDetails metricDetails = new ClientSessionMetricDetails();
-
-        if (LOG.isDebugEnabled())
-            LOG.debug("Stats: {} DurationMs {}", client.getStats(), client.getDurationMs());
-        int rssi = client.getStats().getRssi();
-        metricDetails.setRssi(rssi);
-        metricDetails.setRxBytes(client.getStats().getRxBytes());
-        metricDetails.setTxBytes(client.getStats().getTxBytes());
-
-        // Frames : data chunk sent over data-link layer (Ethernet, ATM)
-        // Packets : data chunk sent over IP layer.
-        // in Wifi, these are the same size, so number of packets is equal to
-        // number of frames
-        metricDetails.setTotalTxPackets(client.getStats().getTxFrames());
-        metricDetails.setTotalRxPackets(client.getStats().getRxFrames());
-        metricDetails.setTxDataFrames((int) client.getStats().getTxFrames());
-        metricDetails.setRxDataFrames((int) client.getStats().getRxFrames());
-
-        metricDetails.setRxRateKbps((long) client.getStats().getRxRate());
-        metricDetails.setTxRateKbps((long) client.getStats().getTxRate());
-        if (LOG.isDebugEnabled())
-            LOG.debug("RxRateKbps {} TxRateKbps {}", metricDetails.getRxRateKbps(), metricDetails.getTxRateKbps());
-
-        // Throughput, do rate / duration
-        if (client.getDurationMs() > 1000) {
-            int durationSec = client.getDurationMs() / 1000;
-            // 1 Mbit = 125000 B
-
-            float rxBytesFv = Long.valueOf(client.getStats().getRxBytes()).floatValue();
-            float rxBytesToMb = rxBytesFv / 125000F;
-            float txBytesFv = Long.valueOf(client.getStats().getTxBytes()).floatValue();
-            float txBytesToMb = txBytesFv / 125000F;
-
-            if (LOG.isDebugEnabled())
-                LOG.debug("rxBytesToMb {} txBytesToMb {} ", rxBytesToMb, txBytesToMb);
-
-            metricDetails.setRxMbps(rxBytesToMb / durationSec);
-            metricDetails.setTxMbps(txBytesToMb / durationSec);
-            if (LOG.isDebugEnabled())
-                LOG.debug("RxMbps {} TxMbps {} ", metricDetails.getRxMbps(), metricDetails.getTxMbps());
-
-        } else {
-            LOG.warn("Cannot calculate tx/rx throughput for Client {} based on duration of {} Ms", client.getMacAddress(), client.getDurationMs());
-        }
-        metricDetails.setLastMetricTimestamp(timestamp);
-
-        return metricDetails;
-    }
-
     void populateApSsidMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId, long equipmentId, String apId, long locationId) {
 
         LOG.info("populateApSsidMetrics for Customer {} Equipment {}", customerId, equipmentId);
@@ -1660,7 +1581,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                     }
                 }
             }
-            LOG.debug("Client Report Date is {}", new Date(clientReport.getTimestampMs()));
+            if (LOG.isTraceEnabled()) LOG.trace("Client Report Date is {}", new Date(clientReport.getTimestampMs()));
             int numConnectedClients = 0;
             for (Client client : clientReport.getClientListList()) {
                 if (client.hasStats()) {
