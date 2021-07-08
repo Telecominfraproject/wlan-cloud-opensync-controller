@@ -76,7 +76,7 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.Opensyn
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAWLANNode;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncWifiAssociatedClients;
-import com.telecominfraproject.wlan.opensync.external.integration.utils.MqttStatsPublisher;
+import com.telecominfraproject.wlan.opensync.external.integration.utils.StatsPublisherInterface;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpDeviceType;
 import com.telecominfraproject.wlan.opensync.util.OvsdbStringConstants;
 import com.telecominfraproject.wlan.opensync.util.OvsdbToWlanCloudTypeMappingUtility;
@@ -147,7 +147,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     @Autowired
     private FirmwareServiceInterface firmwareServiceInterface;
     @Autowired
-    private MqttStatsPublisher mqttMessageProcessor;
+    private StatsPublisherInterface mqttMessageProcessor;
     @Autowired
     private AlarmServiceInterface alarmServiceInterface;
 
@@ -1060,11 +1060,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
 
         return ret;
-    }
-
-    @Override
-    public void processMqttMessage(String topic, Report report) {
-        mqttMessageProcessor.processMqttMessage(topic, report);
     }
 
     @Override

@@ -124,7 +124,7 @@ import wc.stats.IpDnsTelemetry.WCStatsReport;
 
 @org.springframework.context.annotation.Profile("opensync_cloud_config")
 @Component
-public class MqttStatsPublisher {
+public class MqttStatsPublisher implements StatsPublisherInterface {
 
     private static final Logger LOG = LoggerFactory.getLogger(MqttStatsPublisher.class);
 
@@ -154,6 +154,7 @@ public class MqttStatsPublisher {
     @Value("${tip.wlan.mqttStatsPublisher.memoryUtilThresholdPct:70}")
     private int memoryUtilThresholdPct;
 
+    @Override
     public void processMqttMessage(String topic, Report report) {
         LOG.info("Received report on topic {} for ap {}", topic, report.getNodeID());
         String apId = extractApIdFromTopic(topic);
@@ -202,6 +203,7 @@ public class MqttStatsPublisher {
 
     }
 
+    @Override
     public void publishSystemEventFromTableStateMonitor(SystemEvent event) {
         LOG.info("Publishing SystemEvent received by TableStateMonitor {}", event);
         cloudEventDispatcherInterface.publishEvent(event);

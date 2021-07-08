@@ -515,11 +515,6 @@ public class OpensyncExternalIntegrationCloudTest {
 
         Mockito.when(clientServiceInterface.updateSession(ArgumentMatchers.any(ClientSession.class)))
                 .thenReturn(clientSession).thenReturn(clientSession2);
-
-        opensyncExternalIntegrationCloud.processMqttMessage(topic, report);
-
-        Mockito.verify(opensyncExternalIntegrationMqttProcessor, Mockito.times(1)).processMqttMessage(topic, report);
-
     }
 
     @Ignore

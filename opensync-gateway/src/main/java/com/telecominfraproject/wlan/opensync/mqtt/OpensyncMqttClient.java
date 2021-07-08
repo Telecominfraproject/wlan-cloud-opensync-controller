@@ -13,9 +13,19 @@ import org.fusesource.mqtt.client.Message;
 import org.fusesource.mqtt.client.QoS;
 import org.fusesource.mqtt.client.Topic;
 import org.fusesource.mqtt.client.Tracer;
+import org.fusesource.mqtt.codec.CONNACK;
+import org.fusesource.mqtt.codec.CONNECT;
+import org.fusesource.mqtt.codec.DISCONNECT;
 import org.fusesource.mqtt.codec.MQTTFrame;
 import org.fusesource.mqtt.codec.PINGREQ;
 import org.fusesource.mqtt.codec.PINGRESP;
+import org.fusesource.mqtt.codec.PUBACK;
+import org.fusesource.mqtt.codec.PUBCOMP;
+import org.fusesource.mqtt.codec.PUBLISH;
+import org.fusesource.mqtt.codec.PUBREC;
+import org.fusesource.mqtt.codec.PUBREL;
+import org.fusesource.mqtt.codec.SUBACK;
+import org.fusesource.mqtt.codec.SUBSCRIBE;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +49,7 @@ import com.netflix.servo.monitor.Timer;
 import com.netflix.servo.tag.TagList;
 import com.telecominfraproject.wlan.cloudmetrics.CloudMetricsTags;
 import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExternalIntegrationInterface;
+import com.telecominfraproject.wlan.opensync.external.integration.utils.StatsPublisherInterface;
 import com.telecominfraproject.wlan.opensync.util.ZlibUtil;
 
 import sts.OpensyncStats;
@@ -53,6 +64,8 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
     private static final Logger LOG = LoggerFactory.getLogger(OpensyncMqttClient.class);
 
     private static final Logger MQTT_LOG = LoggerFactory.getLogger("MQTT_DATA");
+    
+    private static final Logger MQTT_TRACER_LOG = LoggerFactory.getLogger("MQTT_CLIENT_TRACER");
 
     public static Charset utf8 = Charset.forName("UTF-8");
 
@@ -65,7 +78,7 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
     private final Timer timerMessageProcess = new BasicTimer(MonitorConfig.builder("osgw-mqtt-messageProcessTimer").withTags(tags).build());
 
     @Autowired
-    private OpensyncExternalIntegrationInterface extIntegrationInterface;
+    private StatsPublisherInterface statsPublisher;
 
     // dtop: use anonymous constructor to ensure that the following code always
     // get executed,
@@ -152,13 +165,21 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                             @Override
                             public void onReceive(MQTTFrame frame) {
                                 switch (frame.messageType()) {
-                                    case PINGREQ.TYPE:
                                     case PINGRESP.TYPE:
                                         // PINGs don't want to fill log
-                                        LOG.trace("OpensyncMqttClient Rx: {}", frame);
+                                        MQTT_TRACER_LOG.trace("OpensyncMqttClient Rx: {}", frame);
+                                        break;
+                                    case SUBACK.TYPE:
+                                    case CONNACK.TYPE:
+                                    case PUBACK.TYPE:
+                                    case PUBCOMP.TYPE:
+                                    case PUBREC.TYPE:
+                                    case PUBREL.TYPE:
+                                    case PUBLISH.TYPE:
+                                        MQTT_TRACER_LOG.info("OpensyncMqttClient Rx: {}", frame);
                                         break;
                                     default:
-                                        LOG.debug("OpensyncMqttClient Rx: {}", frame);
+                                        MQTT_TRACER_LOG.debug("OpensyncMqttClient Rx: {}", frame);
                                 }
                             }
 
@@ -166,12 +187,18 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                             public void onSend(MQTTFrame frame) {
                                 switch (frame.messageType()) {
                                     case PINGREQ.TYPE:
-                                    case PINGRESP.TYPE:
                                         // PINGs don't want to fill log
-                                        LOG.trace("OpensyncMqttClient Tx: {}", frame);
+                                        MQTT_TRACER_LOG.trace("OpensyncMqttClient Tx: {}", frame);
+                                        break;
+                                    case SUBSCRIBE.TYPE:
+                                    case CONNECT.TYPE:
+                                    case DISCONNECT.TYPE:
+                                    case PUBACK.TYPE:
+                                    case PUBCOMP.TYPE:
+                                        MQTT_TRACER_LOG.info("OpensyncMqttClient Tx: {}", frame);
                                         break;
                                     default:
-                                        LOG.debug("OpensyncMqttClient Tx: {}", frame);
+                                        MQTT_TRACER_LOG.debug("OpensyncMqttClient Tx: {}", frame);
                                 }
                             }
 
@@ -223,17 +250,18 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                                 }
                                 // Only supported protobuf on the TIP opensync APs is Report
                                 Report statsReport = Report.parseFrom(payload);
+                                mqttMsg.ack();
+
                                 if (LOG.isTraceEnabled())
                                     LOG.trace("Received opensync stats report for topic = {}\nReport = {}", mqttMsg.getTopic(), statsReport.toString());
-
-                                Thread sender = new Thread(statsReport.getNodeID() + "-worker") {
+                                MQTT_LOG.info("Topic {}\n{}",mqttMsg.getTopic(), jsonPrinter.print(statsReport));
+                                Thread sender = new Thread(mqttMsg.getTopic().split("/")[2] + "-worker") {
                                     @Override
                                     public void run() {
                                         long startTime = System.nanoTime();
                                         if (LOG.isTraceEnabled())
                                             LOG.trace("Start publishing service metrics from received mqtt stats");
-                                        extIntegrationInterface.processMqttMessage(mqttMsg.getTopic(), statsReport);
-                                        mqttMsg.ack();
+                                        statsPublisher.processMqttMessage(mqttMsg.getTopic(), statsReport);
                                         long elapsedTimeSeconds = TimeUnit.SECONDS.convert(System.nanoTime() - startTime, TimeUnit.NANOSECONDS);
                                         if (elapsedTimeSeconds > REPORT_PROCESSING_THRESHOLD_SEC) {
                                             try {

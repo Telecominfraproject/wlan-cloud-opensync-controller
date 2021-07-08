@@ -116,7 +116,7 @@ public class MqttStatsPublisherTest {
     static class Config {
 
         @Bean
-        public MqttStatsPublisher mqttStatsPublisher() {
+        public StatsPublisherInterface mqttStatsPublisher() {
             return new MqttStatsPublisher();
         }
 

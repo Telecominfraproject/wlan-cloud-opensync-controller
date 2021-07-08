@@ -36,8 +36,6 @@ public interface OpensyncExternalIntegrationInterface {
 
     void wifiInetStateDbTableDelete(List<OpensyncAPInetState> inetStateTables, String apId);
 
-    void processMqttMessage(String topic, Report report);
-
     void wifiAssociatedClientsDbTableUpdate(List<OpensyncWifiAssociatedClients> wifiAssociatedClients, String apId);
 
     void wifiAssociatedClientsDbTableDelete(String deletedClientMac, String apId);
