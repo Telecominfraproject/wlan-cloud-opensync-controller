@@ -14,6 +14,7 @@ import com.vmware.ovsdb.protocol.operation.Operation;
 import com.vmware.ovsdb.protocol.operation.Update;
 import com.vmware.ovsdb.protocol.operation.notation.*;
 import com.vmware.ovsdb.protocol.operation.result.OperationResult;
+import com.vmware.ovsdb.protocol.schema.DatabaseSchema;
 import com.vmware.ovsdb.service.OvsdbClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -39,83 +40,88 @@ public class OvsdbRadioConfig extends OvsdbDaoBase {
         Map<String, WifiRadioConfigInfo> provisionedRadioConfigs = ovsdbGet.getProvisionedWifiRadioConfigs(ovsdbClient);
         Map<String, WifiVifConfigInfo> vifConfigs = ovsdbGet.getProvisionedWifiVifConfigs(ovsdbClient);
         List<Operation> operations = new ArrayList<>();
-        for (RadioType radioType : apElementConfiguration.getRadioMap().keySet()) {
-            Map<String, String> hwConfig = new HashMap<>();
-            ElementRadioConfiguration elementRadioConfig = apElementConfiguration.getRadioMap().get(radioType);
-            RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(radioType);
-            if (elementRadioConfig == null || rfElementConfig == null) {
-                continue;
-            }
-            boolean autoChannelSelection = rfElementConfig.getAutoChannelSelection();
-            int channel = elementRadioConfig.getActiveChannel(autoChannelSelection);
-            LOG.debug("configureWifiRadios autoChannelSelection {} activeChannel {} getChannelNumber {} ", autoChannelSelection, channel,
-                    elementRadioConfig.getChannelNumber());
-            ChannelBandwidth bandwidth = rfElementConfig.getChannelBandwidth();
-            String ht_mode = getBandwidth(bandwidth);
-            RadioConfiguration radioConfig = apElementConfiguration.getAdvancedRadioMap().get(radioType);
-            int beaconInterval = rfElementConfig.getBeaconInterval();
-            boolean enabled = radioConfig.getRadioAdminState().equals(StateSetting.enabled);
-            boolean autoCellSizeSelection = rfElementConfig.getAutoCellSizeSelection();
-            int txPower = 0;
-            if (autoCellSizeSelection) {
-                if (elementRadioConfig.getEirpTxPower() != null) {
-                    txPower = elementRadioConfig.getEirpTxPower().getValue();
-                }
-            } else {
-                txPower = rfElementConfig.getEirpTxPower();
-            }
-            String hwMode = getHwMode(rfElementConfig);
-            String freqBand = getHwConfigAndFreq(radioType, hwConfig);
-            String radioName = null;
-            for (String key : provisionedRadioConfigs.keySet()) {
-                if (provisionedRadioConfigs.get(key).freqBand.equals(freqBand)) {
-                    radioName = key;
-                    break;
-                }
-            }
-            if (radioName == null)
-                continue;
-            String ifName = null; // for vifConfigs
-            if (radioName.equals(radio0)) {
-                ifName = defaultRadio0;
-            } else if (radioName.equals(radio1)) {
-                ifName = defaultRadio1;
-            } else if (radioName.equals(radio2)) {
-                ifName = defaultRadio2;
-            }
-            if (ifName == null)
-                continue;
-            Set<Uuid> vifUuidsForRadio = new HashSet<>();
-            for (String key : vifConfigs.keySet()) {
-                if (key.contains(ifName))
-                    vifUuidsForRadio.add(vifConfigs.get(key).uuid);
-            }
-            int mimoMode = MimoMode.none.getId();
-            if (rfElementConfig.getMimoMode() != null) {
-                mimoMode = rfElementConfig.getMimoMode().getId();
-            }
-            int maxNumClients = 0;
-            if (rfElementConfig.getMaxNumClients() != null) {
-                maxNumClients = rfElementConfig.getMaxNumClients();
-            }
-            try {
-                configureWifiRadios(freqBand, channel, hwConfig, country.toUpperCase(), beaconInterval, enabled, hwMode, ht_mode, txPower, mimoMode,
-                        vifUuidsForRadio, operations, maxNumClients);
-            } catch (OvsdbClientException e) {
-                LOG.error("ConfigureWifiRadios failed with OvsdbClient exception.", e);
-                throw new RuntimeException(e);
-            } catch (TimeoutException e) {
-                LOG.error("ConfigureWifiRadios failed with Timeout.", e);
-                throw new RuntimeException(e);
-            } catch (ExecutionException e) {
-                LOG.error("ConfigureWifiRadios excecution failed.", e);
-                throw new RuntimeException(e);
-            } catch (InterruptedException e) {
-                LOG.error("ConfigureWifiRadios interrupted.", e);
-                throw new RuntimeException(e);
-            }
-        }
         try {
+            CompletableFuture<DatabaseSchema> cfDatabaseSchema = ovsdbClient.getSchema(ovsdbName);
+            DatabaseSchema databaseSchema = cfDatabaseSchema.get();
+            Set<String> columnNames = databaseSchema.getTables().get(wifiRadioConfigDbTable).getColumns().keySet();
+ 
+            for (RadioType radioType : apElementConfiguration.getRadioMap().keySet()) {
+                Map<String, String> hwConfig = new HashMap<>();
+                ElementRadioConfiguration elementRadioConfig = apElementConfiguration.getRadioMap().get(radioType);
+                RfElementConfiguration rfElementConfig = rfConfig.getRfConfig(radioType);
+                if (elementRadioConfig == null || rfElementConfig == null) {
+                    continue;
+                }
+                boolean autoChannelSelection = rfElementConfig.getAutoChannelSelection();
+                int channel = elementRadioConfig.getActiveChannel(autoChannelSelection);
+                LOG.debug("configureWifiRadios autoChannelSelection {} activeChannel {} getChannelNumber {} ", autoChannelSelection, channel,
+                        elementRadioConfig.getChannelNumber());
+                ChannelBandwidth bandwidth = rfElementConfig.getChannelBandwidth();
+                String ht_mode = getBandwidth(bandwidth);
+                RadioConfiguration radioConfig = apElementConfiguration.getAdvancedRadioMap().get(radioType);
+                int beaconInterval = rfElementConfig.getBeaconInterval();
+                boolean enabled = radioConfig.getRadioAdminState().equals(StateSetting.enabled);
+                boolean autoCellSizeSelection = rfElementConfig.getAutoCellSizeSelection();
+                int txPower = 0;
+                if (autoCellSizeSelection) {
+                    if (elementRadioConfig.getEirpTxPower() != null) {
+                        txPower = elementRadioConfig.getEirpTxPower().getValue();
+                    }
+                } else {
+                    txPower = rfElementConfig.getEirpTxPower();
+                }
+                String hwMode = getHwMode(rfElementConfig);
+                String freqBand = getHwConfigAndFreq(radioType, hwConfig);
+                String radioName = null;
+                for (String key : provisionedRadioConfigs.keySet()) {
+                    if (provisionedRadioConfigs.get(key).freqBand.equals(freqBand)) {
+                        radioName = key;
+                        break;
+                    }
+                }
+                if (radioName == null)
+                    continue;
+                String ifName = null; // for vifConfigs
+                if (radioName.equals(radio0)) {
+                    ifName = defaultRadio0;
+                } else if (radioName.equals(radio1)) {
+                    ifName = defaultRadio1;
+                } else if (radioName.equals(radio2)) {
+                    ifName = defaultRadio2;
+                }
+                if (ifName == null)
+                    continue;
+                Set<Uuid> vifUuidsForRadio = new HashSet<>();
+                for (String key : vifConfigs.keySet()) {
+                    if (key.contains(ifName))
+                        vifUuidsForRadio.add(vifConfigs.get(key).uuid);
+                }
+                int mimoMode = MimoMode.none.getId();
+                if (rfElementConfig.getMimoMode() != null) {
+                    mimoMode = rfElementConfig.getMimoMode().getId();
+                }
+                int maxNumClients = 0;
+                if (rfElementConfig.getMaxNumClients() != null) {
+                    maxNumClients = rfElementConfig.getMaxNumClients();
+                }
+                try {
+                    configureWifiRadios(freqBand, channel, hwConfig, country.toUpperCase(), beaconInterval, enabled, hwMode, ht_mode, txPower, mimoMode,
+                            vifUuidsForRadio, operations, maxNumClients,columnNames);
+                } catch (OvsdbClientException e) {
+                    LOG.error("ConfigureWifiRadios failed with OvsdbClient exception.", e);
+                    throw new RuntimeException(e);
+                } catch (TimeoutException e) {
+                    LOG.error("ConfigureWifiRadios failed with Timeout.", e);
+                    throw new RuntimeException(e);
+                } catch (ExecutionException e) {
+                    LOG.error("ConfigureWifiRadios excecution failed.", e);
+                    throw new RuntimeException(e);
+                } catch (InterruptedException e) {
+                    LOG.error("ConfigureWifiRadios interrupted.", e);
+                    throw new RuntimeException(e);
+                }
+            }
+
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
             for (OperationResult res : result) {
@@ -227,7 +233,7 @@ public class OvsdbRadioConfig extends OvsdbDaoBase {
     }
 
     void configureWifiRadios(String freqBand, int channel, Map<String, String> hwConfig, String country, int beaconInterval, boolean enabled, String hwMode,
-            String ht_mode, int txPower, int mimoMode, Set<Uuid> vifUuidsForRadio, List<Operation> operations, int maxNumClients)
+            String ht_mode, int txPower, int mimoMode, Set<Uuid> vifUuidsForRadio, List<Operation> operations, int maxNumClients, Set<String> tableColumns)
             throws OvsdbClientException, TimeoutException, ExecutionException, InterruptedException {
         Map<String, Value> updateColumns = new HashMap<>();
         List<Condition> conditions = new ArrayList<>();
@@ -253,7 +259,7 @@ public class OvsdbRadioConfig extends OvsdbDaoBase {
             updateColumns.put("hw_mode", new Atom<>(hwMode));
         }
         configureCustomOptionsMap(maxNumClients, updateColumns);
-        setTxAndRxChainmask(mimoMode, updateColumns);
+        setTxAndRxChainmask(mimoMode, updateColumns,tableColumns);
         if (vifUuidsForRadio.size() > 0) {
             com.vmware.ovsdb.protocol.operation.notation.Set vifConfigUuids = com.vmware.ovsdb.protocol.operation.notation.Set.of(vifUuidsForRadio);
             updateColumns.put("vif_configs", vifConfigUuids);
@@ -270,7 +276,7 @@ public class OvsdbRadioConfig extends OvsdbDaoBase {
         updateColumns.put("custom_options", customOptionsMap);
     }
 
-    void setTxAndRxChainmask(int mimoMode, Map<String, Value> updateColumns) {
+    void setTxAndRxChainmask(int mimoMode, Map<String, Value> updateColumns, Set<String> tableColumns) {
         /*
          * Chainmask is a bitmask, so map mimo mode values accordingly
          * Note values 0, 1 remain unchanged
@@ -314,7 +320,9 @@ public class OvsdbRadioConfig extends OvsdbDaoBase {
                 break;
         }
         updateColumns.put("tx_chainmask", new Atom<>(mimoMode));
-        updateColumns.put("rx_chainmask", new Atom<>(mimoMode));
+        if (tableColumns.contains("rx_chainmask")) {
+            updateColumns.put("rx_chainmask", new Atom<>(mimoMode));
+        }
     }
 
 }

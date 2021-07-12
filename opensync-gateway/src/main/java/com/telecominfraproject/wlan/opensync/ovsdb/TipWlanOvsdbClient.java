@@ -258,7 +258,8 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             ovsdbDao.configureStatsFromProfile(ovsdbClient, opensyncAPConfig);
             if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
                 ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
-            }
+            }        
+            ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
             ovsdbDao.updateEventReportingInterval(ovsdbClient, collectionIntervalSecEvent);
 
         } else {

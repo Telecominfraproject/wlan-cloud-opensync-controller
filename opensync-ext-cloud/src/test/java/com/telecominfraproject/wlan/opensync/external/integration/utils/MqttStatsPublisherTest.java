@@ -148,8 +148,12 @@ public class MqttStatsPublisherTest {
     public void testExtractCustomerIdFromTopic() {
         String topic = "/ap/Test_Client_21P10C68818122/opensync";
         OvsdbSession session = Mockito.mock(OvsdbSession.class);
-        Mockito.when(session.getCustomerId()).thenReturn(2);
+        Equipment ce = Mockito.mock(Equipment.class);
+        Mockito.when(ce.getCustomerId()).thenReturn(2);
 
+        Mockito.when(
+                equipmentServiceInterface.getByInventoryIdOrNull(ArgumentMatchers.eq("Test_Client_21P10C68818122")))
+                .thenReturn(ce);
         Mockito.when(ovsdbSessionMapInterface.getSession("Test_Client_21P10C68818122")).thenReturn(session);
 
         assertEquals(2, opensyncExternalIntegrationMqttProcessor.extractCustomerIdFromTopic(topic));
@@ -173,8 +177,7 @@ public class MqttStatsPublisherTest {
         Equipment equipment = new Equipment();
 
         equipment.setDetails(ApElementConfiguration.createWithDefaults());
-
-        equipment.setId(1L);
+        equipment.setId(1L); equipment.setCustomerId(2);
 
         Mockito.when(
                 equipmentServiceInterface.getByInventoryIdOrNull(ArgumentMatchers.eq("Test_Client_21P10C68818122")))
@@ -193,7 +196,6 @@ public class MqttStatsPublisherTest {
 
         OvsdbSession session = Mockito.mock(OvsdbSession.class);
         Mockito.when(session.getEquipmentId()).thenReturn(1L);
-        Mockito.when(session.getCustomerId()).thenReturn(2);
 
         Mockito.when(ovsdbSessionMapInterface.getSession("Test_Client_21P10C68818122")).thenReturn(session);
 

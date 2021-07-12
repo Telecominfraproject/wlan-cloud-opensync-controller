@@ -263,7 +263,8 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
             for (sts.OpensyncStats.EventReport.ClientSession apEventClientSession : eventReport.getClientSessionList()) {
 
                 LOG.debug("Processing EventReport::ClientSession for AP {}", apId);
-                // for the following MQTT events, the client/client session is first updated, then the real time event is published, asynchronously.
+                // for the following MQTT events, the client/client session is first updated, then the real time event
+                // is published, asynchronously.
                 if (apEventClientSession.hasClientAuthEvent()) {
                     processClientAuthEvent(customerId, equipmentId, locationId, apEventClientSession);
                 }
@@ -547,7 +548,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         clientSession.getDetails().setAssociationState(AssociationState._802_11_Authenticated);
         clientSession.getDetails().setLastEventTimestamp(apClientEvent.getTimestampMs());
         clientSession = clientServiceInterface.updateSession(clientSession);
-        
+
         realtimeEventPublisher.publishClientAuthSystemEvent(customerId, equipmentId, locationId, apEventClientSession.getClientAuthEvent());
 
     }
@@ -1178,7 +1179,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
             LOG.debug("Cleared device threshold alarm {}", alarm);
         });
     }
-   
+
     @Async
     void raiseDeviceThresholdAlarm(int customerId, long equipmentId, AlarmCode alarmCode, long timestampMs) {
         // Raise an alarm for temperature
@@ -1382,35 +1383,36 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
             for (Client cl : clReport.getClientListList()) {
 
                 if (cl.getMacAddress() == null) {
-                    LOG.trace("No mac address for Client {}, cannot set device mac address for client in ClientMetrics.", cl);
+                    LOG.info("No mac address for Client {}, cannot set device mac address for client in ClientMetrics.", cl);
                     continue;
                 }
 
-                LOG.debug("Processing ClientReport from AP {}", cl.getMacAddress());
-
-                ServiceMetric smr = new ServiceMetric(customerId, equipmentId, MacAddress.valueOf(cl.getMacAddress()));
-                smr.setLocationId(locationId);
-                metricRecordList.add(smr);
-
-                smr.setClientMac(MacAddress.valueOf(cl.getMacAddress()).getAddressAsLong());
-
-                // clReport.getChannel();
-                ClientMetrics cMetrics = new ClientMetrics();
-                smr.setDetails(cMetrics);
-                cMetrics.setSourceTimestampMs(clReport.getTimestampMs());
-
-                Integer periodLengthSec = 60; // matches what's configured by
-                // OvsdbDao.configureStats(OvsdbClient)
-                cMetrics.setPeriodLengthSec(periodLengthSec);
-
-                cMetrics.setRadioType(OvsdbToWlanCloudTypeMappingUtility.getRadioTypeFromOpensyncStatsRadioBandType(clReport.getBand()));
-
                 ClientSession session = clientServiceInterface.getSessionOrNull(customerId, equipmentId, MacAddress.valueOf(cl.getMacAddress()));
-                if (session != null) {
+
+                if (session == null) {
+                    LOG.info("No session for Client {}, ignore.");
+                    continue;
+                }
+
+                if (cl.hasStats()) {
+                    LOG.debug("Processing ClientReport from AP for client device {}", cl.getMacAddress());
+                    ServiceMetric smr = new ServiceMetric(customerId, equipmentId, MacAddress.valueOf(cl.getMacAddress()));
+                    smr.setLocationId(locationId);
+                    metricRecordList.add(smr);
+                    smr.setClientMac(MacAddress.valueOf(cl.getMacAddress()).getAddressAsLong());
+
+                    // clReport.getChannel();
+                    ClientMetrics cMetrics = new ClientMetrics();
+                    smr.setDetails(cMetrics);
+                    cMetrics.setSourceTimestampMs(clReport.getTimestampMs());
+
+                    Integer periodLengthSec = 60; // matches what's configured by
+                    // OvsdbDao.configureStats(OvsdbClient)
+                    cMetrics.setPeriodLengthSec(periodLengthSec);
+                    cMetrics.setRadioType(OvsdbToWlanCloudTypeMappingUtility.getRadioTypeFromOpensyncStatsRadioBandType(clReport.getBand()));
                     cMetrics.setSessionId(session.getDetails().getSessionId());
                     LOG.debug("populateApClientMetrics Session Id {}", session.getDetails().getSessionId());
-                }
-                if (cl.hasStats()) {
+
                     if (cl.getStats().hasRssi()) {
                         int rssi = cl.getStats().getRssi();
                         cMetrics.setRssi(rssi);
@@ -1463,9 +1465,10 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                     if (cl.getStats().hasTxRetries()) {
                         cMetrics.setNumTxDataRetries((int) cl.getStats().getTxRetries());
                     }
-                }
 
-                LOG.debug("ApClientMetrics Report {}", cMetrics);
+                    LOG.debug("ApClientMetrics Report {}", cMetrics);
+
+                }
 
             }
 
@@ -1581,7 +1584,8 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                     }
                 }
             }
-            if (LOG.isTraceEnabled()) LOG.trace("Client Report Date is {}", new Date(clientReport.getTimestampMs()));
+            if (LOG.isTraceEnabled())
+                LOG.trace("Client Report Date is {}", new Date(clientReport.getTimestampMs()));
             int numConnectedClients = 0;
             for (Client client : clientReport.getClientListList()) {
                 if (client.hasStats()) {
@@ -1792,10 +1796,9 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
             return -1;
         }
 
-        OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
-
-        if (ovsdbSession != null) {
-            return ovsdbSession.getCustomerId();
+        Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
+        if (ce != null) {
+            return ce.getCustomerId();
         }
 
         return -1;

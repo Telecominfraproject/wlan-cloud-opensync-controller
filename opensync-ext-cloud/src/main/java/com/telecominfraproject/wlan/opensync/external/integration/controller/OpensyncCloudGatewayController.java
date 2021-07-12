@@ -254,7 +254,7 @@ public class OpensyncCloudGatewayController {
         if (null != command.getRoutingId()) {
             if (!command.getRoutingId().equals(session.getRoutingId())) {
 
-                LOG.info("[C:{} E:{} R:{}] Stale routing entry ({}) detected", session.getCustomerId(), command.getInventoryId(), session.getRoutingId(),
+                LOG.info("[E:{} R:{}] Stale routing entry ({}) detected", command.getInventoryId(), session.getRoutingId(),
                         command.getRoutingId());
 
                 return new EquipmentCommandResponse(CEGWCommandResultCode.NoRouteToCE, "Inactive Route Identifer", command,

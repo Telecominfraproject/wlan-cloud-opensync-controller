@@ -63,7 +63,6 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
 
             provisionWifiStatsConfigClient(radioConfigs, ovsdbGet.getProvisionedWifiStatsConfigs(ovsdbClient),
                     operations);
-
             if (!operations.isEmpty()) {
                 LOG.debug("Sending batch of operations : {} ", operations);
 
@@ -78,11 +77,7 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
                     }
                 }
             }
-
-            // TODO: when schema support is added, these should be part of the
-            // bulk provisioning operation above.
             provisionVideoVoiceStats(ovsdbClient);
-
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -248,7 +243,6 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
                     rowColumns.put("report_type", new Atom<>("raw"));
                     rowColumns.put("sampling_interval", new Atom<>(10));
                     rowColumns.put("stats_type", new Atom<>("client"));
-                    rowColumns.put("survey_interval_ms", new Atom<>(65));
                     Row updateRow = new Row(rowColumns);
                     operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
 
@@ -257,6 +251,7 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
         });
 
     }
+
 
     void provisionWifiStatsConfigNeighbor(Map<String, Set<Integer>> allowedChannels,
             Map<String, WifiRadioConfigInfo> radioConfigs, Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs,
@@ -280,6 +275,7 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
                     rowColumns.put("reporting_interval", new Atom<>(defaultOffChannelReportingIntervalSeconds));
                     rowColumns.put("stats_type", new Atom<>("neighbor"));
                     rowColumns.put("survey_type", new Atom<>("off-chan"));
+                    rowColumns.put("survey_interval_ms", new Atom<>(10));
 
                     Row updateRow = new Row(rowColumns);
                     operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
@@ -299,6 +295,7 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
                     rowColumns.put("reporting_interval", new Atom<>(defaultReportingIntervalSeconds));
                     rowColumns.put("stats_type", new Atom<>("neighbor"));
                     rowColumns.put("survey_type", new Atom<>("on-chan"));
+                    rowColumns.put("survey_interval_ms", new Atom<>(0));
 
                     Row updateRow = new Row(rowColumns);
                     operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
@@ -354,8 +351,8 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
                     rowColumns.put("report_type", new Atom<>("raw"));
                     rowColumns.put("stats_type", new Atom<>("survey"));
                     rowColumns.put("survey_type", new Atom<>("off-chan"));
-                    rowColumns.put("sampling_interval", new Atom<>(10));
-                    rowColumns.put("survey_interval_ms", new Atom<>(50));
+                    rowColumns.put("sampling_interval", new Atom<>(0));
+                    rowColumns.put("survey_interval_ms", new Atom<>(10));
                     rowColumns.put("threshold", thresholds);
                     Row updateRow = new Row(rowColumns);
                     operations.add(new Insert(wifiStatsConfigDbTable, updateRow));

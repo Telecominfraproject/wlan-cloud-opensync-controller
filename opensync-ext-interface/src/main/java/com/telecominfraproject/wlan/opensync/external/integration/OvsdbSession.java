@@ -33,12 +33,5 @@ public class OvsdbSession {
     public void setEquipmentId(long equipmentId) {
         this.equipmentId = equipmentId;
     }
-    public int getCustomerId() {
-        return customerId;
-    }
-    public void setCustomerId(int customerId) {
-        this.customerId = customerId;
-    }
-    
     
 }
