@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -39,6 +40,7 @@ import com.vmware.ovsdb.protocol.operation.result.ErrorResult;
 import com.vmware.ovsdb.protocol.operation.result.InsertResult;
 import com.vmware.ovsdb.protocol.operation.result.OperationResult;
 import com.vmware.ovsdb.protocol.operation.result.UpdateResult;
+import com.vmware.ovsdb.protocol.schema.DatabaseSchema;
 import com.vmware.ovsdb.service.OvsdbClient;
 
 @Component
@@ -138,60 +140,70 @@ public class OvsdbRrmConfig extends OvsdbDaoBase {
     void configureWifiRrm(OvsdbClient ovsdbClient, String freqBand, int backupChannel,
             AutoOrManualValue probeResponseThreshold, AutoOrManualValue clientDisconnectThreshold,
             ManagementRate managementRate, RadioBestApSettings bestApSettings, MulticastRate multicastRate)
-            throws OvsdbClientException, TimeoutException, ExecutionException, InterruptedException {
+                    throws OvsdbClientException, TimeoutException, ExecutionException, InterruptedException {
+
+        CompletableFuture<DatabaseSchema> cfDatabaseSchema = ovsdbClient.getSchema(ovsdbName);
+        DatabaseSchema databaseSchema = cfDatabaseSchema.get();
+        Set<String> columnNames = databaseSchema.getTables().get(wifiRrmConfigDbTable).getColumns().keySet();
 
         List<Operation> operations = new ArrayList<>();
         Map<String, Value> updateColumns = new HashMap<>();
 
         updateColumns.put("freq_band", new Atom<>(freqBand));
         updateColumns.put("backup_channel", new Atom<>(backupChannel));
-
-        if (multicastRate == null || multicastRate == MulticastRate.auto) {
-            updateColumns.put("mcast_rate", new Atom<>(0));
-        } else {
-            updateColumns.put("mcast_rate", new Atom<>(managementRate.getId()));
+        if (columnNames.contains("freq_band")) updateColumns.put("freq_band", new Atom<>(freqBand));
+        if (columnNames.contains("backup_channel")) updateColumns.put("backup_channel", new Atom<>(backupChannel));
+        if (columnNames.contains("mcast_rate")) {
+            if (multicastRate == null || multicastRate == MulticastRate.auto) {
+                updateColumns.put("mcast_rate", new Atom<>(0));
+            } else {
+                updateColumns.put("mcast_rate", new Atom<>(managementRate.getId()));
+            }
         }
-
-        if (probeResponseThreshold == null || probeResponseThreshold.isAuto()) {
-            updateColumns.put("probe_resp_threshold", new com.vmware.ovsdb.protocol.operation.notation.Set());
-        } else {
-            updateColumns.put("probe_resp_threshold", new Atom<>(probeResponseThreshold.getValue()));
+        if (columnNames.contains("probe_resp_threshold")) {
+            if (probeResponseThreshold == null || probeResponseThreshold.isAuto()) {
+                updateColumns.put("probe_resp_threshold", new com.vmware.ovsdb.protocol.operation.notation.Set());
+            } else {
+                updateColumns.put("probe_resp_threshold", new Atom<>(probeResponseThreshold.getValue()));
+            }
         }
-
-        if (clientDisconnectThreshold == null || clientDisconnectThreshold.isAuto()) {
-            updateColumns.put("client_disconnect_threshold", new com.vmware.ovsdb.protocol.operation.notation.Set());
-        } else {
-            updateColumns.put("client_disconnect_threshold", new Atom<>(clientDisconnectThreshold.getValue()));
+        if (columnNames.contains("client_disconnect_threshold")) {
+            if (clientDisconnectThreshold == null || clientDisconnectThreshold.isAuto()) {
+                updateColumns.put("client_disconnect_threshold", new com.vmware.ovsdb.protocol.operation.notation.Set());
+            } else {
+                updateColumns.put("client_disconnect_threshold", new Atom<>(clientDisconnectThreshold.getValue()));
+            }
         }
-
-        if (managementRate == null || managementRate == ManagementRate.auto) {
-            updateColumns.put("beacon_rate", new Atom<>(0));
-        } else {
-            updateColumns.put("beacon_rate", new Atom<>(managementRate.getId() * 10));
+        if (columnNames.contains("beacon_rate")) {
+            if (managementRate == null || managementRate == ManagementRate.auto) {
+                updateColumns.put("beacon_rate", new Atom<>(0));
+            } else {
+                updateColumns.put("beacon_rate", new Atom<>(managementRate.getId() * 10));
+            }
         }
-
-        if (bestApSettings == null) {
-            updateColumns.put("min_load", new com.vmware.ovsdb.protocol.operation.notation.Set());
-            updateColumns.put("snr_percentage_drop", new com.vmware.ovsdb.protocol.operation.notation.Set());
-        } else {
-            if (bestApSettings.getDropInSnrPercentage() == null) {
+        if (columnNames.contains("min_load") && columnNames.contains("snr_percentage_drop")) {
+            if (bestApSettings == null) {
+                updateColumns.put("min_load", new com.vmware.ovsdb.protocol.operation.notation.Set());
                 updateColumns.put("snr_percentage_drop", new com.vmware.ovsdb.protocol.operation.notation.Set());
             } else {
-                updateColumns.put("snr_percentage_drop", new Atom<>(bestApSettings.getDropInSnrPercentage()));
-            }
-            if (bestApSettings.getMinLoadFactor() == null) {
-                updateColumns.put("min_load", new com.vmware.ovsdb.protocol.operation.notation.Set());
-            } else {
-                updateColumns.put("min_load", new Atom<>(bestApSettings.getMinLoadFactor()));
+                if (bestApSettings.getDropInSnrPercentage() == null) {
+                    updateColumns.put("snr_percentage_drop", new com.vmware.ovsdb.protocol.operation.notation.Set());
+                } else {
+                    updateColumns.put("snr_percentage_drop", new Atom<>(bestApSettings.getDropInSnrPercentage()));
+                }
+                if (bestApSettings.getMinLoadFactor() == null) {
+                    updateColumns.put("min_load", new com.vmware.ovsdb.protocol.operation.notation.Set());
+                } else {
+                    updateColumns.put("min_load", new Atom<>(bestApSettings.getMinLoadFactor()));
+                }
             }
         }
-
         Row row = new Row(updateColumns);
         operations.add(new Insert(wifiRrmConfigDbTable, row));
 
         CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
         OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-        
+
         LOG.debug("Provisioned rrm config with multicastRate {} Mbps for {}", multicastRate, freqBand);
 
         for (OperationResult res : result) {
