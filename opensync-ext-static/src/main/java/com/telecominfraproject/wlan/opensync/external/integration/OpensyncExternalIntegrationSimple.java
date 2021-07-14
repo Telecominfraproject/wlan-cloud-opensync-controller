@@ -207,4 +207,9 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
 
     }
 
+    @Override
+    public void nodeStateDbTableUpdate(List<Map<String, String>> nodeStateAttributes, String apId) {
+        LOG.info("nodeStateDbTableUpdate for AP {}", apId);
+    }
+
 }

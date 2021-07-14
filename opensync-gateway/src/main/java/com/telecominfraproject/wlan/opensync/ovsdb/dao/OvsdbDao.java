@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
+import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
 import com.telecominfraproject.wlan.equipment.models.CellSizeAttributes;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
@@ -86,7 +87,10 @@ public class OvsdbDao extends OvsdbDaoBase {
     }
     
     public void configureNode(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
-        configureNtpServer(ovsdbClient,opensyncAPConfig);configureSyslog(ovsdbClient, opensyncAPConfig);
+        configureNtpServer(ovsdbClient, opensyncAPConfig);
+        configureSyslog(ovsdbClient, opensyncAPConfig);
+        processBlinkRequest(ovsdbClient, opensyncAPConfig.getCustomerEquipment().getInventoryId(),
+                ((ApElementConfiguration) opensyncAPConfig.getCustomerEquipment().getDetails()).isBlinkAllLEDs());
     }
     
     void configureNtpServer(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {

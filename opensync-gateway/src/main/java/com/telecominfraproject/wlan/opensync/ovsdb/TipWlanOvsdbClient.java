@@ -28,6 +28,7 @@ import com.vmware.ovsdb.callback.ConnectionCallback;
 import com.vmware.ovsdb.exception.OvsdbClientException;
 import com.vmware.ovsdb.protocol.methods.*;
 import com.vmware.ovsdb.protocol.operation.notation.Row;
+import com.vmware.ovsdb.protocol.operation.notation.Value;
 import com.vmware.ovsdb.service.OvsdbClient;
 import com.vmware.ovsdb.service.OvsdbPassiveConnectionListener;
 import io.netty.handler.ssl.SslContext;
@@ -258,7 +259,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             ovsdbDao.configureStatsFromProfile(ovsdbClient, opensyncAPConfig);
             if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
                 ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
-            }        
+            }
             ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
             ovsdbDao.updateEventReportingInterval(ovsdbClient, collectionIntervalSecEvent);
 
@@ -288,7 +289,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
         return ovsdbDao.changeRedirectorAddress(ovsdbSession.getOvsdbClient(), apId, newRedirectorAddress);
     }
-    
+
     public String processBlinkRequest(String apId, boolean blinkAllLEDs) {
         OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
         if (ovsdbSession == null) {
@@ -717,20 +718,35 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         CompletableFuture<TableUpdates> nsCf = ovsdbClient.monitor(OvsdbDao.ovsdbName, OvsdbDao.nodeStateTable + "_" + key,
                 new MonitorRequests(ImmutableMap.of(OvsdbDao.nodeStateTable, new MonitorRequest(new MonitorSelect(true, true, true, true)))), tableUpdates -> {
                     LOG.info(OvsdbDao.nodeStateTable + "_" + key + " monitor callback received {}");
-                    tableUpdates.getTableUpdates().forEach((key1, value) -> {
-                        LOG.info("TableUpdate for {}", key1);
-                        value.getRowUpdates().values().forEach(r -> {
-                            if (r.getOld() != null) {
-                                LOG.info("Node_State old row {}", r.getOld().getColumns());
-                            }
-                            if (r.getNew() != null) {
-                                LOG.info("Node_State new row {}", r.getNew().getColumns());
-                            }
-                        });
-
-                    });
+                    extIntegrationInterface.nodeStateDbTableUpdate(processNodeStateTableUpdate(key, tableUpdates), key);
+                    
                 });
-        nsCf.join();
+        extIntegrationInterface.nodeStateDbTableUpdate(processNodeStateTableUpdate(key, nsCf.join()), key);
+    }
+
+    private List<Map<String,String>> processNodeStateTableUpdate(String key, TableUpdates tableUpdates) {
+        List<Map<String, String>> updates = new ArrayList<>();
+        tableUpdates.getTableUpdates().forEach((key1, value) -> {
+            LOG.info("TableUpdate for {}", key1);
+            value.getRowUpdates().values().forEach(r -> {
+                if (r.getOld() != null) {
+                    LOG.info("Node_State old row {}", r.getOld().getColumns());
+                }
+                if (r.getNew() != null) {
+                    LOG.info("Node_State new row {}", r.getNew().getColumns());
+                    Map<String, Value> columns = r.getNew().getColumns();
+                    Map<String, String> update = new HashMap<>();
+                    update.put("key", columns.get("key").toString());
+                    update.put("module", columns.get("module").toString());
+                    update.put("persist", columns.get("persist").toString());
+                    update.put("value", columns.get("value").toString());
+                    updates.add(update);
+                }
+            });
+
+        });
+        
+        return updates;
     }
 
     private void monitorAPCStateTable(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {

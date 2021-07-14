@@ -50,6 +50,8 @@ public interface OpensyncExternalIntegrationInterface {
 
     void apcStateDbTableUpdate(Map<String, String> apcStateAttributes, String apId,
             RowUpdateOperation rowUpdateOperation);
+    
+    void nodeStateDbTableUpdate(List<Map<String, String>> nodeStateAttributes, String apId);
 
     void clearEquipmentStatus(String apId);
 }

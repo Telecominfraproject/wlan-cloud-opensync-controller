@@ -103,6 +103,7 @@ import com.telecominfraproject.wlan.status.equipment.models.EquipmentProtocolSta
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeState;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeState.FailureReason;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeStatusData;
+import com.telecominfraproject.wlan.status.equipment.models.LedStatus;
 import com.telecominfraproject.wlan.status.equipment.models.VLANStatusData;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSID;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSIDs;
@@ -115,12 +116,8 @@ import com.telecominfraproject.wlan.status.models.StatusCode;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
 import com.telecominfraproject.wlan.status.network.models.NetworkAdminStatusData;
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.ApcElectionEvent;
-import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeEventType;
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.ApcElectionEvent.ApcMode;
-
-import sts.OpensyncStats.Report;
-import traffic.NetworkMetadata.FlowReport;
-import wc.stats.IpDnsTelemetry.WCStatsReport;
+import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeEventType;
 
 @org.springframework.context.annotation.Profile("opensync_cloud_config")
 @Component
@@ -182,7 +179,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     @Override
     public void apConnected(String apId, ConnectNodeInfo connectNodeInfo) {
-    	
+
         Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
 
         try {
@@ -511,6 +508,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             }
 
             ((EquipmentAdminStatusData) statusRecord.getDetails()).setStatusCode(StatusCode.normal);
+            if (((EquipmentAdminStatusData) statusRecord.getDetails()).getLedStatus() == null) {
+                ((EquipmentAdminStatusData) statusRecord.getDetails()).setLedStatus(LedStatus.UNKNOWN);
+            }
             // Update the equipment admin status
             statusRecord = statusServiceInterface.update(statusRecord);
 
@@ -890,20 +890,20 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     private void updateApDisconnectedStatus(String apId, Equipment ce) {
         LOG.info("updateApDisconnectedStatus disconnected AP {}", apId);
         try {
-        	Alarm disconnectedAlarm = new Alarm();
+            Alarm disconnectedAlarm = new Alarm();
             disconnectedAlarm.setCustomerId(ce.getCustomerId());
             disconnectedAlarm.setEquipmentId(ce.getId());
             disconnectedAlarm.setAlarmCode(AlarmCode.Disconnected);
-            
+
             AlarmDetails alarmDetails = new AlarmDetails();
-    		alarmDetails.setMessage(AlarmCode.Disconnected.getDescription());
-    		alarmDetails.setAffectedEquipmentIds(List.of(ce.getId()));
-    		alarmDetails.setGeneratedBy(apId);
-    		
-    		disconnectedAlarm.setDetails(alarmDetails);
-            
-    		alarmServiceInterface.create(disconnectedAlarm);
-            
+            alarmDetails.setMessage(AlarmCode.Disconnected.getDescription());
+            alarmDetails.setAffectedEquipmentIds(List.of(ce.getId()));
+            alarmDetails.setGeneratedBy(apId);
+
+            disconnectedAlarm.setDetails(alarmDetails);
+
+            alarmServiceInterface.create(disconnectedAlarm);
+
             Status statusRecord = new Status();
             statusRecord.setCustomerId(ce.getCustomerId());
             statusRecord.setEquipmentId(ce.getId());
@@ -1080,14 +1080,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return; // we don't have the required info to get the
             // radio type yet
         }
-        
+
         int customerId = apNode.getCustomerId();
 
         if ((customerId < 0) || (equipmentId < 0)) {
             LOG.debug("wifiVIFStateDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId, equipmentId, apId);
             return;
         }
-
 
         ApElementConfiguration apElementConfig = (ApElementConfiguration) apNode.getDetails();
 
@@ -1218,14 +1217,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             LOG.debug("wifiRadioStatusDbTableUpdate::Cannot get Equipment for AP {}", apId);
             return;
         }
-        
+
         int customerId = ce.getCustomerId();
         if ((customerId < 0) || (equipmentId < 0)) {
             LOG.debug("wifiRadioStatusDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId, equipmentId, apId);
             return;
         }
-
-
 
         ApElementConfiguration apElementConfiguration = ((ApElementConfiguration) ce.getDetails());
 
@@ -1445,14 +1442,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             LOG.debug("wifiInetStateDbTableUpdate Cannot get customer Equipment for {}", apId);
             return;
         }
-        
+
         int customerId = ce.getCustomerId();
         if ((customerId < 0) || (equipmentId < 0)) {
             LOG.debug("wifiInetStateDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId, equipmentId, apId);
             return;
         }
-
-
 
         Status lanStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.LANINFO);
         if (lanStatus == null) {
@@ -1567,8 +1562,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         if (ovsdbSession == null) {
             LOG.debug("wifiAssociatedClientsDbTableUpdate::Cannot get Session for AP {}", apId);
             return;
-        }    
-        
+        }
+
         long equipmentId = ovsdbSession.getEquipmentId();
         Equipment ce = equipmentServiceInterface.getOrNull(equipmentId);
 
@@ -1576,14 +1571,12 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             LOG.debug("wifiAssociatedClientsDbTableUpdate Cannot get customer Equipment for {}", apId);
             return;
         }
-        
+
         int customerId = ce.getCustomerId();
         if ((customerId < 0) || (equipmentId < 0)) {
             LOG.debug("wifiAssociatedClientsDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId, equipmentId, apId);
             return;
         }
-
-
 
         if ((wifiAssociatedClients == null) || wifiAssociatedClients.isEmpty()) {
             return;
@@ -1677,8 +1670,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             LOG.info("awlanNodeDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId, equipmentId, apId);
             return;
         }
-
-
 
         int upgradeStatusFromAp = node.getUpgradeStatus();
         EquipmentUpgradeState fwUpgradeState = null;
@@ -2006,8 +1997,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             LOG.debug("updateDhcpIpClientFingerprints::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId, equipmentId, apId);
             return;
         }
-
-
 
         long locationId = ce.getLocationId();
 
@@ -2378,20 +2367,20 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     @Override
     public void apcStateDbTableUpdate(Map<String, String> apcStateAttributes, String apId, RowUpdateOperation rowUpdateOperation) {
         LOG.info("apcStateDbTableUpdate {} operations on AP {} with values {} ", rowUpdateOperation, apId, apcStateAttributes);
-        
+
         OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
         if (ovsdbSession == null) {
             LOG.info("apcStateDbTableUpdate::Cannot get Session for AP {}", apId);
             return;
         }
-        
+
         long equipmentId = ovsdbSession.getEquipmentId();
         Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
         if (ce == null) {
             LOG.info("apcStateDbTableUpdate::Cannot get Equipment for AP {}", apId);
             return;
         }
-        
+
         int customerId = ce.getCustomerId();
         if ((customerId < 0) || (equipmentId < 0)) {
             LOG.info("apcStateDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId, equipmentId, apId);
@@ -2431,5 +2420,60 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 new ApcElectionEvent(drIpAddr, bdrIpAddr, localIpV4Addr, drIpAddr, mode, Boolean.valueOf(apcStateAttributes.get("enabled")),
                         RealTimeEventType.APC_Election_event, customerId, ce.getLocationId(), equipmentId, System.currentTimeMillis());
         mqttMessageProcessor.publishSystemEventFromTableStateMonitor(electionEvent);
+    }
+
+    @Override
+    public void nodeStateDbTableUpdate(List<Map<String, String>> nodeStateAttributes, String apId) {
+        LOG.debug("start nodeStateDbTableUpdate for {}", apId);
+        if (LOG.isTraceEnabled())
+            LOG.trace("nodeStateDbTableUpdate tableAttributes {}", nodeStateAttributes);
+
+        OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
+        if (ovsdbSession == null) {
+            LOG.warn("nodeStateDbTableUpdate::Cannot get Session for AP {}", apId);
+            return;
+        }
+
+        long equipmentId = ovsdbSession.getEquipmentId();
+        Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
+        if (ce == null) {
+            LOG.warn("nodeStateDbTableUpdate::Cannot get Equipment for AP {}", apId);
+            return;
+        }
+
+        int customerId = ce.getCustomerId();
+        if ((customerId < 0) || (equipmentId < 0)) {
+            LOG.warn("nodeStateDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId, equipmentId, apId);
+            return;
+        }
+
+        Status eqAdminStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.EQUIPMENT_ADMIN);
+
+        LedStatus ledStatus = null;
+        for (Map<String, String> nsa : nodeStateAttributes) {
+            if (nsa.get("module").equals("led")) {
+                if (nsa.get("key").equals("led_blink") && nsa.get("value").equals("on")) {
+                    ledStatus = LedStatus.led_blink;
+                } else if (nsa.get("key").equals("led_off") && nsa.get("value").equals("off")) {
+                    ledStatus = LedStatus.led_off;
+                } else {
+                    ledStatus = LedStatus.UNKNOWN;
+                }
+            }
+        }
+
+        if (ledStatus != null) {
+            if (eqAdminStatus != null) {
+                if (((EquipmentAdminStatusData) eqAdminStatus.getDetails()).getLedStatus() == null
+                        || !((EquipmentAdminStatusData) eqAdminStatus.getDetails()).getLedStatus().equals(ledStatus)) {
+                    ((EquipmentAdminStatusData) eqAdminStatus.getDetails()).setLedStatus(ledStatus);
+                    eqAdminStatus = statusServiceInterface.update(eqAdminStatus);
+                    LOG.debug("nodeStateDbTableUpdate updated status {}", eqAdminStatus);
+                }
+            }
+        }
+
+        LOG.debug("finished nodeStateDbTableUpdate for {}", apId);
+
     }
 }
