@@ -54,8 +54,6 @@ public class OvsdbRadioConfig extends OvsdbDaoBase {
                 }
                 boolean autoChannelSelection = rfElementConfig.getAutoChannelSelection();
                 int channel = elementRadioConfig.getActiveChannel(autoChannelSelection);
-                LOG.debug("configureWifiRadios autoChannelSelection {} activeChannel {} getChannelNumber {} ", autoChannelSelection, channel,
-                        elementRadioConfig.getChannelNumber());
                 ChannelBandwidth bandwidth = rfElementConfig.getChannelBandwidth();
                 String ht_mode = getBandwidth(bandwidth);
                 RadioConfiguration radioConfig = apElementConfiguration.getAdvancedRadioMap().get(radioType);
@@ -79,6 +77,10 @@ public class OvsdbRadioConfig extends OvsdbDaoBase {
                         break;
                     }
                 }
+                LOG.debug(
+                        "configureWifiRadios for AP {} autoChannelSelection={} activeChannel={} getChannelNumber={} radioName={} freqBand={} hwMode={} txPower={} enabled={} adminStateSetting={} autoCellSizeSelection={}",
+                        opensyncAPConfig.getCustomerEquipment().getInventoryId(), autoChannelSelection, channel, elementRadioConfig.getChannelNumber(), radioName, freqBand, hwMode, txPower,
+                        enabled, radioConfig.getRadioAdminState(), autoCellSizeSelection);
                 if (radioName == null)
                     continue;
                 String ifName = null; // for vifConfigs
@@ -125,8 +127,13 @@ public class OvsdbRadioConfig extends OvsdbDaoBase {
             CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
             OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
             for (OperationResult res : result) {
-                LOG.debug("Op Result {}", res);
+                LOG.trace("configureWifiRadios Op Result {}", res);
             }
+            
+            ovsdbGet.getProvisionedWifiRadioConfigs(ovsdbClient).entrySet().forEach(r -> {
+                LOG.debug("configureWifiRadios for AP {} Wifi_Radio_Config for if_name:{}\n{}",  opensyncAPConfig.getCustomerEquipment().getInventoryId(), r.getKey(),r.getValue());
+            });
+
         } catch (OvsdbClientException | ExecutionException | InterruptedException | TimeoutException e) {
             LOG.error("configureWifiRadios error", e);
             throw new RuntimeException(e);
