@@ -1140,7 +1140,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                     }                    
                     radioUtil.setIbss(pctIBSS);
                     
-                    int nonWifi = (busy - busyTx - busySelf) / totalDurationMs;
+                    int nonWifi = (busy - (busyTx + busyRx)) / totalDurationMs;
                     checkIfOutOfBound("nonWifi", nonWifi, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
                     radioUtil.setNonWifi(nonWifi);
 
