@@ -1126,13 +1126,21 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                     checkIfOutOfBound("pctBusyTx", pctBusyTx, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
 
                     radioUtil.setAssocClientTx(pctBusyTx);
-                    int pctBusyRx = busyRx / totalDurationMs;
+                    int pctBusyRx = busySelf / totalDurationMs;
                     checkIfOutOfBound("pctBusyRx", pctBusyRx, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
                     radioUtil.setAssocClientRx(pctBusyRx);
 
-                    double pctIBSS = (busyTx + busySelf) / totalDurationMs;
+                    double pctIBSS = (busyTx + busySelf) / totalDurationMs;        
+                    if (pctIBSS > 100D || pctIBSS < 0D) {
+                        LOG.warn(
+                                "Calculated value for {} {} is out of bounds on totalDurationMs {} for survey.getBand {}. busyTx {} busyRx {} busy {} busySelf {} "
+                                        + " survey.getTimestampMs {}, survey.getSurveyListList {}",
+                                "pctIBSS", pctIBSS, totalDurationMs, survey.getBand(), busyTx, busyRx, busy, busySelf, survey.getTimestampMs(),
+                                survey.getSurveyListList());
+                    }                    
                     radioUtil.setIbss(pctIBSS);
-                    int nonWifi = (busy - (busyTx + busyRx)) / totalDurationMs;
+                    
+                    int nonWifi = (busy - busyTx - busySelf) / totalDurationMs;
                     checkIfOutOfBound("nonWifi", nonWifi, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
                     radioUtil.setNonWifi(nonWifi);
 
