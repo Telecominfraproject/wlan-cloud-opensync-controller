@@ -5,6 +5,7 @@ import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -23,7 +24,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
 import com.telecominfraproject.wlan.alarm.AlarmServiceInterface;
 import com.telecominfraproject.wlan.alarm.models.Alarm;
 import com.telecominfraproject.wlan.alarm.models.AlarmCode;
@@ -72,7 +72,6 @@ import com.telecominfraproject.wlan.servicemetric.channelinfo.models.ChannelInfo
 import com.telecominfraproject.wlan.servicemetric.channelinfo.models.ChannelInfoReports;
 import com.telecominfraproject.wlan.servicemetric.client.models.ClientMetrics;
 import com.telecominfraproject.wlan.servicemetric.models.ServiceMetric;
-import com.telecominfraproject.wlan.servicemetric.models.ServiceMetricDataType;
 import com.telecominfraproject.wlan.servicemetric.neighbourscan.models.NeighbourReport;
 import com.telecominfraproject.wlan.servicemetric.neighbourscan.models.NeighbourScanReports;
 import com.telecominfraproject.wlan.status.StatusServiceInterface;
@@ -152,6 +151,9 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
     @Value("${tip.wlan.mqttStatsPublisher.reportProcessingThresholdSec:30}")
     public int reportProcessingThresholdSec;
 
+    @Value("${tip.wlan.mqttStatsPublisher.statsTimeDriftThresholdSec:300}")
+    public int statsTimeDriftThresholdSec;
+
     @Override
     @Async
     public void processMqttMessage(String topic, Report report) {
@@ -204,8 +206,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
 
             if (!metricRecordList.isEmpty()) {
                 long serviceMetricTimestamp = System.currentTimeMillis();
-                LOG.debug("Current timestamp for service metrics is {}", serviceMetricTimestamp);
-                metricRecordList.stream().forEach(smr -> {
+                metricRecordList.stream().forEach(smr -> {              
                     smr.setCreatedTimestamp(serviceMetricTimestamp);
                     if (smr.getLocationId() == 0)
                         smr.setLocationId(locationId);
@@ -213,6 +214,15 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                         smr.setCustomerId(customerId);
                     if (smr.getEquipmentId() == 0L)
                         smr.setEquipmentId(equipmentId);
+                    
+                    long sourceTimestamp = smr.getDetails().getSourceTimestampMs();
+                    long diffMillis = serviceMetricTimestamp - sourceTimestamp;
+                    long thresholdMillis = statsTimeDriftThresholdSec * 1000L;                    
+                    if (diffMillis > thresholdMillis) {
+                        double diffSec = diffMillis / 1000D;
+                        LOG.warn("AP {} stats report is {} seconds behind cloud. ServiceMetric {} sourceTimestampMs {} createdTimestampMs {}.", apId,diffSec,  smr.getDataType(), sourceTimestamp, serviceMetricTimestamp);
+                    } 
+                    
                 });
                 long publishStart = System.nanoTime();
                 cloudEventDispatcherInterface.publishMetrics(metricRecordList);
@@ -1405,7 +1415,6 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                     ClientMetrics cMetrics = new ClientMetrics();
                     smr.setDetails(cMetrics);
                     cMetrics.setSourceTimestampMs(clReport.getTimestampMs());
-
                     Integer periodLengthSec = 60; // matches what's configured by
                     // OvsdbDao.configureStats(OvsdbClient)
                     cMetrics.setPeriodLengthSec(periodLengthSec);
@@ -1542,7 +1551,6 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         ServiceMetric smr = new ServiceMetric(customerId, equipmentId);
         smr.setLocationId(locationId);
         ApSsidMetrics apSsidMetrics = new ApSsidMetrics();
-
         smr.setDetails(apSsidMetrics);
         metricRecordList.add(smr);
 
