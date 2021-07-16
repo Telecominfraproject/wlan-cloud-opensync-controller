@@ -554,7 +554,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                 }
                 boolean enableProxyArpForHotspot = false;
                 if (ssidConfig.getEnableProxyArpForHotspot() != null) {
-                    enableProxyArpForHotspot = false;
+                    enableProxyArpForHotspot = ssidConfig.getEnableProxyArpForHotspot();
                 }
                 try {
                     configureSingleSsid(ovsdbClient, ifName, ssidConfig.getSsid(), ssidBroadcast, security, vlanId, rrmEnabled, enable80211r, mobilityDomain,
