@@ -190,7 +190,7 @@ public class RealtimeEventPublisher {
         clientEvent.setRadioType(OvsdbToWlanCloudTypeMappingUtility
                 .getRadioTypeFromOpensyncStatsRadioBandType(clientConnectEvent.getBand()));
         clientEvent.setSsid(clientConnectEvent.getSsid());
-        clientEvent.setSessionId(clientConnectEvent.getSessionId());
+        clientEvent.setSessionId(Long.toUnsignedString( clientConnectEvent.getSessionId()));
 
         if (clientConnectEvent.hasFbtUsed()) {
             clientEvent.setFbtUsed(clientConnectEvent.getFbtUsed());
@@ -278,7 +278,7 @@ public class RealtimeEventPublisher {
         com.telecominfraproject.wlan.client.models.events.realtime.ClientDisconnectEvent clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientDisconnectEvent(
                 clientDisconnectEvent.getTimestampMs());
         clientEvent.setClientMacAddress(MacAddress.valueOf(clientDisconnectEvent.getStaMac()));
-        clientEvent.setSessionId(clientDisconnectEvent.getSessionId());
+        clientEvent.setSessionId(Long.toUnsignedString( clientDisconnectEvent.getSessionId()));
         clientEvent.setRadioType(OvsdbToWlanCloudTypeMappingUtility
                 .getRadioTypeFromOpensyncStatsRadioBandType(clientDisconnectEvent.getBand()));
         clientEvent.setSsid(clientDisconnectEvent.getSsid());
@@ -326,7 +326,7 @@ public class RealtimeEventPublisher {
 
         com.telecominfraproject.wlan.client.models.events.realtime.ClientAuthEvent clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientAuthEvent(
                 clientAuthEvent.getTimestampMs());
-        clientEvent.setSessionId(clientAuthEvent.getSessionId());
+        clientEvent.setSessionId(Long.toUnsignedString( clientAuthEvent.getSessionId()));
         clientEvent.setSsid(clientAuthEvent.getSsid());
         clientEvent.setClientMacAddress(MacAddress.valueOf(clientAuthEvent.getStaMac()));
         clientEvent.setRadioType(OvsdbToWlanCloudTypeMappingUtility
@@ -352,7 +352,7 @@ public class RealtimeEventPublisher {
         com.telecominfraproject.wlan.client.models.events.realtime.ClientAssocEvent clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientAssocEvent(
                 clientAssocEvent.getTimestampMs());
 
-        clientEvent.setSessionId(clientAssocEvent.getSessionId());
+        clientEvent.setSessionId(Long.toUnsignedString( clientAssocEvent.getSessionId()));
         clientEvent.setSsid(clientAssocEvent.getSsid());
         clientEvent.setClientMacAddress(MacAddress.valueOf(clientAssocEvent.getStaMac()));
         clientEvent.setRadioType(OvsdbToWlanCloudTypeMappingUtility
@@ -403,7 +403,7 @@ public class RealtimeEventPublisher {
         com.telecominfraproject.wlan.client.models.events.realtime.ClientFailureEvent clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientFailureEvent(
                 clientFailureEvent.getTimestampMs());
 
-        clientEvent.setSessionId(clientFailureEvent.getSessionId());
+        clientEvent.setSessionId(Long.toUnsignedString( clientFailureEvent.getSessionId()));
         clientEvent.setClientMacAddress(MacAddress.valueOf(clientFailureEvent.getStaMac()));
         clientEvent.setSsid(clientFailureEvent.getSsid());
 
@@ -430,7 +430,7 @@ public class RealtimeEventPublisher {
         com.telecominfraproject.wlan.client.models.events.realtime.ClientFirstDataEvent clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientFirstDataEvent(
                 clientFirstDataEvent.getTimestampMs());
 
-        clientEvent.setSessionId(clientFirstDataEvent.getSessionId());
+        clientEvent.setSessionId(Long.toUnsignedString( clientFirstDataEvent.getSessionId()));
         clientEvent.setClientMacAddress(MacAddress.valueOf(clientFirstDataEvent.getStaMac()));
 
         if (clientFirstDataEvent.hasFdataTxUpTsInUs()) {
@@ -457,7 +457,7 @@ public class RealtimeEventPublisher {
         com.telecominfraproject.wlan.client.models.events.realtime.ClientIdEvent clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientIdEvent(
                 clientIdEvent.getTimestampMs());
 
-        clientEvent.setSessionId(clientIdEvent.getSessionId());
+        clientEvent.setSessionId(Long.toUnsignedString( clientIdEvent.getSessionId()));
         clientEvent.setClientMacAddress(MacAddress.valueOf(clientIdEvent.getCltMac()));
         if (clientIdEvent.hasCltId()) {
             clientEvent.setUserId(clientIdEvent.getCltId());
@@ -478,7 +478,7 @@ public class RealtimeEventPublisher {
         com.telecominfraproject.wlan.client.models.events.realtime.ClientIpAddressEvent clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientIpAddressEvent(
                 clientIpEvent.getTimestampMs());
 
-        clientEvent.setSessionId(clientIpEvent.getSessionId());
+        clientEvent.setSessionId(Long.toUnsignedString( clientIpEvent.getSessionId()));
         clientEvent.setClientMacAddress(MacAddress.valueOf(clientIpEvent.getStaMac()));
         if (clientIpEvent.hasIpAddr()) {
             try {
@@ -505,7 +505,7 @@ public class RealtimeEventPublisher {
         com.telecominfraproject.wlan.client.models.events.realtime.ClientTimeoutEvent clientEvent = new com.telecominfraproject.wlan.client.models.events.realtime.ClientTimeoutEvent(
                 clientTimeoutEvent.getTimestampMs());
 
-        clientEvent.setSessionId(clientTimeoutEvent.getSessionId());
+        clientEvent.setSessionId(Long.toUnsignedString( clientTimeoutEvent.getSessionId()));
         clientEvent.setClientMacAddress(MacAddress.valueOf(clientTimeoutEvent.getStaMac()));
         if (clientTimeoutEvent.hasRCode()) {
             clientEvent.setTimeoutReason(clientTimeoutEvent.getRCode().equals(CTReasonType.CTR_IDLE_TOO_LONG)
@@ -861,7 +861,7 @@ public class RealtimeEventPublisher {
             cloudSipCallReportEvent.setEventType(RealTimeEventType.SipCallReport);
 
             cloudSipCallReportEvent.setSipCallId(callReport.getWifiSessionId());
-            cloudSipCallReportEvent.setAssociationId(callReport.getSessionId());
+            cloudSipCallReportEvent.setAssociationId(Long.toUnsignedString( callReport.getSessionId()));
 
             if (callReport.hasReason()) {
                 cloudSipCallReportEvent.setReportReason(getCallReportReason(callReport.getReason()));
@@ -927,11 +927,11 @@ public class RealtimeEventPublisher {
             }
 
             if (apCallStart.hasSessionId()) {
-                cloudSipCallStartEvent.setAssociationId(apCallStart.getSessionId());
+                cloudSipCallStartEvent.setAssociationId(Long.toUnsignedString( apCallStart.getSessionId()));
             }
 
             if (apCallStart.hasWifiSessionId()) {
-                cloudSipCallStartEvent.setAssociationId(apCallStart.getWifiSessionId());
+                cloudSipCallStartEvent.setAssociationId(Long.toUnsignedString( apCallStart.getWifiSessionId()));
             }
 
             if (apCallStart.getCodecsCount() > 0) {
@@ -991,7 +991,7 @@ public class RealtimeEventPublisher {
 
             if (apCallStop.hasSessionId()) {
 
-                cloudSipCallStopEvent.setAssociationId(apCallStop.getSessionId());
+                cloudSipCallStopEvent.setAssociationId(Long.toUnsignedString(  apCallStop.getSessionId()));
 
             }
 
@@ -1055,11 +1055,11 @@ public class RealtimeEventPublisher {
             }
 
             if (apStreamVideoServer.hasSessionId()) {
-                rtsStartEvent.setSessionId(apStreamVideoServer.getSessionId());
+                rtsStartEvent.setSessionId(Long.toUnsignedString( apStreamVideoServer.getSessionId()));
             }
 
             if (apStreamVideoServer.hasVideoSessionId()) {
-                rtsStartEvent.setVideoSessionId(apStreamVideoServer.getVideoSessionId());
+                rtsStartEvent.setVideoSessionId(Long.toUnsignedString(  apStreamVideoServer.getVideoSessionId()));
             }
 
             eventsList.add(rtsStartEvent);
@@ -1179,7 +1179,7 @@ public class RealtimeEventPublisher {
             }
 
             if (apStreamVideoSessionStart.hasSessionId()) {
-                rtsStartSessionEvent.setSessionId(apStreamVideoSessionStart.getSessionId());
+                rtsStartSessionEvent.setSessionId(Long.toUnsignedString( apStreamVideoSessionStart.getSessionId()));
 
             }
 
@@ -1190,7 +1190,7 @@ public class RealtimeEventPublisher {
             }
 
             if (apStreamVideoSessionStart.hasVideoSessionId()) {
-                rtsStartSessionEvent.setVideoSessionId(apStreamVideoSessionStart.getVideoSessionId());
+                rtsStartSessionEvent.setVideoSessionId(Long.toUnsignedString( apStreamVideoSessionStart.getVideoSessionId()));
             }
             eventsList.add(rtsStartSessionEvent);
         }
@@ -1220,7 +1220,7 @@ public class RealtimeEventPublisher {
             }
 
             if (apStreamVideoStop.hasSessionId()) {
-                rtsStopEvent.setSessionId(apStreamVideoStop.getSessionId());
+                rtsStopEvent.setSessionId(Long.toUnsignedString( apStreamVideoStop.getSessionId()));
             }
 
             if (apStreamVideoStop.hasStreamingVideoType()) {
@@ -1235,7 +1235,7 @@ public class RealtimeEventPublisher {
             }
 
             if (apStreamVideoStop.hasVideoSessionId()) {
-                rtsStopEvent.setVideoSessionId(apStreamVideoStop.getVideoSessionId());
+                rtsStopEvent.setVideoSessionId(Long.toUnsignedString(  apStreamVideoStop.getVideoSessionId()));
             }
 
             eventsList.add(rtsStopEvent);
