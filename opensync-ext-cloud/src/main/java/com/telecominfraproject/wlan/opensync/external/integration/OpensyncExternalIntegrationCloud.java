@@ -1610,8 +1610,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientSession.setMacAddress(clientInstance.getMacAddress());
                 clientSession.setLocationId(ce.getLocationId());
                 clientSession.setDetails(new ClientSessionDetails());
-                clientSession.getDetails().setSessionId(clientInstance.getMacAddress().getAddressAsLong());
-                clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(clientInstance.getMacAddress().getAddressAsLong()));
+                clientSession.getDetails().setSessionId(Long.toUnsignedString(clientInstance.getMacAddress().getAddressAsLong()));
+                clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(Long.toUnsignedString(clientInstance.getMacAddress().getAddressAsLong())));
                 clientSession.getDetails().setMetricDetails(new ClientSessionMetricDetails());
                 clientSession.getDetails().setAssociationState(AssociationState._802_11_Associated);
                 clientSession.getDetails().setAssocTimestamp(timestamp);
