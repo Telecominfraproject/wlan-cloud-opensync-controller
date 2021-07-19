@@ -25,6 +25,7 @@ import org.springframework.security.web.bind.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.telecominfraproject.wlan.core.client.PingClient;
@@ -241,6 +242,18 @@ public class OpensyncCloudGatewayController {
     @RequestMapping(value = "/defaults", method = RequestMethod.GET)
     public GatewayDefaults retrieveGatewayDefaults() {
         return new GatewayDefaults();
+    }
+    
+    @RequestMapping(value = "/lastReceivedStatsTimestamp", method = RequestMethod.GET)
+    public Long lastReceivedStatsTimestamp(@RequestParam String apId) {
+        Long ret = null;
+        if (ovsdbSessionMapInterface.getSession(apId) != null) {
+            ret = ovsdbSessionMapInterface.getSession(apId).getMostRecentStatsTimestamp();
+            LOG.debug("lastReceivedStatsTimestamp for apId {} {}",apId,ret);
+        } else {
+            LOG.warn("lastReceivedStatsTimestamp found no session for {}, cannot get timestamp",apId);
+        }
+        return ret;
     }
 
     /**
