@@ -51,6 +51,7 @@ import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRebootRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRouteCheck;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWStartDebugEngine;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWStopDebugEngine;
+import com.telecominfraproject.wlan.equipmentgateway.models.CEGatewayCommand;
 import com.telecominfraproject.wlan.equipmentgateway.models.EquipmentCommand;
 import com.telecominfraproject.wlan.equipmentgateway.models.EquipmentCommandResponse;
 import com.telecominfraproject.wlan.equipmentgateway.models.GatewayDefaults;
@@ -208,6 +209,9 @@ public class OpensyncCloudGatewayController {
                     case CellSizeAttributesRequest:
                         ret.add(sendCellSizeRequest(session, (CEGWCellSizeAttributesRequest) command));
                         break;
+                    case MostRecentStatsTimestamp:
+                        ret.add(sendGetMostRecentStatsTimestampRequest(command, inventoryId));
+                        break;
                     default:
                         LOG.warn("[{}] Failed to deliver command {}, unsupported command type", inventoryId, command);
                         ret.add(new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
@@ -217,6 +221,8 @@ public class OpensyncCloudGatewayController {
                 }
 
             }
+
+
 
         });
 
@@ -242,6 +248,21 @@ public class OpensyncCloudGatewayController {
     @RequestMapping(value = "/defaults", method = RequestMethod.GET)
     public GatewayDefaults retrieveGatewayDefaults() {
         return new GatewayDefaults();
+    }
+    
+    private EquipmentCommandResponse sendGetMostRecentStatsTimestampRequest(CEGWBaseCommand command, String inventoryId) {
+        Long ts = lastReceivedStatsTimestamp(inventoryId);
+        if (ts == null) {
+            return new EquipmentCommandResponse(CEGWCommandResultCode.NoRouteToCE,
+                    null, command,
+                    registeredGateway == null ? null : registeredGateway.getHostname(),
+                            registeredGateway == null ? -1 : registeredGateway.getPort());
+        } else {
+            return new EquipmentCommandResponse(CEGWCommandResultCode.Success,
+                    ts.toString(), command,
+                    registeredGateway == null ? null : registeredGateway.getHostname(),
+                            registeredGateway == null ? -1 : registeredGateway.getPort());
+        }
     }
     
     @RequestMapping(value = "/lastReceivedStatsTimestamp", method = RequestMethod.GET)
