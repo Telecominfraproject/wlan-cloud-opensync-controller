@@ -210,10 +210,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 }
 
                 long locationId = autoProvisionedLocationId;
-                if ((customer.getDetails() != null) && (customer.getDetails().getAutoProvisioning() != null)
-                        && customer.getDetails().getAutoProvisioning().isEnabled()) {
-                    locationId = customer.getDetails().getAutoProvisioning().getLocationId();
-                }
+                locationId = customer.getDetails().getAutoProvisioning().getLocationId();
 
                 try {
                     Location location = locationServiceInterface.get(locationId);
@@ -221,7 +218,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 } catch (Exception e) {
                     LOG.error("Cannot auto-provision equipment because customer location with id {} cannot be found", locationId);
                     throw new IllegalStateException("Cannot auto-provision equipment because customer location cannot be found : " + locationId);
-
                 }
 
                 ce.setSerial(connectNodeInfo.serialNumber);
@@ -250,7 +246,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     }
                     if (!radioType.equals(RadioType.UNSUPPORTED)) {
                         advancedRadioConfiguration = RadioConfiguration.createWithDefaults(radioType);
-
                         advancedRadioMap.put(radioType, advancedRadioConfiguration);
                         radioConfiguration = ElementRadioConfiguration.createWithDefaults(radioType);
                         radioMap.put(radioType, radioConfiguration);
@@ -386,7 +381,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 }
 
             }
-
+            
             EquipmentRoutingRecord equipmentRoutingRecord = gatewayController.registerCustomerEquipment(ce.getName(), ce.getCustomerId(), ce.getId());
 
             // Status and client cleanup, when AP reconnects or has been
@@ -497,7 +492,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     private void updateApStatus(Equipment ce, ConnectNodeInfo connectNodeInfo) {
 
         try {
-
             Status statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(), StatusDataType.EQUIPMENT_ADMIN);
             if (statusRecord == null) {
                 statusRecord = new Status();

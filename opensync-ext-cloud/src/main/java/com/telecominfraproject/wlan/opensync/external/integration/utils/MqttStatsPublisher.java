@@ -51,6 +51,7 @@ import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
 import com.telecominfraproject.wlan.equipment.models.Equipment;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSession;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSessionMapInterface;
+import com.telecominfraproject.wlan.opensync.external.integration.controller.OpensyncCloudGatewayController;
 import com.telecominfraproject.wlan.opensync.util.OvsdbToWlanCloudTypeMappingUtility;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
 import com.telecominfraproject.wlan.profile.models.Profile;
@@ -138,7 +139,9 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
     private RealtimeEventPublisher realtimeEventPublisher;
     @Autowired
     private AlarmServiceInterface alarmServiceInterface;
-
+    @Autowired
+    private OpensyncCloudGatewayController gatewayController;
+    
     @Value("${tip.wlan.mqttStatsPublisher.temperatureThresholdInC:80}")
     private int temperatureThresholdInC;
 
@@ -170,7 +173,9 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         long equipmentId = ce.getId();
         long locationId = ce.getLocationId();
         long profileId = ce.getProfileId();
-
+        
+        // update timestamp for active customer equipment
+        gatewayController.updateActiveCustomer(customerId);
         List<ServiceMetric> metricRecordList = new ArrayList<>();
 
         try {
@@ -260,6 +265,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
     @Override
     public void publishSystemEventFromTableStateMonitor(SystemEvent event) {
         LOG.info("Publishing SystemEvent received by TableStateMonitor {}", event);
+        gatewayController.updateActiveCustomer(event.getCustomerId());
         cloudEventDispatcherInterface.publishEvent(event);
     }
 
