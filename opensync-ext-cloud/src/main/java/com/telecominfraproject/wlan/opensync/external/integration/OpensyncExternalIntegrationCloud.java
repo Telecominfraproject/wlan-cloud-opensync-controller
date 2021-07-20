@@ -42,6 +42,7 @@ import com.telecominfraproject.wlan.core.model.entity.CountryCode;
 import com.telecominfraproject.wlan.core.model.equipment.EquipmentType;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
+import com.telecominfraproject.wlan.core.model.equipment.WiFiSessionUtility;
 import com.telecominfraproject.wlan.core.model.pagination.PaginationContext;
 import com.telecominfraproject.wlan.core.model.pagination.PaginationResponse;
 import com.telecominfraproject.wlan.customer.models.Customer;
@@ -1584,17 +1585,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             MacAddress macAddress = MacAddress.valueOf(mMac);
 
             Client clientInstance = clientServiceInterface.getOrNull(customerId, macAddress);
-            boolean isReassociation = true;
             if (clientInstance == null) {
-
-                isReassociation = false; // new client
-
                 clientInstance = new Client();
                 clientInstance.setCustomerId(customerId);
                 clientInstance.setMacAddress(MacAddress.valueOf(mMac));
+                clientInstance.setCreatedTimestamp(System.currentTimeMillis());
                 clientInstance.setDetails(new ClientInfoDetails());
                 clientInstance = clientServiceInterface.create(clientInstance);
-
                 LOG.info("Created client from Wifi_Associated_Clients ovsdb table change {}", clientInstance);
             }
 
@@ -1606,30 +1603,20 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientSession.setMacAddress(clientInstance.getMacAddress());
                 clientSession.setLocationId(ce.getLocationId());
                 clientSession.setDetails(new ClientSessionDetails());
-                clientSession.getDetails().setSessionId(Long.toUnsignedString(clientInstance.getMacAddress().getAddressAsLong()));
-                clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(Long.toUnsignedString(clientInstance.getMacAddress().getAddressAsLong())));
-                clientSession.getDetails().setMetricDetails(new ClientSessionMetricDetails());
+                long derivedSessionId = WiFiSessionUtility.encodeWiFiAssociationId(timestamp / 1000, clientInstance.getMacAddress().getAddressAsLong());
+                clientSession.getDetails().setSessionId(Long.toUnsignedString(derivedSessionId));
+                clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(Long.toUnsignedString(derivedSessionId)));
                 clientSession.getDetails().setAssociationState(AssociationState._802_11_Associated);
-                clientSession.getDetails().setAssocTimestamp(timestamp);
+                clientSession.getDetails().setIsReassociation(false);
+                clientSession.getDetails().setAssocTimestamp(timestamp);        
+                clientSessions.add(clientSession);
             } else {
-                if (clientSession.getDetails().getPriorEquipmentId() == null) {
-                    clientSession.getDetails().setPriorEquipmentId(clientSession.getEquipmentId());
-                }
-                if (clientSession.getDetails().getPriorSessionId() == null) {
-                    clientSession.getDetails().setPriorSessionId(clientSession.getDetails().getSessionId());
-                }
-                if (clientSession.getDetails().getLastEventTimestamp() == null || clientSession.getDetails().getLastEventTimestamp() < timestamp) {
-                    clientSession.getDetails().setLastEventTimestamp(timestamp);
-                }
                 if (!clientSession.getDetails().getAssociationState().equals(AssociationState._802_11_Associated)) {
                     clientSession.getDetails().setAssociationState(AssociationState._802_11_Associated);
                     clientSession.getDetails().setAssocTimestamp(timestamp);
+                    clientSessions.add(clientSession);
                 }
             }
-            clientSession.getDetails().setIsReassociation(isReassociation);
-
-            clientSessions.add(clientSession);
-
         }
 
         if (clientSessions.size() > 0) {
@@ -2106,21 +2093,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         if (session == null) {
             LOG.info("No session for client {} with for customer {} equipment {}", clientMacAddress, customerId, equipmentId);
             return null;
-        } else {
-            if (session.getDetails().getPriorEquipmentId() == null) {
-                session.getDetails().setPriorEquipmentId(session.getEquipmentId());
-            }
-            if (session.getDetails().getPriorSessionId() == null) {
-                session.getDetails().setPriorSessionId(session.getDetails().getSessionId());
-            }
-            if (session.getDetails().getLastEventTimestamp() == null || session.getDetails().getLastEventTimestamp() < timestamp) {
-                session.getDetails().setLastEventTimestamp(timestamp);
-            }
-            if (!session.getDetails().getAssociationState().equals(AssociationState._802_11_Associated)) {
-                session.getDetails().setAssociationState(AssociationState._802_11_Associated);
-                session.getDetails().setAssocTimestamp(timestamp);
-            }
         }
+        
         if (dhcpLeasedIps.containsKey("fingerprint")) {
             session.getDetails().setApFingerprint(dhcpLeasedIps.get("fingerprint"));
         }
@@ -2175,6 +2149,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         if (dhcpLeasedIps.containsKey("lease_time")) {
             Integer leaseTime = Integer.valueOf(dhcpLeasedIps.get("lease_time"));
             session.getDetails().getDhcpDetails().setLeaseTimeInSeconds(leaseTime);
+            session.getDetails().getDhcpDetails().setLeaseStartTimestamp(session.getDetails().getAssocTimestamp());
         }
 
         if (dhcpLeasedIps.containsKey("gateway")) {
