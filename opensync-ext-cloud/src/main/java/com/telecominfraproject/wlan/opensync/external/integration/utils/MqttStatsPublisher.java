@@ -161,6 +161,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
     @Override
     @Async
     public void processMqttMessage(String topic, Report report) {
+
         long startTime = System.nanoTime();
         String apId = extractApIdFromTopic(topic);
         LOG.info("Received report on topic {} for ap {}", topic, report.getNodeID());
@@ -170,6 +171,16 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
             return;
         }
 
+        if (apId != null) {
+            OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(extractApIdFromTopic(topic));
+            if (ovsdbSession != null) {
+                ovsdbSession.setMostRecentStatsTimestamp(System.currentTimeMillis());
+                LOG.debug("Last metrics received from AP updated to {}",ovsdbSession.toString());
+            } else {
+                LOG.debug("No ovsdb session exists for this AP {}",apId);
+            }
+        }
+        
         int customerId = ce.getCustomerId();
         long equipmentId = ce.getId();
         long locationId = ce.getLocationId();

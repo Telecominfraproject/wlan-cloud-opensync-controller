@@ -11,10 +11,6 @@ import org.fusesource.mqtt.client.MQTT;
 import org.fusesource.mqtt.client.Message;
 import org.fusesource.mqtt.client.QoS;
 import org.fusesource.mqtt.client.Topic;
-import org.fusesource.mqtt.client.Tracer;
-import org.fusesource.mqtt.codec.MQTTFrame;
-import org.fusesource.mqtt.codec.PINGREQ;
-import org.fusesource.mqtt.codec.PINGRESP;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,8 +32,6 @@ import com.netflix.servo.monitor.Stopwatch;
 import com.netflix.servo.monitor.Timer;
 import com.netflix.servo.tag.TagList;
 import com.telecominfraproject.wlan.cloudmetrics.CloudMetricsTags;
-import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSession;
-import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSessionMapInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.utils.StatsPublisherInterface;
 import com.telecominfraproject.wlan.opensync.util.ZlibUtil;
 
@@ -64,9 +58,6 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
 
     @Autowired
     private StatsPublisherInterface statsPublisher;
-    
-    @Autowired
-    private OvsdbSessionMapInterface ovsdbSessionMapInterface;
 
     // dtop: use anonymous constructor to ensure that the following code always
     // get executed,
@@ -193,16 +184,6 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                                 // Only supported protobuf on the TIP opensync APs is Report
                                 Report statsReport = Report.parseFrom(payload);
                                 mqttMsg.ack();
-                                String apId = extractApIdFromTopic(mqttMsg.getTopic());
-                                if (apId != null) {
-                                    OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(extractApIdFromTopic(mqttMsg.getTopic()));
-                                    if (ovsdbSession != null) {
-                                        ovsdbSession.setMostRecentStatsTimestamp(System.currentTimeMillis());
-                                        LOG.debug("Last metrics received from AP updated to {}",ovsdbSession.toString());
-                                    } else {
-                                        LOG.debug("No ovsdb session exists for this AP {}",apId);
-                                    }
-                                }
                                 MQTT_LOG.info("Topic {}\n{}", mqttMsg.getTopic(), jsonPrinter.print(statsReport));
                                 statsPublisher.processMqttMessage(mqttMsg.getTopic(), statsReport);                           
                                 LOG.debug("Dispatched report for topic {} to backend for processing", mqttMsg.getTopic());
@@ -244,26 +225,5 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
             mqttClientThread.interrupt();
         }
     }
-    
-    /**
-     * @param topic
-     * @return apId extracted from the topic name, or null if it cannot be
-     *         extracted
-     */
-    static String extractApIdFromTopic(String topic) {
-        // Topic is formatted as
-        // "/ap/"+clientCn+"_"+ret.serialNumber+"/opensync"
-        if (topic == null) {
-            return null;
-        }
 
-        String[] parts = topic.split("/");
-        if (parts.length < 3) {
-            return null;
-        }
-
-        // apId is the third element in the topic
-        return parts[2];
-    }
-    
 }
