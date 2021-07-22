@@ -209,10 +209,10 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
             if (!metricRecordList.isEmpty()) {
                 long serviceMetricTimestamp = System.currentTimeMillis();
                 metricRecordList.stream().forEach(smr -> {  
-                	// TODO use serviceMetricTimestamp rather than 0. This is done for now since there are some
+                	// TODO use serviceMetricTimestamp instead. This is done for now since there are some
                 	// channel metrics that have overlapping keys which messes up Cassandra if the same time stamp 
-                	// is used and setting it to 0 allows the CloudEventDispatcherController to assign unique time stamps. 
-                    smr.setCreatedTimestamp(0);
+                	// is used. This should allow for unique time stamps. 
+                    smr.setCreatedTimestamp(System.currentTimeMillis());
                     if (smr.getLocationId() == 0)
                         smr.setLocationId(locationId);
                     if (smr.getCustomerId() == 0)
