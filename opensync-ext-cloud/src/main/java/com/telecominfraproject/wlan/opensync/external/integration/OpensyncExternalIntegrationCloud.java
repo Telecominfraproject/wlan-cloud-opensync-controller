@@ -120,6 +120,8 @@ import com.telecominfraproject.wlan.systemevent.equipment.realtime.ApcElectionEv
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.ApcElectionEvent.ApcMode;
 import com.telecominfraproject.wlan.systemevent.equipment.realtime.RealTimeEventType;
 
+import sts.OpensyncStats.Report;
+
 @org.springframework.context.annotation.Profile("opensync_cloud_config")
 @Component
 public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegrationInterface {
@@ -145,7 +147,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     @Autowired
     private FirmwareServiceInterface firmwareServiceInterface;
     @Autowired
-    private StatsPublisherInterface mqttMessageProcessor;
+    private StatsPublisherInterface statsPublisherInterface;
     @Autowired
     private AlarmServiceInterface alarmServiceInterface;
 
@@ -2392,7 +2394,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         ApcElectionEvent electionEvent =
                 new ApcElectionEvent(drIpAddr, bdrIpAddr, localIpV4Addr, drIpAddr, mode, Boolean.valueOf(apcStateAttributes.get("enabled")),
                         RealTimeEventType.APC_Election_event, customerId, ce.getLocationId(), equipmentId, System.currentTimeMillis());
-        mqttMessageProcessor.publishSystemEventFromTableStateMonitor(electionEvent);
+        statsPublisherInterface.publishSystemEventFromTableStateMonitor(electionEvent);
     }
 
     @Override
@@ -2449,4 +2451,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         LOG.debug("finished nodeStateDbTableUpdate for {}", apId);
 
     }
+
+	@Override
+	public void processMqttMessage(String topic, Report report) {
+		statsPublisherInterface.processMqttMessage(topic, report);		
+	}
 }

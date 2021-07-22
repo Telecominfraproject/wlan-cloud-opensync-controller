@@ -54,4 +54,6 @@ public interface OpensyncExternalIntegrationInterface {
     void nodeStateDbTableUpdate(List<Map<String, String>> nodeStateAttributes, String apId);
 
     void clearEquipmentStatus(String apId);
+    
+    void processMqttMessage(String topic, Report report);
 }

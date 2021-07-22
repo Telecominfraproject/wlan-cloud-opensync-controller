@@ -32,6 +32,7 @@ import com.netflix.servo.monitor.Stopwatch;
 import com.netflix.servo.monitor.Timer;
 import com.netflix.servo.tag.TagList;
 import com.telecominfraproject.wlan.cloudmetrics.CloudMetricsTags;
+import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExternalIntegrationInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.utils.StatsPublisherInterface;
 import com.telecominfraproject.wlan.opensync.util.ZlibUtil;
 
@@ -57,7 +58,7 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
     private final Timer timerMessageProcess = new BasicTimer(MonitorConfig.builder("osgw-mqtt-messageProcessTimer").withTags(tags).build());
 
     @Autowired
-    private StatsPublisherInterface statsPublisher;
+    private OpensyncExternalIntegrationInterface opensyncExternalIntegrationInterface;
 
     // dtop: use anonymous constructor to ensure that the following code always
     // get executed,
@@ -185,7 +186,7 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                                 Report statsReport = Report.parseFrom(payload);
                                 mqttMsg.ack();
                                 MQTT_LOG.info("Topic {}\n{}", mqttMsg.getTopic(), jsonPrinter.print(statsReport));
-                                statsPublisher.processMqttMessage(mqttMsg.getTopic(), statsReport);                           
+                                opensyncExternalIntegrationInterface.processMqttMessage(mqttMsg.getTopic(), statsReport);                           
                                 LOG.debug("Dispatched report for topic {} to backend for processing", mqttMsg.getTopic());
 
                             } catch (Exception e) {
