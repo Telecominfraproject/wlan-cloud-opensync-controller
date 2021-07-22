@@ -209,9 +209,9 @@ public class OpensyncCloudGatewayController {
                     case CellSizeAttributesRequest:
                         ret.add(sendCellSizeRequest(session, (CEGWCellSizeAttributesRequest) command));
                         break;
-                    case MostRecentStatsTimestamp:
-                        ret.add(sendGetMostRecentStatsTimestampRequest(command, inventoryId));
-                        break;
+//                    case MostRecentStatsTimestamp:
+//                        ret.add(sendGetMostRecentStatsTimestampRequest(command, inventoryId));
+//                        break;
                     default:
                         LOG.warn("[{}] Failed to deliver command {}, unsupported command type", inventoryId, command);
                         ret.add(new EquipmentCommandResponse(CEGWCommandResultCode.UnsupportedCommand,
@@ -250,32 +250,7 @@ public class OpensyncCloudGatewayController {
         return new GatewayDefaults();
     }
     
-    private EquipmentCommandResponse sendGetMostRecentStatsTimestampRequest(CEGWBaseCommand command, String inventoryId) {
-        Long ts = lastReceivedStatsTimestamp(inventoryId);
-        if (ts == null) {
-            return new EquipmentCommandResponse(CEGWCommandResultCode.NoRouteToCE,
-                    null, command,
-                    registeredGateway == null ? null : registeredGateway.getHostname(),
-                            registeredGateway == null ? -1 : registeredGateway.getPort());
-        } else {
-            return new EquipmentCommandResponse(CEGWCommandResultCode.Success,
-                    ts.toString(), command,
-                    registeredGateway == null ? null : registeredGateway.getHostname(),
-                            registeredGateway == null ? -1 : registeredGateway.getPort());
-        }
-    }
-    
-    @RequestMapping(value = "/lastReceivedStatsTimestamp", method = RequestMethod.GET)
-    public Long lastReceivedStatsTimestamp(@RequestParam String apId) {
-        Long ret = null;
-        if (ovsdbSessionMapInterface.getSession(apId) != null) {
-            ret = ovsdbSessionMapInterface.getSession(apId).getMostRecentStatsTimestamp();
-            LOG.debug("lastReceivedStatsTimestamp for apId {} {}",apId,ret);
-        } else {
-            LOG.warn("lastReceivedStatsTimestamp found no session for {}, cannot get timestamp",apId);
-        }
-        return ret;
-    }
+
 
     /**
      * Verify a route to customer equipment

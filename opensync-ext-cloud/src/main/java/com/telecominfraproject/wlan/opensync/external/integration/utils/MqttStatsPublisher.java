@@ -5,7 +5,6 @@ import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -52,7 +51,6 @@ import com.telecominfraproject.wlan.equipment.EquipmentServiceInterface;
 import com.telecominfraproject.wlan.equipment.models.Equipment;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSession;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSessionMapInterface;
-import com.telecominfraproject.wlan.opensync.external.integration.controller.OpensyncCloudGatewayController;
 import com.telecominfraproject.wlan.opensync.util.OvsdbToWlanCloudTypeMappingUtility;
 import com.telecominfraproject.wlan.profile.ProfileServiceInterface;
 import com.telecominfraproject.wlan.profile.models.Profile;
@@ -140,8 +138,6 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
     private RealtimeEventPublisher realtimeEventPublisher;
     @Autowired
     private AlarmServiceInterface alarmServiceInterface;
-    @Autowired
-    private OpensyncCloudGatewayController gatewayController;
     
     @Value("${tip.wlan.mqttStatsPublisher.temperatureThresholdInC:80}")
     private int temperatureThresholdInC;
@@ -171,23 +167,12 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
             return;
         }
 
-        if (apId != null) {
-            OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(extractApIdFromTopic(topic));
-            if (ovsdbSession != null) {
-                ovsdbSession.setMostRecentStatsTimestamp(System.currentTimeMillis());
-                LOG.debug("Last metrics received from AP updated to {}",ovsdbSession.toString());
-            } else {
-                LOG.debug("No ovsdb session exists for this AP {}",apId);
-            }
-        }
-        
         int customerId = ce.getCustomerId();
         long equipmentId = ce.getId();
         long locationId = ce.getLocationId();
         long profileId = ce.getProfileId();
         
         // update timestamp for active customer equipment
-        gatewayController.updateActiveCustomer(customerId);
         List<ServiceMetric> metricRecordList = new ArrayList<>();
 
         try {
@@ -277,7 +262,6 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
     @Override
     public void publishSystemEventFromTableStateMonitor(SystemEvent event) {
         LOG.info("Publishing SystemEvent received by TableStateMonitor {}", event);
-        gatewayController.updateActiveCustomer(event.getCustomerId());
         cloudEventDispatcherInterface.publishEvent(event);
     }
 

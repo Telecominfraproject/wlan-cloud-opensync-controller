@@ -176,7 +176,7 @@ public class OpensyncExternalIntegrationCloudTest {
         location.setDetails(details);
         location.setName("Location-UT");
         location.setLocationType(LocationType.BUILDING);
-        Mockito.when(locationServiceInterface.get(8L)).thenReturn(location);
+        Mockito.when(locationServiceInterface.getOrNull(Mockito.anyLong())).thenReturn(location);
         Customer customer = new Customer();
         customer.setId(2);
         CustomerDetails customerDetails = new CustomerDetails();
@@ -232,7 +232,7 @@ public class OpensyncExternalIntegrationCloudTest {
         opensyncExternalIntegrationCloud.apConnected("Test_Client_21P10C68818122", createConnectNodeInfo());
 
         Mockito.verify(firmwareServiceInterface).getDefaultCustomerTrackSetting();
-        Mockito.verify(locationServiceInterface).get(8L);
+        Mockito.verify(locationServiceInterface).getOrNull(ArgumentMatchers.anyLong());
 
     }
 
@@ -246,7 +246,7 @@ public class OpensyncExternalIntegrationCloudTest {
         location.setDetails(details);
         location.setName("Location-UT");
         location.setLocationType(LocationType.BUILDING);
-        Mockito.when(locationServiceInterface.get(8L)).thenReturn(location);
+        Mockito.when(locationServiceInterface.getOrNull(8L)).thenReturn(location);
 
         Customer customer = new Customer();
         customer.setId(2);
@@ -326,7 +326,7 @@ public class OpensyncExternalIntegrationCloudTest {
         Mockito.verify(customerServiceInterface).getOrNull(ArgumentMatchers.anyInt());
         Mockito.verify(equipmentServiceInterface).getByInventoryIdOrNull("Test_Client_21P10C68818122");
         Mockito.verify(firmwareServiceInterface).getDefaultCustomerTrackSetting();
-        Mockito.verify(locationServiceInterface, Mockito.times(2)).get(ArgumentMatchers.anyLong());
+        Mockito.verify(locationServiceInterface, Mockito.times(2)).getOrNull(ArgumentMatchers.anyLong());
 
     }
 

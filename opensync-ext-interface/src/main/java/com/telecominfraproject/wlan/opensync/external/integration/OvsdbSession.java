@@ -7,7 +7,6 @@ public class OvsdbSession {
     private String apId;
     private long routingId;
     private long equipmentId;
-    private long mostRecentStatsTimestamp;
     
     public OvsdbClient getOvsdbClient() {
         return ovsdbClient;
@@ -32,12 +31,6 @@ public class OvsdbSession {
     }
     public void setEquipmentId(long equipmentId) {
         this.equipmentId = equipmentId;
-    }
-    public long getMostRecentStatsTimestamp() {
-        return mostRecentStatsTimestamp;
-    }
-    public void setMostRecentStatsTimestamp(long mostRecentStatsTimestamp) {
-        this.mostRecentStatsTimestamp = mostRecentStatsTimestamp;
     }
  
 }
