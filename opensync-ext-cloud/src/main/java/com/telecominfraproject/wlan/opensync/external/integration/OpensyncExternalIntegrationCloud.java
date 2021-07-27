@@ -37,6 +37,7 @@ import com.telecominfraproject.wlan.client.session.models.AssociationState;
 import com.telecominfraproject.wlan.client.session.models.ClientDhcpDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientSession;
 import com.telecominfraproject.wlan.client.session.models.ClientSessionDetails;
+import com.telecominfraproject.wlan.client.session.models.ClientSessionMetricDetails;
 import com.telecominfraproject.wlan.core.model.entity.CountryCode;
 import com.telecominfraproject.wlan.core.model.equipment.EquipmentType;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
@@ -1298,8 +1299,11 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 		Status protocolStatus = null;
 
-		Status currentChannelStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.RADIO_CHANNEL);
-		Status newChannelStatus = null;
+		Status channelStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.RADIO_CHANNEL);
+		Status channelStatusClone = null;
+		if (channelStatus != null) {
+			channelStatusClone = channelStatus.clone();
+		}
 
 		for (OpensyncAPRadioState radioState : radioStateTables) {
 			LOG.debug("Processing Wifi_Radio_State table update for AP {} Radio {}", apId, radioState.freqBand);
@@ -1312,17 +1316,17 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
 			protocolStatus = updateProtocolStatus(customerId, equipmentId, radioState);
 
-			newChannelStatus = updateChannelStatus(customerId, equipmentId, currentChannelStatus, radioState);
+			channelStatus = updateChannelStatus(customerId, equipmentId, channelStatus, radioState);
 		}
 
 		if (protocolStatus != null) {
 			statusServiceInterface.update(protocolStatus);
 		}
 
-		if (newChannelStatus != null && !Objects.equals(newChannelStatus, currentChannelStatus)) {
-			LOG.debug("wifiRadioStatusDbTableUpdate update Channel Status before {} after {}", currentChannelStatus,
-			        newChannelStatus);
-			statusServiceInterface.update(newChannelStatus);
+		if (channelStatus != null && !Objects.equals(channelStatus, channelStatusClone)) {
+			LOG.debug("wifiRadioStatusDbTableUpdate update Channel Status before {} after {}", channelStatusClone,
+					channelStatus);
+			statusServiceInterface.update(channelStatus);
 		}
 
 		if (configStateMismatch) {
@@ -1385,7 +1389,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			channelStatus.setStatusDataType(StatusDataType.RADIO_CHANNEL);
 			EquipmentChannelStatusData channelStatusData = new EquipmentChannelStatusData();
 			channelStatus.setDetails(channelStatusData);
-			channelStatus.setCreatedTimestamp(System.currentTimeMillis());
 		}
 		((EquipmentChannelStatusData) channelStatus.getDetails()).getChannelNumberStatusDataMap()
 				.put(radioState.getFreqBand(), radioState.getChannel());
@@ -1461,7 +1464,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			activeBssidsStatus.setCustomerId(customerId);
 			activeBssidsStatus.setEquipmentId(equipmentId);
 			activeBssidsStatus.setStatusDataType(StatusDataType.ACTIVE_BSSIDS);
-			activeBssidsStatus.setCreatedTimestamp(System.currentTimeMillis());
 
 			ActiveBSSIDs statusDetails = new ActiveBSSIDs();
 			statusDetails.setActiveBSSIDs(new ArrayList<ActiveBSSID>());
@@ -1540,7 +1542,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			lanStatus.setCustomerId(customerId);
 			lanStatus.setEquipmentId(equipmentId);
 			lanStatus.setStatusDataType(StatusDataType.LANINFO);
-			lanStatus.setCreatedTimestamp(System.currentTimeMillis());
 			lanStatus.setDetails(new EquipmentLANStatusData());
 			lanStatus = statusServiceInterface.update(lanStatus);
 		}
@@ -1553,7 +1554,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 			protocolStatus.setCustomerId(customerId);
 			protocolStatus.setEquipmentId(equipmentId);
 			protocolStatus.setStatusDataType(StatusDataType.PROTOCOL);
-			protocolStatus.setCreatedTimestamp(System.currentTimeMillis());
 			protocolStatus.setDetails(new EquipmentProtocolStatusData());
 			protocolStatus = statusServiceInterface.update(protocolStatus);
 		}
