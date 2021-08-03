@@ -13,6 +13,7 @@ public class OvsdbStringConstants {
     public static final String FW_IMAGE_NAME_KEY = "FW_IMAGE_NAME";
     public static final String FW_IMAGE_ACTIVE_KEY = "FW_IMAGE_ACTIVE";
     public static final String FW_IMAGE_INACTIVE_KEY = "FW_IMAGE_INACTIVE";
+    public static final String FW_IMAGE_DATE = "DATE";
 
     // AWLAN_Node values which can be placed in firmware_url column to trigger
     // behavior other than firmware download/flash
