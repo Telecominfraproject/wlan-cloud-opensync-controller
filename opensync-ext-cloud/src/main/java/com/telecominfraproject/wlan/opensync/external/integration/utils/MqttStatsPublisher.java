@@ -39,7 +39,6 @@ import com.telecominfraproject.wlan.client.session.models.ClientEapDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientFailureDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientSession;
 import com.telecominfraproject.wlan.client.session.models.ClientSessionDetails;
-import com.telecominfraproject.wlan.client.session.models.ClientSessionMetricDetails;
 import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherInterface;
 import com.telecominfraproject.wlan.core.model.equipment.ChannelBandwidth;
 import com.telecominfraproject.wlan.core.model.equipment.DetectedAuthMode;
@@ -388,7 +387,6 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
             clientSession.setLocationId(locationId);
             clientSession.setDetails(new ClientSessionDetails());
             clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(Long.toUnsignedString(apEventClientSession.getSessionId())));
-            clientSession.getDetails().setMetricDetails(new ClientSessionMetricDetails());
         }
         if (clientSession.getDetails().getPriorEquipmentId() == null) {
             clientSession.getDetails().setPriorEquipmentId(clientSession.getEquipmentId());
@@ -512,7 +510,6 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
             clientSession.setLocationId(locationId);
             clientSession.setDetails(new ClientSessionDetails());
             clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(Long.toUnsignedString(apEventClientSession.getSessionId())));
-            clientSession.getDetails().setMetricDetails(new ClientSessionMetricDetails());
         }
         if (clientSession.getDetails().getPriorEquipmentId() == null) {
             clientSession.getDetails().setPriorEquipmentId(clientSession.getEquipmentId());
@@ -591,7 +588,6 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
             clientSession.setLocationId(locationId);
             clientSession.setDetails(new ClientSessionDetails());
             clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(Long.toUnsignedString(apEventClientSession.getSessionId())));
-            clientSession.getDetails().setMetricDetails(new ClientSessionMetricDetails());
         }
         if (clientSession.getDetails().getPriorEquipmentId() == null) {
             clientSession.getDetails().setPriorEquipmentId(clientSession.getEquipmentId());
@@ -642,7 +638,6 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
             clientSession.setLocationId(locationId);
             clientSession.setDetails(new ClientSessionDetails());
             clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(Long.toUnsignedString(apEventClientSession.getSessionId())));
-            clientSession.getDetails().setMetricDetails(new ClientSessionMetricDetails());
         }
         if (clientSession.getDetails().getPriorEquipmentId() == null) {
             clientSession.getDetails().setPriorEquipmentId(clientSession.getEquipmentId());
@@ -707,7 +702,6 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
             clientSession.setLocationId(locationId);
             clientSession.setDetails(new ClientSessionDetails());
             clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(Long.toUnsignedString(apEventClientSession.getSessionId())));
-            clientSession.getDetails().setMetricDetails(new ClientSessionMetricDetails());
         }
         if (clientSession.getDetails().getPriorEquipmentId() == null) {
             clientSession.getDetails().setPriorEquipmentId(clientSession.getEquipmentId());
@@ -755,7 +749,6 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
             clientSession.setLocationId(locationId);
             clientSession.setDetails(new ClientSessionDetails());
             clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(Long.toUnsignedString(apEventClientSession.getSessionId())));
-            clientSession.getDetails().setMetricDetails(new ClientSessionMetricDetails());
         }
         if (clientSession.getDetails().getPriorEquipmentId() == null) {
             clientSession.getDetails().setPriorEquipmentId(clientSession.getEquipmentId());
@@ -807,7 +800,6 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
             clientSession.setLocationId(locationId);
             clientSession.setDetails(new ClientSessionDetails());
             clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(Long.toUnsignedString(apEventClientSession.getSessionId())));
-            clientSession.getDetails().setMetricDetails(new ClientSessionMetricDetails());
         }
         if (clientSession.getDetails().getPriorEquipmentId() == null) {
             clientSession.getDetails().setPriorEquipmentId(clientSession.getEquipmentId());
@@ -849,7 +841,6 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
             clientSession.setLocationId(locationId);
             clientSession.setDetails(new ClientSessionDetails());
             clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(Long.toUnsignedString(apEventClientSession.getSessionId())));
-            clientSession.getDetails().setMetricDetails(new ClientSessionMetricDetails());
         }
         if (clientSession.getDetails().getPriorEquipmentId() == null) {
             clientSession.getDetails().setPriorEquipmentId(clientSession.getEquipmentId());
@@ -906,7 +897,6 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
             clientSession.setLocationId(locationId);
             clientSession.setDetails(new ClientSessionDetails());
             clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(Long.toUnsignedString(apEventClientSession.getSessionId())));
-            clientSession.getDetails().setMetricDetails(new ClientSessionMetricDetails());
         }
         if (clientSession.getDetails().getPriorEquipmentId() == null) {
             clientSession.getDetails().setPriorEquipmentId(clientSession.getEquipmentId());
