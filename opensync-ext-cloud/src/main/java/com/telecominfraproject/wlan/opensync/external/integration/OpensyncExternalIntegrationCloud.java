@@ -7,6 +7,9 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.temporal.ChronoField;
+import java.time.temporal.TemporalField;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.EnumMap;
@@ -428,7 +431,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                             connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_INACTIVE_KEY), date.getTime(), connectNodeInfo.model,
                             connectNodeInfo.firmwareVersion);
                 } catch (java.text.ParseException p) {
-                    LOG.error("Could not parse release date {} from AP fw, no automatic firmware upgrade possible for this node.", dateString, p);
+                    LOG.info("Could not parse release date {} from AP fw, set date to EPOCH start value.", dateString, Instant.EPOCH);
+                    reconcileFwVersionToTrack(ce, connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_ACTIVE_KEY),
+                            connectNodeInfo.versionMatrix.get(OvsdbStringConstants.FW_IMAGE_INACTIVE_KEY), Instant.EPOCH.getLong(ChronoField.INSTANT_SECONDS), connectNodeInfo.model,
+                            connectNodeInfo.firmwareVersion);
                 }
             } else {
                 LOG.info("Cloud based firmware upgrade is not supported for this AP");
