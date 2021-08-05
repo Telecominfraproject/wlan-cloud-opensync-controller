@@ -1112,13 +1112,6 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                     continue;
                 }
 
-                ClientSession session = clientServiceInterface.getSessionOrNull(customerId, equipmentId, MacAddress.valueOf(cl.getMacAddress()));
-
-                if (session == null) {
-                    LOG.info("No session for Client {}, ignore.");
-                    continue;
-                }
-
                 if (cl.hasStats()) {
                     LOG.debug("Processing ClientReport from AP for client device {}", cl.getMacAddress());
                     ServiceMetric smr = new ServiceMetric(customerId, equipmentId, MacAddress.valueOf(cl.getMacAddress()));
@@ -1134,8 +1127,6 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                     // OvsdbDao.configureStats(OvsdbClient)
                     cMetrics.setPeriodLengthSec(periodLengthSec);
                     cMetrics.setRadioType(OvsdbToWlanCloudTypeMappingUtility.getRadioTypeFromOpensyncStatsRadioBandType(clReport.getBand()));
-                    cMetrics.setSessionId(session.getDetails().getSessionId());
-                    LOG.debug("populateApClientMetrics Session Id {}", session.getDetails().getSessionId());
 
                     if (cl.getStats().hasRssi()) {
                         int rssi = cl.getStats().getRssi();
