@@ -1,3 +1,4 @@
+
 package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 
 import java.util.ArrayList;
@@ -18,6 +19,8 @@ import org.springframework.stereotype.Component;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiRadioConfigInfo;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiStatsConfigInfo;
+import com.telecominfraproject.wlan.profile.models.Profile;
+import com.telecominfraproject.wlan.profile.rf.models.RfConfiguration;
 import com.vmware.ovsdb.exception.OvsdbClientException;
 import com.vmware.ovsdb.protocol.operation.Delete;
 import com.vmware.ovsdb.protocol.operation.Insert;
@@ -50,19 +53,17 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
             thresholdMap.put("util", 25);
 
             @SuppressWarnings("unchecked")
-            com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer> thresholds = com.vmware.ovsdb.protocol.operation.notation.Map
-                    .of(thresholdMap);
+            com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer> thresholds = com.vmware.ovsdb.protocol.operation.notation.Map.of(thresholdMap);
 
             Map<String, WifiRadioConfigInfo> radioConfigs = ovsdbGet.getProvisionedWifiRadioConfigs(ovsdbClient);
 
-            provisionWifiStatsConfigSurvey(ovsdbGet.getAllowedChannels(ovsdbClient), radioConfigs,
-                    ovsdbGet.getProvisionedWifiStatsConfigs(ovsdbClient), operations, thresholds);
+            provisionWifiStatsConfigSurvey(ovsdbGet.getAllowedChannels(ovsdbClient), radioConfigs, ovsdbGet.getProvisionedWifiStatsConfigs(ovsdbClient),
+                    operations, thresholds);
 
-            provisionWifiStatsConfigNeighbor(ovsdbGet.getAllowedChannels(ovsdbClient), radioConfigs,
-                    ovsdbGet.getProvisionedWifiStatsConfigs(ovsdbClient), operations);
-
-            provisionWifiStatsConfigClient(radioConfigs, ovsdbGet.getProvisionedWifiStatsConfigs(ovsdbClient),
+            provisionWifiStatsConfigNeighbor(ovsdbGet.getAllowedChannels(ovsdbClient), radioConfigs, ovsdbGet.getProvisionedWifiStatsConfigs(ovsdbClient),
                     operations);
+
+            provisionWifiStatsConfigClient(radioConfigs, ovsdbGet.getProvisionedWifiStatsConfigs(ovsdbClient), operations);
             if (!operations.isEmpty()) {
                 LOG.debug("Sending batch of operations : {} ", operations);
 
@@ -84,9 +85,42 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
     }
 
     void configureStatsFromProfile(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
-        // TODO: this will be refactored when the opensync profile for stats is
-        // re-worked
+
+        Profile rfProfile = opensyncApConfig.getRfProfile();
+        if (rfProfile != null) {
+
+            RfConfiguration rfConfiguration = (RfConfiguration) rfProfile.getDetails();
+
+            if (rfConfiguration != null) {
+
+                rfConfiguration.getRfConfigMap().entrySet().stream().forEach(rfElementCfg -> {
+                    if (rfElementCfg.getValue().getActiveScanSettings().isEnabled()) {
+                        switch (rfElementCfg.getKey()) {
+                            case is2dot4GHz:
+                                is2dot4GHzScanDurationMillis = rfElementCfg.getValue().getActiveScanSettings().getScanDurationMillis();
+                                is2dot4GHzSampleIntervalSec = rfElementCfg.getValue().getActiveScanSettings().getScanFrequencySeconds();
+                                break;
+                            case is5GHz:
+                                is5GHzScanDurationMillis = rfElementCfg.getValue().getActiveScanSettings().getScanDurationMillis();
+                                is5GHzSampleIntervalSec = rfElementCfg.getValue().getActiveScanSettings().getScanFrequencySeconds();
+                                break;
+                            case is5GHzU:
+                                is5GHzUScanDurationMillis = rfElementCfg.getValue().getActiveScanSettings().getScanDurationMillis();
+                                is5GHzUSampleIntervalSec = rfElementCfg.getValue().getActiveScanSettings().getScanFrequencySeconds();
+                                break;
+                            case is5GHzL:
+                                is5GHzLScanDurationMillis = rfElementCfg.getValue().getActiveScanSettings().getScanDurationMillis();
+                                is5GHzLSampleIntervalSec = rfElementCfg.getValue().getActiveScanSettings().getScanFrequencySeconds();
+                                break;
+                            default:
+                        }
+                    }
+                });
+            }
+        }
+        
         configureStats(ovsdbClient);
+
 
     }
 
@@ -104,6 +138,7 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
             updateColumns.put("reporting_interval", new Atom<>(defaultReportingIntervalSeconds));
             updateColumns.put("radio_type", new Atom<>("2.4G"));
             updateColumns.put("stats_type", new Atom<>("network_probe"));
+            updateColumns.put("sampling_interval", new Atom<>(is2dot4GHzSampleIntervalSec));
 
             Row row = new Row(updateColumns);
             operations.add(new Insert(wifiStatsConfigDbTable, row));
@@ -120,8 +155,7 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
                         confirmRowExistsInTable(ovsdbClient, ((InsertResult) res).getUuid(), wifiStatsConfigDbTable);
                     } else if (res instanceof ErrorResult) {
                         LOG.error("Could not update {}:", wifiStatsConfigDbTable);
-                        LOG.error("Error: {} Details: {}", ((ErrorResult) res).getError(),
-                                ((ErrorResult) res).getDetails());
+                        LOG.error("Error: {} Details: {}", ((ErrorResult) res).getError(), ((ErrorResult) res).getDetails());
                     } else {
                         LOG.debug("Updated {}:", wifiStatsConfigDbTable);
                         LOG.debug("Op Result {}", res);
@@ -170,8 +204,7 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
             if ((result != null) && (result.length > 0) && !((SelectResult) result[0]).getRows().isEmpty()) {
                 row = ((SelectResult) result[0]).getRows().iterator().next();
                 ret = row.getIntegerColumn("reporting_interval");
-                LOG.info("Stats collection for stats_type=device is already configured with reporting_interval = {}",
-                        ret);
+                LOG.info("Stats collection for stats_type=device is already configured with reporting_interval = {}", ret);
             }
 
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
@@ -194,9 +227,10 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
             rowColumns.put("radio_type", new Atom<>("2.4G"));
             rowColumns.put("reporting_interval", new Atom<>(defaultReportingIntervalSeconds));
             rowColumns.put("report_type", new Atom<>("raw"));
-            rowColumns.put("sampling_interval", new Atom<>(10));
+            rowColumns.put("sampling_interval", new Atom<>(is2dot4GHzSampleIntervalSec));
+            rowColumns.put("survey_interval_ms", new Atom<>(is2dot4GHzScanDurationMillis));
             rowColumns.put("stats_type", new Atom<>("video_voice"));
-            rowColumns.put("survey_interval_ms", new Atom<>(65));
+            
             Row row = new Row(rowColumns);
 
             operations.add(new Insert(wifiStatsConfigDbTable, row));
@@ -214,8 +248,7 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
 
                 } else if (res instanceof ErrorResult) {
                     LOG.error("Could not update {}:", wifiStatsConfigDbTable);
-                    LOG.error("Error: {} Details: {}", ((ErrorResult) res).getError(),
-                            ((ErrorResult) res).getDetails());
+                    LOG.error("Error: {} Details: {}", ((ErrorResult) res).getError(), ((ErrorResult) res).getDetails());
                 } else {
                     LOG.debug("Updated {}:", wifiStatsConfigDbTable);
                     LOG.debug("Op Result {}", res);
@@ -228,8 +261,8 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
 
     }
 
-    void provisionWifiStatsConfigClient(Map<String, WifiRadioConfigInfo> radioConfigs,
-            Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs, List<Operation> operations) {
+    void provisionWifiStatsConfigClient(Map<String, WifiRadioConfigInfo> radioConfigs, Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs,
+            List<Operation> operations) {
 
         radioConfigs.values().stream().forEach(new Consumer<WifiRadioConfigInfo>() {
 
@@ -241,8 +274,8 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
                     rowColumns.put("radio_type", new Atom<>(rc.freqBand));
                     rowColumns.put("reporting_interval", new Atom<>(defaultReportingIntervalSeconds));
                     rowColumns.put("report_type", new Atom<>("raw"));
-                    rowColumns.put("sampling_interval", new Atom<>(10));
                     rowColumns.put("stats_type", new Atom<>("client"));
+                    configSampleTime(rc, rowColumns);
                     Row updateRow = new Row(rowColumns);
                     operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
 
@@ -252,10 +285,8 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
 
     }
 
-
-    void provisionWifiStatsConfigNeighbor(Map<String, Set<Integer>> allowedChannels,
-            Map<String, WifiRadioConfigInfo> radioConfigs, Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs,
-            List<Operation> operations) {
+    void provisionWifiStatsConfigNeighbor(Map<String, Set<Integer>> allowedChannels, Map<String, WifiRadioConfigInfo> radioConfigs,
+            Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs, List<Operation> operations) {
 
         radioConfigs.values().stream().forEach(new Consumer<WifiRadioConfigInfo>() {
 
@@ -264,19 +295,16 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
                 if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_neighbor_off-chan")) {
                     //
                     Map<String, Value> rowColumns = new HashMap<>();
-                    com.vmware.ovsdb.protocol.operation.notation.Set channels = com.vmware.ovsdb.protocol.operation.notation.Set
-                            .of(allowedChannels.get(rc.freqBand));
+                    com.vmware.ovsdb.protocol.operation.notation.Set channels =
+                            com.vmware.ovsdb.protocol.operation.notation.Set.of(allowedChannels.get(rc.freqBand));
                     if (channels == null) {
                         channels = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
                     }
                     rowColumns.put("channel_list", channels);
-
                     rowColumns.put("radio_type", new Atom<>(rc.freqBand));
                     rowColumns.put("reporting_interval", new Atom<>(defaultOffChannelReportingIntervalSeconds));
                     rowColumns.put("stats_type", new Atom<>("neighbor"));
-                    rowColumns.put("survey_type", new Atom<>("off-chan"));
-                    rowColumns.put("survey_interval_ms", new Atom<>(10));
-
+                    configScanAndSurveyTime(rc, rowColumns);
                     Row updateRow = new Row(rowColumns);
                     operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
 
@@ -295,8 +323,7 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
                     rowColumns.put("reporting_interval", new Atom<>(defaultReportingIntervalSeconds));
                     rowColumns.put("stats_type", new Atom<>("neighbor"));
                     rowColumns.put("survey_type", new Atom<>("on-chan"));
-                    rowColumns.put("survey_interval_ms", new Atom<>(0));
-
+                    configScanAndSurveyTime(rc, rowColumns);
                     Row updateRow = new Row(rowColumns);
                     operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
 
@@ -306,9 +333,9 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
 
     }
 
-    void provisionWifiStatsConfigSurvey(Map<String, Set<Integer>> allowedChannels,
-            Map<String, WifiRadioConfigInfo> radioConfigs, Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs,
-            List<Operation> operations, com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer> thresholds) {
+    void provisionWifiStatsConfigSurvey(Map<String, Set<Integer>> allowedChannels, Map<String, WifiRadioConfigInfo> radioConfigs,
+            Map<String, WifiStatsConfigInfo> provisionedWifiStatsConfigs, List<Operation> operations,
+            com.vmware.ovsdb.protocol.operation.notation.Map<String, Integer> thresholds) {
 
         radioConfigs.values().stream().forEach(new Consumer<WifiRadioConfigInfo>() {
 
@@ -320,14 +347,11 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
                     rowColumns.put("radio_type", new Atom<>(rc.freqBand));
                     rowColumns.put("reporting_interval", new Atom<>(defaultReportingIntervalSeconds));
                     rowColumns.put("report_type", new Atom<>("raw"));
-                    rowColumns.put("sampling_interval", new Atom<>(10));
+                    configScanAndSurveyTime(rc, rowColumns);
                     rowColumns.put("stats_type", new Atom<>("survey"));
-                    rowColumns.put("survey_interval_ms", new Atom<>(0));
                     rowColumns.put("survey_type", new Atom<>("on-chan"));
-
                     Row updateRow = new Row(rowColumns);
                     operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
-
                 }
             }
         });
@@ -339,24 +363,21 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
                 if (!provisionedWifiStatsConfigs.containsKey(rc.freqBand + "_survey_off-chan")) {
                     //
                     Map<String, Value> rowColumns = new HashMap<>();
-                    com.vmware.ovsdb.protocol.operation.notation.Set channels = com.vmware.ovsdb.protocol.operation.notation.Set
-                            .of(allowedChannels.get(rc.freqBand));
+                    com.vmware.ovsdb.protocol.operation.notation.Set channels =
+                            com.vmware.ovsdb.protocol.operation.notation.Set.of(allowedChannels.get(rc.freqBand));
                     if (channels == null) {
                         channels = com.vmware.ovsdb.protocol.operation.notation.Set.of(Collections.emptySet());
                     }
                     rowColumns.put("channel_list", channels);
-
                     rowColumns.put("radio_type", new Atom<>(rc.freqBand));
                     rowColumns.put("reporting_interval", new Atom<>(defaultOffChannelReportingIntervalSeconds));
                     rowColumns.put("report_type", new Atom<>("raw"));
                     rowColumns.put("stats_type", new Atom<>("survey"));
                     rowColumns.put("survey_type", new Atom<>("off-chan"));
-                    rowColumns.put("sampling_interval", new Atom<>(0));
-                    rowColumns.put("survey_interval_ms", new Atom<>(10));
+                    configScanAndSurveyTime(rc, rowColumns);
                     rowColumns.put("threshold", thresholds);
                     Row updateRow = new Row(rowColumns);
                     operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
-
                 }
             }
         });
@@ -390,9 +411,9 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
     /**
      * @param ovsdbClient
      * @param value
-     *            of reporting_interval column for the stats_type=device from
-     *            the Wifi_Stats_Config table. If value is not provisioned then
-     *            return -1.
+     *        of reporting_interval column for the stats_type=device from
+     *        the Wifi_Stats_Config table. If value is not provisioned then
+     *        return -1.
      */
     void updateDeviceStatsReportingInterval(OvsdbClient ovsdbClient, long newValue) {
         try {
@@ -407,7 +428,7 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
             updateColumns.put("reporting_interval", new Atom<>(newValue));
             updateColumns.put("radio_type", new Atom<>("2.4G"));
             updateColumns.put("stats_type", new Atom<>("device"));
-
+            updateColumns.put("sampling_interval", new Atom<>(is2dot4GHzSampleIntervalSec));
             Row row = new Row(updateColumns);
             operations.add(new Insert(wifiStatsConfigDbTable, row));
 
@@ -429,6 +450,75 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
             throw new RuntimeException(e);
         }
 
+    }
+    
+    void updateEventReportingInterval(OvsdbClient ovsdbClient, long eventReportingIntervalSeconds) {
+
+        try {
+            List<Operation> operations = new ArrayList<>();
+            Map<String, Value> updateColumns = new HashMap<>();
+
+            // turn on stats collection over MQTT: (reporting_interval is in
+            // seconds)
+            // $ ovsh i Wifi_Stats_Config reporting_interval:=10
+            // radio_type:="2.4G" stats_type:="device"
+
+            updateColumns.put("reporting_interval", new Atom<>(eventReportingIntervalSeconds));
+            updateColumns.put("radio_type", new Atom<>("2.4G"));
+            updateColumns.put("stats_type", new Atom<>("event"));
+            updateColumns.put("sampling_interval", new Atom<>(is2dot4GHzSampleIntervalSec));
+            
+            Row row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            LOG.debug("Updated {}:", wifiStatsConfigDbTable);
+
+            for (OperationResult res : result) {
+                LOG.debug("updateEventReportingInterval Result {}", res);
+                if (res instanceof InsertResult) {
+                    LOG.info("updateEventReportingInterval insert new row result {}", (res));
+                    // for insert, make sure it is actually in the table
+                    confirmRowExistsInTable(ovsdbClient, ((InsertResult) res).getUuid(), wifiStatsConfigDbTable);
+                }
+            }
+
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    private void configSampleTime(WifiRadioConfigInfo rc, Map<String, Value> rowColumns) {
+        // "2.4G","5G","5GL","5GU"
+        if (rc.freqBand.equals("2.4G")) {
+            rowColumns.put("sampling_interval", new Atom<>(is2dot4GHzSampleIntervalSec));
+        } else if (rc.freqBand.equals("5G")) {
+            rowColumns.put("sampling_interval", new Atom<>(is5GHzSampleIntervalSec));
+        } else if (rc.freqBand.equals("5GL")) {
+            rowColumns.put("sampling_interval", new Atom<>(is5GHzLSampleIntervalSec));
+        } else if (rc.freqBand.equals("5GU")) {
+            rowColumns.put("sampling_interval", new Atom<>(is5GHzUSampleIntervalSec));
+        }
+    }
+
+    private void configScanAndSurveyTime(WifiRadioConfigInfo rc, Map<String, Value> rowColumns) {
+        // "2.4G","5G","5GL","5GU"
+        if (rc.freqBand.equals("2.4G")) {
+            rowColumns.put("survey_interval_ms", new Atom<>(is2dot4GHzScanDurationMillis));
+            rowColumns.put("sampling_interval", new Atom<>(is2dot4GHzSampleIntervalSec));
+        } else if (rc.freqBand.equals("5G")) {
+            rowColumns.put("survey_interval_ms", new Atom<>(is5GHzScanDurationMillis));
+            rowColumns.put("sampling_interval", new Atom<>(is5GHzSampleIntervalSec));
+        } else if (rc.freqBand.equals("5GL")) {
+            rowColumns.put("survey_interval_ms", new Atom<>(is5GHzLScanDurationMillis));
+            rowColumns.put("sampling_interval", new Atom<>(is5GHzLSampleIntervalSec));
+        } else if (rc.freqBand.equals("5GU")) {
+            rowColumns.put("survey_interval_ms", new Atom<>(is5GHzUScanDurationMillis));
+            rowColumns.put("sampling_interval", new Atom<>(is5GHzUSampleIntervalSec));
+        }
     }
 
 }

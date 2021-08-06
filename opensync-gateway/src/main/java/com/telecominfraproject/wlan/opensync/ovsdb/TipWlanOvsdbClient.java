@@ -321,6 +321,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         ovsdbDao.removeAllInetConfigs(ovsdbClient);
         ovsdbDao.removeWifiRrm(ovsdbClient);
         ovsdbDao.removeRadsecRadiusAndRealmConfigs(ovsdbClient);
+        ovsdbDao.removeAllStatsConfigs(ovsdbClient);
 
         extIntegrationInterface.clearEquipmentStatus(apId);
 
@@ -336,8 +337,15 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
         ovsdbDao.configureInterfaces(ovsdbClient);
         ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
+        
+        ovsdbDao.configureStatsFromProfile(ovsdbClient, opensyncAPConfig);
+        if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
+            ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
+        }
+        ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
+        ovsdbDao.updateEventReportingInterval(ovsdbClient, collectionIntervalSecEvent);
+        
         LOG.debug("Finished processConfigChanged for {}", apId);
-
     }
 
     @Override

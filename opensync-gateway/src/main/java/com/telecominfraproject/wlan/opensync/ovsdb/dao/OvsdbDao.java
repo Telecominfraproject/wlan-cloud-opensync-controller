@@ -236,7 +236,6 @@ public class OvsdbDao extends OvsdbDaoBase {
         ovsdbStats.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
     }
 
-    @Override
     public void updateEventReportingInterval(OvsdbClient ovsdbClient, long collectionIntervalSecEvent) {
         ovsdbStats.updateEventReportingInterval(ovsdbClient, collectionIntervalSecEvent);
     }
