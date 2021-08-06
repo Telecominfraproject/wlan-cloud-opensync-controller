@@ -20,7 +20,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import com.google.common.base.Objects;
@@ -35,8 +34,6 @@ import com.telecominfraproject.wlan.client.ClientServiceInterface;
 import com.telecominfraproject.wlan.client.info.models.ClientInfoDetails;
 import com.telecominfraproject.wlan.client.session.models.AssociationState;
 import com.telecominfraproject.wlan.client.session.models.ClientDhcpDetails;
-import com.telecominfraproject.wlan.client.session.models.ClientEapDetails;
-import com.telecominfraproject.wlan.client.session.models.ClientFailureDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientSession;
 import com.telecominfraproject.wlan.client.session.models.ClientSessionDetails;
 import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherInterface;
@@ -98,13 +95,8 @@ import sts.OpensyncStats.DeviceType;
 import sts.OpensyncStats.EventReport;
 import sts.OpensyncStats.EventReport.ClientAssocEvent;
 import sts.OpensyncStats.EventReport.ClientAuthEvent;
-import sts.OpensyncStats.EventReport.ClientConnectEvent;
 import sts.OpensyncStats.EventReport.ClientDisconnectEvent;
-import sts.OpensyncStats.EventReport.ClientFailureEvent;
-import sts.OpensyncStats.EventReport.ClientFirstDataEvent;
-import sts.OpensyncStats.EventReport.ClientIdEvent;
 import sts.OpensyncStats.EventReport.ClientIpEvent;
-import sts.OpensyncStats.EventReport.ClientTimeoutEvent;
 import sts.OpensyncStats.FrameType;
 import sts.OpensyncStats.Neighbor;
 import sts.OpensyncStats.Neighbor.NeighborBss;
@@ -156,7 +148,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
     public int statsTimeDriftThresholdSec;
 
     @Override
-    @Async
+    
     public void processMqttMessage(String topic, Report report) {
         // Numerous try/catch blocks to address situations where logs are not being reported due to corrupt or invalid
         // data in mqtt stats causing a crash
@@ -319,7 +311,6 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
 
     void publishEvents(Report report, int customerId, long equipmentId, String apId, long locationId) {
 
-        // asynchronous
         realtimeEventPublisher.publishSipCallEvents(customerId, equipmentId, locationId, report.getVideoVoiceReportList());
 
         for (EventReport eventReport : report.getEventReportList()) {
@@ -328,165 +319,22 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
 
                 LOG.debug("Processing EventReport::ClientSession for AP {}", apId);
                 // for the following MQTT events, the client/client session is first updated, then the real time event
-                // is published, asynchronously.
+                // is published.
                 if (apEventClientSession.hasClientAuthEvent()) {
                     processClientAuthEvent(customerId, equipmentId, locationId, apEventClientSession);
                 }
                 if (apEventClientSession.hasClientAssocEvent()) {
                     processClientAssocEvent(customerId, equipmentId, locationId, apEventClientSession);
                 }
-                if (apEventClientSession.hasClientFirstDataEvent()) {
-                    processClientFirstDataEvent(customerId, equipmentId, locationId, apEventClientSession);
-                }
-                if (apEventClientSession.hasClientIdEvent()) {
-                    processClientIdEvent(customerId, equipmentId, locationId, apEventClientSession);
-                }
                 if (apEventClientSession.hasClientIpEvent()) {
                     processClientIpEvent(customerId, equipmentId, locationId, apEventClientSession);
-                }
-                if (apEventClientSession.hasClientConnectEvent()) {
-                    processClientConnectEvent(customerId, equipmentId, locationId, eventReport, apEventClientSession);
                 }
                 if (apEventClientSession.hasClientDisconnectEvent()) {
                     processClientDisconnectEvent(customerId, equipmentId, locationId, apEventClientSession);
                 }
-                if (apEventClientSession.hasClientTimeoutEvent()) {
-                    processClientTimeoutEvent(customerId, equipmentId, locationId, apEventClientSession);
-                }
-                if (apEventClientSession.hasClientFailureEvent()) {
-                    processClientFailureEvent(customerId, equipmentId, locationId, apEventClientSession);
-                }
             }
-            // asynchronous
             realtimeEventPublisher.publishChannelHopEvents(customerId, equipmentId, locationId, eventReport);
-            // asynchronous
-            realtimeEventPublisher.publishDhcpTransactionEvents(customerId, equipmentId, locationId, eventReport.getDhcpTransactionList());
-
         }
-
-    }
-
-    protected void processClientConnectEvent(int customerId, long equipmentId, long locationId, EventReport e,
-            sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
-        ClientConnectEvent apClientEvent = apEventClientSession.getClientConnectEvent();
-
-        com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId, MacAddress.valueOf(apClientEvent.getStaMac()));
-        if (client == null) {
-            client = new com.telecominfraproject.wlan.client.models.Client();
-            client.setCustomerId(customerId);
-            client.setMacAddress(MacAddress.valueOf(apClientEvent.getStaMac()));
-            client.setDetails(new ClientInfoDetails());
-            client = clientServiceInterface.create(client);
-        }
-        ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId, MacAddress.valueOf(apClientEvent.getStaMac()));
-        if (clientSession == null) {
-            clientSession = new ClientSession();
-            clientSession.setCustomerId(customerId);
-            clientSession.setEquipmentId(equipmentId);
-            clientSession.setMacAddress(MacAddress.valueOf(apClientEvent.getStaMac()));
-            clientSession.setLocationId(locationId);
-            clientSession.setDetails(new ClientSessionDetails());
-            clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(Long.toUnsignedString(apEventClientSession.getSessionId())));
-        }
-        if (clientSession.getDetails().getPriorEquipmentId() == null) {
-            clientSession.getDetails().setPriorEquipmentId(clientSession.getEquipmentId());
-        }
-        if (clientSession.getDetails().getPriorSessionId() == null) {
-            if (!Objects.equal(clientSession.getDetails().getSessionId(), Long.toUnsignedString(apEventClientSession.getSessionId())))
-                clientSession.getDetails().setPriorSessionId(clientSession.getDetails().getSessionId());
-        }
-        if (!Objects.equal(clientSession.getDetails().getSessionId(), Long.toUnsignedString(apEventClientSession.getSessionId()))) {
-            clientSession.getDetails().setPriorSessionId(clientSession.getDetails().getSessionId());
-        }
-        clientSession.getDetails().setSessionId(Long.toUnsignedString(apEventClientSession.getSessionId()));
-        clientSession.getDetails().setRadioType(OvsdbToWlanCloudTypeMappingUtility.getRadioTypeFromOpensyncStatsRadioBandType(apClientEvent.getBand()));
-        clientSession.getDetails().setSsid(apClientEvent.getSsid());
-
-        if (apClientEvent.hasEvTimeBootupInUsAssoc()) {
-            clientSession.getDetails().setAssocTimestamp(apClientEvent.getEvTimeBootupInUsAssoc());
-        }
-
-        if (apClientEvent.hasEvTimeBootupInUsAuth()) {
-            clientSession.getDetails().setAuthTimestamp(apClientEvent.getEvTimeBootupInUsAuth());
-        }
-
-        if (apClientEvent.hasEvTimeBootupInUsEapol()) {
-            ClientEapDetails eapDetails = new ClientEapDetails();
-            eapDetails.setEapSuccessTimestamp(apClientEvent.getEvTimeBootupInUsEapol());
-            clientSession.getDetails().setEapDetails(eapDetails);
-        }
-
-        if (apClientEvent.hasEvTimeBootupInUsFirstRx()) {
-            clientSession.getDetails().setFirstDataRcvdTimestamp(apClientEvent.getEvTimeBootupInUsFirstRx());
-        }
-
-        if (apClientEvent.hasEvTimeBootupInUsFirstTx()) {
-            clientSession.getDetails().setFirstDataSentTimestamp(apClientEvent.getEvTimeBootupInUsFirstTx());
-        }
-
-        if (apClientEvent.hasEvTimeBootupInUsIp()) {
-            clientSession.getDetails().setIpTimestamp(apClientEvent.getEvTimeBootupInUsIp());
-        }
-
-        if (apClientEvent.hasEvTimeBootupInUsPortEnable()) {
-            clientSession.getDetails().setPortEnabledTimestamp(apClientEvent.getEvTimeBootupInUsPortEnable());
-        }
-
-        if (apClientEvent.hasCltId()) {
-            clientSession.getDetails().setHostname(apClientEvent.getCltId());
-        }
-
-        if (apClientEvent.hasSecType()) {
-            clientSession.getDetails().setSecurityType(OvsdbToWlanCloudTypeMappingUtility.getCloudSecurityTypeFromOpensyncStats(apClientEvent.getSecType()));
-        }
-
-        if (apClientEvent.hasAssocType()) {
-            clientSession.getDetails().setIsReassociation(apClientEvent.getAssocType().equals(AssocType.REASSOC));
-        }
-
-        if (apClientEvent.hasAssocRssi()) {
-            clientSession.getDetails().setAssocRssi(apClientEvent.getAssocRssi());
-        }
-
-        if (apClientEvent.hasUsing11K()) {
-            clientSession.getDetails().setIs11KUsed(apClientEvent.getUsing11K());
-        }
-
-        if (apClientEvent.hasUsing11R()) {
-            clientSession.getDetails().setIs11RUsed(apClientEvent.getUsing11R());
-
-        }
-
-        if (apClientEvent.hasUsing11V()) {
-            clientSession.getDetails().setIs11VUsed(apClientEvent.getUsing11V());
-        }
-
-        if (apClientEvent.hasIpAddr()) {
-            ByteString ipAddress = apClientEvent.getIpAddr();
-            if (ipAddress != null) {
-                try {
-                    InetAddress inetAddress = InetAddress.getByAddress(ipAddress.toByteArray());
-                    if (inetAddress instanceof Inet4Address) {
-                        clientSession.getDetails().setIpAddress(inetAddress);
-                    } else if (inetAddress instanceof Inet6Address) {
-                        clientSession.getDetails().setIpAddress(inetAddress);
-                    } else {
-                        LOG.error("Invalid IP Address {}", ipAddress);
-                    }
-                    clientSession.getDetails().setIpTimestamp(apClientEvent.getTimestampMs());
-                } catch (UnknownHostException ex) {
-                }
-            }
-        }
-
-        if (clientSession.getDetails().getAssociationState() != null
-                && !clientSession.getDetails().getAssociationState().equals(AssociationState._802_11_Associated)) {
-            clientSession.getDetails().setAssociationState(AssociationState._802_11_Associated);
-            clientSession.getDetails().setAssocTimestamp(apClientEvent.getTimestampMs());
-        }
-        clientSession.getDetails().setLastEventTimestamp(apClientEvent.getTimestampMs());
-        clientSession = clientServiceInterface.updateSession(clientSession);
-        realtimeEventPublisher.publishClientConnectSuccessEvent(customerId, equipmentId, locationId, apEventClientSession.getClientConnectEvent());
 
     }
 
@@ -511,9 +359,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
             clientSession.setDetails(new ClientSessionDetails());
             clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(Long.toUnsignedString(apEventClientSession.getSessionId())));
         }
-        if (clientSession.getDetails().getPriorEquipmentId() == null) {
-            clientSession.getDetails().setPriorEquipmentId(clientSession.getEquipmentId());
-        }
+
         if (clientSession.getDetails().getPriorSessionId() == null) {
             if (!Objects.equal(clientSession.getDetails().getSessionId(), Long.toUnsignedString(apEventClientSession.getSessionId())))
                 clientSession.getDetails().setPriorSessionId(clientSession.getDetails().getSessionId());
@@ -682,144 +528,6 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
 
     }
 
-    protected void processClientFailureEvent(int customerId, long equipmentId, long locationId,
-            sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
-        ClientFailureEvent apClientEvent = apEventClientSession.getClientFailureEvent();
-        com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId, MacAddress.valueOf(apClientEvent.getStaMac()));
-        if (client == null) {
-            client = new com.telecominfraproject.wlan.client.models.Client();
-            client.setCustomerId(customerId);
-            client.setMacAddress(MacAddress.valueOf(apClientEvent.getStaMac()));
-            client.setDetails(new ClientInfoDetails());
-            client = clientServiceInterface.create(client);
-        }
-        ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId, MacAddress.valueOf(apClientEvent.getStaMac()));
-        if (clientSession == null) {
-            clientSession = new ClientSession();
-            clientSession.setCustomerId(customerId);
-            clientSession.setEquipmentId(equipmentId);
-            clientSession.setMacAddress(MacAddress.valueOf(apClientEvent.getStaMac()));
-            clientSession.setLocationId(locationId);
-            clientSession.setDetails(new ClientSessionDetails());
-            clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(Long.toUnsignedString(apEventClientSession.getSessionId())));
-        }
-        if (clientSession.getDetails().getPriorEquipmentId() == null) {
-            clientSession.getDetails().setPriorEquipmentId(clientSession.getEquipmentId());
-        }
-        if (clientSession.getDetails().getPriorSessionId() == null) {
-            if (!Objects.equal(clientSession.getDetails().getSessionId(), Long.toUnsignedString(apEventClientSession.getSessionId())))
-                clientSession.getDetails().setPriorSessionId(clientSession.getDetails().getSessionId());
-        }
-        if (!Objects.equal(clientSession.getDetails().getSessionId(), Long.toUnsignedString(apEventClientSession.getSessionId()))) {
-            clientSession.getDetails().setPriorSessionId(clientSession.getDetails().getSessionId());
-        }
-        clientSession.getDetails().setSessionId(Long.toUnsignedString(apEventClientSession.getSessionId()));
-        clientSession.getDetails().setSsid(apClientEvent.getSsid());
-
-        ClientFailureDetails clientFailureDetails = new ClientFailureDetails();
-        if (apClientEvent.hasReasonStr()) {
-            clientFailureDetails.setReason(apClientEvent.getReasonStr());
-        }
-        if (apClientEvent.hasReasonCode()) {
-            clientFailureDetails.setReasonCode(apClientEvent.getReasonCode());
-        }
-        clientSession.getDetails().setLastFailureDetails(clientFailureDetails);
-        clientSession.getDetails().setLastEventTimestamp(apClientEvent.getTimestampMs());
-        clientSession = clientServiceInterface.updateSession(clientSession);
-        realtimeEventPublisher.publishClientFailureEvent(customerId, equipmentId, locationId, apEventClientSession.getClientFailureEvent());
-    }
-
-    protected void processClientFirstDataEvent(int customerId, long equipmentId, long locationId,
-            sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
-        ClientFirstDataEvent apClientEvent = apEventClientSession.getClientFirstDataEvent();
-        com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId, MacAddress.valueOf(apClientEvent.getStaMac()));
-        if (client == null) {
-            client = new com.telecominfraproject.wlan.client.models.Client();
-            client.setCustomerId(customerId);
-            client.setMacAddress(MacAddress.valueOf(apClientEvent.getStaMac()));
-            client.setDetails(new ClientInfoDetails());
-            client = clientServiceInterface.create(client);
-        }
-        ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId, MacAddress.valueOf(apClientEvent.getStaMac()));
-        if (clientSession == null) {
-            clientSession = new ClientSession();
-            clientSession.setCustomerId(customerId);
-            clientSession.setEquipmentId(equipmentId);
-            clientSession.setMacAddress(MacAddress.valueOf(apClientEvent.getStaMac()));
-            clientSession.setLocationId(locationId);
-            clientSession.setDetails(new ClientSessionDetails());
-            clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(Long.toUnsignedString(apEventClientSession.getSessionId())));
-        }
-        if (clientSession.getDetails().getPriorEquipmentId() == null) {
-            clientSession.getDetails().setPriorEquipmentId(clientSession.getEquipmentId());
-        }
-        if (clientSession.getDetails().getPriorSessionId() == null) {
-            if (!Objects.equal(clientSession.getDetails().getSessionId(), Long.toUnsignedString(apEventClientSession.getSessionId())))
-                clientSession.getDetails().setPriorSessionId(clientSession.getDetails().getSessionId());
-        }
-        if (!Objects.equal(clientSession.getDetails().getSessionId(), Long.toUnsignedString(apEventClientSession.getSessionId()))) {
-            clientSession.getDetails().setPriorSessionId(clientSession.getDetails().getSessionId());
-        }
-        clientSession.getDetails().setSessionId(Long.toUnsignedString(apEventClientSession.getSessionId()));
-
-        if (apClientEvent.hasFdataRxUpTsInUs()) {
-            clientSession.getDetails().setFirstDataRcvdTimestamp(apClientEvent.getFdataRxUpTsInUs());
-        }
-
-        if (apClientEvent.hasFdataTxUpTsInUs()) {
-            clientSession.getDetails().setFirstDataSentTimestamp(apClientEvent.getFdataTxUpTsInUs());
-        }
-        clientSession.getDetails().setLastEventTimestamp(apClientEvent.getTimestampMs());
-        clientSession = clientServiceInterface.updateSession(clientSession);
-
-        realtimeEventPublisher.publishClientFirstDataEvent(customerId, equipmentId, locationId, apEventClientSession.getClientFirstDataEvent());
-
-    }
-
-    protected void processClientIdEvent(int customerId, long equipmentId, long locationId, sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
-        ClientIdEvent apClientEvent = apEventClientSession.getClientIdEvent();
-        com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId, MacAddress.valueOf(apClientEvent.getCltMac()));
-        if (client == null) {
-            client = new com.telecominfraproject.wlan.client.models.Client();
-            client.setCustomerId(customerId);
-            client.setMacAddress(MacAddress.valueOf(apClientEvent.getCltMac()));
-            client.setDetails(new ClientInfoDetails());
-            client = clientServiceInterface.create(client);
-        }
-        if (apClientEvent.hasCltId()) {
-            ((ClientInfoDetails) client.getDetails()).setHostName(apClientEvent.getCltId());
-        }
-        client = clientServiceInterface.update(client);
-
-        ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId, MacAddress.valueOf(apClientEvent.getCltMac()));
-        if (clientSession == null) {
-            clientSession = new ClientSession();
-            clientSession.setCustomerId(customerId);
-            clientSession.setEquipmentId(equipmentId);
-            clientSession.setMacAddress(MacAddress.valueOf(apClientEvent.getCltMac()));
-            clientSession.setLocationId(locationId);
-            clientSession.setDetails(new ClientSessionDetails());
-            clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(Long.toUnsignedString(apEventClientSession.getSessionId())));
-        }
-        if (clientSession.getDetails().getPriorEquipmentId() == null) {
-            clientSession.getDetails().setPriorEquipmentId(clientSession.getEquipmentId());
-        }
-        if (clientSession.getDetails().getPriorSessionId() == null) {
-            if (!Objects.equal(clientSession.getDetails().getSessionId(), Long.toUnsignedString(apEventClientSession.getSessionId())))
-                clientSession.getDetails().setPriorSessionId(clientSession.getDetails().getSessionId());
-        }
-        if (!Objects.equal(clientSession.getDetails().getSessionId(), Long.toUnsignedString(apEventClientSession.getSessionId()))) {
-            clientSession.getDetails().setPriorSessionId(clientSession.getDetails().getSessionId());
-        }
-        clientSession.getDetails().setSessionId(Long.toUnsignedString(apEventClientSession.getSessionId()));
-        if (apClientEvent.hasCltId()) {
-            clientSession.getDetails().setHostname(apClientEvent.getCltId());
-        }
-        clientSession.getDetails().setLastEventTimestamp(apClientEvent.getTimestampMs());
-        clientSession = clientServiceInterface.updateSession(clientSession);
-        realtimeEventPublisher.publishClientIdEvent(customerId, equipmentId, locationId, apEventClientSession.getClientIdEvent());
-    }
-
     protected void processClientIpEvent(int customerId, long equipmentId, long locationId, sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
         ClientIpEvent apClientEvent = apEventClientSession.getClientIpEvent();
         com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId, MacAddress.valueOf(apClientEvent.getStaMac()));
@@ -874,52 +582,6 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         clientSession.getDetails().setLastEventTimestamp(apClientEvent.getTimestampMs());
         clientSession = clientServiceInterface.updateSession(clientSession);
         realtimeEventPublisher.publishClientIpEvent(customerId, equipmentId, locationId, apEventClientSession.getClientIpEvent());
-    }
-
-    protected void processClientTimeoutEvent(int customerId, long equipmentId, long locationId,
-            sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
-        ClientTimeoutEvent apClientEvent = apEventClientSession.getClientTimeoutEvent();
-        com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId, MacAddress.valueOf(apClientEvent.getStaMac()));
-        if (client == null) {
-            client = new com.telecominfraproject.wlan.client.models.Client();
-            client.setCustomerId(customerId);
-            client.setMacAddress(MacAddress.valueOf(apClientEvent.getStaMac()));
-            client.setDetails(new ClientInfoDetails());
-            client = clientServiceInterface.create(client);
-        }
-        client = clientServiceInterface.update(client);
-        ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId, MacAddress.valueOf(apClientEvent.getStaMac()));
-        if (clientSession == null) {
-            clientSession = new ClientSession();
-            clientSession.setCustomerId(customerId);
-            clientSession.setEquipmentId(equipmentId);
-            clientSession.setMacAddress(MacAddress.valueOf(apClientEvent.getStaMac()));
-            clientSession.setLocationId(locationId);
-            clientSession.setDetails(new ClientSessionDetails());
-            clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(Long.toUnsignedString(apEventClientSession.getSessionId())));
-        }
-        if (clientSession.getDetails().getPriorEquipmentId() == null) {
-            clientSession.getDetails().setPriorEquipmentId(clientSession.getEquipmentId());
-        }
-        if (clientSession.getDetails().getPriorSessionId() == null) {
-            if (!Objects.equal(clientSession.getDetails().getSessionId(), Long.toUnsignedString(apEventClientSession.getSessionId())))
-                clientSession.getDetails().setPriorSessionId(clientSession.getDetails().getSessionId());
-        }
-        if (!Objects.equal(clientSession.getDetails().getSessionId(), Long.toUnsignedString(apEventClientSession.getSessionId()))) {
-            clientSession.getDetails().setPriorSessionId(clientSession.getDetails().getSessionId());
-        }
-        clientSession.getDetails().setSessionId(Long.toUnsignedString(apEventClientSession.getSessionId()));
-        if (apClientEvent.hasLastRcvUpTsInUs()) {
-            clientSession.getDetails().setLastRxTimestamp(apClientEvent.getLastRcvUpTsInUs());
-        }
-        if (apClientEvent.hasLastSentUpTsInUs()) {
-            clientSession.getDetails().setLastTxTimestamp(apClientEvent.getLastSentUpTsInUs());
-        }
-        clientSession.getDetails().setTimeoutTimestamp(apClientEvent.getTimestampMs());
-        clientSession.getDetails().setAssociationState(AssociationState.AP_Timeout);
-        clientSession.getDetails().setLastEventTimestamp(apClientEvent.getTimestampMs());
-        clientSession = clientServiceInterface.updateSession(clientSession);
-        realtimeEventPublisher.publishClientTimeoutEvent(customerId, equipmentId, locationId, apEventClientSession.getClientTimeoutEvent());
     }
 
     void populateApNodeMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId, long equipmentId, long locationId) {
@@ -1235,7 +897,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         updateDeviceStatusRadioUtilizationReport(customerId, equipmentId, radioUtilizationReport);
     }
 
-    @Async
+    
     void clearDeviceThresholdAlarm(int customerId, long equipmentId, AlarmCode alarmCode) {
         alarmServiceInterface.get(customerId, Set.of(equipmentId), Set.of(alarmCode)).stream().forEach(a -> {
             Alarm alarm = alarmServiceInterface.delete(customerId, equipmentId, a.getAlarmCode(), a.getCreatedTimestamp());
@@ -1243,7 +905,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         });
     }
 
-    @Async
+    
     void raiseDeviceThresholdAlarm(int customerId, long equipmentId, AlarmCode alarmCode, long timestampMs) {
         // Raise an alarm for temperature
         Alarm alarm = new Alarm();
