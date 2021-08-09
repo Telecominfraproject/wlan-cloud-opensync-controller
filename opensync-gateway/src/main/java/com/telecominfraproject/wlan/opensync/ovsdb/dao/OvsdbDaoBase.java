@@ -19,6 +19,7 @@ import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpF
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpDeviceType;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.enumerations.DhcpFpManufId;
 import com.vmware.ovsdb.exception.OvsdbClientException;
+import com.vmware.ovsdb.protocol.operation.Insert;
 import com.vmware.ovsdb.protocol.operation.Operation;
 import com.vmware.ovsdb.protocol.operation.Select;
 import com.vmware.ovsdb.protocol.operation.Update;
@@ -29,6 +30,7 @@ import com.vmware.ovsdb.protocol.operation.notation.Row;
 import com.vmware.ovsdb.protocol.operation.notation.Uuid;
 import com.vmware.ovsdb.protocol.operation.notation.Value;
 import com.vmware.ovsdb.protocol.operation.result.ErrorResult;
+import com.vmware.ovsdb.protocol.operation.result.InsertResult;
 import com.vmware.ovsdb.protocol.operation.result.OperationResult;
 import com.vmware.ovsdb.protocol.operation.result.SelectResult;
 import com.vmware.ovsdb.protocol.operation.result.UpdateResult;
@@ -149,15 +151,6 @@ public class OvsdbDaoBase {
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.defaultOffChannelReportingIntervalSeconds:120}")
     public int defaultOffChannelReportingIntervalSeconds;
 
-    public  int is2dot4GHzScanDurationMillis = 65;
-    public  int is2dot4GHzSampleIntervalSec = 10;
-    public  int is5GHzScanDurationMillis = 65;
-    public  int is5GHzSampleIntervalSec = 10;
-    public  int is5GHzLScanDurationMillis = 65;
-    public  int is5GHzLSampleIntervalSec = 10;
-    public  int is5GHzUScanDurationMillis = 65;
-    public  int is5GHzUSampleIntervalSec = 10;
-    
     public OvsdbDaoBase() {
     }
 
@@ -166,6 +159,44 @@ public class OvsdbDaoBase {
         Set<T> set = row != null ? row.getSetColumn(columnName) : null;
 
         return set;
+    }
+
+    public void updateEventReportingInterval(OvsdbClient ovsdbClient, long eventReportingIntervalSeconds) {
+
+        try {
+            List<Operation> operations = new ArrayList<>();
+            Map<String, Value> updateColumns = new HashMap<>();
+
+            // turn on stats collection over MQTT: (reporting_interval is in
+            // seconds)
+            // $ ovsh i Wifi_Stats_Config reporting_interval:=10
+            // radio_type:="2.4G" stats_type:="device"
+
+            updateColumns.put("reporting_interval", new Atom<>(eventReportingIntervalSeconds));
+            updateColumns.put("radio_type", new Atom<>("2.4G"));
+            updateColumns.put("stats_type", new Atom<>("event"));
+
+            Row row = new Row(updateColumns);
+            operations.add(new Insert(wifiStatsConfigDbTable, row));
+
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            LOG.debug("Updated {}:", wifiStatsConfigDbTable);
+
+            for (OperationResult res : result) {
+                LOG.debug("updateEventReportingInterval Result {}", res);
+                if (res instanceof InsertResult) {
+                    LOG.info("updateEventReportingInterval insert new row result {}", (res));
+                    // for insert, make sure it is actually in the table
+                    confirmRowExistsInTable(ovsdbClient, ((InsertResult) res).getUuid(), wifiStatsConfigDbTable);
+                }
+            }
+
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
     void configureWanInterfacesForDhcpSniffing(OvsdbClient ovsdbClient) {

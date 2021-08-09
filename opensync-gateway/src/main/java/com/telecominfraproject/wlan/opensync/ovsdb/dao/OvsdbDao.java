@@ -62,7 +62,7 @@ public class OvsdbDao extends OvsdbDaoBase {
 
     public void configureCommands(OvsdbClient ovsdbClient, String startdebugengineapcommand,
             Map<String, String> payload, long l, long defaultCommandDurationSec) {
-	    ovsdbCommand.configureCommands(ovsdbClient, startdebugengineapcommand, payload, l, defaultCommandDurationSec);
+        ovsdbCommand.configureCommands(ovsdbClient, startdebugengineapcommand, payload, l, defaultCommandDurationSec);
     }
 
     public void configureFirmwareDownload(OvsdbClient ovsdbClient, String apId, String firmwareUrl,
@@ -236,6 +236,7 @@ public class OvsdbDao extends OvsdbDaoBase {
         ovsdbStats.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
     }
 
+    @Override
     public void updateEventReportingInterval(OvsdbClient ovsdbClient, long collectionIntervalSecEvent) {
         ovsdbStats.updateEventReportingInterval(ovsdbClient, collectionIntervalSecEvent);
     }
