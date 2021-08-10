@@ -351,8 +351,8 @@ public class OvsdbStatsConfig extends OvsdbDaoBase {
                     rowColumns.put("report_type", new Atom<>("raw"));
                     rowColumns.put("stats_type", new Atom<>("survey"));
                     rowColumns.put("survey_type", new Atom<>("off-chan"));
-                    rowColumns.put("sampling_interval", new Atom<>(0));
-                    rowColumns.put("survey_interval_ms", new Atom<>(10));
+                    rowColumns.put("sampling_interval", new Atom<>(10));
+                    rowColumns.put("survey_interval_ms", new Atom<>(50));
                     rowColumns.put("threshold", thresholds);
                     Row updateRow = new Row(rowColumns);
                     operations.add(new Insert(wifiStatsConfigDbTable, updateRow));
