@@ -212,34 +212,8 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
             List<Operation> operations = new ArrayList<>();
             Map<String, Value> tableColumns = new HashMap<>();
             Map<String, WifiInetConfigInfo> inetConfigMap = ovsdbGet.getProvisionedWifiInetConfigs(ovsdbClient);
-            WifiInetConfigInfo parentLanInterface = inetConfigMap.get(defaultLanInterfaceName);
-            if (parentLanInterface == null) {
-                throw new RuntimeException(
-                        "Cannot get lan interface " + defaultLanInterfaceName + " for vlan " + vlanId);
-            }
-            tableColumns.put("if_type", new Atom<>("vlan"));
-            tableColumns.put("vlan_id", new Atom<>(vlanId));
-            tableColumns.put("if_name", new Atom<>(parentLanInterface.ifName + "_" + Integer.toString(vlanId)));
-            tableColumns.put("parent_ifname", new Atom<>(parentLanInterface.ifName));
-            tableColumns.put("enabled", new Atom<>(true));
-            tableColumns.put("network", new Atom<>(true));
-            tableColumns.put("ip_assign_scheme", new Atom<>(parentLanInterface.ipAssignScheme));
-            tableColumns.put("NAT", new Atom<>(parentLanInterface.nat));
-            tableColumns.put("mtu", new Atom<>(1500));
-            String[] inetAddress = parentLanInterface.inetAddr.split("\\.");
-            String vlanAddress = inetAddress[0] + "." + inetAddress[1] + "." + vlanId + "." + inetAddress[3];
-            tableColumns.put("inet_addr", new Atom<>(vlanAddress));
-            tableColumns.put("netmask", new Atom<>(parentLanInterface.netmask));
-            tableColumns.put("dhcpd", com.vmware.ovsdb.protocol.operation.notation.Map.of(parentLanInterface.dhcpd));
             Row row = new Row(tableColumns);
-            if (inetConfigMap.containsKey(parentLanInterface.ifName + "_" + Integer.toString(vlanId))) {
-                List<Condition> conditions = new ArrayList<>();
-                conditions.add(new Condition("vlan_id", Function.EQUALS, new Atom<>(vlanId)));
-                conditions.add(new Condition("parent_ifname", Function.EQUALS, new Atom<>(parentLanInterface.ifName)));
-                operations.add(new Update(wifiInetConfigDbTable, conditions, row));
-            } else {
-                operations.add(new Insert(wifiInetConfigDbTable, row));
-            }
+
             WifiInetConfigInfo parentWanInterface = inetConfigMap.get(defaultWanInterfaceName);
             if (parentWanInterface == null) {
                 throw new RuntimeException(
@@ -251,8 +225,7 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
             tableColumns.put("if_name", new Atom<>(parentWanInterface.ifName + "_" + Integer.toString(vlanId)));
             tableColumns.put("parent_ifname", new Atom<>(parentWanInterface.ifName));
             tableColumns.put("enabled", new Atom<>(true));
-            tableColumns.put("network", new Atom<>(true));
-            tableColumns.put("ip_assign_scheme", new Atom<>(parentWanInterface.ipAssignScheme));
+            tableColumns.put("ip_assign_scheme", new Atom<>("none"));
             tableColumns.put("NAT", new Atom<>(parentWanInterface.nat));
             tableColumns.put("mtu", new Atom<>(1500));
             row = new Row(tableColumns);
@@ -278,8 +251,7 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
             }
             inetConfigMap = ovsdbGet.getProvisionedWifiInetConfigs(ovsdbClient);
             LOG.debug("Provisioned vlan on wan {} and lan {}",
-                    inetConfigMap.get(parentWanInterface.ifName + "_" + Integer.toString(vlanId)),
-                    inetConfigMap.get(parentLanInterface.ifName + "_" + Integer.toString(vlanId)));
+                    inetConfigMap.get(parentWanInterface.ifName + "_" + Integer.toString(vlanId)));
         } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
             LOG.error("Error in provisioning Vlan", e);
             throw new RuntimeException(e);
