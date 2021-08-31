@@ -195,7 +195,7 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                                 stopwatchTimerMessageProcess.stop();
                             }
                         }
-                    } catch (Exception e) {
+                    } catch (Throwable e) {
                         LOG.error("Exception in MQTT receiver", e);
                     } finally {
                         try {
