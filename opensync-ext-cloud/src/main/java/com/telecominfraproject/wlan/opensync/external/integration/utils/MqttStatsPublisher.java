@@ -700,12 +700,13 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
     }
 
     void updateDeviceStatusRadioUtilizationReport(int customerId, long equipmentId, RadioUtilizationReport radioUtilizationReport) {
-        LOG.info("REMOVED StatusServiceInterface GETORNULL - Processing updateDeviceStatusRadioUtilizationReport for equipmentId {} with RadioUtilizationReport {}", equipmentId, radioUtilizationReport);
-            LOG.debug("Create new radioUtilizationStatus");
-            Status radioUtilizationStatus = new Status();
-            radioUtilizationStatus.setCustomerId(customerId);
-            radioUtilizationStatus.setEquipmentId(equipmentId);
-            radioUtilizationStatus.setStatusDataType(StatusDataType.RADIO_UTILIZATION);
+        LOG.info("Processing updateDeviceStatusRadioUtilizationReport for equipmentId {} with RadioUtilizationReport {}", equipmentId, radioUtilizationReport);
+        // remove statusServiceInterface.getOrNull() for better performance (i.e. no createdTimestamp)
+        LOG.debug("Create new radioUtilizationStatus");
+        Status radioUtilizationStatus = new Status();
+        radioUtilizationStatus.setCustomerId(customerId);
+        radioUtilizationStatus.setEquipmentId(equipmentId);
+        radioUtilizationStatus.setStatusDataType(StatusDataType.RADIO_UTILIZATION);
         radioUtilizationStatus.setDetails(radioUtilizationReport);
         statusServiceInterface.update(radioUtilizationStatus);
     }
