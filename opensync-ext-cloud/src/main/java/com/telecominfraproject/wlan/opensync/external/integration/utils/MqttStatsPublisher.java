@@ -285,6 +285,8 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         for (Device deviceReport : report.getDeviceList()) {
 
             int avgRadioTemp = 0;
+            // The 3 fixed alarm codes
+            List<Alarm> alarms = alarmServiceInterface.get(customerId, Set.of(equipmentId), Set.of(AlarmCode.CPUTemperature, AlarmCode.CPUUtilization, AlarmCode.MemoryUtilization));
 
             ApPerformance apPerformance = new ApPerformance();
             apNodeMetrics.setApPerformance(apPerformance);
@@ -303,10 +305,10 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                     apPerformance.setCpuTemperature(avgRadioTemp);
                 }
                 if (avgRadioTemp > temperatureThresholdInC) {
-                    raiseDeviceThresholdAlarm(customerId, equipmentId, AlarmCode.CPUTemperature, deviceReport.getTimestampMs());
+                    raiseDeviceThresholdAlarm(customerId, equipmentId, AlarmCode.CPUTemperature, deviceReport.getTimestampMs(), alarms);
                 } else {
                     // Clear any existing temperature alarms for this ap
-                    clearDeviceThresholdAlarm(customerId, equipmentId, AlarmCode.CPUTemperature);
+                    clearDeviceThresholdAlarm(customerId, equipmentId, AlarmCode.CPUTemperature, alarms);
                 }
             }
 
@@ -314,10 +316,10 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                 Integer cpuUtilization = deviceReport.getCpuUtil().getCpuUtil();
                 apPerformance.setCpuUtilized(new int[] {cpuUtilization});
                 if (cpuUtilization > cpuUtilThresholdPct) {
-                    raiseDeviceThresholdAlarm(customerId, equipmentId, AlarmCode.CPUUtilization, deviceReport.getTimestampMs());
+                    raiseDeviceThresholdAlarm(customerId, equipmentId, AlarmCode.CPUUtilization, deviceReport.getTimestampMs(), alarms);
                 } else {
                     // Clear any existing cpuUtilization alarms
-                    clearDeviceThresholdAlarm(customerId, equipmentId, AlarmCode.CPUUtilization);
+                    clearDeviceThresholdAlarm(customerId, equipmentId, AlarmCode.CPUUtilization, alarms);
                 }
             }
 
@@ -329,10 +331,10 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                 double usedMemory = deviceReport.getMemUtil().getMemUsed();
                 double totalMemory = deviceReport.getMemUtil().getMemTotal();
                 if (usedMemory / totalMemory * 100 > memoryUtilThresholdPct) {
-                    raiseDeviceThresholdAlarm(customerId, equipmentId, AlarmCode.MemoryUtilization, deviceReport.getTimestampMs());
+                    raiseDeviceThresholdAlarm(customerId, equipmentId, AlarmCode.MemoryUtilization, deviceReport.getTimestampMs(), alarms);
                 } else {
                     // Clear any existing cpuUtilization alarms
-                    clearDeviceThresholdAlarm(customerId, equipmentId, AlarmCode.MemoryUtilization);
+                    clearDeviceThresholdAlarm(customerId, equipmentId, AlarmCode.MemoryUtilization, alarms);
                 }
 
             }
@@ -587,16 +589,23 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
     }
 
     
-    void clearDeviceThresholdAlarm(int customerId, long equipmentId, AlarmCode alarmCode) {
-        alarmServiceInterface.get(customerId, Set.of(equipmentId), Set.of(alarmCode)).stream().forEach(a -> {
-            Alarm alarm = alarmServiceInterface.delete(customerId, equipmentId, a.getAlarmCode(), a.getCreatedTimestamp());
-            LOG.debug("Cleared device threshold alarm {}", alarm);
-        });
+    void clearDeviceThresholdAlarm(int customerId, long equipmentId, AlarmCode alarmCode, List<Alarm> alarms) {
+    	for (Alarm alarm: alarms) {
+    		if (alarm.getAlarmCode() == alarmCode) {
+    			Alarm removedAlarm = alarmServiceInterface.delete(customerId, equipmentId, alarm.getAlarmCode(), alarm.getCreatedTimestamp());
+    			LOG.debug("Cleared device threshold alarm {}", removedAlarm);
+    			return;
+    		}
+    	}
     }
 
     
-    void raiseDeviceThresholdAlarm(int customerId, long equipmentId, AlarmCode alarmCode, long timestampMs) {
-        // Raise an alarm for temperature
+    void raiseDeviceThresholdAlarm(int customerId, long equipmentId, AlarmCode alarmCode, long timestampMs, List<Alarm> alarms) {
+    	for (Alarm alarm: alarms) {
+    		if (alarm.getAlarmCode() == alarmCode) {
+    			return;
+    		}
+    	}
         Alarm alarm = new Alarm();
         alarm.setCustomerId(customerId);
         alarm.setEquipmentId(equipmentId);
@@ -610,11 +619,8 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         alarmDetails.setMessage(alarmCode.getDescription());
         alarmDetails.setAffectedEquipmentIds(Collections.singletonList(equipmentId));
         alarm.setDetails(alarmDetails);
-        List<Alarm> alarms = alarmServiceInterface.get(customerId, Set.of(equipmentId), Set.of(alarmCode));
-        if (alarms.isEmpty()) {
-            alarm.setCreatedTimestamp(timestampMs);
-            alarm = alarmServiceInterface.create(alarm);
-        }
+        alarm.setCreatedTimestamp(timestampMs);
+        alarm = alarmServiceInterface.create(alarm);
     }
 
     private void checkIfOutOfBound(String checkedType, int checkedValue, Survey survey, int totalDurationMs, int busyTx, int busyRx, int busy, int busySelf) {
@@ -694,15 +700,12 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
     }
 
     void updateDeviceStatusRadioUtilizationReport(int customerId, long equipmentId, RadioUtilizationReport radioUtilizationReport) {
-        LOG.info("Processing updateDeviceStatusRadioUtilizationReport for equipmentId {} with RadioUtilizationReport {}", equipmentId, radioUtilizationReport);
-        Status radioUtilizationStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.RADIO_UTILIZATION);
-        if (radioUtilizationStatus == null) {
+        LOG.info("REMOVED StatusServiceInterface GETORNULL - Processing updateDeviceStatusRadioUtilizationReport for equipmentId {} with RadioUtilizationReport {}", equipmentId, radioUtilizationReport);
             LOG.debug("Create new radioUtilizationStatus");
-            radioUtilizationStatus = new Status();
+            Status radioUtilizationStatus = new Status();
             radioUtilizationStatus.setCustomerId(customerId);
             radioUtilizationStatus.setEquipmentId(equipmentId);
             radioUtilizationStatus.setStatusDataType(StatusDataType.RADIO_UTILIZATION);
-        }
         radioUtilizationStatus.setDetails(radioUtilizationReport);
         statusServiceInterface.update(radioUtilizationStatus);
     }
@@ -865,7 +868,8 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                         cMetrics.setNumTxDataRetries((int) cl.getStats().getTxRetries());
                     }
 
-                    LOG.debug("ApClientMetrics Report {}", cMetrics);
+                    // Commented to increase performance as it repetitive
+                    // LOG.debug("ApClientMetrics Report {}", cMetrics);
 
                 }
 
