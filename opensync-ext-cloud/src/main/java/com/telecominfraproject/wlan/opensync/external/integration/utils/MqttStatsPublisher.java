@@ -942,6 +942,9 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
 
     void populateApSsidMetrics(List<ServiceMetric> metricRecordList, Report report, int customerId, long equipmentId, String apId, long locationId) {
         LOG.debug("populateApSsidMetrics start");
+        
+        Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.ACTIVE_BSSIDS);
+        LOG.debug("populateApSsidMetrics get BSSID from activeBssids {}", activeBssidsStatus);
 
         if (report.getClientsCount() == 0) {
             LOG.info("populateApSsidMetrics no client data present, cannot build {}", ServiceMetricDataType.ApSsid);
@@ -984,7 +987,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                 stats.setSourceTimestampMs(clientReport.getTimestampMs());
 
                 // Get the BSSID (MAC address) for this SSID
-                String bssid = getBssidForClientSsid(customerId, equipmentId, apId, e.getKey(), radioType);
+                String bssid = getBssidForClientSsid(apId, e.getKey(), radioType, activeBssidsStatus);
                 if (bssid != null)
                     stats.setBssid(MacAddress.valueOf(bssid));
                 else
@@ -1031,26 +1034,20 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         LOG.debug("populateApSsidMetrics finished");
     }
 
-    String getBssidForClientSsid(int customerId, long equipmentId, String apId, String ssid, RadioType radioType) {
+    String getBssidForClientSsid(String apId, String ssid, RadioType radioType, Status activeBssidsStatus) {
         try {
-            Status activeBssidsStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.ACTIVE_BSSIDS);
-            LOG.debug("populateApSsidMetrics get BSSID from activeBssids {}", activeBssidsStatus);
-            if (activeBssidsStatus != null) {
-                if (activeBssidsStatus.getDetails() != null) {
-                    ActiveBSSIDs activeBssids = (ActiveBSSIDs) activeBssidsStatus.getDetails();
-                    if (activeBssids.getActiveBSSIDs() != null) {
-                        for (ActiveBSSID activeBssid : activeBssids.getActiveBSSIDs()) {
-                            if (activeBssid.getRadioType() != null && activeBssid.getRadioType().equals(radioType)) {
-                                if (activeBssid.getSsid() != null && activeBssid.getSsid().equals(ssid)) {
-                                    if (activeBssid.getBssid() != null) {
-                                        return activeBssid.getBssid();
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+			ActiveBSSIDs activeBssids = (ActiveBSSIDs) activeBssidsStatus.getDetails();
+			if (activeBssids.getActiveBSSIDs() != null) {
+				for (ActiveBSSID activeBssid : activeBssids.getActiveBSSIDs()) {
+					if (activeBssid.getRadioType() != null && activeBssid.getRadioType().equals(radioType)) {
+						if (activeBssid.getSsid() != null && activeBssid.getSsid().equals(ssid)) {
+							if (activeBssid.getBssid() != null) {
+								return activeBssid.getBssid();
+							}
+						}
+					}
+				}
+			}
         } catch (Exception e) {
             LOG.error("Could not get active BSSIDs for apId {} radioType {}", apId, radioType, e);
         }
