@@ -1163,12 +1163,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                     if (cl.getStats().hasTxRate()) {
                         cMetrics.setAverageTxRate(cl.getStats().getTxRate() / 1000);
                     }
-
-                    if (cl.getStats().hasTxRate() && cl.getStats().hasRxRate()) {
-                        cMetrics.setRates(new int[] {Double.valueOf(cl.getStats().getTxRate() / 1000).intValue(),
-                                Double.valueOf(cl.getStats().getRxRate() / 1000).intValue()});
-                    }
-
+                    
                     if (cl.getStats().hasTxErrors()) {
                         cMetrics.setNumTxDropped((int) cl.getStats().getTxErrors());
                     }
