@@ -6,7 +6,6 @@ import com.netflix.servo.DefaultMonitorRegistry;
 import com.netflix.servo.monitor.BasicCounter;
 import com.netflix.servo.monitor.Counter;
 import com.netflix.servo.monitor.MonitorConfig;
-import com.netflix.servo.monitor.Monitors;
 import com.netflix.servo.tag.TagList;
 import com.telecominfraproject.wlan.cloudmetrics.CloudMetricsTags;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
@@ -19,7 +18,6 @@ import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSession;
 import com.telecominfraproject.wlan.opensync.external.integration.OvsdbSessionMapInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.models.*;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.OvsdbDao;
-import com.telecominfraproject.wlan.opensync.ovsdb.dao.OvsdbMonitor;
 import com.telecominfraproject.wlan.opensync.ovsdb.metrics.OvsdbClientWithMetrics;
 import com.telecominfraproject.wlan.opensync.ovsdb.metrics.OvsdbMetrics;
 import com.telecominfraproject.wlan.opensync.util.OvsdbStringConstants;
@@ -30,6 +28,7 @@ import com.vmware.ovsdb.protocol.methods.*;
 import com.vmware.ovsdb.protocol.operation.notation.Row;
 import com.vmware.ovsdb.protocol.operation.notation.Value;
 import com.vmware.ovsdb.service.OvsdbClient;
+import com.vmware.ovsdb.service.OvsdbConnectionInfo;
 import com.vmware.ovsdb.service.OvsdbPassiveConnectionListener;
 import io.netty.handler.ssl.SslContext;
 import org.slf4j.Logger;
@@ -39,6 +38,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -114,18 +114,25 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
             @Override
             public void connected(OvsdbClient ovsdbClient) {
-
+            	
                 connectionsAttempted.increment();
-
+                
                 if (!(ovsdbClient instanceof OvsdbClientWithMetrics)) {
                     ovsdbClient = new OvsdbClientWithMetrics(ovsdbClient, ovsdbMetrics);
                 }
-
-                String remoteHost = ovsdbClient.getConnectionInfo().getRemoteAddress().getHostAddress();
-                int localPort = ovsdbClient.getConnectionInfo().getLocalPort();
+                
                 String subjectDn;
                 try {
-                    subjectDn = ((X509Certificate) ovsdbClient.getConnectionInfo().getRemoteCertificate()).getSubjectDN().getName();
+                	OvsdbConnectionInfo connectionInfo = ovsdbClient.getConnectionInfo();
+                	String remoteHost = connectionInfo.getRemoteAddress().getHostAddress();
+                    Certificate remoteCertificate = connectionInfo.getRemoteCertificate();
+                    if (remoteCertificate == null) {
+                    	LOG.debug("Connect attempt no certificate from {} on remote port {}", remoteHost, connectionInfo.getRemotePort());
+                    	return;
+                    }
+                    
+                    int localPort = connectionInfo.getLocalPort();
+					subjectDn = ((X509Certificate) remoteCertificate).getSubjectDN().getName();
 
                     String clientCn = SslUtil.extractCN(subjectDn);
                     LOG.info("ovsdbClient connecting from {} on port {} clientCn {}", remoteHost, localPort, clientCn);
@@ -186,7 +193,9 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                     localPort = ovsdbClient.getConnectionInfo().getLocalPort();
                     String subjectDn = null;
                     try {
-                        subjectDn = ((X509Certificate) ovsdbClient.getConnectionInfo().getRemoteCertificate()).getSubjectDN().getName();
+                    	Certificate remoteCertificate = ovsdbClient.getConnectionInfo().getRemoteCertificate();
+                    	if (remoteCertificate != null)
+                    		subjectDn = ((X509Certificate) remoteCertificate).getSubjectDN().getName();
                     } catch (Exception e) {
                         // do nothing
                     }
@@ -197,7 +206,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                             extIntegrationInterface.apDisconnected(key);
                             ovsdbSessionMapInterface.removeSession(key);
                         } catch (Exception e) {
-                            LOG.debug("Unable to process ap disconnect. {}", e.getMessage());
+                            LOG.debug("Unable to process ap disconnect. {}", e);
                         }
                     }
                     LOG.info("ovsdbClient disconnected from {} on port {} clientCn {} AP {} ", remoteHost, localPort, clientCn, key);
