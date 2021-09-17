@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.telecominfraproject.wlan.core.model.equipment.LedStatus;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.equipment.models.CellSizeAttributes;
@@ -18,7 +19,7 @@ public interface OvsdbClientInterface {
 
     String stopDebugEngine(String apId);
     
-    String processBlinkRequest(String apId, boolean blinkAllLEDs);
+    String processLedRequest(String apId, LedStatus ledStatus);
 
     void processConfigChanged(String apId);
 

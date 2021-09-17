@@ -25,7 +25,6 @@ import org.springframework.security.web.bind.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.telecominfraproject.wlan.core.client.PingClient;
@@ -36,7 +35,6 @@ import com.telecominfraproject.wlan.core.server.container.ConnectorProperties;
 import com.telecominfraproject.wlan.datastore.exceptions.DsEntityNotFoundException;
 import com.telecominfraproject.wlan.equipment.models.CellSizeAttributes;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWBaseCommand;
-import com.telecominfraproject.wlan.equipmentgateway.models.CEGWBlinkRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWChangeRedirectorHost;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWClientBlocklistChangeNotification;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWCloseSessionRequest;
@@ -44,6 +42,7 @@ import com.telecominfraproject.wlan.equipmentgateway.models.CEGWCommandResultCod
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWConfigChangeNotification;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWFirmwareDownloadRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWFirmwareFlashRequest;
+import com.telecominfraproject.wlan.equipmentgateway.models.CEGWLedRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWNewChannelRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWCellSizeAttributesRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRadioResetRequest;
@@ -51,7 +50,6 @@ import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRebootRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRouteCheck;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWStartDebugEngine;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWStopDebugEngine;
-import com.telecominfraproject.wlan.equipmentgateway.models.CEGatewayCommand;
 import com.telecominfraproject.wlan.equipmentgateway.models.EquipmentCommand;
 import com.telecominfraproject.wlan.equipmentgateway.models.EquipmentCommandResponse;
 import com.telecominfraproject.wlan.equipmentgateway.models.GatewayDefaults;
@@ -176,8 +174,8 @@ public class OpensyncCloudGatewayController {
                     case CheckRouting:
                         ret.add(checkEquipmentRouting(session, (CEGWRouteCheck) command));
                         break;
-                    case BlinkRequest:
-                        ret.add(processBlinkRequest(session, (CEGWBlinkRequest) command));
+                    case LedRequest:
+                        ret.add(processLedRequest(session, (CEGWLedRequest) command));
                         break;
                     case ChangeRedirectorHost:
                         ret.add(processChangeRedirector(session, (CEGWChangeRedirectorHost) command));
@@ -321,8 +319,8 @@ public class OpensyncCloudGatewayController {
                 new EquipmentCommandResponse(CEGWCommandResultCode.Success, "Received Command " + command.getCommandType() + " for " + inventoryId, command,
                         registeredGateway == null ? null : registeredGateway.getHostname(), registeredGateway == null ? -1 : registeredGateway.getPort());
 
-        if (command instanceof CEGWBlinkRequest) {
-            String resultDetails = tipwlanOvsdbClient.processBlinkRequest(inventoryId, ((CEGWBlinkRequest)command).getBlinkAllLEDs()); 
+        if (command instanceof CEGWLedRequest) {
+            String resultDetails = tipwlanOvsdbClient.processLedRequest(inventoryId, ((CEGWLedRequest)command).getLedStatus()); 
             response.setResultDetail(resultDetails);
         } else if (command instanceof CEGWConfigChangeNotification) {
             tipwlanOvsdbClient.processConfigChanged(inventoryId);
@@ -423,7 +421,7 @@ public class OpensyncCloudGatewayController {
         return sendMessage(session, command.getInventoryId(), command);
     }
 
-    private EquipmentCommandResponse processBlinkRequest(OvsdbSession session, CEGWBlinkRequest command) {
+    private EquipmentCommandResponse processLedRequest(OvsdbSession session, CEGWLedRequest command) {
 
         return sendMessage(session, command.getInventoryId(), command);
     }

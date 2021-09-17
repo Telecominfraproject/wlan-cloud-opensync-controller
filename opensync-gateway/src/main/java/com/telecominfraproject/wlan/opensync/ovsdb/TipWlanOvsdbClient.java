@@ -9,6 +9,7 @@ import com.netflix.servo.monitor.MonitorConfig;
 import com.netflix.servo.monitor.Monitors;
 import com.netflix.servo.tag.TagList;
 import com.telecominfraproject.wlan.cloudmetrics.CloudMetricsTags;
+import com.telecominfraproject.wlan.core.model.equipment.LedStatus;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.equipment.models.CellSizeAttributes;
@@ -290,13 +291,13 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         return ovsdbDao.changeRedirectorAddress(ovsdbSession.getOvsdbClient(), apId, newRedirectorAddress);
     }
 
-    public String processBlinkRequest(String apId, boolean blinkAllLEDs) {
+    public String processLedRequest(String apId, LedStatus ledStatus) {
         OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
         if (ovsdbSession == null) {
             throw new IllegalStateException("AP with id " + apId + " is not connected");
         }
 
-        return ovsdbDao.processBlinkRequest(ovsdbSession.getOvsdbClient(), apId, blinkAllLEDs);
+        return ovsdbDao.processLedRequest(ovsdbSession.getOvsdbClient(), apId, ledStatus);
     }
 
     @Override

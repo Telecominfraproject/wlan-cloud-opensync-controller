@@ -7,6 +7,7 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import com.telecominfraproject.wlan.core.model.equipment.LedStatus;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
@@ -89,8 +90,8 @@ public class OvsdbDao extends OvsdbDaoBase {
     public void configureNode(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
         configureNtpServer(ovsdbClient, opensyncAPConfig);
         configureSyslog(ovsdbClient, opensyncAPConfig);
-        processBlinkRequest(ovsdbClient, opensyncAPConfig.getCustomerEquipment().getInventoryId(),
-                ((ApElementConfiguration) opensyncAPConfig.getCustomerEquipment().getDetails()).isBlinkAllLEDs());
+        processLedRequest(ovsdbClient, opensyncAPConfig.getCustomerEquipment().getInventoryId(),
+                ((ApElementConfiguration) opensyncAPConfig.getCustomerEquipment().getDetails()).getLedStatus());
     }
     
     void configureNtpServer(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
@@ -241,8 +242,8 @@ public class OvsdbDao extends OvsdbDaoBase {
         ovsdbStats.updateEventReportingInterval(ovsdbClient, collectionIntervalSecEvent);
     }
 
-    public String processBlinkRequest(OvsdbClient ovsdbClient, String apId, boolean blinkAllLEDs) {
-        return ovsdbNodeConfig.processBlinkRequest(ovsdbClient,apId,blinkAllLEDs);
+    public String processLedRequest(OvsdbClient ovsdbClient, String apId, LedStatus sad) {
+        return ovsdbNodeConfig.processLedRequest(ovsdbClient, apId, sad);
     }
 
 }
