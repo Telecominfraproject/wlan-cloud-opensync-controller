@@ -90,8 +90,8 @@ public class OvsdbDao extends OvsdbDaoBase {
     public void configureNode(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
         configureNtpServer(ovsdbClient, opensyncAPConfig);
         configureSyslog(ovsdbClient, opensyncAPConfig);
-        processLedRequest(ovsdbClient, opensyncAPConfig.getCustomerEquipment().getInventoryId(),
-                ((ApElementConfiguration) opensyncAPConfig.getCustomerEquipment().getDetails()).getLedStatus());
+        processBlinkRequest(ovsdbClient, opensyncAPConfig.getCustomerEquipment().getInventoryId(),
+                ((ApElementConfiguration) opensyncAPConfig.getCustomerEquipment().getDetails()).isBlinkAllLEDs());
     }
     
     void configureNtpServer(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
@@ -242,8 +242,8 @@ public class OvsdbDao extends OvsdbDaoBase {
         ovsdbStats.updateEventReportingInterval(ovsdbClient, collectionIntervalSecEvent);
     }
 
-    public String processLedRequest(OvsdbClient ovsdbClient, String apId, LedStatus sad) {
-        return ovsdbNodeConfig.processLedRequest(ovsdbClient, apId, sad);
+    public String processBlinkRequest(OvsdbClient ovsdbClient, String apId, boolean blinkAllLEDs) {
+        return ovsdbNodeConfig.processBlinkRequest(ovsdbClient, apId, blinkAllLEDs);
     }
 
 }

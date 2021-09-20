@@ -19,7 +19,7 @@ public interface OvsdbClientInterface {
 
     String stopDebugEngine(String apId);
     
-    String processLedRequest(String apId, LedStatus ledStatus);
+    String processBlinkRequest(String apId, boolean blinkAllLEDs);
 
     void processConfigChanged(String apId);
 

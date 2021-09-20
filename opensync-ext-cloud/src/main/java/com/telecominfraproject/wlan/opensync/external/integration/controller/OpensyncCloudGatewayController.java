@@ -35,6 +35,7 @@ import com.telecominfraproject.wlan.core.server.container.ConnectorProperties;
 import com.telecominfraproject.wlan.datastore.exceptions.DsEntityNotFoundException;
 import com.telecominfraproject.wlan.equipment.models.CellSizeAttributes;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWBaseCommand;
+import com.telecominfraproject.wlan.equipmentgateway.models.CEGWBlinkRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWChangeRedirectorHost;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWClientBlocklistChangeNotification;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWCloseSessionRequest;
@@ -42,7 +43,6 @@ import com.telecominfraproject.wlan.equipmentgateway.models.CEGWCommandResultCod
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWConfigChangeNotification;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWFirmwareDownloadRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWFirmwareFlashRequest;
-import com.telecominfraproject.wlan.equipmentgateway.models.CEGWLedRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWNewChannelRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWCellSizeAttributesRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRadioResetRequest;
@@ -174,8 +174,8 @@ public class OpensyncCloudGatewayController {
                     case CheckRouting:
                         ret.add(checkEquipmentRouting(session, (CEGWRouteCheck) command));
                         break;
-                    case LedRequest:
-                        ret.add(processLedRequest(session, (CEGWLedRequest) command));
+                    case BlinkRequest:
+                        ret.add(processBlinkRequest(session, (CEGWBlinkRequest) command));
                         break;
                     case ChangeRedirectorHost:
                         ret.add(processChangeRedirector(session, (CEGWChangeRedirectorHost) command));
@@ -319,8 +319,8 @@ public class OpensyncCloudGatewayController {
                 new EquipmentCommandResponse(CEGWCommandResultCode.Success, "Received Command " + command.getCommandType() + " for " + inventoryId, command,
                         registeredGateway == null ? null : registeredGateway.getHostname(), registeredGateway == null ? -1 : registeredGateway.getPort());
 
-        if (command instanceof CEGWLedRequest) {
-            String resultDetails = tipwlanOvsdbClient.processLedRequest(inventoryId, ((CEGWLedRequest)command).getLedStatus()); 
+        if (command instanceof CEGWBlinkRequest) {
+            String resultDetails = tipwlanOvsdbClient.processBlinkRequest(inventoryId, ((CEGWBlinkRequest)command).getBlinkAllLEDs()); 
             response.setResultDetail(resultDetails);
         } else if (command instanceof CEGWConfigChangeNotification) {
             tipwlanOvsdbClient.processConfigChanged(inventoryId);
@@ -421,7 +421,7 @@ public class OpensyncCloudGatewayController {
         return sendMessage(session, command.getInventoryId(), command);
     }
 
-    private EquipmentCommandResponse processLedRequest(OvsdbSession session, CEGWLedRequest command) {
+    private EquipmentCommandResponse processBlinkRequest(OvsdbSession session, CEGWBlinkRequest command) {
 
         return sendMessage(session, command.getInventoryId(), command);
     }

@@ -121,25 +121,19 @@ public class OvsdbNodeConfig extends OvsdbDaoBase {
 
     }
 
-    public String processLedRequest(OvsdbClient ovsdbClient, String apId, LedStatus ledStatus) {
+    public String processBlinkRequest(OvsdbClient ovsdbClient, String apId, boolean blinkAllLEDs) {
 
         String ret = null;
         try {
 
-            LOG.debug("processLEDRequest set LEDs status to {}", ledStatus);
+            LOG.debug("processLEDRequest set LEDs status to {}", blinkAllLEDs);
             Map<String, Value> columns = new HashMap<>();
-            if (ledStatus == LedStatus.led_on) {
-                columns.put("module", new Atom<>("led"));
-                columns.put("key", new Atom<>("led_state"));
-                columns.put("value", new Atom<>("on"));
-            } else if (ledStatus == LedStatus.led_off || ledStatus == LedStatus.UNKNOWN){
-                columns.put("module", new Atom<>("led"));
-                columns.put("key", new Atom<>("led_state"));
-                columns.put("value", new Atom<>("off"));
-            } else {
+            if (blinkAllLEDs) {
                 columns.put("module", new Atom<>("led"));
                 columns.put("key", new Atom<>("led_blink"));
-                columns.put("value", new Atom<>("on"));
+            } else {
+                columns.put("module", new Atom<>("led"));
+                columns.put("key", new Atom<>("led_state"));
             }
             List<Operation> operations = new ArrayList<>();
             operations.add(new Update(nodeConfigTable, List.of(new Condition("module", Function.EQUALS, new Atom<>("led"))), new Row(columns)));
