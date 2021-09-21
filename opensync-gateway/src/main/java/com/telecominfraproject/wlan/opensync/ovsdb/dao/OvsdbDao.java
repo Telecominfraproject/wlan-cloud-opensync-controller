@@ -92,6 +92,7 @@ public class OvsdbDao extends OvsdbDaoBase {
         configureSyslog(ovsdbClient, opensyncAPConfig);
         processBlinkRequest(ovsdbClient, opensyncAPConfig.getCustomerEquipment().getInventoryId(),
                 ((ApElementConfiguration) opensyncAPConfig.getCustomerEquipment().getDetails()).isBlinkAllLEDs());
+        ovsdbNodeConfig.processLedControlEnabled(ovsdbClient, opensyncAPConfig);
     }
     
     void configureNtpServer(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
