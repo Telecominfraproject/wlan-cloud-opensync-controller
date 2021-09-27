@@ -9,7 +9,6 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.temporal.ChronoField;
-import java.time.temporal.TemporalField;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.EnumMap;
@@ -48,6 +47,7 @@ import com.telecominfraproject.wlan.client.session.models.ClientSession;
 import com.telecominfraproject.wlan.client.session.models.ClientSessionDetails;
 import com.telecominfraproject.wlan.core.model.entity.CountryCode;
 import com.telecominfraproject.wlan.core.model.equipment.EquipmentType;
+import com.telecominfraproject.wlan.core.model.equipment.LedStatus;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.core.model.equipment.WiFiSessionUtility;
@@ -112,7 +112,6 @@ import com.telecominfraproject.wlan.status.equipment.models.EquipmentProtocolSta
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeState;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeState.FailureReason;
 import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeStatusData;
-import com.telecominfraproject.wlan.status.equipment.models.LedStatus;
 import com.telecominfraproject.wlan.status.equipment.models.VLANStatusData;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSID;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSIDs;
@@ -2438,18 +2437,20 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
         Status eqAdminStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.EQUIPMENT_ADMIN);
 
-        LedStatus ledStatus = null;
-        for (Map<String, String> nsa : nodeStateAttributes) {
-            if (nsa.get("module").equals("led")) {
-                if (nsa.get("key").equals("led_blink") && nsa.get("value").equals("on")) {
-                    ledStatus = LedStatus.led_blink;
-                } else if (nsa.get("key").equals("led_off") && nsa.get("value").equals("off")) {
-                    ledStatus = LedStatus.led_off;
-                } else {
-                    ledStatus = LedStatus.UNKNOWN;
-                }
-            }
-        }
+		LedStatus ledStatus = null;
+		for (Map<String, String> nsa : nodeStateAttributes) {
+			if (nsa.get("module").equals("led")) {
+				if (nsa.get("key").equals("led_state") && nsa.get("value").equals("on")) {
+					ledStatus = LedStatus.led_on;
+				} else if (nsa.get("key").equals("led_state") && nsa.get("value").equals("off")) {
+					ledStatus = LedStatus.led_off;
+				} else if (nsa.get("key").equals("led_blink")) {
+					ledStatus = LedStatus.led_blink;
+				} else {
+					ledStatus = LedStatus.UNKNOWN;
+				}
+			}
+		}
 
         if (ledStatus != null) {
             if (eqAdminStatus != null) {

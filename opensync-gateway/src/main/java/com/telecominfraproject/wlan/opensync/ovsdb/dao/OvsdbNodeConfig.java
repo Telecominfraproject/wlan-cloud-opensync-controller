@@ -13,6 +13,7 @@ import java.util.concurrent.TimeoutException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import com.telecominfraproject.wlan.core.model.equipment.LedStatus;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.vmware.ovsdb.exception.OvsdbClientException;
@@ -120,51 +121,82 @@ public class OvsdbNodeConfig extends OvsdbDaoBase {
 
     }
 
-    public String processBlinkRequest(OvsdbClient ovsdbClient, String apId, boolean blinkAllLEDs) {
+	public void processLedControlEnabled(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
+		try {
+			Map<String, Value> columns = new HashMap<>();
+			ApNetworkConfiguration apNetworkConfig = (ApNetworkConfiguration) opensyncAPConfig.getApProfile()
+					.getDetails();
+			if (apNetworkConfig.isLedControlEnabled() == null) {
+				LOG.info("Cannot configure isLedControlEnabled to null value. {}", apNetworkConfig);
+				return;
+			}
+			if (apNetworkConfig.isLedControlEnabled()) {
+				columns.put("module", new Atom<>("led"));
+				columns.put("key", new Atom<>("led_state"));
+				columns.put("value", new Atom<>("on"));
+			} else {
+				columns.put("module", new Atom<>("led"));
+				columns.put("key", new Atom<>("led_state"));
+				columns.put("value", new Atom<>("off"));
+			}
 
-        String ret = null;
-        try {
+			List<Operation> operations = new ArrayList<>();
+			operations.add(new Update(nodeConfigTable,
+					List.of(new Condition("module", Function.EQUALS, new Atom<>("led"))), new Row(columns)));
+			CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+			OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+			for (OperationResult res : result) {
+				LOG.debug("processLedControlEnabled result {}", res);
+			}
+		} catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
+			throw new RuntimeException(e);
+		}
+	}
 
-            LOG.debug("processBlinkRequest set BlinkLEDs to {}", blinkAllLEDs);
-            Map<String, Value> columns = new HashMap<>();
-            if (blinkAllLEDs) {
-                columns.put("module", new Atom<>("led"));
-                columns.put("key", new Atom<>("led_blink"));
-                columns.put("value", new Atom<>("on"));
-            } else {
-                columns.put("module", new Atom<>("led"));
-                columns.put("key", new Atom<>("led_off"));
-                columns.put("value", new Atom<>("off"));
-            }
-            List<Operation> operations = new ArrayList<>();
-            operations.add(new Update(nodeConfigTable, List.of(new Condition("module", Function.EQUALS, new Atom<>("led"))), new Row(columns)));
-            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-            long numUpdates = 0;
-            for (OperationResult res : result) {
-                if (res instanceof UpdateResult) {
-                    numUpdates += ((UpdateResult) res).getCount();
-                    LOG.debug("processBlinkRequest update result {}", res);
-                    ret = "processBlinkRequest update result " + res;
-                }
-            }
-            if (numUpdates == 0) {
-                // no records existed, insert the row instead
-                operations.clear();
-                operations.add(new Insert(nodeConfigTable, new Row(columns)));
-                fResult = ovsdbClient.transact(ovsdbName, operations);
-                result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-                for (OperationResult res : result) {
-                    if (res instanceof InsertResult) {
-                        LOG.debug("processBlinkRequest insert result {}", res);
-                        ret = "processBlinkRequest insert result " + res;
-                    }
-                }
-            }
-            
-            return ret;
-        } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
-            throw new RuntimeException(e);
-        }
-    }
+	public String processBlinkRequest(OvsdbClient ovsdbClient, String apId, boolean blinkAllLEDs) {
+
+		String ret = null;
+		try {
+
+			LOG.debug("processLEDRequest set LEDs status to {}", blinkAllLEDs ? "led_blink" : "led_state");
+			Map<String, Value> columns = new HashMap<>();
+			if (blinkAllLEDs) {
+				columns.put("module", new Atom<>("led"));
+				columns.put("key", new Atom<>("led_blink"));
+			} else {
+				columns.put("module", new Atom<>("led"));
+				columns.put("key", new Atom<>("led_state"));
+			}
+			List<Operation> operations = new ArrayList<>();
+			operations.add(new Update(nodeConfigTable,
+					List.of(new Condition("module", Function.EQUALS, new Atom<>("led"))), new Row(columns)));
+			CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+			OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+			long numUpdates = 0;
+			for (OperationResult res : result) {
+				if (res instanceof UpdateResult) {
+					numUpdates += ((UpdateResult) res).getCount();
+					LOG.debug("processBlinkRequest update result {}", res);
+					ret = "processBlinkRequest update result " + res;
+				}
+			}
+			if (numUpdates == 0) {
+				// no records existed, insert the row instead
+				operations.clear();
+				operations.add(new Insert(nodeConfigTable, new Row(columns)));
+				fResult = ovsdbClient.transact(ovsdbName, operations);
+				result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+				for (OperationResult res : result) {
+					if (res instanceof InsertResult) {
+						LOG.debug("processBlinkRequest insert result {}", res);
+						ret = "processBlinkRequest insert result " + res;
+					}
+				}
+			}
+
+			return ret;
+		} catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
+			throw new RuntimeException(e);
+		}
+	}
 }

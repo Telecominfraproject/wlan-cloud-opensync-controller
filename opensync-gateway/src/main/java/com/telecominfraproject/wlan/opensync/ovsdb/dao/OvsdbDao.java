@@ -7,6 +7,7 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import com.telecominfraproject.wlan.core.model.equipment.LedStatus;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
@@ -91,6 +92,7 @@ public class OvsdbDao extends OvsdbDaoBase {
         configureSyslog(ovsdbClient, opensyncAPConfig);
         processBlinkRequest(ovsdbClient, opensyncAPConfig.getCustomerEquipment().getInventoryId(),
                 ((ApElementConfiguration) opensyncAPConfig.getCustomerEquipment().getDetails()).isBlinkAllLEDs());
+        ovsdbNodeConfig.processLedControlEnabled(ovsdbClient, opensyncAPConfig);
     }
     
     void configureNtpServer(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
@@ -242,7 +244,7 @@ public class OvsdbDao extends OvsdbDaoBase {
     }
 
     public String processBlinkRequest(OvsdbClient ovsdbClient, String apId, boolean blinkAllLEDs) {
-        return ovsdbNodeConfig.processBlinkRequest(ovsdbClient,apId,blinkAllLEDs);
+        return ovsdbNodeConfig.processBlinkRequest(ovsdbClient, apId, blinkAllLEDs);
     }
 
 }

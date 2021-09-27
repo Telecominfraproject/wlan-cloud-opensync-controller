@@ -25,7 +25,6 @@ import org.springframework.security.web.bind.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.telecominfraproject.wlan.core.client.PingClient;
@@ -51,7 +50,6 @@ import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRebootRequest;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWRouteCheck;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWStartDebugEngine;
 import com.telecominfraproject.wlan.equipmentgateway.models.CEGWStopDebugEngine;
-import com.telecominfraproject.wlan.equipmentgateway.models.CEGatewayCommand;
 import com.telecominfraproject.wlan.equipmentgateway.models.EquipmentCommand;
 import com.telecominfraproject.wlan.equipmentgateway.models.EquipmentCommandResponse;
 import com.telecominfraproject.wlan.equipmentgateway.models.GatewayDefaults;
