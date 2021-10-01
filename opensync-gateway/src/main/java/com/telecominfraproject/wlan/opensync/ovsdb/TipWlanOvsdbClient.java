@@ -256,6 +256,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureGreTunnels(ovsdbClient, opensyncAPConfig);
             ovsdbDao.createVlanNetworkInterfaces(ovsdbClient, opensyncAPConfig);
+            ovsdbDao.configureWiredPort(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureRadsecRadiusAndRealm(ovsdbClient, opensyncAPConfig);
             ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
             if (opensyncAPConfig.getHotspotConfig() != null) {
@@ -338,6 +339,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureGreTunnels(ovsdbClient, opensyncAPConfig);
         ovsdbDao.createVlanNetworkInterfaces(ovsdbClient, opensyncAPConfig);
+        ovsdbDao.configureWiredPort(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureRadsecRadiusAndRealm(ovsdbClient, opensyncAPConfig);
         ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
         if (opensyncAPConfig.getHotspotConfig() != null) {
@@ -643,7 +645,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                         List<OpensyncAPInetState> inetStateDelete = new ArrayList<>();
 
                         for (TableUpdate tableUpdate : tableUpdates.getTableUpdates().values()) {
-
+                        	
                             for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
 
                                 if (rowUpdate.getNew() == null) {
@@ -654,9 +656,9 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
                             }
                         }
-
+                        
                         // delete first
-                        extIntegrationInterface.wifiInetStateDbTableUpdate(inetStateDelete, key);
+                        extIntegrationInterface.wifiInetStateDbTableDelete(inetStateDelete, key);
 
                         // now process updates and mutations
                         extIntegrationInterface.wifiInetStateDbTableUpdate(inetStateInsertOrUpdate, key);

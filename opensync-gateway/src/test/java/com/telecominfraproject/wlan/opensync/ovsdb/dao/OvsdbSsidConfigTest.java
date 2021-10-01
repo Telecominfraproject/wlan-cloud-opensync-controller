@@ -42,7 +42,6 @@ import com.vmware.ovsdb.service.OvsdbClient;
         OvsdbHotspotConfig.class, OvsdbCommandConfig.class, OvsdbMonitor.class, OvsdbFirmwareConfig.class,
         OvsdbStatsConfig.class, OvsdbSsidConfig.class, OvsdbRrmConfig.class, OvsdbNetworkConfig.class,
         OvsdbNodeConfig.class,OvsdbRadiusProxyConfig.class
-
 })
 public class OvsdbSsidConfigTest {
 

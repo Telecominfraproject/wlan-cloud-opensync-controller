@@ -93,6 +93,8 @@ public class OvsdbMonitor extends OvsdbDaoBase {
             if (rowUpdate.getOld() != null) {
                 row = rowUpdate.getOld();
                 row.getColumns().putAll(rowUpdate.getNew().getColumns());
+            } else {
+            	row = rowUpdate.getNew();
             }
         } else {
             row = rowUpdate.getOld();

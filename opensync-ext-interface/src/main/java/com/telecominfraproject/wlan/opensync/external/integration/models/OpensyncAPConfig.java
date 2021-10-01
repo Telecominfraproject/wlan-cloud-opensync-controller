@@ -38,6 +38,7 @@ public class OpensyncAPConfig extends OpensyncAPBase {
     private List<Profile> ssidProfile;
     private List<Profile> metricsProfile;
     private List<Profile> radiusProfiles;
+    private Profile wiredEthernetPortProfile;
     private Location equipmentLocation;
     private EquipmentRoutingRecord equipmentRouting;
     private EquipmentGatewayRecord equipmentGateway;
@@ -136,7 +137,8 @@ public class OpensyncAPConfig extends OpensyncAPBase {
                 && Objects.equals(hotspotConfig, other.hotspotConfig)
                 && Objects.equals(metricsProfile, other.metricsProfile)
                 && Objects.equals(radiusProfiles, other.radiusProfiles) && Objects.equals(rfProfile, other.rfProfile)
-                && Objects.equals(ssidProfile, other.ssidProfile);
+                && Objects.equals(ssidProfile, other.ssidProfile)
+                && Objects.equals(wiredEthernetPortProfile, other.wiredEthernetPortProfile);
     }
 
     public Profile getApProfile() {
@@ -195,11 +197,15 @@ public class OpensyncAPConfig extends OpensyncAPBase {
         return ssidProfile;
     }
 
+	public Profile getWiredEthernetPortProfile() {
+		return wiredEthernetPortProfile;
+	}
+	
     @Override
     public int hashCode() {
         return Objects.hash(apProfile, blockedClients, bonjourGatewayProfiles, captiveProfiles, customerEquipment,
                 equipmentGateway, equipmentLocation, equipmentRouting, hotspotConfig, metricsProfile, radiusProfiles,
-                rfProfile, ssidProfile);
+                rfProfile, ssidProfile, wiredEthernetPortProfile);
     }
 
     public void setApProfile(Profile apProfile) {
@@ -324,5 +330,9 @@ public class OpensyncAPConfig extends OpensyncAPBase {
     public void setSsidProfile(List<Profile> ssidProfile) {
         this.ssidProfile = ssidProfile;
     }
+
+	public void setWiredEthernetPortProfile(Profile wiredEthernetPortProfile) {
+		this.wiredEthernetPortProfile = wiredEthernetPortProfile;
+	}
 
 }
