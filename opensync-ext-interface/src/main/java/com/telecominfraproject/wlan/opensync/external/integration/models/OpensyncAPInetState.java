@@ -22,8 +22,10 @@ public class OpensyncAPInetState extends OpensyncAPBase {
     public String ifType;
     public String softwdsMacAddr;
     public boolean enabled;
+    public Map<String, String> ethPorts;
     public boolean sofwdsWrap;
     public int vlanId;
+    public Map<String, String> vlanTrunk;
     public String netmask;
     public boolean nat;
     public String greRemoteInetAddr;
@@ -43,17 +45,21 @@ public class OpensyncAPInetState extends OpensyncAPBase {
     public Uuid _uuid;
     public Uuid version;
     public String greLocalInetAddr;
-
+    // the following attribute is in inetC but not in inetS
     public String greRemoteMacAddr;
 
     public OpensyncAPInetState() {
         dns = new HashMap<>();
         dhcpc = new HashMap<>();
+        ethPorts = new HashMap<>();
+        vlanTrunk = new HashMap<>();
     }
 
     public OpensyncAPInetState(Row row) {
         dns = new HashMap<>();
         dhcpc = new HashMap<>();
+        ethPorts = new HashMap<>();
+        vlanTrunk = new HashMap<>();
 
         Map<String, Value> map = row.getColumns();
 
@@ -82,6 +88,12 @@ public class OpensyncAPInetState extends OpensyncAPBase {
         }
         if (map.containsKey("dns")) {
             this.setDns(row.getMapColumn("dns"));
+        }
+        if (map.containsKey("eth_ports")) {
+        	this.setEthPorts(row.getMapColumn("eth_ports"));
+        }
+        if (map.containsKey("vlan_trunk")) {
+        	this.setVlanTrunk(row.getMapColumn("vlan_trunk"));
         }
         if (map.get("inet_addr") != null
                 && map.get("inet_addr").getClass().equals(com.vmware.ovsdb.protocol.operation.notation.Atom.class)) {
@@ -156,6 +168,12 @@ public class OpensyncAPInetState extends OpensyncAPBase {
         }
         if (!Objects.equals(dhcpd, other.dhcpd)) {
             return false;
+        }
+        if (!Objects.equals(ethPorts, other.ethPorts)) {
+        	return false;
+        }
+        if (!Objects.equals(vlanTrunk, other.vlanTrunk)) {
+        	return false;
         }
         if (!Objects.equals(dns, other.dns)) {
             return false;
@@ -251,6 +269,14 @@ public class OpensyncAPInetState extends OpensyncAPBase {
     public Map<String, String> getDns() {
         return dns;
     }
+    
+    public Map<String, String> getEthPorts() {
+    	return ethPorts;
+    }
+    
+    public Map<String, String> getVlanTrunk() {
+    	return vlanTrunk;
+    }
 
     public String getGateway() {
         return gateway;
@@ -330,9 +356,9 @@ public class OpensyncAPInetState extends OpensyncAPBase {
 
     @Override
     public int hashCode() {
-        return Objects.hash(_uuid, broadcast, dhcpc, dhcpd, dns, enabled, gateway, greIfName, greLocalInetAddr, greRemoteInetAddr,
+        return Objects.hash(_uuid, broadcast, dhcpc, dhcpd, dns, ethPorts, enabled, gateway, greIfName, greLocalInetAddr, greRemoteInetAddr,
                 hwAddr, ifName, ifType, ifUuid, inetAddr, inetConfig, ipAssignScheme, mtw, nat, netmask, network,
-                parentIfName, greRemoteMacAddr, softwdsMacAddr, sofwdsWrap, unpnpMode, version, vlanId);
+                parentIfName, greRemoteMacAddr, softwdsMacAddr, sofwdsWrap, unpnpMode, version, vlanId, vlanTrunk);
     }
 
     public boolean isEnabled() {
@@ -369,6 +395,14 @@ public class OpensyncAPInetState extends OpensyncAPBase {
 
     public void setDns(Map<String, String> dns) {
         this.dns = dns;
+    }
+    
+    public void setEthPorts(Map<String, String> ethPorts) {
+    	this.ethPorts = ethPorts;
+    }
+    
+    public void setVlanTrunk(Map<String, String> vlanTrunk) {
+    	this.vlanTrunk = vlanTrunk;
     }
 
     public void setEnabled(boolean enabled) {
@@ -466,9 +500,9 @@ public class OpensyncAPInetState extends OpensyncAPBase {
 
     @Override
     public String toString() {
-        return "OpensyncAPInetState [ifName=" + ifName + ", dhcpd=" + dhcpd + ", unpnpMode=" + unpnpMode + ", ifType="
+        return "OpensyncAPInetState [ifName=" + ifName + ", dhcpd=" + dhcpd + ", ethPorts=" + ethPorts + ", unpnpMode=" + unpnpMode + ", ifType="
                 + ifType + ", softwdsMacAddr=" + softwdsMacAddr + ", enabled=" + enabled + ", sofwdsWrap=" + sofwdsWrap
-                + ", vlanId=" + vlanId + ", netmask=" + netmask + ", nat=" + nat + ", greRemoteInetAddr="
+                + ", vlanId=" + vlanId + ", vlanTrunk=" + vlanTrunk + ", netmask=" + netmask + ", nat=" + nat + ", greRemoteInetAddr="
                 + greRemoteInetAddr + ", ifUuid=" + ifUuid + ", inetAddr=" + inetAddr + ", hwAddr=" + hwAddr + ", mtw="
                 + mtw + ", network=" + network + ", dns=" + dns + ", parentIfName=" + parentIfName + ", greIfName="
                 + greIfName + ", broadcast=" + broadcast + ", dhcpc=" + dhcpc + ", gateway=" + gateway

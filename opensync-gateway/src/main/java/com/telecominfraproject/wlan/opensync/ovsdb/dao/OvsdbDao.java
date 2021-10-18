@@ -7,7 +7,6 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.telecominfraproject.wlan.core.model.equipment.LedStatus;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
 import com.telecominfraproject.wlan.equipment.models.ApElementConfiguration;
@@ -85,6 +84,10 @@ public class OvsdbDao extends OvsdbDaoBase {
 
     public void configureInterfaces(OvsdbClient ovsdbClient) {
         ovsdbNetwork.configureInterfaces(ovsdbClient);
+    }
+    
+    public void configureWiredPort(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
+    	ovsdbNetwork.configureEthernetPorts(ovsdbClient, opensyncAPConfig);
     }
     
     public void configureNode(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {

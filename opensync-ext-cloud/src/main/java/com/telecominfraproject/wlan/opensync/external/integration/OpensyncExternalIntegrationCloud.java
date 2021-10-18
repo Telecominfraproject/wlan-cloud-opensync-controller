@@ -24,6 +24,7 @@ import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.Arrays;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -119,6 +120,8 @@ import com.telecominfraproject.wlan.status.equipment.report.models.ClientConnect
 import com.telecominfraproject.wlan.status.equipment.report.models.EquipmentScanDetails;
 import com.telecominfraproject.wlan.status.equipment.report.models.OperatingSystemPerformance;
 import com.telecominfraproject.wlan.status.equipment.report.models.RadioUtilizationReport;
+import com.telecominfraproject.wlan.status.equipment.report.models.WiredEthernetPortStatusData;
+import com.telecominfraproject.wlan.status.equipment.report.models.WiredPortStatus;
 import com.telecominfraproject.wlan.status.models.Status;
 import com.telecominfraproject.wlan.status.models.StatusCode;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
@@ -134,6 +137,10 @@ import sts.OpensyncStats.Report;
 public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegrationInterface {
 
     protected static final String standard_linux_date_format = "EEE MMM dd HH:mm:ss zzz yyyy";
+    private static final String VLAN_TRUNK_IF_TYPE = "vlan_trunk";
+    private static final String ALLOWED_VLANS = "allowed_vlans";
+    private static final String NATIVE_VLAN_ID = "pvid";
+    private static final String SPACE_SEPERATOR = " ";
 
     private static final Logger LOG = LoggerFactory.getLogger(OpensyncExternalIntegrationCloud.class);
 
@@ -185,6 +192,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     public String defaultWanInterfaceType;
     @Value("${tip.wlan.ovsdb.wifi-iface.default_wan_name:wan}")
     public String defaultWanInterfaceName;
+    @Value("${tip.wlan.ovsdb.wifi-iface.default_wan6_name:wan6}")
+    public String defaultWan6InterfaceName;
 
     @Value("${tip.wlan.ovsdb.syncUpRadioConfigsForProvisionedEquipment:true}")
     private boolean syncUpRadioConfigsForProvisionedEquipment;
@@ -1009,6 +1018,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             ret.setRfProfile(profileContainer.getChildOfTypeOrNull(equipmentConfig.getProfileId(), ProfileType.rf));
 
             ret.setSsidProfile(profileContainer.getChildrenOfType(equipmentConfig.getProfileId(), ProfileType.ssid));
+            
+			ret.setWiredEthernetPortProfile(
+					profileContainer.getChildOfTypeOrNullByEquipmentModel(equipmentConfig.getProfileId(),
+							ProfileType.wired_ethernet_port, equipmentConfig.getDetails().getEquipmentModel()));
 
             ret.setMetricsProfiles(profileContainer.getChildrenOfType(equipmentConfig.getProfileId(), ProfileType.service_metrics_collection_config));
 
@@ -1448,7 +1461,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     public void wifiInetStateDbTableUpdate(List<OpensyncAPInetState> inetStateTables, String apId) {
 
         LOG.debug("Received Wifi_Inet_State table update for AP {}", apId);
-
+        
         OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
 
         if (ovsdbSession == null) {
@@ -1491,26 +1504,48 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         }
 
         EquipmentProtocolStatusData protocolStatusData = (EquipmentProtocolStatusData) protocolStatus.getDetails();
+        
+        Status ethernetPortStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.WIRED_ETHERNET_PORT);
+        if (ethernetPortStatus == null) {
+        	ethernetPortStatus = new Status();
+        	ethernetPortStatus.setCustomerId(customerId);
+        	ethernetPortStatus.setEquipmentId(equipmentId);
+        	ethernetPortStatus.setStatusDataType(StatusDataType.WIRED_ETHERNET_PORT);
+        	ethernetPortStatus.setDetails(new WiredEthernetPortStatusData());
+        	ethernetPortStatus = statusServiceInterface.update(ethernetPortStatus);
+        }
+        
+        WiredEthernetPortStatusData ethernetPortStatusData = (WiredEthernetPortStatusData) ethernetPortStatus.getDetails();	
+        Map<String, List<WiredPortStatus>> portStatus = ethernetPortStatusData.getInterfacePortStatusMap();
 
-        for (OpensyncAPInetState inetState : inetStateTables) {
+		for (OpensyncAPInetState inetState : inetStateTables) {
+			if (inetState.ifName != null) {
+				parseRawDataToWiredPortStatus(customerId, equipmentId, portStatus, inetState);
+				ethernetPortStatusData.setInterfacePortStatusMap(portStatus);
+				ethernetPortStatus.setDetails(ethernetPortStatusData);
+				ethernetPortStatus = statusServiceInterface.update(ethernetPortStatus);
+				LOG.debug("EthernetPortStatus for AP {} updated to {}", apId, ethernetPortStatus);
+			}
 
-            if (inetState.ifName != null && inetState.ifName.equals(defaultWanInterfaceName)) {
+			if (inetState.ifName != null && inetState.ifName.equals(defaultWanInterfaceName)) {
 
-                if (inetState.inetAddr != null) {
-                    try {
-                        protocolStatusData.setReportedIpV4Addr(Inet4Address.getByName(inetState.inetAddr));
-                        protocolStatus.setDetails(protocolStatusData);
-                        protocolStatus = statusServiceInterface.update(protocolStatus);
-                        LOG.info("Updated IpV4Addr for AP {} to {} from Wifi_Inet_State change for if_name {}", apId,
-                                ((EquipmentProtocolStatusData) protocolStatus.getDetails()).getReportedIpV4Addr(), inetState.ifName);
-                        LOG.debug("ProtocolStatus for AP {} updated to {}", apId, protocolStatus);
+				if (inetState.inetAddr != null) {
+					try {
+						protocolStatusData.setReportedIpV4Addr(Inet4Address.getByName(inetState.inetAddr));
+						protocolStatus.setDetails(protocolStatusData);
+						protocolStatus = statusServiceInterface.update(protocolStatus);
+						LOG.info("Updated IpV4Addr for AP {} to {} from Wifi_Inet_State change for if_name {}", apId,
+								((EquipmentProtocolStatusData) protocolStatus.getDetails()).getReportedIpV4Addr(),
+								inetState.ifName);
+						LOG.debug("ProtocolStatus for AP {} updated to {}", apId, protocolStatus);
 
-                    } catch (UnknownHostException e) {
-                        LOG.error("Could not set IpV4Addr {} on AP {} due to UnknownHostException ", inetState.inetAddr, apId, e);
-                    }
-                }
+					} catch (UnknownHostException e) {
+						LOG.error("Could not set IpV4Addr {} on AP {} due to UnknownHostException ", inetState.inetAddr,
+								apId, e);
+					}
+				}
 
-            }
+			}
 
             if (inetState.getIfType().equals("vlan") && inetState.parentIfName != null && inetState.parentIfName.equals(defaultWanInterfaceName)) {
 
@@ -1564,12 +1599,121 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
 
     }
 
-    @Override
-    public void wifiInetStateDbTableDelete(List<OpensyncAPInetState> inetStateTables, String apId) {
+	protected void parseRawDataToWiredPortStatus(int customerId, long equipmentId,
+			Map<String, List<WiredPortStatus>> portStatus, OpensyncAPInetState inetState) {
+        LOG.debug("Entering parseRawDataToWiredPortStatus for Customer {}, Equipment {} with inetState {}",
+                customerId, equipmentId, inetState);
+        List<WiredPortStatus> ports = new ArrayList<>();
+        inetState.ethPorts.forEach((key, ethPort) -> {
+            try {
+                // Raw data from AP example: ethPorts={eth1=up wan 1000Mbps full}
+                String[] ethPortsValues = ethPort.split(SPACE_SEPERATOR);
+                List<Integer> allowedVlans = getAllowedVlans(inetState.getVlanTrunk());
 
-        LOG.debug("Received Wifi_Inet_State table delete for AP {}", apId);
+                if (ethPortsValues.length == 4 && inetState.getIfType() != null) {
+                    int speed = Integer.parseInt(ethPortsValues[2].replaceAll("[^0-9]", ""));
+                    boolean isTrunkEnabled = VLAN_TRUNK_IF_TYPE.equalsIgnoreCase(inetState.getIfType());
 
+                    int vlanId = inetState.getVlanId();
+                    if (isTrunkEnabled) {
+                        vlanId = getNativeVlanIdForTrunk(inetState.getVlanTrunk());
+                    }
+
+                    WiredPortStatus wps = new WiredPortStatus(key, ethPortsValues[1], inetState.getIfName(),
+                            inetState.getIfType(), speed, ethPortsValues[3], ethPortsValues[0], vlanId,
+                            isTrunkEnabled, allowedVlans);
+                    
+                    ports.add(wps);
+                } else {
+                    LOG.error("EthPorts doesn't have enough raw data for CustomerId {} or EquipmentId {}", customerId,
+                            equipmentId);
+                }
+            } catch (Exception e) {
+                LOG.error("CustomerId {} or EquipmentId {} has error when parsing raw data to WiredPortStatus: {}",
+                        customerId, equipmentId, e);
+            }
+        });
+        addToPortStatus(portStatus, inetState.getIfName(), ports);
     }
+
+    // Raw data from AP example: ["allowed_vlans": " 100  200  300 "]
+    // convert to List of Integer
+	private List<Integer> getAllowedVlans(Map<String, String> vlanTrunk) {
+		List<Integer> allowedVlans = new ArrayList<>();
+		try {
+			if (!vlanTrunk.isEmpty() && vlanTrunk.get(ALLOWED_VLANS) != null
+					&& !Objects.equals(vlanTrunk.get(ALLOWED_VLANS), "")) {
+				List<String> allowedVlansStringList = Arrays.asList(vlanTrunk.get(ALLOWED_VLANS).trim().split("\\s+"));
+				for (String allowedVlan : allowedVlansStringList) {
+					allowedVlans.add(Integer.parseInt(allowedVlan));
+				}
+			}
+		} catch (Exception ex) {
+			LOG.error("Unable to parse the allowed vlans from the vlanTrunk. Returning empty AllowedVlanList", ex);
+		}
+		LOG.debug("Returning allowed Vlans {}", allowedVlans);
+		return allowedVlans;
+	}
+
+    private int getNativeVlanIdForTrunk(Map<String, String> vlanTrunk) {
+        int nativeVlanId = 0;
+        if (!vlanTrunk.isEmpty() && vlanTrunk.get(NATIVE_VLAN_ID) != null &&
+                !Objects.equals(vlanTrunk.get(NATIVE_VLAN_ID), "")) {
+            nativeVlanId = Integer.parseInt(vlanTrunk.get(NATIVE_VLAN_ID));
+        }
+        return nativeVlanId;
+    }
+
+	private void addToPortStatus(Map<String, List<WiredPortStatus>> portStatus, String ifName,
+			List<WiredPortStatus> ports) {
+		portStatus.put(ifName, ports);
+		LOG.debug("Returning addToPortStatus with portStatus {}", portStatus);
+	}
+
+	@Override
+	public void wifiInetStateDbTableDelete(List<OpensyncAPInetState> inetStateTables, String apId) {
+
+		LOG.debug("Received Wifi_Inet_State table delete for AP {}", apId);
+
+		OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
+
+		if (ovsdbSession == null) {
+			LOG.debug("wifiInetStateDbTableDelete::Cannot get Session for AP {}", apId);
+			return;
+		}
+
+		long equipmentId = ovsdbSession.getEquipmentId();
+		Equipment ce = equipmentServiceInterface.getOrNull(equipmentId);
+		if (ce == null) {
+			LOG.debug("wifiInetStateDbTableDelete Cannot get customer Equipment for {}", apId);
+			return;
+		}
+
+		int customerId = ce.getCustomerId();
+		if ((customerId < 0) || (equipmentId < 0)) {
+			LOG.debug("wifiInetStateDbTableUpdate::Cannot get valid CustomerId {} or EquipmentId {} for AP {}",
+					customerId, equipmentId, apId);
+			return;
+		}
+
+		Status ethernetPortStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
+				StatusDataType.WIRED_ETHERNET_PORT);
+		if (ethernetPortStatus != null) {
+			WiredEthernetPortStatusData ethernetPortStatusData = (WiredEthernetPortStatusData) ethernetPortStatus
+					.getDetails();
+			Map<String, List<WiredPortStatus>> portStatus = ethernetPortStatusData.getInterfacePortStatusMap();
+
+			for (OpensyncAPInetState inetState : inetStateTables) {
+
+				portStatus.remove(inetState.getIfName());
+				ethernetPortStatusData.setInterfacePortStatusMap(portStatus);
+				ethernetPortStatus.setDetails(ethernetPortStatusData);
+				ethernetPortStatus = statusServiceInterface.update(ethernetPortStatus);
+				LOG.debug("Deleted ifName {} from the AP {}. EthernetPortStatus after deletion{}",
+						inetState.getIfName(), apId, ethernetPortStatus);
+			}
+		}
+	}
 
     @Override
     public void wifiAssociatedClientsDbTableUpdate(List<OpensyncWifiAssociatedClients> wifiAssociatedClients, String apId) {

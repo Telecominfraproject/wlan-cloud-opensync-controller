@@ -50,7 +50,6 @@ import com.telecominfraproject.wlan.core.model.entity.CountryCode;
 import com.telecominfraproject.wlan.core.model.equipment.EquipmentType;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
 import com.telecominfraproject.wlan.core.model.equipment.RadioType;
-import com.telecominfraproject.wlan.core.model.pagination.PaginationContext;
 import com.telecominfraproject.wlan.core.model.pagination.PaginationResponse;
 import com.telecominfraproject.wlan.customer.models.Customer;
 import com.telecominfraproject.wlan.customer.models.CustomerDetails;
@@ -68,6 +67,7 @@ import com.telecominfraproject.wlan.location.models.LocationType;
 import com.telecominfraproject.wlan.location.service.LocationServiceInterface;
 import com.telecominfraproject.wlan.opensync.external.integration.controller.OpensyncCloudGatewayController;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
+import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPInetState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPRadioState;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPVIFState;
 import com.telecominfraproject.wlan.opensync.external.integration.utils.MqttStatsPublisher;
@@ -85,6 +85,7 @@ import com.telecominfraproject.wlan.status.equipment.models.EquipmentUpgradeStat
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSID;
 import com.telecominfraproject.wlan.status.equipment.report.models.ActiveBSSIDs;
 import com.telecominfraproject.wlan.status.equipment.report.models.ClientConnectionDetails;
+import com.telecominfraproject.wlan.status.equipment.report.models.WiredPortStatus;
 import com.telecominfraproject.wlan.status.models.Status;
 import com.telecominfraproject.wlan.status.models.StatusDataType;
 import com.vmware.ovsdb.protocol.operation.notation.Uuid;
@@ -93,7 +94,6 @@ import sts.OpensyncStats.AssocType;
 import sts.OpensyncStats.Client;
 import sts.OpensyncStats.ClientReport;
 import sts.OpensyncStats.EventReport;
-import sts.OpensyncStats.EventReport.ClientAssocEvent;
 import sts.OpensyncStats.RadioBandType;
 import sts.OpensyncStats.Report;
 
@@ -701,6 +701,26 @@ public class OpensyncExternalIntegrationCloudTest {
         Mockito.verify(statusServiceInterface, Mockito.times(3)).getOrNull(1, 1L, StatusDataType.PROTOCOL);
         Mockito.verify(statusServiceInterface, Mockito.never()).update(bssidStatus);
 
+    }
+    
+    @Test
+    public void testParseRawDataToWiredPortStatus() {
+    	 Map<String, List<WiredPortStatus>> portStatus = new HashMap<>();
+    	OpensyncAPInetState inetState = new OpensyncAPInetState();
+    	inetState.setIfType("bridge");
+    	@SuppressWarnings("serial")
+		Map<String, String> ethPorts = new HashMap<String, String>(){{
+    	     put("eth0", "up lan 1000Mbps full");
+    	     put("eth1", "up wan 1000Mbps full");
+    	     put("eth2", "incorrect value");
+    	}};
+    	inetState.setIfName("lan");
+    	inetState.setEthPorts(ethPorts);
+    	opensyncExternalIntegrationCloud.parseRawDataToWiredPortStatus(2, 1, portStatus, inetState);
+    	assertEquals(1, portStatus.size());
+    	assertEquals(true, portStatus.containsKey("lan"));
+    	assertEquals(2, portStatus.get("lan").size());
+    	assertEquals("lan", portStatus.get("lan").get(0).getCurrentIfName());
     }
 
     @Ignore
