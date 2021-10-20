@@ -1152,7 +1152,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 continue;
             }
 
-            LOG.debug("Values from Vif State Mac (BSSID) {} SSID {} AssociatedClients {} Channel {}", bssid, ssid, vifState.getAssociatedClients());
+            LOG.debug("Values from Vif State Mac (BSSID) {} SSID {} AssociatedClients {} Channel {}", bssid, ssid,
+                    vifState.getAssociatedClients(), channel);
 
             RadioType radioType = null;
             Map<RadioType, RfElementConfiguration> rfElementMap = rfConfig.getRfConfigMap();
@@ -1404,7 +1405,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             apElementConfiguration.getRadioMap().get(radioState.getFreqBand()).setAllowedChannelsPowerLevels(channelPowerLevels);
         }
 
-        LOG.debug("Updated AllowedChannels from Wifi_Radio_State table change for AP {}", apId);
+        LOG.debug("Updated AllowedChannels from Wifi_Radio_State table change for AP {} configStateMismatch {}", apId, configStateMismatch);
         return configStateMismatch;
     }
 
