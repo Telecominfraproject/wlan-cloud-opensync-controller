@@ -145,8 +145,24 @@ public class OvsdbNodeConfig extends OvsdbDaoBase {
 					List.of(new Condition("module", Function.EQUALS, new Atom<>("led"))), new Row(columns)));
 			CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
 			OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+			long numUpdates = 0;
 			for (OperationResult res : result) {
-				LOG.debug("processLedControlEnabled result {}", res);
+				if (res instanceof UpdateResult) {
+					numUpdates += ((UpdateResult) res).getCount();
+					LOG.debug("processLedControlEnabled update result {}", res);
+				}
+			}
+			if (numUpdates == 0) {
+				// no records existed, insert the row instead
+				operations.clear();
+				operations.add(new Insert(nodeConfigTable, new Row(columns)));
+				fResult = ovsdbClient.transact(ovsdbName, operations);
+				result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+				for (OperationResult res : result) {
+					if (res instanceof InsertResult) {
+						LOG.debug("processLedControlEnabled insert result {}", res);
+					}
+				}
 			}
 		} catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
 			throw new RuntimeException(e);
