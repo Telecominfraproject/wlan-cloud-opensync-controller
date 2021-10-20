@@ -40,10 +40,25 @@ public class OvsdbGet extends OvsdbDaoBase {
     Map<String, Set<Integer>> getAllowedChannels(OvsdbClient ovsdbClient) {
         Map<String, Set<Integer>> allowedChannels = new HashMap<>();
         for (Row row : getOvsdbTableRowsForCondition(ovsdbClient, wifiRadioStateDbTable, null)) {
-            allowedChannels.put(getSingleValueFromSet(row, "freq_band"), row.getSetColumn("allowed_channels"));
+            Set<Integer> channels = new HashSet<>();
+            if (row.getMapColumn("channels").containsKey("allowed")) {
+                for (String c : row.getMapColumn("channels").get("allowed").toString().split(",")) {
+                    if (c != null)
+                        channels.add(Integer.valueOf(c));
+                } ;
+            }
+            if (row.getMapColumn("channels").containsKey("radar_detection")) {
+                for (String c : row.getMapColumn("channels").get("radar_detection").toString().split(",")) {
+                    if (c != null)
+                        channels.add(Integer.valueOf(c));
+                } ;
+            }
+
+            allowedChannels.put(getSingleValueFromSet(row, "freq_band"), channels);
         }
         return allowedChannels;
     }
+
 
     /**
      * Get all Rows from given table that satisfy the conditions.
