@@ -23,8 +23,12 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherEmpty;
 import com.telecominfraproject.wlan.opensync.external.integration.models.ConnectNodeInfo;
 import com.telecominfraproject.wlan.opensync.util.OvsdbToWlanCloudTypeMappingUtility;
+import com.telecominfraproject.wlan.status.StatusServiceLocal;
+import com.telecominfraproject.wlan.status.controller.StatusController;
+import com.telecominfraproject.wlan.status.datastore.inmemory.StatusDatastoreInMemory;
 import com.vmware.ovsdb.protocol.operation.result.OperationResult;
 import com.vmware.ovsdb.service.OvsdbClient;
 
@@ -36,7 +40,8 @@ import com.vmware.ovsdb.service.OvsdbClient;
 @Import(value = { OvsdbDao.class, OvsdbNodeTest.Config.class, OvsdbNode.class, OvsdbRadioConfig.class,
         OvsdbHotspotConfig.class, OvsdbCommandConfig.class, OvsdbMonitor.class, OvsdbFirmwareConfig.class,
         OvsdbStatsConfig.class, OvsdbSsidConfig.class, OvsdbRrmConfig.class, OvsdbNetworkConfig.class,
-        OvsdbNodeConfig.class,OvsdbRadiusProxyConfig.class
+        OvsdbNodeConfig.class,OvsdbRadiusProxyConfig.class, StatusServiceLocal.class, StatusController.class,
+        CloudEventDispatcherEmpty.class, StatusDatastoreInMemory.class
 })
 public class OvsdbNodeTest {
 

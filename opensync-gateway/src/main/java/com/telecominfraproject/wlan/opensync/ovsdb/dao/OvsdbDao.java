@@ -210,6 +210,10 @@ public class OvsdbDao extends OvsdbDaoBase {
     public void removeAllInetConfigs(OvsdbClient ovsdbClient) {
         ovsdbNetwork.removeAllInetConfigs(ovsdbClient);
     }
+    
+    public void resetWiredPorts(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
+    	ovsdbNetwork.resetWiredPorts(ovsdbClient, opensyncApConfig);
+    }
 
     public void removeAllPasspointConfigs(OvsdbClient ovsdbClient) {
         ovsdbHotspot.removeAllPasspointConfigs(ovsdbClient);

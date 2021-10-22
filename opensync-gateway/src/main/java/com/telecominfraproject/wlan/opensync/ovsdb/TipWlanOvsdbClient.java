@@ -239,17 +239,18 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         String apId = alterClientCnIfRequired(clientCn, connectNodeInfo);
 
         LOG.debug("Client {} connect for AP {}", clientCn, apId);
+        
+        OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
 
         ovsdbDao.removeAllPasspointConfigs(ovsdbClient);
         ovsdbDao.removeAllSsids(ovsdbClient); // always
         ovsdbDao.removeAllInetConfigs(ovsdbClient);
+        ovsdbDao.resetWiredPorts(ovsdbClient, opensyncAPConfig); 
         ovsdbDao.removeWifiRrm(ovsdbClient);
         ovsdbDao.removeRadsecRadiusAndRealmConfigs(ovsdbClient);
         ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
 
         extIntegrationInterface.clearEquipmentStatus(apId);
-
-        OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
 
         if (opensyncAPConfig != null) {
             ovsdbDao.configureNode(ovsdbClient, opensyncAPConfig);
@@ -329,6 +330,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         ovsdbDao.removeAllPasspointConfigs(ovsdbClient);
         ovsdbDao.removeAllSsids(ovsdbClient); // always
         ovsdbDao.removeAllInetConfigs(ovsdbClient);
+        ovsdbDao.resetWiredPorts(ovsdbClient, opensyncAPConfig); // need to run this first before remove Status
         ovsdbDao.removeWifiRrm(ovsdbClient);
         ovsdbDao.removeRadsecRadiusAndRealmConfigs(ovsdbClient);
         ovsdbDao.removeAllStatsConfigs(ovsdbClient);

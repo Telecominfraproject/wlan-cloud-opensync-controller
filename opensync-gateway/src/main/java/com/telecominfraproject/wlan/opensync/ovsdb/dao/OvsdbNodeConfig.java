@@ -13,7 +13,6 @@ import java.util.concurrent.TimeoutException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.telecominfraproject.wlan.core.model.equipment.LedStatus;
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.vmware.ovsdb.exception.OvsdbClientException;
