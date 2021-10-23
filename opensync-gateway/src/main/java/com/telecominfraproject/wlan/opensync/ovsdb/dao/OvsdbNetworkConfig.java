@@ -27,6 +27,11 @@ import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.telecominfraproject.wlan.profile.network.models.GreTunnelConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
+import com.telecominfraproject.wlan.status.StatusServiceInterface;
+import com.telecominfraproject.wlan.status.equipment.report.models.WiredEthernetPortStatusData;
+import com.telecominfraproject.wlan.status.equipment.report.models.WiredPortStatus;
+import com.telecominfraproject.wlan.status.models.Status;
+import com.telecominfraproject.wlan.status.models.StatusDataType;
 import com.vmware.ovsdb.exception.OvsdbClientException;
 import com.vmware.ovsdb.protocol.operation.Delete;
 import com.vmware.ovsdb.protocol.operation.Insert;
@@ -48,6 +53,8 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
 
     @Autowired
     private OvsdbGet ovsdbGet;
+    @Autowired
+    private StatusServiceInterface statusServiceInterface;
 
     private static final String VLAN_IF_TYPE = "vlan";
     private static final String VLAN_TRUNK_IF_TYPE = "vlan_trunk";
@@ -172,6 +179,9 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
 	}
 
 	private void handleEthernetPortConfiguration(OvsdbClient ovsdbClient, Set<WiredPort> desiredWiredPorts) {
+        // lists are for more than one lan port moving to wan ("eth0 eth1 eth2")
+        Set<String> availableLanEthNames = new HashSet<>();
+        Set<String> availableWanEthNames = new HashSet<>();
         if (desiredWiredPorts == null) {
             LOG.info("Cannot handle the EthernetPort config for null desired Wired Ports. Exiting");
             return;
@@ -182,22 +192,35 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
             LOG.error("Cannot find the default wan port from the desired list of ports {}" , desiredWiredPorts);
             return;
         }
+        for (WiredPort port: desiredWiredPorts) {
+        	if (port.getIfName().contains(LAN_IF_NAME)) { // for AP has ifName lan1, lan2 instead of lan
+        		availableLanEthNames.add(port.getName());
+        	} else if (WAN_IF_NAME.equals(port.getIfName())) {
+        		availableWanEthNames.add(port.getName());
+        	}
+        }
         for (WiredPort desiredPort : desiredWiredPorts) {
             if (!desiredPort.equals(wanPort)) {
                 if (isLanToBridgeConversion(desiredPort) && !desiredPort.isTrunkEnabled()) {
                     // Flow 1: Desired Bridge + Access
                     LOG.debug("Desired Config is Bridge with Access Mode");
-                    changeLanToWan(ovsdbClient, desiredPort, wanPort);
+                    availableLanEthNames.remove(desiredPort.getName());
+                    availableWanEthNames.add(desiredPort.getName());
+                    changeLanToWan(ovsdbClient, availableLanEthNames, availableWanEthNames);
                     createVlanTag(ovsdbClient, desiredPort);
                 } else if (isLanToBridgeConversion(desiredPort) && desiredPort.isTrunkEnabled()) {
                     // Flow 2: Desired Bridge + Trunk
                     LOG.debug("Desired Config is Bridge with Trunk Mode");
-                    changeLanToWan(ovsdbClient, desiredPort, wanPort);
+                    availableLanEthNames.remove(desiredPort.getName());
+                    availableWanEthNames.add(desiredPort.getName());
+                    changeLanToWan(ovsdbClient, availableLanEthNames, availableWanEthNames);
                     createTrunkInterface(ovsdbClient, desiredPort);
                 } else if (!BRIDGE_IF_TYPE.equalsIgnoreCase(desiredPort.getIfType())) {
                     // Flow 3: Desired ifType is NAT
                     LOG.debug("Desired Config is NAT (LAN) mode. Desired Port {} may still be tagged to WAN interface. Convert to LAN mode", desiredPort.getIfName());
-                    changeWanToLan(ovsdbClient, desiredPort, wanPort);
+                    availableLanEthNames.add(desiredPort.getName());
+                    availableWanEthNames.remove(desiredPort.getName());
+                    changeWanToLan(ovsdbClient, availableLanEthNames, availableWanEthNames);
                 } else {
                     LOG.info("Not a supported Config change requested for the port {}", desiredPort);
                 }
@@ -228,17 +251,19 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
 		return wanWiredPort;
 	}
 
-	void changeLanToWan(OvsdbClient ovsdbClient, WiredPort desiredWiredPort, WiredPort wanPort) {
-        LOG.debug("Moving Port {} with current ifName {} to WAN", desiredWiredPort.getName(), desiredWiredPort.getIfName());
+	void changeLanToWan(OvsdbClient ovsdbClient, Set<String> lanPortsToUpdate, Set<String> wanPortsToUpdate) {
+		LOG.debug("Calling changeLanToWan: moving port {} to LAN and {} to WAN", lanPortsToUpdate, wanPortsToUpdate);
 		List<Operation> operations = new ArrayList<>();
 		// Step1: remove lan from eth_ports
 		// /usr/opensync/bin/ovsh u Wifi_Inet_Config eth_ports:=" " -w if_name==lan
-		addEthPortsOperation(operations, SEPARATOR, LAN_IF_NAME);
+		// or cases like: /usr/opensync/bin/ovsh u Wifi_Inet_Config eth_ports:="eth2" -w if_name==lan
+		String lanPortsString = String.join(SEPARATOR,  lanPortsToUpdate);
+		addEthPortsOperation(operations, lanPortsString.equals("")? SEPARATOR : lanPortsString, LAN_IF_NAME);
 		
 		// Step2: make lan to a wan port
 		// /usr/opensync/bin/ovsh u Wifi_Inet_Config eth_ports:="eth0 eth1" -w if_name==wan
 		// eth_ports syntax is set by AP (i.e, eth0 eth1)
-		addEthPortsOperation(operations, desiredWiredPort.getName() + SEPARATOR + wanPort.getName(), WAN_IF_NAME);
+		addEthPortsOperation(operations, String.join(SEPARATOR,  wanPortsToUpdate), WAN_IF_NAME);
 		sendOperationsToAP(ovsdbClient, operations, "changeLanToWan");
 	}
 
@@ -315,15 +340,16 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
         return desiredWiredPort.getAllowedVlanIds().stream().map(String::valueOf).collect(Collectors.joining(SEPARATOR));
     }
 
-	void changeWanToLan(OvsdbClient ovsdbClient, WiredPort desiredWiredPort, WiredPort wanPort) {
+	void changeWanToLan(OvsdbClient ovsdbClient, Set<String> lanPortsToUpdate, Set<String> wanPortsToUpdate) {
+		LOG.debug("Calling changeWanToLan: Moving port {} to LAN and {} to WAN", lanPortsToUpdate, wanPortsToUpdate);
 		// Step1: set the correct port to lan
 		// /usr/opensync/bin/ovsh u Wifi_Inet_Config eth_ports:="eth0" -w if_name==lan
 		List<Operation> operations = new ArrayList<>();
-		addEthPortsOperation(operations, desiredWiredPort.getName(), LAN_IF_NAME);
+		addEthPortsOperation(operations, String.join(SEPARATOR,  lanPortsToUpdate), LAN_IF_NAME);
 
 		// Step2: set the correct port to wan
 		// /usr/opensync/bin/ovsh u Wifi_Inet_Config eth_ports:="eth1" -w if_name==wan
-		addEthPortsOperation(operations, wanPort.getName(), WAN_IF_NAME);
+		addEthPortsOperation(operations, String.join(SEPARATOR,  wanPortsToUpdate), WAN_IF_NAME);
 
 		sendOperationsToAP(ovsdbClient, operations, "changeWanToLan");
 	}
@@ -543,4 +569,54 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
             throw new RuntimeException(e);
         }
     }
+    
+	// Reset all LAN ports from WAN back to LAN (NAT mode)
+	void resetWiredPorts(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncApConfig) {
+		LOG.debug("Calling resetWiredPorts");
+		// e.g. eth1
+		Map<String, List<WiredPortStatus>> interfacePortStatusMap = getInterfacePortStatus(
+				opensyncApConfig.getCustomerEquipment().getCustomerId(),
+				opensyncApConfig.getCustomerEquipment().getId());
+		if (interfacePortStatusMap == null) {
+			LOG.info("No InterfacePort(EthernetPort) Status. Exiting");
+			return;
+		}
+		List<WiredPortStatus> wanPortStatusList = interfacePortStatusMap.get(WAN_IF_NAME);
+		if (wanPortStatusList == null) {
+			LOG.info("No wan interface status available. Exiting");
+			return;
+		}
+		WiredPortStatus originalWanPortStatus = wanPortStatusList.stream()
+				.filter(wan -> WAN_IF_NAME.equals(wan.getOriginalIfName())).findFirst().orElse(null);
+		if (originalWanPortStatus == null) {
+			LOG.info("No original wan port available. Exiting");
+			return;
+		}
+		String wanEthName = originalWanPortStatus.getName();
+		Set<String> lanEthNames = new HashSet<>();
+		for (WiredPortStatus wanPortStatus : wanPortStatusList) {
+			if (wanPortStatus.getOriginalIfName().contains(LAN_IF_NAME)) {
+				lanEthNames.add(wanPortStatus.getName());
+			}
+		}
+		if (!lanEthNames.isEmpty()) {
+			changeWanToLan(ovsdbClient, lanEthNames, Set.of(wanEthName));
+		}
+	}
+
+	private Map<String, List<WiredPortStatus>> getInterfacePortStatus(int customerId, long equipmentId) {
+		Map<String, List<WiredPortStatus>> interfacePortStatus = null;
+		// Getting the status from the current AP
+		Status existingPortStatus = statusServiceInterface.getOrNull(customerId, equipmentId,
+				StatusDataType.WIRED_ETHERNET_PORT);
+		if (existingPortStatus != null && existingPortStatus.getDetails() instanceof WiredEthernetPortStatusData) {
+			interfacePortStatus = ((WiredEthernetPortStatusData) existingPortStatus.getDetails())
+					.getInterfacePortStatusMap();
+		}
+
+		if (interfacePortStatus == null || interfacePortStatus.isEmpty()) {
+			LOG.info("No ethernetPortStatus found for customer {}, equipment {}", customerId, equipmentId);
+		}
+		return interfacePortStatus;
+	}
 }

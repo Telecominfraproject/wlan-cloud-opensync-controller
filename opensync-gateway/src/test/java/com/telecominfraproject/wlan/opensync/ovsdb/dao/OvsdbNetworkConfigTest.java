@@ -6,6 +6,11 @@ import com.telecominfraproject.wlan.profile.ethernetport.models.WiredEthernetPor
 import com.telecominfraproject.wlan.profile.ethernetport.models.WiredPort;
 import com.telecominfraproject.wlan.profile.models.Profile;
 import com.telecominfraproject.wlan.profile.models.ProfileType;
+import com.telecominfraproject.wlan.status.StatusServiceInterface;
+import com.telecominfraproject.wlan.status.equipment.report.models.WiredEthernetPortStatusData;
+import com.telecominfraproject.wlan.status.equipment.report.models.WiredPortStatus;
+import com.telecominfraproject.wlan.status.models.Status;
+import com.telecominfraproject.wlan.status.models.StatusDataType;
 import com.vmware.ovsdb.exception.OvsdbClientException;
 import com.vmware.ovsdb.protocol.operation.result.OperationResult;
 import com.vmware.ovsdb.protocol.operation.result.UpdateResult;
@@ -27,6 +32,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -54,16 +60,21 @@ public class OvsdbNetworkConfigTest {
     OvsdbNetworkConfig ovsdbNetworkConfig;
 
     @MockBean(answer = Answers.RETURNS_MOCKS)
+    StatusServiceInterface statusServiceInterface;
+
+    @MockBean(answer = Answers.RETURNS_MOCKS)
     OvsdbGet ovsdbGet;
 
     @Mock(answer = Answers.RETURNS_MOCKS)
     CompletableFuture<OperationResult[]> futureResult;
 
     private MockitoSession mockito;
+    
+    private static final String LAN_IF_NAME = "lan";
 
     @Before
     public void setUp() throws Exception {
-        mockito = Mockito.mockitoSession().initMocks(this).strictness(Strictness.STRICT_STUBS).startMocking();
+        mockito = Mockito.mockitoSession().initMocks(this).strictness(Strictness.WARN).startMocking();
         Mockito.when(ovsdbClient.transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList())).thenReturn(futureResult);
     }
 
@@ -112,6 +123,41 @@ public class OvsdbNetworkConfigTest {
         Mockito.verify(ovsdbClient, times(1)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
     }
 
+	// Case when ETH port is in BRIDGE + Trunk and Profile is removed so we convert
+	// it in NAT (LAN)
+	@Test
+	public void testResetWiredPorts_BridgeTrunkToNAT()
+			throws ExecutionException, InterruptedException, TimeoutException, OvsdbClientException {
+		// at the beginning LAN's currentIfName is wan
+		Mockito.when(statusServiceInterface.getOrNull(Mockito.anyInt(), Mockito.anyLong(),
+				Mockito.any(StatusDataType.class))).thenReturn(createWiredEthernetPortStatus("wan"));
+		OperationResult[] updateResult = new OperationResult[] { new UpdateResult(1) };
+		Mockito.when(futureResult.get(ovsdbNetworkConfig.ovsdbTimeoutSec, TimeUnit.SECONDS)).thenReturn(updateResult);
+
+		ovsdbNetworkConfig.resetWiredPorts(ovsdbClient, createOpensyncApConfig(true, "bridge"));
+		// transact() execute 1 time as we move LAN from wan interface back to lan
+		// interface
+		// (vlan interface will be removed in inetC table directly)
+		Mockito.verify(ovsdbClient, times(1)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
+	}
+
+	// Case when ETH port is in NAT + Access and Profile is removed we don't do
+	// anything
+	@Test
+	public void testResetWiredPorts_NATToNAT()
+			throws ExecutionException, InterruptedException, TimeoutException, OvsdbClientException {
+		// at the beginning LAN's currentIfName is wan
+		Mockito.when(statusServiceInterface.getOrNull(Mockito.anyInt(), Mockito.anyLong(),
+				Mockito.any(StatusDataType.class))).thenReturn(createWiredEthernetPortStatus("lan"));
+		OperationResult[] updateResult = new OperationResult[] { new UpdateResult(1) };
+		Mockito.when(futureResult.get(ovsdbNetworkConfig.ovsdbTimeoutSec, TimeUnit.SECONDS)).thenReturn(updateResult);
+
+		ovsdbNetworkConfig.resetWiredPorts(ovsdbClient, createOpensyncApConfig(false, "NAT"));
+		// Note: Strictness set to WARN in setup() rather than STRICT_STUB as we are
+		// adding unnecessary stubbings above to test if any transact() is called.
+		Mockito.verify(ovsdbClient, times(0)).transact(Mockito.eq(OvsdbDao.ovsdbName), Mockito.anyList());
+	}
+
     private OpensyncAPConfig createOpensyncApConfig(boolean isTrunkEnabled, String ifType) {
         OpensyncAPConfig opensyncApConfig = new OpensyncAPConfig();
 
@@ -157,4 +203,43 @@ public class OvsdbNetworkConfigTest {
 
         return wiredPort;
     }
+    
+    private Status createWiredEthernetPortStatus(String lanPortIfName) {
+        WiredEthernetPortStatusData statusDetails = new WiredEthernetPortStatusData();
+        if (lanPortIfName.equals(LAN_IF_NAME)) {
+        	WiredPortStatus wiredPortStatusLan = createWiredPortStatus(lanPortIfName, "NAT", false, 0, null, "eth0", "lan", "up");
+        	WiredPortStatus wiredPortStatusWan = createWiredPortStatus("wan", "bridge", true, 0, null, "eth1", "wan", "up");
+            statusDetails.setInterfacePortStatusMap(Map.of("lan", List.of(wiredPortStatusLan), "wan", List.of(wiredPortStatusWan)));
+        } else {
+        	WiredPortStatus wiredPortStatusLan = createWiredPortStatus(lanPortIfName, "bridge", true, 10, List.of(100,200), "eth0", "lan", "up");
+        	WiredPortStatus wiredPortStatusWan = createWiredPortStatus("wan", "bridge", true, 0, null, "eth1", "wan", "up");
+            statusDetails.setInterfacePortStatusMap(Map.of("lan", List.of(), "wan", List.of(wiredPortStatusLan, wiredPortStatusWan)));
+        }
+        	
+
+        Status status = new Status();
+        status.setCustomerId(1);
+        status.setEquipmentId(1L);
+        status.setStatusDataType(StatusDataType.WIRED_ETHERNET_PORT);
+        status.setDetails(statusDetails);
+
+        return status;
+    }
+    
+	private WiredPortStatus createWiredPortStatus(String ifName, String ifType, boolean isTrunkEnabled, int vlanId,
+			List<Integer> allowedVlans, String name, String originalIfName, String operationalState) {
+		WiredPortStatus status = new WiredPortStatus();
+		status.setIfType(ifType);
+		status.setCurrentIfName(ifName);
+		status.setOriginalIfName(originalIfName);
+		status.setName(name);
+		status.setAllowedVlanIds(allowedVlans);
+		status.setDuplex("full");
+		status.setSpeed(1000);
+		status.setTrunkEnabled(isTrunkEnabled);
+		status.setOperationalState(operationalState);
+		status.setVlanId(vlanId);
+
+		return status;
+	}
 }
