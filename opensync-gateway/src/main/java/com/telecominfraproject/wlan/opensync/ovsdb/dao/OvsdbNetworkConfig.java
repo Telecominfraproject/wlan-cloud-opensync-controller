@@ -206,21 +206,21 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
                     LOG.debug("Desired Config is Bridge with Access Mode");
                     availableLanEthNames.remove(desiredPort.getName());
                     availableWanEthNames.add(desiredPort.getName());
-                    changeLanToWan(ovsdbClient, availableLanEthNames, availableWanEthNames);
+                    changeLanToWan(ovsdbClient, availableLanEthNames, availableWanEthNames, wanPort.getName());
                     createVlanTag(ovsdbClient, desiredPort);
                 } else if (isLanToBridgeConversion(desiredPort) && desiredPort.isTrunkEnabled()) {
                     // Flow 2: Desired Bridge + Trunk
                     LOG.debug("Desired Config is Bridge with Trunk Mode");
                     availableLanEthNames.remove(desiredPort.getName());
                     availableWanEthNames.add(desiredPort.getName());
-                    changeLanToWan(ovsdbClient, availableLanEthNames, availableWanEthNames);
+                    changeLanToWan(ovsdbClient, availableLanEthNames, availableWanEthNames, wanPort.getName());
                     createTrunkInterface(ovsdbClient, desiredPort);
                 } else if (!BRIDGE_IF_TYPE.equalsIgnoreCase(desiredPort.getIfType())) {
                     // Flow 3: Desired ifType is NAT
                     LOG.debug("Desired Config is NAT (LAN) mode. Desired Port {} may still be tagged to WAN interface. Convert to LAN mode", desiredPort.getIfName());
                     availableLanEthNames.add(desiredPort.getName());
                     availableWanEthNames.remove(desiredPort.getName());
-                    changeWanToLan(ovsdbClient, availableLanEthNames, availableWanEthNames);
+                    changeWanToLan(ovsdbClient, availableLanEthNames, availableWanEthNames, wanPort.getName());
                 } else {
                     LOG.info("Not a supported Config change requested for the port {}", desiredPort);
                 }
@@ -251,7 +251,7 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
 		return wanWiredPort;
 	}
 
-	void changeLanToWan(OvsdbClient ovsdbClient, Set<String> lanPortsToUpdate, Set<String> wanPortsToUpdate) {
+	void changeLanToWan(OvsdbClient ovsdbClient, Set<String> lanPortsToUpdate, Set<String> wanPortsToUpdate, String wanEthName) {
 		LOG.debug("Calling changeLanToWan: moving port {} to LAN and {} to WAN", lanPortsToUpdate, wanPortsToUpdate);
 		List<Operation> operations = new ArrayList<>();
 		// Step1: remove lan from eth_ports
@@ -263,7 +263,11 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
 		// Step2: make lan to a wan port
 		// /usr/opensync/bin/ovsh u Wifi_Inet_Config eth_ports:="eth0 eth1" -w if_name==wan
 		// eth_ports syntax is set by AP (i.e, eth0 eth1)
-		addEthPortsOperation(operations, String.join(SEPARATOR,  wanPortsToUpdate), WAN_IF_NAME);
+        // AP needs the original wan port be the first port in the string. Since we will hard code it, we remove
+        // original wan name from the set to avoid duplication
+        wanPortsToUpdate.remove(wanEthName);
+		// trim() is used when wanPortsToUpdate is empty (i.e. we want "eth0" instead of "eth0 ")
+		addEthPortsOperation(operations, (wanEthName + SEPARATOR + String.join(SEPARATOR,  wanPortsToUpdate)).trim(), WAN_IF_NAME);
 		sendOperationsToAP(ovsdbClient, operations, "changeLanToWan");
 	}
 
@@ -340,7 +344,7 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
         return desiredWiredPort.getAllowedVlanIds().stream().map(String::valueOf).collect(Collectors.joining(SEPARATOR));
     }
 
-	void changeWanToLan(OvsdbClient ovsdbClient, Set<String> lanPortsToUpdate, Set<String> wanPortsToUpdate) {
+	void changeWanToLan(OvsdbClient ovsdbClient, Set<String> lanPortsToUpdate, Set<String> wanPortsToUpdate, String wanEthName) {
 		LOG.debug("Calling changeWanToLan: Moving port {} to LAN and {} to WAN", lanPortsToUpdate, wanPortsToUpdate);
 		// Step1: set the correct port to lan
 		// /usr/opensync/bin/ovsh u Wifi_Inet_Config eth_ports:="eth0" -w if_name==lan
@@ -349,7 +353,10 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
 
 		// Step2: set the correct port to wan
 		// /usr/opensync/bin/ovsh u Wifi_Inet_Config eth_ports:="eth1" -w if_name==wan
-		addEthPortsOperation(operations, String.join(SEPARATOR,  wanPortsToUpdate), WAN_IF_NAME);
+        // AP needs the original wan port be the first port in the string. Since we will hard code it, we remove
+        // original wan name from the set to avoid duplication
+		wanPortsToUpdate.remove(wanEthName);
+		addEthPortsOperation(operations, (wanEthName + SEPARATOR + String.join(SEPARATOR,  wanPortsToUpdate)).trim(), WAN_IF_NAME);
 
 		sendOperationsToAP(ovsdbClient, operations, "changeWanToLan");
 	}
@@ -600,7 +607,9 @@ public class OvsdbNetworkConfig extends OvsdbDaoBase {
 			}
 		}
 		if (!lanEthNames.isEmpty()) {
-			changeWanToLan(ovsdbClient, lanEthNames, Set.of(wanEthName));
+            Set<String> wanEthNameSet = new HashSet<String>();
+            wanEthNameSet.add(wanEthName);
+            changeWanToLan(ovsdbClient, lanEthNames, wanEthNameSet, wanEthName);
 		}
 	}
 
