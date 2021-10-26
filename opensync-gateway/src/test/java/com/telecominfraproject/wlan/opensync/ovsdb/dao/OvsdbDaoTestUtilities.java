@@ -104,7 +104,7 @@ public class OvsdbDaoTestUtilities {
         ((PasspointProfile) passpointHotspotConfig.getDetails()).setOsuSsidProfileId(profileSsidOpen.getId());
         profileSsidPsk.getChildProfileIds().add(passpointHotspotConfig.getId());
         ((PasspointProfile) passpointHotspotConfig.getDetails())
-                .setAssociatedAccessSsidProfileIds(List.of(profileSsidPsk.getId()));
+                .setAssociatedAccessSsidProfileIds(Set.of(profileSsidPsk.getId()));
         return passpointHotspotConfig;
     }
 
