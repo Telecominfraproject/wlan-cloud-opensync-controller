@@ -1360,6 +1360,9 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     }
     
     private ChannelBandwidth convertHtModeToChannelBandwidth(String htMode) {
+        if (htMode == null) {
+            return null;
+        }
         switch (htMode) {
             case "HT20":
                 return ChannelBandwidth.is20MHz;
