@@ -42,7 +42,7 @@ public class OpensyncAPRadioState extends OpensyncAPBase {
     public Map<String, String> hwConfig;
     public int channel;
     public int txPower;
-    public String htMode;
+    public String htMode; // used in channel bandwidth
     public int thermalDowngradeTemp;
     public String hwMode;
     public boolean enabled;

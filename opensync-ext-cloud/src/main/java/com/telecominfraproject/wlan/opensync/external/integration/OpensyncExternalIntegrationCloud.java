@@ -47,6 +47,7 @@ import com.telecominfraproject.wlan.client.session.models.ClientDhcpDetails;
 import com.telecominfraproject.wlan.client.session.models.ClientSession;
 import com.telecominfraproject.wlan.client.session.models.ClientSessionDetails;
 import com.telecominfraproject.wlan.core.model.entity.CountryCode;
+import com.telecominfraproject.wlan.core.model.equipment.ChannelBandwidth;
 import com.telecominfraproject.wlan.core.model.equipment.EquipmentType;
 import com.telecominfraproject.wlan.core.model.equipment.LedStatus;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
@@ -1352,10 +1353,30 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             channelStatus.setDetails(channelStatusData);
         }
         ((EquipmentChannelStatusData) channelStatus.getDetails()).getChannelNumberStatusDataMap().put(radioState.getFreqBand(), radioState.getChannel());
+        ChannelBandwidth channelBandwidth = convertHtModeToChannelBandwidth(radioState.getHtMode());
+        ((EquipmentChannelStatusData) channelStatus.getDetails()).getChannelBandwidthStatusDataMap().put(radioState.getFreqBand(), channelBandwidth);
         ((EquipmentChannelStatusData) channelStatus.getDetails()).getTxPowerDataMap().put(radioState.getFreqBand(), radioState.getTxPower());
         return channelStatus;
     }
-
+    
+    private ChannelBandwidth convertHtModeToChannelBandwidth(String htMode) {
+        switch (htMode) {
+            case "HT20":
+                return ChannelBandwidth.is20MHz;
+            case "HT40":
+            case "HT40-":
+            case "HT40+":
+                return ChannelBandwidth.is40MHz;
+            case "HT80":
+                return ChannelBandwidth.is80MHz;
+            case "HT160":
+                return ChannelBandwidth.is160MHz;
+            default:
+                LOG.warn("Unrecognized channel HtMode {}", htMode);
+                return ChannelBandwidth.UNSUPPORTED;
+        }
+    }
+    
     private boolean updateChannelPowerLevels(String apId, ApElementConfiguration apElementConfiguration, OpensyncAPRadioState radioState) {
 
         boolean configStateMismatch = false;
