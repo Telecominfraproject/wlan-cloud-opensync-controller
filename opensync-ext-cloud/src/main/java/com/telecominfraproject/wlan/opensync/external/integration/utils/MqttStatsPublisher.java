@@ -524,7 +524,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                     checkIfOutOfBound("pctBusyTx", pctBusyTx, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
 
                     radioUtil.setAssocClientTx(pctBusyTx);
-                    int pctBusyRx = busySelf / totalDurationMs;
+                    int pctBusyRx = busyRx / totalDurationMs;
                     checkIfOutOfBound("pctBusyRx", pctBusyRx, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
                     radioUtil.setAssocClientRx(pctBusyRx);
 
