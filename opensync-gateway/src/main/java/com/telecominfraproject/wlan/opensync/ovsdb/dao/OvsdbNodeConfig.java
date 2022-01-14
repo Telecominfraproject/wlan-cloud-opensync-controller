@@ -2,6 +2,7 @@
 package com.telecominfraproject.wlan.opensync.ovsdb.dao;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.telecominfraproject.wlan.opensync.external.integration.models.OpensyncAPConfig;
+import com.telecominfraproject.wlan.opensync.ovsdb.dao.models.WifiVifConfigInfo;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.vmware.ovsdb.exception.OvsdbClientException;
 import com.vmware.ovsdb.protocol.operation.Delete;
@@ -25,6 +27,7 @@ import com.vmware.ovsdb.protocol.operation.notation.Condition;
 import com.vmware.ovsdb.protocol.operation.notation.Function;
 import com.vmware.ovsdb.protocol.operation.notation.Row;
 import com.vmware.ovsdb.protocol.operation.notation.Value;
+import com.vmware.ovsdb.protocol.operation.result.ErrorResult;
 import com.vmware.ovsdb.protocol.operation.result.InsertResult;
 import com.vmware.ovsdb.protocol.operation.result.OperationResult;
 import com.vmware.ovsdb.protocol.operation.result.UpdateResult;
@@ -167,51 +170,105 @@ public class OvsdbNodeConfig extends OvsdbDaoBase {
 			throw new RuntimeException(e);
 		}
 	}
-
+	
 	public String processBlinkRequest(OvsdbClient ovsdbClient, String apId, boolean blinkAllLEDs) {
 
-		String ret = null;
-		try {
+        String ret = null;
+        try {
 
-			LOG.debug("processLEDRequest set LEDs status to {}", blinkAllLEDs ? "led_blink" : "led_state");
-			Map<String, Value> columns = new HashMap<>();
-			if (blinkAllLEDs) {
-				columns.put("module", new Atom<>("led"));
-				columns.put("key", new Atom<>("led_blink"));
-			} else {
-				columns.put("module", new Atom<>("led"));
-				columns.put("key", new Atom<>("led_state"));
-			}
-			List<Operation> operations = new ArrayList<>();
-			operations.add(new Update(nodeConfigTable,
-					List.of(new Condition("module", Function.EQUALS, new Atom<>("led"))), new Row(columns)));
-			CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-			OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-			long numUpdates = 0;
-			for (OperationResult res : result) {
-				if (res instanceof UpdateResult) {
-					numUpdates += ((UpdateResult) res).getCount();
-					LOG.debug("processBlinkRequest update result {}", res);
-					ret = "processBlinkRequest update result " + res;
-				}
-			}
-			if (numUpdates == 0) {
-				// no records existed, insert the row instead
-				operations.clear();
-				operations.add(new Insert(nodeConfigTable, new Row(columns)));
-				fResult = ovsdbClient.transact(ovsdbName, operations);
-				result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-				for (OperationResult res : result) {
-					if (res instanceof InsertResult) {
-						LOG.debug("processBlinkRequest insert result {}", res);
-						ret = "processBlinkRequest insert result " + res;
-					}
-				}
-			}
+            LOG.debug("processLEDRequest set LEDs status to {}", blinkAllLEDs ? "led_blink" : "led_state");
+            Map<String, Value> columns = new HashMap<>();
+            if (blinkAllLEDs) {
+                columns.put("module", new Atom<>("led"));
+                columns.put("key", new Atom<>("led_blink"));
+            } else {
+                columns.put("module", new Atom<>("led"));
+                columns.put("key", new Atom<>("led_state"));
+            }
+            List<Operation> operations = new ArrayList<>();
+            operations.add(new Update(nodeConfigTable,
+                    List.of(new Condition("module", Function.EQUALS, new Atom<>("led"))), new Row(columns)));
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+            long numUpdates = 0;
+            for (OperationResult res : result) {
+                if (res instanceof UpdateResult) {
+                    numUpdates += ((UpdateResult) res).getCount();
+                    LOG.debug("processBlinkRequest update result {}", res);
+                    ret = "processBlinkRequest update result " + res;
+                }
+            }
+            if (numUpdates == 0) {
+                // no records existed, insert the row instead
+                operations.clear();
+                operations.add(new Insert(nodeConfigTable, new Row(columns)));
+                fResult = ovsdbClient.transact(ovsdbName, operations);
+                result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+                for (OperationResult res : result) {
+                    if (res instanceof InsertResult) {
+                        LOG.debug("processBlinkRequest insert result {}", res);
+                        ret = "processBlinkRequest insert result " + res;
+                    }
+                }
+            }
 
-			return ret;
-		} catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
-			throw new RuntimeException(e);
-		}
-	}
+            return ret;
+        } catch (OvsdbClientException | InterruptedException | ExecutionException | TimeoutException e) {
+            throw new RuntimeException(e);
+        }
+    }
+	   
+    public void configureDynamicRadiusProxyToAPC(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
+        
+        ApNetworkConfiguration apNetworkConfig = (ApNetworkConfiguration) opensyncAPConfig.getApProfile()
+                .getDetails();
+        if (apNetworkConfig.isDynamicRadiusProxyEnabled() == null) {
+            LOG.info("Cannot configure isDynamicRadiusProxyEnabled to null value. {}", apNetworkConfig);
+            return;
+        }
+        Boolean isApcEnabled = apNetworkConfig.isDynamicRadiusProxyEnabled();
+        
+        try {
+            if (ovsdbClient.getSchema(ovsdbName).get().getTables().containsKey(apcConfigDbTable)) {
+                Map<String, Value> columns = new HashMap<>();
+                columns.put("enabled", new Atom<>(isApcEnabled));
+                
+                List<Operation> operations = new ArrayList<>();
+                operations.add(new Update(apcConfigDbTable, new Row(columns)));
+                CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+                OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+                LOG.debug("configureDynamicRadiusProxyToAPC result {} ", Arrays.toString(result));
+            }
+        } catch (InterruptedException | ExecutionException | OvsdbClientException | TimeoutException e) {
+            LOG.error("Unable to configureDynamicRadiusProxyToAPC on AP.", e);
+            throw new RuntimeException(e);
+        }
+    }
+	
+	void removeApcConfig(OvsdbClient ovsdbClient) {
+        LOG.info("removeApcConfig from {}:", apcConfigDbTable);
+
+        try {
+
+            List<Operation> operations = new ArrayList<>();
+            operations.add(new Delete(apcConfigDbTable));
+
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            for (OperationResult res : result) {
+                LOG.info("Op Result {}", res);
+                if (res instanceof UpdateResult) {
+                    LOG.info("removeApcConfig {}", res.toString());
+                } else if (res instanceof ErrorResult) {
+                    LOG.error("removeApcConfig error {}", (res));
+                    throw new RuntimeException("removeApcConfig " + ((ErrorResult) res).getError() + " " + ((ErrorResult) res).getDetails());
+                }
+            }
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            LOG.error("Error in removeApcConfig", e);
+            throw new RuntimeException(e);
+        }
+
+    }
 }

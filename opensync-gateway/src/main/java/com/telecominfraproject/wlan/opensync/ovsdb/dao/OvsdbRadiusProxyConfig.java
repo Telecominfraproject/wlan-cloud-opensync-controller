@@ -20,7 +20,6 @@ import com.vmware.ovsdb.exception.OvsdbClientException;
 import com.vmware.ovsdb.protocol.operation.Delete;
 import com.vmware.ovsdb.protocol.operation.Insert;
 import com.vmware.ovsdb.protocol.operation.Operation;
-import com.vmware.ovsdb.protocol.operation.Update;
 import com.vmware.ovsdb.protocol.operation.notation.Atom;
 import com.vmware.ovsdb.protocol.operation.notation.Row;
 import com.vmware.ovsdb.protocol.operation.notation.Set;
@@ -36,24 +35,6 @@ public class OvsdbRadiusProxyConfig extends OvsdbDaoBase {
 
     @Autowired
     OvsdbGet getProvisionedData;
-
-    void configureApc(OvsdbClient ovsdbClient, Boolean enable, List<Operation> operations) {
-        try {
-            if (ovsdbClient.getSchema(ovsdbName).get().getTables().containsKey(apcConfigDbTable)) {
-                Map<String, Value> updateColumns = new HashMap<>();
-                updateColumns.put("enabled", new Atom<>(enable));
-                Row row = new Row(updateColumns);
-                Update update = new Update(apcConfigDbTable, row);
-                if (!operations.contains(update)) {
-                    // only need to do 1 update of this kind
-                    operations.add(new Update(apcConfigDbTable, row));
-                }
-            }
-        } catch (InterruptedException | ExecutionException | OvsdbClientException e) {
-            LOG.error("Exception getting schema for ovsdb.", e);
-            throw new RuntimeException(e);
-        }
-    }
 
     void configureRadius(OvsdbClient ovsdbClient, OpensyncAPConfig apConfig) {
         List<Operation> operations = new ArrayList<>();
@@ -118,10 +99,13 @@ public class OvsdbRadiusProxyConfig extends OvsdbDaoBase {
                 updateColumns.put("acct_server", new Atom<>(rsc.getAcctServer().getHostAddress()));
             }
             if (rsc.getSharedSecret() != null) {
-                updateColumns.put("acct_secret", new Atom<>(rsc.getSharedSecret()));
+                updateColumns.put("acct_secret", new Atom<>(rsc.getAcctSharedSecret()));
             }
             if (rsc.getAcctPort() != null) {
                 updateColumns.put("acct_port", new Atom<>(rsc.getAcctPort()));
+            }
+            if (rsc.getRadiusProxySecret() != null) {
+                updateColumns.put("proxy_secret", new Atom<>(rsc.getRadiusProxySecret()));
             }
             if (databaseSchema.getTables().get(radiusConfigDbTable).getColumns().containsKey("auto_discover")) {
                 if (rsc.getUseRadSec() != null && rsc.getUseRadSec() && rsc.getDynamicDiscovery() != null &&  rsc.getDynamicDiscovery()) {

@@ -19,6 +19,7 @@ import com.telecominfraproject.wlan.profile.models.common.FileType;
 import com.telecominfraproject.wlan.profile.models.common.ManagedFileInfo;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.telecominfraproject.wlan.profile.network.models.GreTunnelConfiguration;
+import com.telecominfraproject.wlan.profile.network.models.RadiusProxyConfiguration;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusProfile;
 import com.telecominfraproject.wlan.profile.radius.models.RadiusServer;
 import com.telecominfraproject.wlan.profile.rf.models.RfConfiguration;
@@ -59,8 +60,6 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
     OvsdbNetworkConfig networkConfig;
     @Autowired
     OvsdbNode ovsdbNode;
-    @Autowired
-    OvsdbRadiusProxyConfig radsecConfig;
 
     protected void getEnabledRadios(OvsdbClient ovsdbClient, List<RadioType> radios) {
         try {
@@ -490,6 +489,11 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                         enable80211k = ssidConfig.getRadioBasedConfigs().get(radioType).getEnable80211k();
                     }
                 }
+                
+                boolean useRadiusProxy = false;
+                if (ssidConfig.getUseRadiusProxy() != null) {
+                    useRadiusProxy = ssidConfig.getUseRadiusProxy();
+                }
 
                 Map<String, String> security = new HashMap<>();
                 String ssidSecurityMode = ssidConfig.getSecureMode().name();
@@ -500,7 +504,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                 String radiusOperName = null;
 
                 opensyncSecurityMode = getOpensyncSecurityMode(ssidSecurityMode, opensyncSecurityMode);
-                populateSecurityMap(opensyncApConfig, ssidConfig, security, ssidSecurityMode, opensyncSecurityMode);
+                populateSecurityMap(opensyncApConfig, ssidConfig, useRadiusProxy, security, ssidSecurityMode, opensyncSecurityMode);
 
                 int dynamicVlan = 0;
                 if (opensyncSecurityMode.endsWith("EAP")) {
@@ -548,10 +552,16 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                     interfacesPerFreqBand.put(freqBand, 1);
                 }
 
-                boolean useRadiusProxy = false;
-                if (ssidConfig.getUseRadiusProxy() != null) {
-                    useRadiusProxy = ssidConfig.getUseRadiusProxy();
+                if (useRadiusProxy) {
+                    // AP requires proxy secret in security during auto radius proxy
+                    for (RadiusProxyConfiguration rsc : ((ApNetworkConfiguration) opensyncApConfig.getApProfile().getDetails()).getRadiusProxyConfigurations()) {
+                        if (rsc.getRadiusProxySecret() != null) {
+                            security.put("radius_server_secret", rsc.getRadiusProxySecret());
+                            security.put("radius_acct_secret", rsc.getRadiusProxySecret());
+                        }
+                    }
                 }
+                
                 boolean enableProxyArpForHotspot = false;
                 if (ssidConfig.getEnableProxyArpForHotspot() != null) {
                     enableProxyArpForHotspot = ssidConfig.getEnableProxyArpForHotspot();
@@ -563,11 +573,6 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                             walledGardenAllowlist, radiusNasId, radiusNasIp, radiusOperName, greTunnelName, dynamicVlan, useRadiusProxy, operations, enableProxyArpForHotspot);
 
                     networkConfig.configureInetVifInterface(ovsdbClient, ifName, enabled, ssidConfig.getForwardMode(), operations);
-
-                    if (useRadiusProxy) {
-                        // make sure it's enabled if we are going to use it
-                        radsecConfig.configureApc(ovsdbClient, useRadiusProxy, operations);
-                    }
 
                 } catch (IllegalStateException e) {
                     // could not provision this SSID, but still can go on
@@ -780,11 +785,11 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
         if (radiusProfileList.size() > 0) {
             Profile profileRadius = radiusProfileList.get(0);
             RadiusProfile profileDetails = ((RadiusProfile) profileRadius.getDetails());
-            RadiusServer rServer = profileDetails.getPrimaryRadiusAccountingServer();
-            if (rServer != null) {
-                security.put("radius_acct_ip", rServer.getIpAddress() != null ? rServer.getIpAddress().getHostAddress() : null);
-                security.put("radius_acct_port", rServer.getPort() != null ? String.valueOf(rServer.getPort()) : null);
-                security.put("radius_acct_secret", rServer.getSecret());
+            RadiusServer radiusAcctServerPrimary = profileDetails.getPrimaryRadiusAccountingServer();
+            if (radiusAcctServerPrimary != null) {
+                security.put("radius_acct_ip", radiusAcctServerPrimary.getIpAddress() != null ? radiusAcctServerPrimary.getIpAddress().getHostAddress() : null);
+                security.put("radius_acct_port", radiusAcctServerPrimary.getPort() != null ? String.valueOf(radiusAcctServerPrimary.getPort()) : null);
+                security.put("radius_acct_secret", radiusAcctServerPrimary.getSecret());
 
                 if (ssidConfig.getRadiusAcountingServiceInterval() != null && ssidConfig.getRadiusAcountingServiceInterval() > 0) {
                     // if the value is present, use the
@@ -792,11 +797,23 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                     security.put("radius_acct_interval", ssidConfig.getRadiusAcountingServiceInterval().toString());
 
                 }
-                LOG.info("set Radius Accounting server attributes radius_acct_ip {} radius_acct_port {} radius_acct_secret {} radius_acct_interval {}",
+                LOG.info("Set Primary Radius Accounting server attributes radius_acct_ip {} radius_acct_port {} radius_acct_secret {} radius_acct_interval {}",
                         security.get("radius_acct_ip"), security.get("radius_acct_port"), security.get("radius_acct_secret"),
                         security.get("radius_acct_interval"));
             } else {
-                LOG.info("No Radius Accounting Server defined in Radius Profile");
+                LOG.info("No Primary Radius Accounting Server defined in Radius Profile");
+            }
+            
+            RadiusServer radiusAcctServerSecondary = profileDetails.getSecondaryRadiusAccountingServer();
+            if (radiusAcctServerSecondary != null) {
+                security.put("radius_acct_ip_secondary", radiusAcctServerSecondary.getIpAddress() != null ? radiusAcctServerSecondary.getIpAddress().getHostAddress() : null);
+                security.put("radius_acct_port_secondary", radiusAcctServerSecondary.getPort() != null ? String.valueOf(radiusAcctServerSecondary.getPort()) : null);
+                security.put("radius_acct_secret_secondary", radiusAcctServerSecondary.getSecret());
+
+                LOG.info("Set Secondary Radius Accounting server attributes radius_acct_ip_secondary {} radius_acct_port_secondary {} radius_acct_secret_secondary {}",
+                        security.get("radius_acct_ip_secondary"), security.get("radius_acct_port_secondary"), security.get("radius_acct_secret_secondary"));
+            } else {
+                LOG.info("No Secondary Radius Accounting Server defined in Radius Profile");
             }
 
         } else {
@@ -821,8 +838,19 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
             security.put("radius_server_ip", radiusServer.getIpAddress() != null ? radiusServer.getIpAddress().getHostAddress() : null);
             security.put("radius_server_port", radiusServer.getPort() != null ? String.valueOf(radiusServer.getPort()) : null);
             security.put("radius_server_secret", radiusServer.getSecret());           
-            LOG.info("set Radius server attributes radius_server_ip {} radius_server_port {} radius_server_secret {}", security.get("radius_server_ip"),
+            LOG.info("Set Primary Radius server attributes radius_server_ip {} radius_server_port {} radius_server_secret {}", security.get("radius_server_ip"),
                     security.get("radius_server_port"), security.get("radius_server_secret"));
+            
+            RadiusServer radiusServerSecondary = profileDetails.getSecondaryRadiusAuthServer();
+            if (radiusServerSecondary != null) {
+                security.put("radius_server_ip_secondary", radiusServerSecondary.getIpAddress() != null ? radiusServerSecondary.getIpAddress().getHostAddress() : null);
+                security.put("radius_server_port_secondary", radiusServerSecondary.getPort() != null ? String.valueOf(radiusServerSecondary.getPort()) : null);
+                security.put("radius_server_secret_secondary", radiusServerSecondary.getSecret());           
+                LOG.info("Set Secondary Radius server attributes radius_server_ip_secondary {} radius_server_port_secondary {} radius_server_secret_secondary {}", 
+                        security.get("radius_server_ip_secondary"), security.get("radius_server_port_secondary"), security.get("radius_server_secret_secondary"));
+            } else {
+                LOG.info("No Secondary Radius Authentication Server defined in Radius Profile");
+            }
         } else {
             LOG.warn("Could not find radius profile {} in {}", ssidConfig.getRadiusServiceId(), opensyncApConfig.getRadiusProfiles());
         }
@@ -838,7 +866,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
      * @param ssidSecurityMode
      * @param opensyncSecurityMode
      */
-    void populateSecurityMap(OpensyncAPConfig opensyncApConfig, SsidConfiguration ssidConfig, Map<String, String> security, String ssidSecurityMode,
+    void populateSecurityMap(OpensyncAPConfig opensyncApConfig, SsidConfiguration ssidConfig, Boolean useRadiusProxy, Map<String, String> security, String ssidSecurityMode,
             String opensyncSecurityMode) {
         security.put("encryption", opensyncSecurityMode);
         // key and mode is N/A for OPEN security
@@ -865,21 +893,21 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                 case "wpa2OnlyEAP":
                 case "wpa2OnlyRadius":
                     security.put("mode", "2");
-                    if (!ssidConfig.getUseRadiusProxy()) {
+                    if (!useRadiusProxy) {
                         getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
                         getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
                     }
                     break;
                 case "wpa3OnlyEAP":
                     security.put("mode", "3");
-                    if (!ssidConfig.getUseRadiusProxy()) {
+                    if (!useRadiusProxy) {
                         getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
                         getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
                     }
                     break;
                 case "wpa3OnlyEAP192":
                     security.put("mode", "3");
-                    if (!ssidConfig.getUseRadiusProxy()) {
+                    if (!useRadiusProxy) {
                         getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
                         getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
                     }
@@ -888,7 +916,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                 case "wpa2Radius":
                 case "wpa3MixedEAP":
                     security.put("mode", "mixed");
-                    if (!ssidConfig.getUseRadiusProxy()) {
+                    if (!useRadiusProxy) {
                         getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
                         getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
                     }
@@ -896,7 +924,7 @@ public class OvsdbSsidConfig extends OvsdbDaoBase {
                 case "wpaEAP":
                 case "wpaRadius":
                     security.put("mode", "1");
-                    if (!ssidConfig.getUseRadiusProxy()) {
+                    if (!useRadiusProxy) {
                         getRadiusConfiguration(opensyncApConfig, ssidConfig, security);
                         getRadiusAccountingConfiguration(opensyncApConfig, ssidConfig, security);
                     }

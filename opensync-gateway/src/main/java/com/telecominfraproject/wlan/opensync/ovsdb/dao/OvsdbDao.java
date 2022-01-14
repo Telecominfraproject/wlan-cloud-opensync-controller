@@ -96,6 +96,7 @@ public class OvsdbDao extends OvsdbDaoBase {
         processBlinkRequest(ovsdbClient, opensyncAPConfig.getCustomerEquipment().getInventoryId(),
                 ((ApElementConfiguration) opensyncAPConfig.getCustomerEquipment().getDetails()).isBlinkAllLEDs());
         ovsdbNodeConfig.processLedControlEnabled(ovsdbClient, opensyncAPConfig);
+        processApcConfig(ovsdbClient, opensyncAPConfig);
     }
     
     void configureNtpServer(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
@@ -234,6 +235,10 @@ public class OvsdbDao extends OvsdbDaoBase {
     public void removeWifiRrm(OvsdbClient ovsdbClient) {
         ovsdbRrm.removeWifiRrm(ovsdbClient);
     }
+    
+    public void removeApcConfig(OvsdbClient ovsdbClient) {
+        ovsdbNodeConfig.removeApcConfig(ovsdbClient);
+    }
 
     public ConnectNodeInfo updateConnectNodeInfoOnConnect(OvsdbClient ovsdbClient, String clientCn,
             ConnectNodeInfo connectNodeInfo, boolean preventClientCnAlteration) {
@@ -252,6 +257,10 @@ public class OvsdbDao extends OvsdbDaoBase {
 
     public String processBlinkRequest(OvsdbClient ovsdbClient, String apId, boolean blinkAllLEDs) {
         return ovsdbNodeConfig.processBlinkRequest(ovsdbClient, apId, blinkAllLEDs);
+    }
+    
+    public void processApcConfig(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig) {
+        ovsdbNodeConfig.configureDynamicRadiusProxyToAPC(ovsdbClient, opensyncAPConfig);
     }
 
 }
