@@ -244,31 +244,4 @@ public class OvsdbNodeConfig extends OvsdbDaoBase {
             throw new RuntimeException(e);
         }
     }
-	
-	void removeApcConfig(OvsdbClient ovsdbClient) {
-        LOG.info("removeApcConfig from {}:", apcConfigDbTable);
-
-        try {
-
-            List<Operation> operations = new ArrayList<>();
-            operations.add(new Delete(apcConfigDbTable));
-
-            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
-            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
-
-            for (OperationResult res : result) {
-                LOG.info("Op Result {}", res);
-                if (res instanceof UpdateResult) {
-                    LOG.info("removeApcConfig {}", res.toString());
-                } else if (res instanceof ErrorResult) {
-                    LOG.error("removeApcConfig error {}", (res));
-                    throw new RuntimeException("removeApcConfig " + ((ErrorResult) res).getError() + " " + ((ErrorResult) res).getDetails());
-                }
-            }
-        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
-            LOG.error("Error in removeApcConfig", e);
-            throw new RuntimeException(e);
-        }
-
-    }
 }
