@@ -235,10 +235,6 @@ public class OvsdbDao extends OvsdbDaoBase {
     public void removeWifiRrm(OvsdbClient ovsdbClient) {
         ovsdbRrm.removeWifiRrm(ovsdbClient);
     }
-    
-    public void removeApcConfig(OvsdbClient ovsdbClient) {
-        ovsdbNodeConfig.removeApcConfig(ovsdbClient);
-    }
 
     public ConnectNodeInfo updateConnectNodeInfoOnConnect(OvsdbClient ovsdbClient, String clientCn,
             ConnectNodeInfo connectNodeInfo, boolean preventClientCnAlteration) {
