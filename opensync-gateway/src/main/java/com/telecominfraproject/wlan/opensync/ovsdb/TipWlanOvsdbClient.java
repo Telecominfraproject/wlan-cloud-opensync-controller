@@ -72,6 +72,12 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
     @org.springframework.beans.factory.annotation.Value("${tip.wlan.defaultCommandDurationSec:3600}")
     private long defaultCommandDurationSec;
 
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.checkConfigVersionFromStatus:true}")
+    private boolean checkBeforePushConfigVersionFromStatus;
+
+    @org.springframework.beans.factory.annotation.Value("${tip.wlan.checkConfigVersionFromAp:true}")
+    private boolean checkBeforePushConfigVersionFromAp;
+    
     @Autowired
     private SslContext sslContext;
 
@@ -242,15 +248,69 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
         
         OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
 
+        //get last known configVersion from the AP
+        long configVersionFromAp = checkBeforePushConfigVersionFromAp ? connectNodeInfo.getConfigVersion() : 0;
+        
+        //get last known configVersion from the EquipmentProtocolStatusData        
+        long configVersionFromStatus = checkBeforePushConfigVersionFromStatus ? extIntegrationInterface.getConfigVersionFromStatus(apId) : 0;
+        
+        //get current configVersion from the profiles and equipment
+        long configVersionFromProfiles = opensyncAPConfig.getConfigVersion();
+        
+        boolean needToPushConfigToAP = needToPushToAp(configVersionFromAp, configVersionFromStatus, configVersionFromProfiles);
+        
+        if(needToPushConfigToAP) {
+            pushConfigToAp(ovsdbClient, opensyncAPConfig, apId, configVersionFromProfiles);
+        }
+        
+        LOG.debug("Client connect Done");
+    }
+
+    private boolean needToPushToAp(long configVersionFromAp, long configVersionFromStatus, long configVersionFromProfiles) {
+
+        boolean ret = false;
+
+        if(configVersionFromAp == 0) {
+            LOG.debug("do not know what is on AP, let's push new config");
+            ret = true;
+        }
+        
+        if(checkBeforePushConfigVersionFromAp && configVersionFromAp < configVersionFromProfiles ) {
+            LOG.debug("our profiles are more recent than what was pushed  to AP previously, let's push new config");
+            ret = true;
+        }
+
+        if(checkBeforePushConfigVersionFromStatus && configVersionFromStatus < configVersionFromProfiles) {
+           LOG.debug("our profiles are more recent than the version stored in the protocol status, let's push new config");
+           ret = true;
+       }
+        
+       if(!checkBeforePushConfigVersionFromAp && !checkBeforePushConfigVersionFromStatus) {
+           LOG.debug("we do not do any checks for config versions - let's push new config");
+           ret = true;
+       }
+       
+       if(!ret) {
+           LOG.debug("no need to push new config to AP");
+       }
+       
+       return ret;
+
+    }
+    
+    private void pushConfigToAp(OvsdbClient ovsdbClient, OpensyncAPConfig opensyncAPConfig, String apInventoryId, long configVersionFromProfiles) {
+
         ovsdbDao.removeAllPasspointConfigs(ovsdbClient);
         ovsdbDao.removeAllSsids(ovsdbClient); // always
         ovsdbDao.removeAllInetConfigs(ovsdbClient);
-        ovsdbDao.resetWiredPorts(ovsdbClient, opensyncAPConfig); 
+        if(opensyncAPConfig!=null) {
+            ovsdbDao.resetWiredPorts(ovsdbClient, opensyncAPConfig); // need to run this first before remove Status
+        }
         ovsdbDao.removeWifiRrm(ovsdbClient);
         ovsdbDao.removeRadsecRadiusAndRealmConfigs(ovsdbClient);
         ovsdbDao.removeAllStatsConfigs(ovsdbClient); // always
 
-        extIntegrationInterface.clearEquipmentStatus(apId);
+        extIntegrationInterface.clearEquipmentStatus(apInventoryId);
 
         if (opensyncAPConfig != null) {
             ovsdbDao.configureNode(ovsdbClient, opensyncAPConfig);
@@ -275,12 +335,17 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             ovsdbDao.updateEventReportingInterval(ovsdbClient, collectionIntervalSecEvent);
 
         } else {
-            LOG.info("No Configuration available for {}", apId);
+            LOG.info("No Configuration available for {}", apInventoryId);
         }
+        
+        //after a successful config push let's update the configVersion on the AP and in the EquipmentProtocolStatusData
+        if(checkBeforePushConfigVersionFromStatus) {
+            extIntegrationInterface.updateConfigVersionInStatus(apInventoryId, configVersionFromProfiles);
+        }
+        ovsdbDao.updateConfigVersionInNode(ovsdbClient, configVersionFromProfiles);
 
-        LOG.debug("Client connect Done");
     }
-
+    
     @Override
     public Set<String> getConnectedClientIds() {
         return ovsdbSessionMapInterface.getConnectedClientIds();
@@ -327,36 +392,20 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
             return;
         }
 
-        ovsdbDao.removeAllPasspointConfigs(ovsdbClient);
-        ovsdbDao.removeAllSsids(ovsdbClient); // always
-        ovsdbDao.removeAllInetConfigs(ovsdbClient);
-        ovsdbDao.resetWiredPorts(ovsdbClient, opensyncAPConfig); // need to run this first before remove Status
-        ovsdbDao.removeWifiRrm(ovsdbClient);
-        ovsdbDao.removeRadsecRadiusAndRealmConfigs(ovsdbClient);
-        ovsdbDao.removeAllStatsConfigs(ovsdbClient);
-
-        extIntegrationInterface.clearEquipmentStatus(apId);
-
-        ovsdbDao.configureNode(ovsdbClient, opensyncAPConfig);
-        ovsdbDao.configureWifiRrm(ovsdbClient, opensyncAPConfig);
-        ovsdbDao.configureGreTunnels(ovsdbClient, opensyncAPConfig);
-        ovsdbDao.createVlanNetworkInterfaces(ovsdbClient, opensyncAPConfig);
-        ovsdbDao.configureWiredPort(ovsdbClient, opensyncAPConfig);
-        ovsdbDao.configureRadsecRadiusAndRealm(ovsdbClient, opensyncAPConfig);
-        ovsdbDao.configureSsids(ovsdbClient, opensyncAPConfig);
-        if (opensyncAPConfig.getHotspotConfig() != null) {
-            ovsdbDao.configureHotspots(ovsdbClient, opensyncAPConfig);
-        }
-
-        ovsdbDao.configureInterfaces(ovsdbClient);
-        ovsdbDao.configureWifiRadios(ovsdbClient, opensyncAPConfig);
+        //get last known configVersion from the AP
+        long configVersionFromAp = checkBeforePushConfigVersionFromAp ? ovsdbDao.getConfigVersionFromNode(ovsdbClient) : 0;
         
-        ovsdbDao.configureStatsFromProfile(ovsdbClient, opensyncAPConfig);
-        if (ovsdbDao.getDeviceStatsReportingInterval(ovsdbClient) != collectionIntervalSecDeviceStats) {
-            ovsdbDao.updateDeviceStatsReportingInterval(ovsdbClient, collectionIntervalSecDeviceStats);
+        //get last known configVersion from the EquipmentProtocolStatusData        
+        long configVersionFromStatus = checkBeforePushConfigVersionFromStatus ? extIntegrationInterface.getConfigVersionFromStatus(apId) : 0;
+        
+        //get current configVersion from the profiles and equipment
+        long configVersionFromProfiles = opensyncAPConfig.getConfigVersion();
+        
+        boolean needToPushConfigToAP = needToPushToAp(configVersionFromAp, configVersionFromStatus, configVersionFromProfiles);
+
+        if(needToPushConfigToAP) {
+            pushConfigToAp(ovsdbClient, opensyncAPConfig, apId, configVersionFromProfiles);
         }
-        ovsdbDao.enableNetworkProbeForSyntheticClient(ovsdbClient);
-        ovsdbDao.updateEventReportingInterval(ovsdbClient, collectionIntervalSecEvent);
         
         LOG.debug("Finished processConfigChanged for {}", apId);
     }
@@ -693,7 +742,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
     private void monitorWifiVifStateDbTable(OvsdbClient ovsdbClient, String key) throws OvsdbClientException {
 
         CompletableFuture<TableUpdates> vsCf = ovsdbClient.monitor(OvsdbDao.ovsdbName, OvsdbDao.wifiVifStateDbTable + "_" + key,
-                new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiVifStateDbTable, new MonitorRequest(new MonitorSelect(false, true, true, true)))),
+                new MonitorRequests(ImmutableMap.of(OvsdbDao.wifiVifStateDbTable, new MonitorRequest(new MonitorSelect(true, true, true, true)))),
                 tableUpdates -> {
                     try {
                         LOG.info(OvsdbDao.wifiVifStateDbTable + "_" + key + " monitor callback received {}", tableUpdates);
@@ -731,7 +780,19 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                     }
 
                 });
-        vsCf.join();
+
+        try {
+            List<OpensyncAPVIFState> vifsToInsert = new ArrayList<>();
+            TableUpdates initialTableUpdates = vsCf.join();
+            for (TableUpdate tableUpdate : initialTableUpdates.getTableUpdates().values()) {
+                for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
+                    vifsToInsert.addAll(ovsdbDao.getOpensyncApVifStateForRowUpdate(rowUpdate, key, ovsdbClient));
+                }
+            }
+            extIntegrationInterface.wifiVIFStateDbTableUpdate(vifsToInsert, key);
+        } catch (Exception e) {
+            LOG.error("initial wifiVIFStateDbTableUpdate failed", e);
+        }
 
     }
 

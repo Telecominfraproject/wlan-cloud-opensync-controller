@@ -123,7 +123,6 @@ public class OpensyncGatewayTipWlanOvsdbClientTest {
         Mockito.when(ovsdbSessionMapInterface.getSession("Test_Client_21P10C68818122")).thenReturn(ovsdbSession);
 
         OpensyncAPConfig apConfig = Mockito.mock(OpensyncAPConfig.class, Mockito.RETURNS_DEEP_STUBS);
-
         Mockito.when(apConfig.getApProfile().getDetails()).thenReturn(Mockito.mock(ApNetworkConfiguration.class));
 
         Mockito.when(opensyncExternalIntegrationInterface.getApConfig(Mockito.anyString())).thenReturn(apConfig);

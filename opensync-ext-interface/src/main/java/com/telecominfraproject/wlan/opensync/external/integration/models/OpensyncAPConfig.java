@@ -1,6 +1,7 @@
 package com.telecominfraproject.wlan.opensync.external.integration.models;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -44,8 +45,66 @@ public class OpensyncAPConfig extends OpensyncAPBase {
     private EquipmentGatewayRecord equipmentGateway;
     private List<Profile> captiveProfiles;
     private List<Profile> bonjourGatewayProfiles;
+    
+    private long configVersion;
 
     private List<MacAddress> blockedClients;
+
+    public long getConfigVersion() {
+        //go through all child objects and get the most recent lastModifiedTimestamp from them
+        configVersion = 0;
+        
+        if(customerEquipment!=null && customerEquipment.getLastModifiedTimestamp()> configVersion) {
+            configVersion = customerEquipment.getLastModifiedTimestamp();
+        }
+        
+        if(hotspotConfig!=null) {
+            configVersion = getLatestLastMod(configVersion, hotspotConfig.getHotspot20OperatorSet());
+            configVersion = getLatestLastMod(configVersion, hotspotConfig.getHotspot20ProfileSet());
+            configVersion = getLatestLastMod(configVersion, hotspotConfig.getHotspot20ProviderSet());
+            configVersion = getLatestLastMod(configVersion, hotspotConfig.getHotspot20VenueSet());
+        }
+
+        configVersion = getLatestLastMod(configVersion, apProfile);
+        configVersion = getLatestLastMod(configVersion, rfProfile);
+        configVersion = getLatestLastMod(configVersion, ssidProfile);
+        configVersion = getLatestLastMod(configVersion, metricsProfile);
+        configVersion = getLatestLastMod(configVersion, radiusProfiles);
+        configVersion = getLatestLastMod(configVersion, wiredEthernetPortProfile);
+
+        if(equipmentLocation!=null && equipmentLocation.getLastModifiedTimestamp()> configVersion) {
+            configVersion = equipmentLocation.getLastModifiedTimestamp();
+        }
+
+        configVersion = getLatestLastMod(configVersion, captiveProfiles);
+        configVersion = getLatestLastMod(configVersion, bonjourGatewayProfiles);
+        
+        return configVersion;
+    }
+    
+    private long getLatestLastMod(long incomingLastMod, Collection<Profile> profiles) {
+        
+        if(profiles!=null) {
+            for(Profile p: profiles) {
+                if(incomingLastMod < p.getLastModifiedTimestamp()) {
+                    incomingLastMod = p.getLastModifiedTimestamp();
+                }
+            }
+        }
+        
+        return incomingLastMod;
+    }
+
+    private long getLatestLastMod(long incomingLastMod, Profile profile) {
+        
+        if(profile!=null) {
+            if(incomingLastMod < profile.getLastModifiedTimestamp()) {
+                incomingLastMod = profile.getLastModifiedTimestamp();
+            }
+        }
+        
+        return incomingLastMod;
+    }
 
     @Override
     public OpensyncAPConfig clone() {

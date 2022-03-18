@@ -56,4 +56,8 @@ public interface OpensyncExternalIntegrationInterface {
     void clearEquipmentStatus(String apId);
     
     void processMqttMessage(String topic, Report report);
+
+    long getConfigVersionFromStatus(String apId);
+
+    void updateConfigVersionInStatus(String apId, long configVersionFromProfiles);
 }

@@ -7,6 +7,8 @@ import java.util.Objects;
 
 public class ConnectNodeInfo implements Cloneable {
 
+    public static String CONFIG_VERSION_PROPERTY_NAME = "tip/reportedCfgDataVersion";
+    
     public Map<String, String> mqttSettings = new HashMap<>();
     public Map<String, String> versionMatrix = new HashMap<>();
     public Map<String, String> wifiRadioStates = new HashMap<>();
@@ -35,6 +37,18 @@ public class ConnectNodeInfo implements Cloneable {
     public String manufacturerDate;
     public String certificationRegion;
 
+    public long getConfigVersion() {
+        
+        long ret = 0;
+        try {
+            ret = Long.parseLong(versionMatrix.get(CONFIG_VERSION_PROPERTY_NAME));
+        } catch(Exception e) {
+            //do nothing
+        }
+
+        return ret;
+    }
+    
     @Override
     public ConnectNodeInfo clone() {
         try {

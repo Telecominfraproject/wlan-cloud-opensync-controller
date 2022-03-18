@@ -417,4 +417,96 @@ public class OvsdbNode extends OvsdbDaoBase {
         return ret;
     }
 
+    public long getConfigVersionFromNode(OvsdbClient ovsdbClient) {
+        
+        long ret = 0;
+        
+        Map<String, String> versionMatrix = getVersionMatrixFromNode(ovsdbClient);
+
+        try {
+            ret = Long.parseLong(versionMatrix.get(ConnectNodeInfo.CONFIG_VERSION_PROPERTY_NAME));
+        } catch(Exception e) {
+            //do nothing
+        }
+        
+        LOG.debug("getConfigVersionFromNode {}", ret);
+        
+        return ret;
+    }
+
+    public Map<String, String> getVersionMatrixFromNode(OvsdbClient ovsdbClient) {
+        
+        Map<String, String> ret = new HashMap<>();
+        
+        try {
+            List<Operation> operations = new ArrayList<>();
+            List<Condition> conditions = new ArrayList<>();
+            List<String> columns = new ArrayList<>();
+            columns.add("version_matrix");
+            columns.add("id");
+
+            operations.add(new Select(awlanNodeDbTable, conditions, columns));
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Select from {}:", awlanNodeDbTable);
+
+                for (OperationResult res : result) {
+                    LOG.debug("Op Result {}", res);
+                }
+            }
+
+            Row row = null;
+            if ((result != null) && (result.length > 0) && (result[0] instanceof SelectResult) && !((SelectResult) result[0]).getRows().isEmpty()) {
+                row = ((SelectResult) result[0]).getRows().iterator().next();
+            }
+
+            if( row != null ) {
+                ret = row.getMapColumn("version_matrix");
+            }
+
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        
+        LOG.debug("getVersionMatrixFromNode {}", ret);
+        
+        return ret;
+    }
+    public void updateConfigVersionInNode(OvsdbClient ovsdbClient, long configVersionFromProfiles) {
+
+        try {
+            //get original version_matrix map value
+            Map<String, String> versionMatrix = getVersionMatrixFromNode(ovsdbClient);
+
+            //update our config version in version_matrix map
+            versionMatrix.put(ConnectNodeInfo.CONFIG_VERSION_PROPERTY_NAME, Long.toString(configVersionFromProfiles));
+            
+            //update the version_matrix column
+            List<Operation> operations = new ArrayList<>();
+            Map<String, Value> updateColumns = new HashMap<>();
+            
+            @SuppressWarnings("unchecked")
+            com.vmware.ovsdb.protocol.operation.notation.Map<String, String> ovsdbVersionMatrix =
+                    com.vmware.ovsdb.protocol.operation.notation.Map.of(versionMatrix);
+            updateColumns.put("version_matrix", ovsdbVersionMatrix);
+            
+            Row row = new Row(updateColumns);
+            operations.add(new Update(awlanNodeDbTable, row));
+            CompletableFuture<OperationResult[]> fResult = ovsdbClient.transact(ovsdbName, operations);
+            OperationResult[] result = fResult.get(ovsdbTimeoutSec, TimeUnit.SECONDS);
+
+            for (OperationResult r : result) {
+                LOG.debug("Op Result {}", r);
+            }
+    
+            LOG.debug("updateConfigVersionInNode {}", configVersionFromProfiles);
+
+        } catch (OvsdbClientException | TimeoutException | ExecutionException | InterruptedException  e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
 }

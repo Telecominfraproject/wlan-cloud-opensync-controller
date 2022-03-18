@@ -259,4 +259,12 @@ public class OvsdbDao extends OvsdbDaoBase {
         ovsdbNodeConfig.configureDynamicRadiusProxyToAPC(ovsdbClient, opensyncAPConfig);
     }
 
+    public long getConfigVersionFromNode(OvsdbClient ovsdbClient) {
+        return ovsdbNode.getConfigVersionFromNode(ovsdbClient);
+    }
+
+    public void updateConfigVersionInNode(OvsdbClient ovsdbClient, long configVersionFromProfiles) {
+        ovsdbNode.updateConfigVersionInNode(ovsdbClient, configVersionFromProfiles);
+    }
+
 }
