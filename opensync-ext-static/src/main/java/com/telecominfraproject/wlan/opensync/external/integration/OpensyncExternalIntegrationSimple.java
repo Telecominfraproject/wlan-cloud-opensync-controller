@@ -212,4 +212,14 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
         LOG.info("nodeStateDbTableUpdate for AP {}", apId);
     }
 
+    @Override
+    public long getConfigVersionFromStatus(String inventoryId) {
+        //0 means always push config to ap, do not do the version check for the configuration before pushing it
+        return 0;
+    }
+    
+    @Override
+    public void updateConfigVersionInStatus(String apId, long configVersionFromProfiles) {
+        // do nothing here
+    }
 }

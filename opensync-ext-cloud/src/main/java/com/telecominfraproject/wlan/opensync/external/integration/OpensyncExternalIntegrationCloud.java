@@ -582,7 +582,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             protocolStatusData.setBandPlan("FCC");
             protocolStatusData.setBaseMacAddress(MacAddress.valueOf(connectNodeInfo.macAddress));
             protocolStatusData.setCloudCfgDataVersion(42L);
-            protocolStatusData.setReportedCfgDataVersion(42L);
+            //this will be set later in the flow - after the config is successfully pushed to the AP
+            //protocolStatusData.setReportedCfgDataVersion(42L);
             CountryCode countryCode = Location.getCountryCode(locationServiceInterface.getOrNull(ce.getLocationId()));
             if (countryCode != null)
                 protocolStatusData.setCountryCode(countryCode.getName());
@@ -2432,6 +2433,83 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         // TODO: will handle changes from Command_State table
     }
 
+    @Override
+    public long getConfigVersionFromStatus(String apId) {
+        long ret = 0;
+        
+        OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
+
+        if (ovsdbSession == null) {
+            LOG.debug("getConfigVersionFromStatus::Cannot get Session for AP {}", apId);
+            return ret;
+        }
+
+        long equipmentId = ovsdbSession.getEquipmentId();
+        Equipment ce = equipmentServiceInterface.getOrNull(equipmentId);
+        if (ce == null) {
+            LOG.debug("getConfigVersionFromStatus Cannot get customer Equipment for {}", apId);
+            return ret;
+        }
+        int customerId = ce.getCustomerId();
+        if ((customerId < 0) || (equipmentId < 0)) {
+            LOG.debug("getConfigVersionFromStatus::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId, equipmentId, apId);
+            return ret;
+        }
+        
+        Status protocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.PROTOCOL);
+        if(protocolStatus != null) {
+            EquipmentProtocolStatusData epsd = (EquipmentProtocolStatusData) protocolStatus.getDetails();
+            if(epsd!=null && epsd.getReportedCfgDataVersion()!=null) {
+                ret = epsd.getReportedCfgDataVersion();
+            }
+        }
+
+        return ret;
+    }
+    
+    @Override
+    public void updateConfigVersionInStatus(String apId, long configVersionFromProfiles) {
+        OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
+
+        if (ovsdbSession == null) {
+            LOG.debug("updateConfigVersionInStatus::Cannot get Session for AP {}", apId);
+            return;
+        }
+
+        long equipmentId = ovsdbSession.getEquipmentId();
+        Equipment ce = equipmentServiceInterface.getOrNull(equipmentId);
+        if (ce == null) {
+            LOG.debug("updateConfigVersionInStatus Cannot get customer Equipment for {}", apId);
+            return;
+        }
+        int customerId = ce.getCustomerId();
+        if ((customerId < 0) || (equipmentId < 0)) {
+            LOG.debug("updateConfigVersionInStatus::Cannot get valid CustomerId {} or EquipmentId {} for AP {}", customerId, equipmentId, apId);
+            return;
+        }
+        
+        Status protocolStatus = statusServiceInterface.getOrNull(customerId, equipmentId, StatusDataType.PROTOCOL);
+        if(protocolStatus == null) {
+            protocolStatus = new Status();
+            protocolStatus.setCustomerId(customerId);
+            protocolStatus.setEquipmentId(equipmentId);
+            protocolStatus.setCreatedTimestamp(System.currentTimeMillis());
+            protocolStatus.setLastModifiedTimestamp(protocolStatus.getCreatedTimestamp());
+            protocolStatus.setDetails(new EquipmentProtocolStatusData());
+        }
+
+        EquipmentProtocolStatusData epsd = (EquipmentProtocolStatusData) protocolStatus.getDetails();
+        if(epsd==null) {
+            epsd = new EquipmentProtocolStatusData();
+            protocolStatus.setDetails(epsd);
+        }
+        
+        epsd.setReportedCfgDataVersion(configVersionFromProfiles);
+
+        statusServiceInterface.update(protocolStatus);
+        
+    }
+    
     /**
      * Clear the EquipmentStatus for this AP, and set all client sessions to
      * disconnected. Done as part of a reconfiguration/configuration change
