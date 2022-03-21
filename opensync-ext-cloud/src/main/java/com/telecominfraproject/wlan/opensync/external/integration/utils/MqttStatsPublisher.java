@@ -520,15 +520,18 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                     if (apNodeMetrics.getSourceTimestampMs() < survey.getTimestampMs())
                         apNodeMetrics.setSourceTimestampMs(survey.getTimestampMs());
 
-                    int pctBusyTx = busyTx / totalDurationMs;
+                    float pctBusyTx = (float)busyTx / totalDurationMs;
                     checkIfOutOfBound("pctBusyTx", pctBusyTx, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
-
-                    radioUtil.setAssocClientTx(pctBusyTx);
-                    int pctBusyRx = busyRx / totalDurationMs;
+                    radioUtil.setAssocClientTx(Math.round(pctBusyTx));
+                    
+                    float pctBusyRx = (float) busyRx / totalDurationMs;
                     checkIfOutOfBound("pctBusyRx", pctBusyRx, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
-                    radioUtil.setAssocClientRx(pctBusyRx);
+                    
+                    float pctBusySelf = (float) busySelf / totalDurationMs;
+                    checkIfOutOfBound("pctBusySelf", pctBusySelf, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
+                    radioUtil.setAssocClientRx(Math.round(pctBusySelf));
 
-                    double pctIBSS = (busyTx + busySelf) / totalDurationMs;
+                    double pctIBSS = (double) (busyTx + busySelf) / totalDurationMs;
                     if (pctIBSS > 100D || pctIBSS < 0D) {
                         LOG.warn(
                                 "Calculated value for {} {} is out of bounds on totalDurationMs {} for survey.getBand {}. busyTx {} busyRx {} busy {} busySelf {} "
@@ -538,13 +541,13 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                     }
                     radioUtil.setIbss(pctIBSS);
 
-                    int nonWifi = (busy - (busyTx + busyRx)) / totalDurationMs;
+                    float nonWifi = (float) (busy - (busyTx + busyRx)) / totalDurationMs;
                     checkIfOutOfBound("nonWifi", nonWifi, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
-                    radioUtil.setNonWifi(nonWifi);
+                    radioUtil.setNonWifi(Math.round(nonWifi));
 
-                    int pctOBSSAndSelfErrors = (busyRx - busySelf) / totalDurationMs;
+                    float pctOBSSAndSelfErrors = (float) (busyRx - busySelf) / totalDurationMs;
                     checkIfOutOfBound("OBSSAndSelfErrors", pctOBSSAndSelfErrors, survey, totalDurationMs, busyTx, busyRx, busy, busySelf);
-                    radioUtil.setUnassocClientRx(pctOBSSAndSelfErrors);
+                    radioUtil.setUnassocClientRx(Math.round(pctOBSSAndSelfErrors));
 
                     radioType = OvsdbToWlanCloudTypeMappingUtility.getRadioTypeFromOpensyncStatsRadioBandType(survey.getBand());
                     if (radioType != RadioType.UNSUPPORTED) {
@@ -559,7 +562,7 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
                         }
 
                         Long totalUtilization = Math.round((double) busy / totalDurationMs);
-                        Long totalNonWifi = totalUtilization - ((busyTx + busyRx) / totalDurationMs);
+                        Long totalNonWifi = Math.round((double) (busy - (busyTx + busyRx)) / totalDurationMs);
 
                         EquipmentCapacityDetails cap = new EquipmentCapacityDetails();
                         cap.setUnavailableCapacity(totalNonWifi.intValue());
@@ -623,8 +626,8 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         alarm = alarmServiceInterface.create(alarm);
     }
 
-    private void checkIfOutOfBound(String checkedType, int checkedValue, Survey survey, int totalDurationMs, int busyTx, int busyRx, int busy, int busySelf) {
-        if (checkedValue > 100 || checkedValue < 0) {
+    private void checkIfOutOfBound(String checkedType, float checkedValue, Survey survey, int totalDurationMs, int busyTx, int busyRx, int busy, int busySelf) {
+        if (checkedValue > 100F || checkedValue < 0F) {
             LOG.warn(
                     "Calculated value for {} {} is out of bounds on totalDurationMs {} for survey.getBand {}. busyTx {} busyRx {} busy {} busySelf {} "
                             + " survey.getTimestampMs {}, survey.getSurveyListList {}",
