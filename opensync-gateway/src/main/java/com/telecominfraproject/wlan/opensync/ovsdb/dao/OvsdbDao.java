@@ -152,6 +152,11 @@ public class OvsdbDao extends OvsdbDaoBase {
             OvsdbClient ovsdbClient) {
         return ovsdbMonitor.getInitialOpensyncWifiAssociatedClients(join, key, ovsdbClient);
     }
+    
+    public List<Map<String, String>> getInitialOpensyncDhcpLeasedIp(TableUpdates join, String key,
+            OvsdbClient ovsdbClient) {
+        return ovsdbMonitor.getInitialOpensyncDhcpLeasedIp(join, key, ovsdbClient);
+    }
 
     public Collection<? extends OpensyncAPInetState> getOpensyncApInetStateForRowUpdate(RowUpdate rowUpdate, String key,
             OvsdbClient ovsdbClient) {

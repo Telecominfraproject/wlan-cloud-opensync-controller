@@ -514,12 +514,12 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                             for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
 
                                 if (rowUpdate.getNew() == null) {
+                                    // delete
                                     Map<String, String> rowMap = new HashMap<>();
 
                                     rowUpdate.getOld().getColumns().entrySet().forEach(c -> OvsdbDao.translateDhcpFpValueToString(c, rowMap));
 
                                     delete.add(rowMap);
-                                    // delete
                                 } else if (rowUpdate.getOld() == null) {
                                     // insert
                                     Map<String, String> rowMap = new HashMap<>();
@@ -528,15 +528,13 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
                                     insert.add(rowMap);
                                 } else {
-
-                                    // insert
+                                    // update
                                     Map<String, String> rowMap = new HashMap<>();
 
                                     rowUpdate.getOld().getColumns().putAll(rowUpdate.getNew().getColumns());
                                     rowUpdate.getOld().getColumns().entrySet().forEach(c -> OvsdbDao.translateDhcpFpValueToString(c, rowMap));
 
                                     update.add(rowMap);
-
                                 }
                             }
                         }
@@ -560,7 +558,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
                 });
 
-        awCf.join();
+        extIntegrationInterface.dhcpLeasedIpDbTableUpdate(ovsdbDao.getInitialOpensyncDhcpLeasedIp(awCf.join(), key, ovsdbClient), key, RowUpdateOperation.INIT);
 
     }
 
@@ -680,7 +678,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                     }
 
                 });
-
+        
         extIntegrationInterface.wifiAssociatedClientsDbTableUpdate(ovsdbDao.getInitialOpensyncWifiAssociatedClients(acCf.join(), key, ovsdbClient), key);
 
     }
