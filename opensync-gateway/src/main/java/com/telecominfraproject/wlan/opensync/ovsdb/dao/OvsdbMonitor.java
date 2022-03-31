@@ -96,9 +96,10 @@ public class OvsdbMonitor extends OvsdbDaoBase {
                 for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
 
                     if (rowUpdate.getNew() != null) {
+                        
                         Map<String, String> rowMap = new HashMap<>();
 
-                        rowUpdate.getNew().getColumns().forEach((key1, value) -> rowMap.put(key1, value.toString()));
+                        rowUpdate.getNew().getColumns().entrySet().forEach(c -> OvsdbDao.translateDhcpFpValueToString(c, rowMap));
 
                         ret.add(rowMap);
                     }
