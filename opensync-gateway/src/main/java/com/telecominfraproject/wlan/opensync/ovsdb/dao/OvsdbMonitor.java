@@ -83,6 +83,33 @@ public class OvsdbMonitor extends OvsdbDaoBase {
         }
         return ret;
     }
+    
+    List<Map<String, String>> getInitialOpensyncDhcpLeasedIp(TableUpdates tableUpdates, String apId,
+            OvsdbClient ovsdbClient) {
+        LOG.debug("getInitialOpensyncDhcpLeasedIp:");
+        List<Map<String, String>> ret = new ArrayList<>();
+        try {
+            LOG.debug(dhcpLeasedIpDbTable + "_" + apId + " initial monitor table state received {}",
+                    tableUpdates);
+
+            for (TableUpdate tableUpdate : tableUpdates.getTableUpdates().values()) {
+                for (RowUpdate rowUpdate : tableUpdate.getRowUpdates().values()) {
+
+                    if (rowUpdate.getNew() != null) {
+                        
+                        Map<String, String> rowMap = new HashMap<>();
+
+                        rowUpdate.getNew().getColumns().entrySet().forEach(c -> OvsdbDao.translateDhcpFpValueToString(c, rowMap));
+
+                        ret.add(rowMap);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            throw (e);
+        }
+        return ret;
+    }
 
     List<OpensyncAPInetState> getOpensyncApInetStateForRowUpdate(RowUpdate rowUpdate, String apId,
             OvsdbClient ovsdbClient) {
