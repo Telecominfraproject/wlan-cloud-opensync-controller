@@ -767,7 +767,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             String firmwareVersion) {
 
         LOG.debug("reconcileFwVersionToTrack for AP {} with active firmware version {} model {}", ce.getInventoryId(), activeFirmwareImageAp, model);
-        Status statusRecord = statusServiceInterface.getOrNull(autoProvisionedCustomerId, autoProvisionedCustomerId, StatusDataType.FIRMWARE);
+        Status statusRecord = statusServiceInterface.getOrNull(ce.getCustomerId(), ce.getId(), StatusDataType.FIRMWARE);
         if (statusRecord == null) {
             statusRecord = new Status();
             statusRecord.setCreatedTimestamp(System.currentTimeMillis());
@@ -777,7 +777,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             statusRecord.setDetails(new EquipmentUpgradeStatusData());
             ((EquipmentUpgradeStatusData) statusRecord.getDetails()).setActiveSwVersion(activeFirmwareImageAp);
             if (inactiveFirmwareImageAp != null) {
-                ((EquipmentUpgradeStatusData) statusRecord.getDetails()).setActiveSwVersion(inactiveFirmwareImageAp);
+                ((EquipmentUpgradeStatusData) statusRecord.getDetails()).setAlternateSwVersion(inactiveFirmwareImageAp);
             }
         }
         EquipmentUpgradeStatusData fwUpgradeStatusData = (EquipmentUpgradeStatusData) statusRecord.getDetails();
@@ -795,8 +795,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         // determine if AP requires FW upgrade before cloud
         // connection/provision
         if (trackSettings.getAutoUpgradeDeprecatedOnBind().equals(TrackFlag.ALWAYS) || trackSettings.getAutoUpgradeUnknownOnBind().equals(TrackFlag.ALWAYS)) {
-            LOG.debug("reconcileFwVersionToTrack for AP {} track flag for auto-upgrade {}", ce.getInventoryId(),
-                    trackSettings.getAutoUpgradeDeprecatedOnBind());
+            LOG.debug("reconcileFwVersionToTrack for AP {} track flag for auto-upgrade; deprecated flag {} ; unknown flag {} ", ce.getInventoryId(),
+                    trackSettings.getAutoUpgradeDeprecatedOnBind(), trackSettings.getAutoUpgradeUnknownOnBind());
             // check the reported fw version for the AP, if it is < than
             // the default version for the cloud, then download and
             // flash the firmware before proceeding.
