@@ -2248,10 +2248,13 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 Client client = clientServiceInterface.getOrNull(customerId, clientMacAddress);
                 if (client == null) {
                     LOG.info("Cannot find client instance for {}", clientMacAddress);
-                    ClientSession session = clientServiceInterface.getSessionOrNull(customerId, equipmentId, clientMacAddress);
-                    if (session != null) {
-                        LOG.info("Delete clientSession for client that was removed from the Dhcp_Leased_IP table {}",
-                                clientServiceInterface.deleteSession(customerId, equipmentId, clientMacAddress));
+                    ClientSession clientSession = clientServiceInterface.getSessionOrNull(customerId, equipmentId, clientMacAddress);
+                    if (clientSession != null && clientSession.getDetails() != null && clientSession.getDetails().getAssociationState() != null) {
+                        if (!clientSession.getDetails().getAssociationState().equals(AssociationState.Disconnected)) {
+                            clientSession.getDetails().setAssociationState(AssociationState.Disconnected);
+                            clientSession = clientServiceInterface.updateSession(clientSession);
+                            LOG.info("Session {} for client {} is now disconnected.", clientSession, clientSession.getMacAddress());
+                        }
                     }
                 } else if (clientMacAddress.equals(equipmentServiceInterface.get(equipmentId).getBaseMacAddress())) {
                     LOG.info("Not a client device {} ", dhcpLeasedIps);
