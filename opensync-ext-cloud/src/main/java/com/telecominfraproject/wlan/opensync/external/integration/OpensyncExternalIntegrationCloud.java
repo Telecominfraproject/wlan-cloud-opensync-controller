@@ -98,7 +98,6 @@ import com.telecominfraproject.wlan.profile.models.ProfileType;
 import com.telecominfraproject.wlan.profile.network.models.ApNetworkConfiguration;
 import com.telecominfraproject.wlan.profile.network.models.RadioProfileConfiguration;
 import com.telecominfraproject.wlan.profile.rf.models.RfConfiguration;
-import com.telecominfraproject.wlan.profile.rf.models.RfElementConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration;
 import com.telecominfraproject.wlan.profile.ssid.models.SsidConfiguration.SecureMode;
 import com.telecominfraproject.wlan.routing.RoutingServiceInterface;
@@ -143,6 +142,8 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     private static final String NATIVE_VLAN_ID = "pvid";
     private static final String SPACE_SEPERATOR = " ";
 
+    public final static int MAX_ALLOWED_2GHz_CHANNEL_NUMBER = 14;
+    
     private static final Logger LOG = LoggerFactory.getLogger(OpensyncExternalIntegrationCloud.class);
 
     @Autowired
@@ -1123,11 +1124,6 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             return;
         }
 
-        ApElementConfiguration apElementConfig = (ApElementConfiguration) apNode.getDetails();
-
-        ProfileContainer profileContainer = new ProfileContainer(profileServiceInterface.getProfileWithChildren(apNode.getProfileId()));
-        RfConfiguration rfConfig = (RfConfiguration) profileContainer.getChildOfTypeOrNull(apNode.getProfileId(), ProfileType.rf).getDetails();
-
         for (OpensyncAPVIFState vifState : vifStateTables) {
 
             LOG.debug("Processing vifState for interface {} on AP {}", vifState.getIfName(), apId);
@@ -1158,19 +1154,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                     vifState.getAssociatedClients(), channel);
 
             RadioType radioType = null;
-            Map<RadioType, RfElementConfiguration> rfElementMap = rfConfig.getRfConfigMap();
-            Map<RadioType, ElementRadioConfiguration> elementRadioMap = apElementConfig.getRadioMap();
-
-            if (apElementConfig.getAdvancedRadioMap().isEmpty()) {
-                LOG.warn("No AdvancedRadioMap for ap {} {}", apId, apElementConfig);
-                continue;
-            }
-            for (RadioType rType : elementRadioMap.keySet()) {
-                boolean autoChannelSelection = rfElementMap.get(rType).getAutoChannelSelection();
-                if (elementRadioMap.get(rType).getActiveChannel(autoChannelSelection) == channel) {
-                    radioType = rType;
-                    break;
-                }
+            if (channel <= MAX_ALLOWED_2GHz_CHANNEL_NUMBER) {
+            	radioType = RadioType.is2dot4GHz;
+            } else {
+            	radioType = RadioType.is5GHz; // 8300 isn't supported
             }
 
             updateActiveBssids(customerId, equipmentId, apId, ssid, radioType, bssid, numClients);
@@ -1461,8 +1448,10 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
         if (currentActiveBSSIDs == null) {
             currentActiveBSSIDs = new ArrayList<>();
         } else {
-            currentActiveBSSIDs = currentActiveBSSIDs.stream().filter(p -> (p.getRadioType() != null && p.getSsid() != null))
-                    .filter(p -> !p.getRadioType().equals(freqBand) || !p.getSsid().equals(ssid)).collect(Collectors.toList());
+            currentActiveBSSIDs = currentActiveBSSIDs.stream()
+            		.filter(p -> (p.getRadioType() != null && p.getSsid() != null))
+                    .filter(p -> !(p.getRadioType().equals(freqBand) && p.getSsid().equals(ssid)) )
+                    .collect(Collectors.toList());
             LOG.debug("Processing Wifi_VIF_State table update for AP {}, activeBSSIDs bssidList without current radio freq {} and ssid {}", apId,
                     currentActiveBSSIDs, ssid);
         }
