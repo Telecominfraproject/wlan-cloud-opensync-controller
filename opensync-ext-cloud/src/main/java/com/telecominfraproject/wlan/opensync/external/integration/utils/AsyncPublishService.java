@@ -152,6 +152,9 @@ public class AsyncPublishService {
         clientSession.getDetails().setSessionId(Long.toUnsignedString(apEventClientSession.getSessionId()));
         clientSession.getDetails().setRadioType(OvsdbToWlanCloudTypeMappingUtility.getRadioTypeFromOpensyncStatsRadioBandType(apClientEvent.getBand()));
         clientSession.getDetails().setSsid(apClientEvent.getSsid());
+        if (apClientEvent.hasBssid()) {
+            clientSession.getDetails().setBssid(MacAddress.valueOf(apClientEvent.getBssid()));
+        }
         if (apClientEvent.hasAuthStatus()) {
             clientSession.getDetails().setAssociationStatus(apClientEvent.getAuthStatus());
         }
@@ -202,6 +205,9 @@ public class AsyncPublishService {
         clientSession.getDetails().setSessionId(Long.toUnsignedString(apEventClientSession.getSessionId()));
         clientSession.getDetails().setRadioType(OvsdbToWlanCloudTypeMappingUtility.getRadioTypeFromOpensyncStatsRadioBandType(apClientEvent.getBand()));
         clientSession.getDetails().setSsid(apClientEvent.getSsid());
+        if (apClientEvent.hasBssid()) {
+            clientSession.getDetails().setBssid(MacAddress.valueOf(apClientEvent.getBssid()));
+        }
         if (apClientEvent.hasStatus()) {
             clientSession.getDetails().setAssociationStatus(apClientEvent.getStatus());
         }
@@ -320,6 +326,9 @@ public class AsyncPublishService {
         clientSession.getDetails().setSessionId(Long.toUnsignedString(apEventClientSession.getSessionId()));
         clientSession.getDetails().setRadioType(OvsdbToWlanCloudTypeMappingUtility.getRadioTypeFromOpensyncStatsRadioBandType(apClientEvent.getBand()));
         clientSession.getDetails().setSsid(apClientEvent.getSsid());
+        if (apClientEvent.hasBssid()) {
+            clientSession.getDetails().setBssid(MacAddress.valueOf(apClientEvent.getBssid()));
+        }
         if (apClientEvent.hasDevType()) {
             if (apClientEvent.getDevType().equals(DeviceType.DEV_AP)) {
                 clientSession.getDetails().setDisconnectByApTimestamp(apClientEvent.getTimestampMs());
