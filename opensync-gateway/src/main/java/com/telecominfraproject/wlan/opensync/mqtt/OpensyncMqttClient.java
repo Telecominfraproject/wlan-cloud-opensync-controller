@@ -60,6 +60,9 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
     @Autowired
     private OpensyncExternalIntegrationInterface opensyncExternalIntegrationInterface;
 
+    @Value("${tip.wlan.internalHostName:localhost}") 
+    private String internalHostName;
+    
     // dtop: use anonymous constructor to ensure that the following code always
     // get executed,
     // even when somebody adds another constructor in here
@@ -138,7 +141,7 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                         MQTT mqtt = new MQTT();
                         mqtt.setHost("tls://" + mqttBrokerAddress + ":" + mqttBrokerListenPort);
                         LOG.info("Connecting to MQTT broker at {}", mqtt.getHost());
-                        mqtt.setClientId("opensync_mqtt");
+                        mqtt.setClientId("opensync_mqtt_" + internalHostName);
                         mqtt.setUserName(username);
                         mqtt.setPassword(password);
                         blockingConnection = mqtt.blockingConnection();
@@ -147,7 +150,7 @@ public class OpensyncMqttClient implements ApplicationListener<ContextClosedEven
                         LOG.debug("Connected to MQTT broker at {}", mqtt.getHost());
 
                         // NB. setting to AT_MOST_ONCE to match the APs message level
-                        Topic[] topics = {new Topic("/ap/#", QoS.AT_MOST_ONCE),};
+                        Topic[] topics = {new Topic("/ap/opensync_mqtt_" + internalHostName + "/#", QoS.AT_MOST_ONCE),};
 
                         blockingConnection.subscribe(topics);
                         LOG.info("Subscribed to mqtt topics {}", Arrays.asList(topics));

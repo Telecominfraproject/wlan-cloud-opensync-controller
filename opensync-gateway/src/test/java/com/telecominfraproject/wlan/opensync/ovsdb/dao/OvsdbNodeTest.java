@@ -14,6 +14,7 @@ import org.mockito.Mockito;
 import org.mockito.MockitoSession;
 import org.mockito.quality.Strictness;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -85,7 +86,10 @@ public class OvsdbNodeTest {
     OvsdbRadiusProxyConfig ovsdbRadiusProxyConfig;
     @MockBean(answer = Answers.RETURNS_MOCKS)
     OvsdbGet ovsdbGet;
-
+    
+    @Value("${tip.wlan.internalHostName:localhost}") 
+    private String internalHostName;
+    
     MockitoSession mockito;
 
     @Configuration
@@ -122,7 +126,7 @@ public class OvsdbNodeTest {
         newMqttSettings.put("broker", ovsdbNode.mqttBrokerAddress);
         String mqttClientName = OvsdbToWlanCloudTypeMappingUtility.getAlteredClientCnIfRequired("AP-1", connectNodeInfo,
                 false);
-        newMqttSettings.put("topics", "/ap/" + mqttClientName + "/opensync");
+        newMqttSettings.put("topics", "/ap/opensync_mqtt_" + internalHostName + "/" + mqttClientName + "/opensync");
         newMqttSettings.put("port", "" + ovsdbNode.mqttBrokerExternalPort);
         newMqttSettings.put("compress", "zlib");
         newMqttSettings.put("qos", "0");
