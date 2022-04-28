@@ -32,6 +32,10 @@ import com.vmware.ovsdb.service.OvsdbClient;
 
 @Component
 public class OvsdbNode extends OvsdbDaoBase {
+	
+	@org.springframework.beans.factory.annotation.Value("${tip.wlan.internalHostName:localhost}") 
+    private String internalHostName;
+	
     String changeRedirectorAddress(OvsdbClient ovsdbClient, String apId, String newRedirectorAddress) {
         try {
             List<Operation> operations = new ArrayList<>();
@@ -380,7 +384,7 @@ public class OvsdbNode extends OvsdbDaoBase {
             Map<String, String> newMqttSettings = new HashMap<>();
             newMqttSettings.put("broker", mqttBrokerAddress);
             String mqttClientName = OvsdbToWlanCloudTypeMappingUtility.getAlteredClientCnIfRequired(clientCn, incomingConnectNodeInfo, preventCnAlteration);
-            newMqttSettings.put("topics", "/ap/" + mqttClientName + "/opensync");
+            newMqttSettings.put("topics", "/ap/opensync_mqtt_" + internalHostName + "/" + mqttClientName + "/opensync");
             newMqttSettings.put("port", "" + mqttBrokerExternalPort);
             newMqttSettings.put("compress", "zlib");
             newMqttSettings.put("qos", "0");

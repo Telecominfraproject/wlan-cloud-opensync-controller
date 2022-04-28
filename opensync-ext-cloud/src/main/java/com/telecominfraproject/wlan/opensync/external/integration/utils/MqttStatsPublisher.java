@@ -1190,12 +1190,12 @@ public class MqttStatsPublisher implements StatsPublisherInterface {
         }
 
         String[] parts = topic.split("/");
-        if (parts.length < 3) {
+        if (parts.length < 4) {
             return null;
         }
 
         // apId is the third element in the topic
-        return parts[2];
+        return parts[3];
     }
 
     /**
