@@ -394,7 +394,7 @@ public class OpensyncExternalIntegrationCloudTest {
 
     @Test
     public void testApDisconnected() {
-        opensyncExternalIntegrationCloud.apDisconnected("Test_Client_21P10C68818122");
+        opensyncExternalIntegrationCloud.apDisconnected("Test_Client_21P10C68818122", 0L);
     }
 
     @Test

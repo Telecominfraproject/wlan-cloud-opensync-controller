@@ -20,6 +20,7 @@ import com.telecominfraproject.wlan.opensync.external.integration.models.*;
 import com.telecominfraproject.wlan.opensync.ovsdb.dao.OvsdbDao;
 import com.telecominfraproject.wlan.opensync.ovsdb.metrics.OvsdbClientWithMetrics;
 import com.telecominfraproject.wlan.opensync.ovsdb.metrics.OvsdbMetrics;
+import com.telecominfraproject.wlan.opensync.util.OvsdbClientUtil;
 import com.telecominfraproject.wlan.opensync.util.OvsdbStringConstants;
 import com.telecominfraproject.wlan.opensync.util.SslUtil;
 import com.vmware.ovsdb.callback.ConnectionCallback;
@@ -141,26 +142,32 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 					subjectDn = ((X509Certificate) remoteCertificate).getSubjectDN().getName();
 
                     String clientCn = SslUtil.extractCN(subjectDn);
-                    LOG.info("ovsdbClient connecting from {} on port {} clientCn {}", remoteHost, localPort, clientCn);
-
-                    ConnectNodeInfo connectNodeInfo = ovsdbDao.getConnectNodeInfo(ovsdbClient);
-
-                    // successfully connected - register it in our
-                    // connectedClients table
-
-                    String key = alterClientCnIfRequired(clientCn, connectNodeInfo);
-                    ovsdbSessionMapInterface.newSession(key, ovsdbClient);
-
-                    extIntegrationInterface.apConnected(key, connectNodeInfo);
-
-                    processConnectRequest(ovsdbClient, clientCn, connectNodeInfo);
-
-                    monitorOvsdbStateTables(ovsdbClient, key);
-
-                    connectionsCreated.increment();
-                    LOG.info("ovsdbClient connected from {} on port {} AP {} ", remoteHost, localPort, key);
-                    LOG.info("ovsdbClient connectedClients = {}", ovsdbSessionMapInterface.getNumSessions());
-
+                    if (clientCn != null && !clientCn.isEmpty()) {
+                        LOG.info("ovsdbClient connecting from {} on port {} clientCn {}", remoteHost, localPort, clientCn);
+    
+                        ConnectNodeInfo connectNodeInfo = ovsdbDao.getConnectNodeInfo(ovsdbClient);
+    
+                        // successfully connected - register it in our
+                        // connectedClients table
+    
+                        String key = alterClientCnIfRequired(clientCn, connectNodeInfo);
+                        OvsdbSession ovsdbSession = ovsdbSessionMapInterface.newSession(key, ovsdbClient);
+                        extIntegrationInterface.apConnected(key, connectNodeInfo);
+                        // DT: at this point the routing Id is associated with the session, let's store it into the
+                        // connectionInfo object so that the disconnect handler has access to it
+                        OvsdbClientUtil.setRoutingId(ovsdbClient, ovsdbSession.getRoutingId());
+    
+                        processConnectRequest(ovsdbClient, clientCn, connectNodeInfo);
+    
+                        monitorOvsdbStateTables(ovsdbClient, key);
+    
+                        connectionsCreated.increment();
+                        LOG.info("ovsdbClient connected from {} on port {} AP {} ", remoteHost, localPort, key);
+                        LOG.info("ovsdbClient connectedClients = {}", ovsdbSessionMapInterface.getNumSessions());
+                    } else {
+                        LOG.debug("ovsdbClient: clientCn is empty - not connecting.");
+                    }
+                    
                 } catch (IllegalStateException e) {
                     connectionsFailed.increment();
                     LOG.error("autoprovisioning error {}", e.getMessage(), e);
@@ -181,6 +188,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                 connectionsDropped.increment();
 
                 String remoteHost;
+                int remotePort;
                 int localPort;
                 String clientCn;
 
@@ -196,6 +204,7 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
                 try {
                     remoteHost = ovsdbClient.getConnectionInfo().getRemoteAddress().getHostAddress();
+                    remotePort = ovsdbClient.getConnectionInfo().getRemotePort();
                     localPort = ovsdbClient.getConnectionInfo().getLocalPort();
                     String subjectDn = null;
                     try {
@@ -206,17 +215,63 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
                         // do nothing
                     }
                     clientCn = SslUtil.extractCN(subjectDn);
-                    key = ovsdbSessionMapInterface.lookupClientId(ovsdbClient);
-                    if (key != null) {
-                        try {
-                            extIntegrationInterface.apDisconnected(key);
-                            ovsdbSessionMapInterface.removeSession(key);
-                        } catch (Exception e) {
-                            LOG.debug("Unable to process ap disconnect. {}", e);
+                    if (clientCn != null && !clientCn.isEmpty()) {
+                        Long ctxRoutingId =  OvsdbClientUtil.getRoutingId(ovsdbClient);
+                        Long latestDbRoutingId = extIntegrationInterface.getLatestRoutingId(clientCn);
+                        OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(clientCn);
+
+                        LOG.info("Determine true disconnect with AP {} ctxRoutingId {} latestDbRoutingId {} ", clientCn, ctxRoutingId, latestDbRoutingId);
+                        // Determine whether this is a true disconnect based on latest routing record
+                        if (ctxRoutingId != null && latestDbRoutingId != null) {
+                            // if context matches latest DB routingId, this is a true disconnect
+                            if (ctxRoutingId.equals(latestDbRoutingId)) {
+                                try {
+                                    extIntegrationInterface.apDisconnected(clientCn, ctxRoutingId);
+                                    ovsdbSessionMapInterface.removeSession(clientCn);
+                                } catch (Exception e) {
+                                    LOG.debug("Unable to process ap disconnect. {}", e);
+                                }
+                            } else {
+                                if (ovsdbSession != null) {
+                                    if (!latestDbRoutingId.equals(ovsdbSession.getRoutingId())) {
+                                        ovsdbSessionMapInterface.removeSession(clientCn);
+                                    }
+                                }
+                                
+                                extIntegrationInterface.removeRoutingRecord(ctxRoutingId);
+                            }
+                            
+                        // else, clearly handle all other cases
+                        } else if (ctxRoutingId == null && latestDbRoutingId != null) {
+                            // session was not initialized properly in connect path, we can remove this session
+                            LOG.debug("ctxRoutingId null latestDbRoutingId {}, remove non-initialized session for AP {} ", latestDbRoutingId, clientCn);
+                            if (ovsdbSession != null) {
+                                if (ovsdbSession.getRoutingId() == 0L) {
+                                    ovsdbSessionMapInterface.removeSession(clientCn);
+                                }
+                            }
+                            
+                        } else if (ctxRoutingId != null && latestDbRoutingId == null) {
+                            // no routing exist at all, so we know this session is not using any routing record, we can remove this session
+                            LOG.debug("ctxRoutingId {} latestDbRoutingId null, no routing exists, remove session for AP {} ", latestDbRoutingId, clientCn);
+                            if (ovsdbSession != null) {
+                                if (ctxRoutingId.equals(ovsdbSession.getRoutingId())) {
+                                    ovsdbSessionMapInterface.removeSession(clientCn);
+                                }
+                            }
+                            
+                        } else {
+                            // ctxRoutingId == null && latestDbRoutingId == null
+                            // This session is not initialized properly and no routings exist for any session
+                            // We can remove this session without any checks
+                            LOG.debug("ctxRoutingId null latestDbRoutingId null, remove session for AP {} ", latestDbRoutingId, clientCn);
+                            ovsdbSessionMapInterface.removeSession(clientCn);
                         }
+                        
+                        LOG.info("ovsdbClient disconnected from {} on local port {} remote port {} clientCn {} ", remoteHost, localPort,
+                                remotePort, clientCn);
+                        LOG.info("ovsdbClient connectedClients = {}", ovsdbSessionMapInterface.getNumSessions());
                     }
-                    LOG.info("ovsdbClient disconnected from {} on port {} clientCn {} AP {} ", remoteHost, localPort, clientCn, key);
-                    LOG.info("ovsdbClient connectedClients = {}", ovsdbSessionMapInterface.getNumSessions());
                 } finally {
                     try {
                         ovsdbClient.shutdown();

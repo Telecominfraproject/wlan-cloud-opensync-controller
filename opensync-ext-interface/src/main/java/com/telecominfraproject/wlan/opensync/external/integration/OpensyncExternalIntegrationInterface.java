@@ -22,7 +22,11 @@ public interface OpensyncExternalIntegrationInterface {
         INIT, INSERT, DELETE, MODIFY
     }
 
-    void apDisconnected(String apId);
+    void apDisconnected(String apId, Long ctxRoutingId);
+    
+    Long getLatestRoutingId(String apId);
+    
+    void removeRoutingRecord(Long routingId);
 
     OpensyncAPConfig getApConfig(String apId);
 

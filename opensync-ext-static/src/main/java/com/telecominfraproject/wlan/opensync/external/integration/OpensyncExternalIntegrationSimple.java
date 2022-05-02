@@ -64,7 +64,7 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
         LOG.info("ConnectNodeInfo {}", connectNodeInfo);
     }
 
-    public void apDisconnected(String apId) {
+    public void apDisconnected(String apId, Long ctxRoutingId) {
         LOG.info("AP {} got disconnected from the gateway", apId);
     }
 
@@ -221,5 +221,16 @@ public class OpensyncExternalIntegrationSimple implements OpensyncExternalIntegr
     @Override
     public void updateConfigVersionInStatus(String apId, long configVersionFromProfiles) {
         // do nothing here
+    }
+
+    @Override
+    public Long getLatestRoutingId(String apId) {
+        LOG.info("getLatestRoutingId for AP {}", apId);
+        return null;
+    }
+
+    @Override
+    public void removeRoutingRecord(Long routingId) {
+        LOG.info("removeRoutingRecord for routingId {}", routingId);        
     }
 }

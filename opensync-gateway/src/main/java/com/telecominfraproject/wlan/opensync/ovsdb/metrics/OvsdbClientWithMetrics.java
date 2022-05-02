@@ -25,6 +25,10 @@ public class OvsdbClientWithMetrics implements OvsdbClient {
         this.delegate = delegate;
         this.metrics = metrics;
     }
+    
+    public OvsdbClient getDelegate() {
+        return delegate;
+    }
 
     public CompletableFuture<String[]> listDatabases() throws OvsdbClientException {
         metrics.listDatabases.increment();
