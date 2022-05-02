@@ -25,6 +25,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -886,23 +888,17 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
     }
 
     @Override
-    public void apDisconnected(String apId) {
-        LOG.info("AP {} got disconnected from the gateway", apId);
+    public void apDisconnected(String apId, Long ctxRoutingId) {
+        LOG.info("AP {} got disconnected from the gateway, remove ctxRoutingId {} ", apId, ctxRoutingId);
         try {
-
-            OvsdbSession ovsdbSession = ovsdbSessionMapInterface.getSession(apId);
-
-            if (ovsdbSession != null) {
-                if (ovsdbSession.getRoutingId() > 0L) {
-                    try {
-                        routingServiceInterface.delete(ovsdbSession.getRoutingId());
-                    } catch (Exception e) {
-                        LOG.warn("Unable to delete routing service Id {} for ap {}. {}", ovsdbSession.getRoutingId(), apId, e);
-                    }
+            if (ctxRoutingId != null && ctxRoutingId > 0L) {
+                try {
+                    routingServiceInterface.delete(ctxRoutingId);
+                } catch (Exception e) {
+                    LOG.warn("Unable to delete routing service Id {} for ap {}. {}", ctxRoutingId, apId, e);
                 }
-            } else {
-                LOG.warn("Cannot find ap {} in inventory", apId);
             }
+
             Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
             if (ce != null) {
                 List<Status> deletedStatuses = statusServiceInterface.deleteOnEquipmentDisconnect(ce.getCustomerId(), ce.getId());
@@ -917,6 +913,47 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
             LOG.error("Exception when registering ap routing {}", apId, e);
         }
 
+    }
+    
+    @Override
+    public Long getLatestRoutingId(String apId) {
+        try {
+            Equipment ce = equipmentServiceInterface.getByInventoryIdOrNull(apId);
+            if (ce != null) {
+                List<EquipmentRoutingRecord> recordList = routingServiceInterface.getRegisteredRouteList(ce.getId());
+                LOG.info("{} routing records found for AP {}, sort and return latest routingRecordId", recordList.size(), apId);
+                if (!recordList.isEmpty()) {
+                    // Sort by latest record first
+                    Collections.sort(recordList, new Comparator<EquipmentRoutingRecord>() {
+                        @Override
+                        public int compare(EquipmentRoutingRecord o1, EquipmentRoutingRecord o2) {
+                            return Long.compare(o2.getLastModifiedTimestamp(), o1.getLastModifiedTimestamp());
+                        }
+                    });
+                    return recordList.get(0).getId();
+                } else {
+                    LOG.debug("No records found for AP {} equipmentId {}", apId, ce.getId());
+                    return null;
+                }
+            } else {
+                // Equipment doesn't exist, nothing to clean up
+                LOG.debug("No equipment found for AP {} ", apId);
+                return null;
+            }
+        } catch (Exception e) {
+            LOG.error("Exception when registering ap routing {}", apId, e);
+            // Equipment doesn't exist, nothing to clean up
+            return null;
+        }
+    }
+
+    @Override
+    public void removeRoutingRecord(Long routingId) {
+        try {
+            routingServiceInterface.delete(routingId);
+        } catch (Exception e) {
+            LOG.warn("Unable to delete routing service Id {}. {}", routingId, e);
+        }
     }
 
     private void updateApDisconnectedStatus(String apId, Equipment ce) {
