@@ -21,6 +21,7 @@ import com.telecominfraproject.wlan.client.session.models.ClientSession;
 import com.telecominfraproject.wlan.client.session.models.ClientSessionDetails;
 import com.telecominfraproject.wlan.cloudeventdispatcher.CloudEventDispatcherInterface;
 import com.telecominfraproject.wlan.core.model.equipment.MacAddress;
+import com.telecominfraproject.wlan.opensync.external.integration.OpensyncExternalIntegrationCloud;
 import com.telecominfraproject.wlan.opensync.util.OvsdbToWlanCloudTypeMappingUtility;
 import com.telecominfraproject.wlan.servicemetric.models.ServiceMetric;
 
@@ -105,10 +106,10 @@ public class AsyncPublishService {
                     processClientAssocEvent(customerId, equipmentId, locationId, apEventClientSession);
                 }
                 if (apEventClientSession.hasClientIpEvent()) {
-                    processClientIpEvent(customerId, equipmentId, locationId, apEventClientSession);
+                    processClientIpEvent(apId, customerId, equipmentId, locationId, apEventClientSession);
                 }
                 if (apEventClientSession.hasClientDisconnectEvent()) {
-                    processClientDisconnectEvent(customerId, equipmentId, locationId, apEventClientSession);
+                    processClientDisconnectEvent(apId, customerId, equipmentId, locationId, apEventClientSession);
                 }
             }
             realtimeEventPublisher.publishChannelHopEvents(customerId, equipmentId, locationId, eventReport);
@@ -238,7 +239,7 @@ public class AsyncPublishService {
 
     }
     
-    private void processClientIpEvent(int customerId, long equipmentId, long locationId, sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
+    private void processClientIpEvent(String apId, int customerId, long equipmentId, long locationId, sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
         ClientIpEvent apClientEvent = apEventClientSession.getClientIpEvent();
         com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId, MacAddress.valueOf(apClientEvent.getStaMac()));
         if (client == null) {
@@ -263,12 +264,16 @@ public class AsyncPublishService {
         if (clientSession.getDetails().getPriorEquipmentId() == null) {
             clientSession.getDetails().setPriorEquipmentId(clientSession.getEquipmentId());
         }
-        if (clientSession.getDetails().getPriorSessionId() == null) {
-            if (!Objects.equal(clientSession.getDetails().getSessionId(), Long.toUnsignedString(apEventClientSession.getSessionId())))
-                clientSession.getDetails().setPriorSessionId(clientSession.getDetails().getSessionId());
-        }
-        if (!Objects.equal(clientSession.getDetails().getSessionId(), Long.toUnsignedString(apEventClientSession.getSessionId()))) {
-            clientSession.getDetails().setPriorSessionId(clientSession.getDetails().getSessionId());
+        
+        String sessionId = clientSession.getDetails().getSessionId();
+        if (!Objects.equal(sessionId, Long.toUnsignedString(apEventClientSession.getSessionId()))) {
+            if (sessionId != null && !sessionId.startsWith(OpensyncExternalIntegrationCloud.DERIVED_SESSION_ID_PREFIX)) {
+                LOG.info("Ignored clientIpEvent for different session ID for AP {}, clientMac {}: currentSessionId {}, ipSessionID {} ", apId,
+                        apClientEvent.getStaMac(), sessionId, apEventClientSession.getSessionId());
+                realtimeEventPublisher.publishClientIpEvent(customerId, equipmentId, locationId, apEventClientSession.getClientIpEvent());
+                return;
+            }
+            clientSession.getDetails().setPriorSessionId(sessionId);
         }
         clientSession.getDetails().setSessionId(Long.toUnsignedString(apEventClientSession.getSessionId()));
         if (apClientEvent.hasIpAddr()) {
@@ -294,7 +299,7 @@ public class AsyncPublishService {
         realtimeEventPublisher.publishClientIpEvent(customerId, equipmentId, locationId, apEventClientSession.getClientIpEvent());
     }
     
-    private void processClientDisconnectEvent(int customerId, long equipmentId, long locationId,
+    private void processClientDisconnectEvent(String apId, int customerId, long equipmentId, long locationId,
             sts.OpensyncStats.EventReport.ClientSession apEventClientSession) {
         ClientDisconnectEvent apClientEvent = apEventClientSession.getClientDisconnectEvent();
         com.telecominfraproject.wlan.client.models.Client client = clientServiceInterface.getOrNull(customerId, MacAddress.valueOf(apClientEvent.getStaMac()));
@@ -316,12 +321,15 @@ public class AsyncPublishService {
             clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(Long.toUnsignedString(apEventClientSession.getSessionId())));
         }
 
-        if (clientSession.getDetails().getPriorSessionId() == null) {
-            if (!Objects.equal(clientSession.getDetails().getSessionId(), Long.toUnsignedString(apEventClientSession.getSessionId())))
-                clientSession.getDetails().setPriorSessionId(clientSession.getDetails().getSessionId());
-        }
-        if (!Objects.equal(clientSession.getDetails().getSessionId(), Long.toUnsignedString(apEventClientSession.getSessionId()))) {
-            clientSession.getDetails().setPriorSessionId(clientSession.getDetails().getSessionId());
+        String sessionId = clientSession.getDetails().getSessionId();
+        if (!Objects.equal(sessionId, Long.toUnsignedString(apEventClientSession.getSessionId()))) {
+            if (sessionId != null && !sessionId.startsWith(OpensyncExternalIntegrationCloud.DERIVED_SESSION_ID_PREFIX)) {
+                LOG.info("Ignored clientDisconnectEvent for different session ID for AP {}, clientMac {}: currentSessionId {}, disconnectSessionID {} ", apId,
+                        apClientEvent.getStaMac(), sessionId, apEventClientSession.getSessionId());
+                realtimeEventPublisher.publishClientDisconnectEvent(customerId, equipmentId, locationId, apEventClientSession.getClientDisconnectEvent());
+                return;
+            }
+            clientSession.getDetails().setPriorSessionId(sessionId);
         }
         clientSession.getDetails().setSessionId(Long.toUnsignedString(apEventClientSession.getSessionId()));
         clientSession.getDetails().setRadioType(OvsdbToWlanCloudTypeMappingUtility.getRadioTypeFromOpensyncStatsRadioBandType(apClientEvent.getBand()));

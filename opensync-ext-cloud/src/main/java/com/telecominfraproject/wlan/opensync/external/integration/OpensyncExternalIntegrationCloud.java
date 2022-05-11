@@ -138,6 +138,7 @@ import sts.OpensyncStats.Report;
 @Component
 public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegrationInterface {
 
+    public static final String DERIVED_SESSION_ID_PREFIX = "DERIVED-";
     protected static final String standard_linux_date_format = "EEE MMM dd HH:mm:ss zzz yyyy";
     private static final String VLAN_TRUNK_IF_TYPE = "vlan_trunk";
     private static final String ALLOWED_VLANS = "allowed_vlans";
@@ -1825,7 +1826,7 @@ public class OpensyncExternalIntegrationCloud implements OpensyncExternalIntegra
                 clientSession.setLocationId(ce.getLocationId());
                 clientSession.setDetails(new ClientSessionDetails());
                 long derivedSessionId = WiFiSessionUtility.encodeWiFiAssociationId(timestamp / 1000, clientInstance.getMacAddress().getAddressAsLong());
-                clientSession.getDetails().setSessionId(Long.toUnsignedString(derivedSessionId));
+                clientSession.getDetails().setSessionId(DERIVED_SESSION_ID_PREFIX + Long.toUnsignedString(derivedSessionId));
                 clientSession.getDetails().setDhcpDetails(new ClientDhcpDetails(Long.toUnsignedString(derivedSessionId)));
                 clientSession.getDetails().setAssociationState(AssociationState._802_11_Associated);
                 clientSession.getDetails().setIsReassociation(false);
