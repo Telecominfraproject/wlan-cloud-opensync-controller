@@ -440,29 +440,56 @@ public class TipWlanOvsdbClient implements OvsdbClientInterface {
 
         OvsdbClient ovsdbClient = ovsdbSession.getOvsdbClient();
 
-        OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
-
-        if (opensyncAPConfig == null) {
-            LOG.warn("AP with id " + apId + " does not have a config to apply.");
-            return;
+        int currentConfigCount = ovsdbSession.getCurrentConfigNumInFlight().get();
+        if (currentConfigCount == 0L) {
+            // Current count is 0, start this config push
+            // Increment other incoming configs into the count until this config push is done
+            currentConfigCount = ovsdbSession.getCurrentConfigNumInFlight().incrementAndGet();
+            do {
+                try {
+                    OpensyncAPConfig opensyncAPConfig = extIntegrationInterface.getApConfig(apId);
+                    
+                    if (opensyncAPConfig == null) {
+                        LOG.warn("AP with id " + apId + " does not have a config to apply.");
+                        return;
+                    }
+            
+                    //get last known configVersion from the AP
+                    long configVersionFromAp = checkBeforePushConfigVersionFromAp ? ovsdbDao.getConfigVersionFromNode(ovsdbClient) : 0;
+                    
+                    //get last known configVersion from the EquipmentProtocolStatusData        
+                    long configVersionFromStatus = checkBeforePushConfigVersionFromStatus ? extIntegrationInterface.getConfigVersionFromStatus(apId) : 0;
+                    
+                    //get current configVersion from the profiles and equipment
+                    long configVersionFromProfiles = opensyncAPConfig.getConfigVersion();
+                    
+                    boolean needToPushConfigToAP = needToPushToAp(configVersionFromAp, configVersionFromStatus, configVersionFromProfiles);
+            
+                    if(needToPushConfigToAP) {
+                        pushConfigToAp(ovsdbClient, opensyncAPConfig, apId, configVersionFromProfiles);
+                    }
+                    LOG.debug("Finished processConfigChanged for {}", apId);
+                } catch (Exception ex) {
+                    // If anything fails in the ovsdb config push, clean up count and exit
+                    ovsdbSession.getCurrentConfigNumInFlight().set(0);
+                    return;
+                }
+                int checkCount = ovsdbSession.getCurrentConfigNumInFlight().get();
+                if (checkCount == currentConfigCount) {
+                    // Count didn't change from pre-config push, we can clean up and exit
+                    if (ovsdbSession.getCurrentConfigNumInFlight().compareAndSet(currentConfigCount, 0)) {
+                        return;
+                    }
+                } else {
+                    // Count has changed, update the currentConfigCount and rerun config push
+                    ovsdbSession.getCurrentConfigNumInFlight().incrementAndGet();
+                }
+            } while (ovsdbSession.getCurrentConfigNumInFlight().get() != 0);
+        } else {
+            // Count is not 0, another request is being processed for this OvsdbSession
+            // Remember this request, and the other thread will check the count when it's done
+            ovsdbSession.getCurrentConfigNumInFlight().incrementAndGet();
         }
-
-        //get last known configVersion from the AP
-        long configVersionFromAp = checkBeforePushConfigVersionFromAp ? ovsdbDao.getConfigVersionFromNode(ovsdbClient) : 0;
-        
-        //get last known configVersion from the EquipmentProtocolStatusData        
-        long configVersionFromStatus = checkBeforePushConfigVersionFromStatus ? extIntegrationInterface.getConfigVersionFromStatus(apId) : 0;
-        
-        //get current configVersion from the profiles and equipment
-        long configVersionFromProfiles = opensyncAPConfig.getConfigVersion();
-        
-        boolean needToPushConfigToAP = needToPushToAp(configVersionFromAp, configVersionFromStatus, configVersionFromProfiles);
-
-        if(needToPushConfigToAP) {
-            pushConfigToAp(ovsdbClient, opensyncAPConfig, apId, configVersionFromProfiles);
-        }
-        
-        LOG.debug("Finished processConfigChanged for {}", apId);
     }
 
     @Override

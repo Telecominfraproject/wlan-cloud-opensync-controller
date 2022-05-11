@@ -1,5 +1,7 @@
 package com.telecominfraproject.wlan.opensync.external.integration;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.vmware.ovsdb.service.OvsdbClient;
 
 public class OvsdbSession {
@@ -7,6 +9,7 @@ public class OvsdbSession {
     private String apId;
     private long routingId;
     private long equipmentId;
+    private AtomicInteger currentConfigNumInFlight = new AtomicInteger();
     
     public OvsdbClient getOvsdbClient() {
         return ovsdbClient;
@@ -31,6 +34,10 @@ public class OvsdbSession {
     }
     public void setEquipmentId(long equipmentId) {
         this.equipmentId = equipmentId;
+    }
+    
+    public AtomicInteger getCurrentConfigNumInFlight() {
+        return currentConfigNumInFlight;
     }
  
 }
